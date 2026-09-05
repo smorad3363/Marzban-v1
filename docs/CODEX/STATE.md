@@ -8,8 +8,8 @@
 ## Current State
 
 - Current branch: `main`
-- Current HEAD: published-installer validation checkpoint commit containing this file
-- Current milestone/checkpoint: public V1 source, image, tag, and stable release exist; disposable installer validation is pending
+- Current HEAD: installer-validation harness repair checkpoint commit containing this file
+- Current milestone/checkpoint: public V1 source, image, tag, and stable release exist; disposable installer validation run `33976252559` proved anonymous image access, fresh installation, version integrity, and Owner creation before a test-only `pipefail` false negative
 
 ## Completed Checkpoints
 
@@ -49,6 +49,7 @@
 - Verification run `33975841184` confirmed AMD64/ARM64 manifests, source label, runtime `1.0.0`, MySQL client `26.7.0`, and dashboard/CLI content before creating the tag/release.
 - Created immutable tag `v1.0.0` at `6bc7688a294bc603eb30f320428e3002288bb8b2` and stable GitHub release `Marzban V1.0.0`.
 - Added a disposable published-installer workflow for anonymous GHCR access, the exact fresh-install command, Owner creation, version integrity, reinstall/downgrade refusal, and mature `5.2.0` to V1 upgrade preservation.
+- Repaired the installer lab's Owner lookup assertion to capture `docker exec` output before `grep -q`, preventing the successful producer from receiving a closed pipe under `set -o pipefail`.
 
 ## Tests Passed
 
@@ -84,6 +85,8 @@
 
 ## Tests Failed
 
+- Published-installer run `33976252559`: install, version integrity, and Owner creation succeeded; the combined step then failed because `docker exec ... | grep -q` triggered a test-only closed-pipe failure under `pipefail`. Production behavior was not implicated; the harness is repaired for the next run.
+
 - `bash -n scripts/marzban.sh` — not run: Windows WSL launcher reports `execvpe(/bin/bash) failed: No such file or directory`; Docker Desktop daemon is also unavailable for fallback.
 
 - Broader Stage 5 suite has three unrelated failures: one raw-endpoint expectation reaches response rendering with `used_traffic=None`, and two pricing tests use fixed expiry `2000000000`, which no longer matches an Owner duration preset on the current date.
@@ -94,8 +97,8 @@
 
 ## Uncommitted Work
 
-- None; working tree clean after this checkpoint commit.
+- None expected after committing this harness-repair checkpoint.
 
 ## NEXT EXACT TASK
 
-Commit and push the disposable installer-validation workflow without force. Dispatch it with digest `sha256:99c1a1e20a042c3385e7c31ad9084ea233314e8f9047585a6c834a720a123906` and source commit `6bc7688a294bc603eb30f320428e3002288bb8b2`. Verify anonymous image access, the exact public installer URL/fresh-install path, `marzban create-owner USERNAME`, `marzban version`, protection against overwrite/downgrade, and mature `5.2.0` to V1 data migration. Stop on failure; on success, verify public repository/release/tag/image one final time, update this file to `NEXT EXACT TASK: NONE`, commit, and push the documentation-only completion record.
+Commit and push the installer-lab `pipefail` repair without force. Dispatch the published-installer workflow again with digest `sha256:99c1a1e20a042c3385e7c31ad9084ea233314e8f9047585a6c834a720a123906` and source commit `6bc7688a294bc603eb30f320428e3002288bb8b2`. Stop on any real failure; on success, verify public repository/release/tag/image and immutable installer defaults one final time, update this file to `NEXT EXACT TASK: NONE`, commit, and push the documentation-only completion record.
