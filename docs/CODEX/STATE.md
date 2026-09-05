@@ -9,7 +9,7 @@
 
 - Current branch: `main`
 - Current HEAD: installer-validation harness repair checkpoint commit containing this file
-- Current milestone/checkpoint: public V1 source, image, tag, and stable release exist; disposable installer runs `33976252559`, `33976563658`, and `33976717772` proved anonymous image access, fresh installation, version integrity, and Owner creation before a silent test assertion failed
+- Current milestone/checkpoint: public V1 source, image, tag, and stable release exist; disposable installer run `33976849090` passed the complete fresh-install contract before the mature-upgrade setup found its historical VNext baseline image requires authentication
 
 ## Completed Checkpoints
 
@@ -51,6 +51,7 @@
 - Added a disposable published-installer workflow for anonymous GHCR access, the exact fresh-install command, Owner creation, version integrity, reinstall/downgrade refusal, and mature `5.2.0` to V1 upgrade preservation.
 - Repaired the installer lab's Owner lookup assertion to query the disposable MySQL database directly after the successful `marzban create-owner` command, avoiding presentation-layer output and closed-pipe behavior.
 - Added failure-only expected/actual diagnostics to the installer lab's exact version and Owner assertions; no credentials are printed.
+- Kept V1 anonymous-access verification before authentication, then added a scoped GitHub-token GHCR login only for pulling the historical private VNext `v5.2.0` upgrade baseline.
 
 ## Tests Passed
 
@@ -89,6 +90,7 @@
 - Published-installer run `33976252559`: install, version integrity, and Owner creation succeeded; the combined step then failed because `docker exec ... | grep -q` triggered a test-only closed-pipe failure under `pipefail`. Production behavior was not implicated; the harness is repaired for the next run.
 - Published-installer run `33976563658`: the same production checks again succeeded, but the CLI table-based Owner lookup produced no stable assertion output. The harness now verifies the committed Owner row directly in the disposable MySQL database.
 - Published-installer run `33976717772`: the same public/fresh-install/Owner checkpoints succeeded, then a silent exact-line assertion failed. Failure-only diagnostics were added to identify the precise mismatch on the next run.
+- Published-installer run `33976849090`: anonymous V1 image access, exact fresh installation, Owner creation/persistence, version/digest/source integrity, reinstall refusal, and downgrade refusal passed. Upgrade setup then failed only because the historical `marzban-vnext:v5.2.0` baseline is private; workflow authentication is added without changing V1 artifact visibility or content.
 
 - `bash -n scripts/marzban.sh` — not run: Windows WSL launcher reports `execvpe(/bin/bash) failed: No such file or directory`; Docker Desktop daemon is also unavailable for fallback.
 
