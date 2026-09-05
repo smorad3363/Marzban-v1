@@ -502,6 +502,7 @@ def test_mysql_stage6_migration_and_last_trial_quota_concurrency(monkeypatch):
                 billing_mode="USED_TRAFFIC",
                 total_traffic=10 * GIB,
                 trial_quota=1,
+                user_creation_mode_id=2,
             ),
         ]
     )

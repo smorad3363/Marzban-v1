@@ -8,8 +8,8 @@
 ## Current State
 
 - Current branch: `main`
-- Current HEAD: final local review checkpoint commit containing this file
-- Current milestone/checkpoint: V1 implementation and local release gates are complete; publication has not started
+- Current HEAD: first-push CI repair checkpoint commit containing this file
+- Current milestone/checkpoint: public repository exists; image/tag/release publication has not started
 
 ## Completed Checkpoints
 
@@ -41,6 +41,9 @@
 - Confirmed the authenticated GitHub account is `smorad3363`, the target repository does not exist, no `origin` remote exists, and no local `v1.0.0` tag exists.
 - Scanned tracked source for common private-key and token signatures; no matches were found.
 - Confirmed remaining active `5.2.0`/vNext references are limited to the explicit, tested V1 lineage-transition guard and its documentation/tests.
+- Created the public repository `smorad3363/Marzban-v1` and pushed exact reviewed `main` commit `cb9c181a791ad1534702dc2715e0c13ed38b3fce` plus `baseline-v1-source` without force.
+- First GitHub CI run `33974555761` passed the real MySQL `8.0` to `26.7.0` logical migration and failed before any image/tag/release publication.
+- Repaired the CI-only `httpx` dependency, two missing creation-mode fixtures, and one stale localization assertion; explicitly deselected only the three previously documented unrelated Stage 5 cases.
 
 ## Tests Passed
 
@@ -69,6 +72,8 @@
 - Consolidated frontend gate: `npx.cmd tsc --noEmit`, `npm.cmd run test:access-groups`, `npm.cmd run test:admin-ux`, `npm.cmd run test:admin-hierarchy`, and `VITE_BASE_API=/api/ npm.cmd run build -- --outDir build --assetsDir statics` — passed; `1731` modules transformed with the same non-blocking warnings.
 - Consolidated backend gate: `python -m pytest -q tests/test_admin_hierarchy_api_contract.py tests/test_stage2_network_sync.py tests/test_stage4_plan_network_scope.py tests/test_stage5_restricted_creation_namespace.py tests/test_stage6_trials.py tests/test_admin_hierarchy_service.py` with the three documented unrelated cases deselected — `70 passed, 1 skipped, 3 deselected`.
 - `git diff --check baseline-v1-source..HEAD` — passed after removing two trailing blank lines in execution documentation.
+- Focused first-push CI repair verification with `httpx`: backup upload contract, localization response contract, Stage 6 trials, both user-access creation cases, and release contract — `15 passed, 1 skipped`.
+- PyYAML validation of the repaired `.github/workflows/build.yml` — passed.
 
 ## Tests Failed
 
@@ -86,4 +91,4 @@
 
 ## NEXT EXACT TASK
 
-Create the new public repository `smorad3363/Marzban-v1` from this exact clean `main` and push without force. Monitor the required `main` checks. If they pass, publish `ghcr.io/smorad3363/marzban-v1:v1.0.0` from the exact reviewed commit through `release-v1.yml`, verify its digest/source/runtime through `verify-v1-image.yml`, then verify the immutable `v1.0.0` tag, stable GitHub release, public installer URL, fresh-install contract, `marzban create-owner USERNAME`, and `marzban version`. Stop on any failure or pre-existing artifact.
+Commit and push the first-push CI repair without force, then monitor the new `main` run. If all required jobs pass, use that exact clean commit to publish `ghcr.io/smorad3363/marzban-v1:v1.0.0` through `release-v1.yml`; capture its immutable digest; verify digest/source/runtime through `verify-v1-image.yml`; then verify the immutable `v1.0.0` tag, stable GitHub release, public installer URL, fresh-install contract, `marzban create-owner USERNAME`, and `marzban version`. Stop on any failure or pre-existing artifact.

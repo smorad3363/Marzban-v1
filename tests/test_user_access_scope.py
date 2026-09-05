@@ -487,6 +487,8 @@ def test_create_user_records_authenticated_owner_and_audit_actor(
 ):
     if hierarchy_enabled:
         _, _, admin_a, _, _ = _seed_hierarchy_on(db)
+        db.add(MarzhelpAdminSettings(admin_id=admin_a.id, user_creation_mode_id=3))
+        db.commit()
     else:
         _, admin_a, _, _, _ = _seed_hierarchy_off(db)
     monkeypatch.setattr(

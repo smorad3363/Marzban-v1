@@ -125,7 +125,8 @@ def test_response_contract_and_farsi_error_unlimited_sources():
     assert 'errors.codes.pagination_size_invalid' in locale
     assert "return detail.message;" not in error_utility
     assert "detail.message_fa" in error_utility
-    assert "errors.unknownCode" in error_utility
+    assert "errors.codes.${code}" in error_utility
+    assert 'i18n.t("errors.fallback")' in error_utility
     assert "<option>10</option>" in pagination
     assert "<option>25</option>" in pagination
     assert "<option>50</option>" in pagination
