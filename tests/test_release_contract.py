@@ -16,6 +16,10 @@ def test_release_version_and_install_rollback_contract():
     assert 'MARZBAN_GITHUB_REPO="${MARZBAN_GITHUB_REPO:-smorad3363/Marzban-v1}"' in installer
     assert 'MARZBAN_GITHUB_BRANCH="${MARZBAN_GITHUB_BRANCH:-main}"' in installer
     assert 'MARZBAN_DOCKER_IMAGE="${MARZBAN_DOCKER_IMAGE:-ghcr.io/smorad3363/marzban-v1}"' in installer
+    assert 'V1_LINEAGE_SOURCE_VERSION="5.2.0"' in installer
+    assert 'V1_LINEAGE_SOURCE_IMAGE="ghcr.io/smorad3363/marzban-vnext:v5.2.0"' in installer
+    assert 'V1_LINEAGE_TARGET_VERSION="v1.0.0"' in installer
+    assert "is_allowed_v1_lineage_transition()" in installer
     assert "Application downgrade refused" in installer
     assert "automatic image rollback is unsafe after migrations" in installer
     assert 'flock -n 9' in installer
@@ -38,16 +42,33 @@ def test_release_version_and_install_rollback_contract():
     assert '[[ -z "${BASH_SOURCE[0]:-}" || "${BASH_SOURCE[0]}" == "$0" ]]' in installer
     assert 'Configured MySQL image:' in installer
     assert 'Runtime MySQL version:' in installer
+    assert 'create_owner_command()' in installer
+    assert '-e MARZBAN_ADMIN_PASSWORD \\' in installer
+    assert '-e MARZBAN_ADMIN_PASSWORD="$password"' not in installer
     assert 'Refuse overwriting an existing release image' in workflow
     assert 'org.opencontainers.image.revision' in workflow
     assert 'org.opencontainers.image.source=https://github.com/smorad3363/Marzban-v1' in workflow
     assert 'IMAGE: ghcr.io/smorad3363/marzban-v1' in verify_workflow
     assert '= 1.0.0' in verify_workflow
     assert "      - main" in build_workflow
-    assert "refs/heads/main" in build_workflow
     assert "ghcr.io/${{ github.repository_owner }}/marzban-v1" in build_workflow
     assert "vnext" not in workflow.lower()
     assert "vnext" not in verify_workflow.lower()
     assert ':latest' not in workflow
     assert 'gh release create' not in workflow  # Publish notes only after runtime verification.
+    assert "github.event_name == 'workflow_dispatch'" in build_workflow
+    assert 'elif [[ "${GITHUB_REF}" == "refs/heads/main" ]]' not in build_workflow
+    assert 'git tag -a "${VERSION_TAG}" "${GITHUB_SHA}"' not in build_workflow
+    assert 'ref: ${{ inputs.source_commit }}' in verify_workflow
+    assert 'test "$tagged_digest" = "$DIGEST"' in verify_workflow
+    assert 'Create immutable V1 tag and stable release' in verify_workflow
+    assert 'gh release create "$RELEASE_TAG"' in verify_workflow
+    assert '--title "Marzban V1.0.0"' in verify_workflow
+    assert '--notes-file docs/RELEASE_NOTES_v1.0.0.md' in verify_workflow
+    assert '--prerelease' not in verify_workflow
+    release_notes = Path("docs/RELEASE_NOTES_v1.0.0.md").read_text(encoding="utf-8")
+    assert "new canonical `1.0.0` product baseline" in release_notes
+    assert "Plans are commercial entitlements" in release_notes
+    assert "Access Groups exclusively own user network access" in release_notes
+    assert "Existing mature" in release_notes
     assert 'readFileSync("../../VERSION", "utf8").trim()' in Path("app/dashboard/vite.config.ts").read_text()

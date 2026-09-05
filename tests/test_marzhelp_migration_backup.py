@@ -214,3 +214,28 @@ def test_version_command_reports_and_enforces_release_integrity():
     assert 'verify_version_integrity "$marzban_version"' in installer
     assert 'verify_version_integrity "$requested_version"' in installer
     assert "version)" in installer
+
+
+def test_installer_v1_shell_contract_executes():
+    import shutil
+    import subprocess
+
+    bash = Path("C:/Program Files/Git/bin/bash.exe")
+    executable = str(bash) if bash.exists() else shutil.which("bash")
+    if not executable:
+        pytest.skip("Bash is unavailable")
+
+    syntax = subprocess.run(
+        [executable, "-n", "scripts/marzban.sh"],
+        capture_output=True,
+        text=True,
+    )
+    assert syntax.returncode == 0, syntax.stderr
+
+    contract = subprocess.run(
+        [executable, "tests/test_installer_v1_contract.sh"],
+        capture_output=True,
+        text=True,
+    )
+    assert contract.returncode == 0, contract.stderr
+    assert "INSTALLER_V1_CONTRACT_OK" in contract.stdout

@@ -8,8 +8,8 @@
 ## Current State
 
 - Current branch: `main`
-- Current HEAD: frontend Access Group checkpoint commit containing this file
-- Current milestone/checkpoint: Plan is commercial-only in backend and UI; Access Group is the sole network authority
+- Current HEAD: release-readiness checkpoint commit containing this file
+- Current milestone/checkpoint: V1 UI separation and local immutable installer/release contract are complete
 
 ## Completed Checkpoints
 
@@ -31,6 +31,12 @@
 - Required explicit Access Group selection in both Plan-based user-creation surfaces.
 - Updated Host impact UI and query contracts to Access Group terminology.
 - Rebuilt committed dashboard assets after the Access Group UI change.
+- Added a narrow, verified product-line transition from the exact mature `ghcr.io/smorad3363/marzban-vnext:v5.2.0` runtime to `v1.0.0`; all other application downgrades remain refused.
+- Hardened `marzban create-owner [USERNAME]` argument handling and kept the Owner password out of Docker command arguments.
+- Prevented `main` pushes from creating the V1 tag, release, or image before dedicated verification.
+- Required the reviewed 40-character commit and an unused `v1.0.0` tag before immutable image publication.
+- Made published-image verification confirm the `v1.0.0` image tag digest and source commit before creating the immutable tag and stable GitHub release.
+- Added V1 release notes covering the new baseline, Plan/Access Group separation, and preserved mature functionality.
 
 ## Tests Passed
 
@@ -52,6 +58,10 @@
 - `VITE_BASE_API=/api/ npm.cmd run build -- --outDir build --assetsDir statics` in `app/dashboard` — passed; `1731` modules transformed. Existing vendor chunk-size and `use client` warnings remain non-blocking.
 - Same backend environment, `python -m pytest -q tests/test_admin_hierarchy_api_contract.py tests/test_stage4_plan_network_scope.py tests/test_stage2_network_sync.py` — `23 passed`.
 - Playwright mock verification at `1440x900` and `375x812` — Access Group create/list controls rendered, Host choices appeared after Inbound selection, no horizontal overflow, and no console errors.
+- `C:\Program Files\Git\bin\bash.exe -n scripts/marzban.sh` — passed.
+- `C:\Program Files\Git\bin\bash.exe tests/test_installer_v1_contract.sh` — `INSTALLER_V1_CONTRACT_OK`; validated the exact lineage gate, `marzban version`, and `marzban create-owner USERNAME` wrapper contract.
+- Same backend environment, `python -m pytest -q tests/test_release_contract.py tests/test_marzhelp_migration_backup.py` — `7 passed, 1 skipped`.
+- PyYAML `safe_load` of `.github/workflows/build.yml`, `.github/workflows/release-v1.yml`, and `.github/workflows/verify-v1-image.yml` after publication-order changes — passed.
 
 ## Tests Failed
 
@@ -61,7 +71,6 @@
 
 ## Known Blockers
 
-- Local Bash runtime unavailable; installer syntax verification remains required before publication.
 - No live MySQL endpoint is available for `EXPLAIN`; index verification is limited to model/migration structure until the MySQL release lab runs.
 
 ## Uncommitted Work
@@ -70,4 +79,4 @@
 
 ## NEXT EXACT TASK
 
-Audit installer and release workflows for the immutable V1 publication order. Verify mature-source upgrade handling for the lower semantic V1 product version without weakening downgrade protection, validate `marzban create-owner USERNAME` and `marzban version`, add or update focused release-contract and installer tests, obtain Bash syntax verification, update this file, and commit the release-readiness checkpoint.
+Run consolidated V1 verification and a final baseline-to-HEAD security/release review. Re-run the required frontend, backend, installer, and release-contract gates; scan for secrets and stale active identities; inspect publication preconditions read-only; fix only V1-caused failures; update this file; and commit the final local review checkpoint before publishing anything.

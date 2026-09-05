@@ -15,6 +15,9 @@ LAST_XRAY_CORES=10
 # Override at runtime, e.g. MARZBAN_GITHUB_REPO=another-user/Marzban marzban install
 # =============================================================================
 CLI_RELEASE_VERSION="v1.0.0"
+V1_LINEAGE_SOURCE_VERSION="5.2.0"
+V1_LINEAGE_SOURCE_IMAGE="ghcr.io/smorad3363/marzban-vnext:v5.2.0"
+V1_LINEAGE_TARGET_VERSION="v1.0.0"
 MARZBAN_GITHUB_REPO="${MARZBAN_GITHUB_REPO:-smorad3363/Marzban-v1}"
 MARZBAN_GITHUB_BRANCH="${MARZBAN_GITHUB_BRANCH:-main}"
 MARZBAN_SCRIPTS_PATH="${MARZBAN_SCRIPTS_PATH:-scripts/marzban.sh}"
@@ -44,6 +47,17 @@ is_release_version() {
 
 is_immutable_sha_image() {
     [[ "$1" =~ ^sha-[0-9a-f]{12,40}$ ]]
+}
+
+is_allowed_v1_lineage_transition() {
+    local current_version="$1"
+    local requested_version="$2"
+    local configured_image="$3"
+    local running_image="$4"
+    [ "$current_version" = "$V1_LINEAGE_SOURCE_VERSION" ] &&
+        [ "$requested_version" = "$V1_LINEAGE_TARGET_VERSION" ] &&
+        [ "$configured_image" = "$V1_LINEAGE_SOURCE_IMAGE" ] &&
+        [ "$running_image" = "$V1_LINEAGE_SOURCE_IMAGE" ]
 }
 
 latest_published_version() {
@@ -1609,7 +1623,12 @@ marzban_cli() {
 
 create_owner_command() {
     local username="${1:-}"
-    local password
+    local password command_status
+    if [ "$#" -gt 1 ] || { [ "$#" -eq 1 ] && { [ "$1" = "-h" ] || [ "$1" = "--help" ]; }; }; then
+        colorized_echo blue "Usage: marzban create-owner [USERNAME]"
+        [ "$#" -eq 1 ] && exit 0
+        exit 1
+    fi
     check_running_as_root
     if ! is_marzban_installed; then
         colorized_echo red "Marzban's not installed!"
@@ -1633,11 +1652,17 @@ create_owner_command() {
         colorized_echo red "Owner password is required."
         exit 1
     fi
-    $COMPOSE -f "$COMPOSE_FILE" -p "$APP_NAME" exec -T \
+    export MARZBAN_ADMIN_PASSWORD="$password"
+    if $COMPOSE -f "$COMPOSE_FILE" -p "$APP_NAME" exec -T \
         -e CLI_PROG_NAME="marzban cli" \
-        -e MARZBAN_ADMIN_PASSWORD="$password" \
-        marzban marzban-cli admin bootstrap-owner --username "$username"
-    unset password
+        -e MARZBAN_ADMIN_PASSWORD \
+        marzban marzban-cli admin bootstrap-owner --username "$username"; then
+        command_status=0
+    else
+        command_status=$?
+    fi
+    unset MARZBAN_ADMIN_PASSWORD password
+    return "$command_status"
 }
 
 set_owner_command() {
@@ -1969,14 +1994,21 @@ update_command() {
     requested_version=$(resolve_requested_version "$requested_version") || exit 1
 
     local current_version backup_path source_container
+    local configured_source_image app_container running_source_image
     current_version=$(runtime_app_version | tr -d '\r[:space:]')
     if ! is_release_version "$requested_version" || ! is_release_version "v${current_version}"; then
         colorized_echo red "Production update requires a known runtime and exact release version."
         exit 1
     fi
     if [ "$(printf '%s\n%s\n' "$current_version" "${requested_version#v}" | sort -V | head -n 1)" != "$current_version" ]; then
-        colorized_echo red "Application downgrade refused. Restore a matching offline database/configuration backup into an isolated installation."
-        exit 1
+        configured_source_image=$(configured_service_image marzban)
+        app_container=$(running_service_container marzban)
+        running_source_image=$(docker inspect --format '{{.Config.Image}}' "$app_container" 2>/dev/null || true)
+        if ! is_allowed_v1_lineage_transition "$current_version" "$requested_version" "$configured_source_image" "$running_source_image"; then
+            colorized_echo red "Application downgrade refused. Restore a matching offline database/configuration backup into an isolated installation."
+            exit 1
+        fi
+        colorized_echo yellow "Verified product-line transition: ${V1_LINEAGE_SOURCE_IMAGE} -> $(marzban_docker_image "$requested_version")."
     fi
     exec 9>"$APP_DIR/.update.lock"
     flock -n 9 || { colorized_echo red "Another update is running."; exit 1; }
