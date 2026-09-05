@@ -15,16 +15,25 @@ bash -n <<< "$installer"
 grep -Fq 'CLI_RELEASE_VERSION="v1.0.0"' <<< "$installer"
 grep -Fq 'MARZBAN_GITHUB_REPO="${MARZBAN_GITHUB_REPO:-smorad3363/Marzban-v1}"' <<< "$installer"
 
+require_fixed_line() {
+  local expected="$1"
+  local actual="$2"
+  if ! grep -Fxq -- "$expected" <<< "$actual"; then
+    printf 'Expected exact line: %s\nActual output:\n%s\n' "$expected" "$actual" >&2
+    return 1
+  fi
+}
+
 printf '\n' | bash -c "$installer" @ install --version v1.0.0 --database mysql
 printf '%s\n' 'Release-Disposable-Owner-927' | marzban create-owner release_owner
 version_output="$(marzban version)"
-grep -Fxq 'CLI version: v1.0.0' <<< "$version_output"
-grep -Fxq 'Runtime app version: 1.0.0' <<< "$version_output"
-grep -Fq "Immutable image digest: ghcr.io/smorad3363/marzban-v1@${RELEASE_IMAGE_DIGEST}" <<< "$version_output"
-grep -Fxq "Source revision: ${RELEASE_SOURCE_COMMIT}" <<< "$version_output"
+require_fixed_line 'CLI version: v1.0.0' "$version_output"
+require_fixed_line 'Runtime app version: 1.0.0' "$version_output"
+require_fixed_line "Immutable image digest: ghcr.io/smorad3363/marzban-v1@${RELEASE_IMAGE_DIGEST}" "$version_output"
+require_fixed_line "Source revision: ${RELEASE_SOURCE_COMMIT}" "$version_output"
 owner_row="$(docker exec marzban-mysql-1 sh -c \
   'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -uroot "$MYSQL_DATABASE" -N -e "SELECT username FROM admins WHERE username='\''release_owner'\'';"')"
-grep -Fxq release_owner <<< "$owner_row"
+require_fixed_line release_owner "$owner_row"
 
 before="$(sha256sum /opt/marzban/.env)"
 if bash -c "$installer" @ install --version v1.0.0 --database mysql; then
