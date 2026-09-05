@@ -233,7 +233,6 @@ def test_owner_credit_is_unlimited_for_plan_validation(db, monkeypatch):
 
     assert wallet.total_traffic is None
     assert admin_hierarchy.available_credit(db, wallet) is None
-    hosts = _explicit_network(db)
     plan = admin_plans.create_plan(
         db,
         owner,
@@ -242,8 +241,6 @@ def test_owner_credit_is_unlimited_for_plan_validation(db, monkeypatch):
             version=PlanVersionInput(
                 data_limit=10**15,
                 duration_days=30,
-                inbounds=["VLESS TCP"],
-                hosts=hosts,
             ),
         ),
     )
@@ -270,7 +267,6 @@ def test_plan_category_assignment_controls_admin_access(db, monkeypatch):
         category_ids=[category.id],
     )
     db.commit()
-    hosts = _explicit_network(db)
     plan = admin_plans.create_plan(
         db,
         owner,
@@ -280,8 +276,6 @@ def test_plan_category_assignment_controls_admin_access(db, monkeypatch):
             version=PlanVersionInput(
                 data_limit=100,
                 duration_days=30,
-                inbounds=["VLESS TCP"],
-                hosts=hosts,
             ),
         ),
     )
@@ -812,15 +806,12 @@ def test_plan_updates_append_immutable_version(db, monkeypatch):
         "inbounds_by_tag",
         {"VLESS TCP": {"tag": "VLESS TCP", "protocol": "vless"}},
     )
-    hosts = _explicit_network(db)
     values = PlanCreate(
         name="standard",
         version=PlanVersionInput(
             data_limit=100,
             duration_days=30,
             concurrent_user_limit=1,
-            inbounds=["VLESS TCP"],
-            hosts=hosts,
         ),
         allowed_admin_ids=[child.id],
     )

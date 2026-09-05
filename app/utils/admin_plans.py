@@ -356,15 +356,6 @@ def _validate_version(db: Session, actor: Admin, version: PlanVersionInput) -> N
     if not settings.all_user_limits and version.concurrent_user_limit is not None:
         if version.concurrent_user_limit not in settings.allowed_user_limits:
             raise admin_hierarchy.HierarchyError("user_limit_forbidden", "Plan device limit is not allowed")
-    # Legacy versions keep their immutable network snapshot for rollback. New
-    # commercial Plans omit it because Access Groups own network access.
-    if version.inbounds or version.hosts:
-        _validate_network_scope(
-            db,
-            settings,
-            set(version.inbounds),
-            {tag: set(host_ids) for tag, host_ids in version.hosts.items()},
-        )
     mode = admin_billing.billing_mode(settings)
     available = admin_hierarchy.available_credit(db, settings)
     if mode == admin_billing.BillingMode.SEAT_CREDIT:
@@ -394,49 +385,6 @@ def _validate_access_targets(db: Session, actor: Admin, admin_ids: list[int]) ->
     for admin_id in existing:
         if not admin_hierarchy.admin_in_scope(db, actor, admin_id):
             raise admin_hierarchy.HierarchyError("plan_access_scope_forbidden", "Plan access target is outside scope")
-
-
-def _validate_access_network_targets(
-    db: Session,
-    version: PlanVersionInput,
-    admin_ids: list[int],
-    include_subtree: bool,
-) -> None:
-    target_ids = set(admin_ids)
-    if include_subtree and target_ids:
-        target_ids.update(
-            row[0]
-            for row in db.query(AdminHierarchy.descendant_id)
-            .filter(AdminHierarchy.ancestor_id.in_(target_ids))
-            .all()
-        )
-    if not target_ids:
-        return
-    if not version.inbounds:
-        return
-    settings_rows = (
-        db.query(MarzhelpAdminSettings)
-        .filter(MarzhelpAdminSettings.admin_id.in_(target_ids))
-        .all()
-    )
-    settings_by_admin = {settings.admin_id: settings for settings in settings_rows}
-    missing = sorted(target_ids - set(settings_by_admin))
-    if missing:
-        raise admin_hierarchy.HierarchyError(
-            "plan_access_policy_missing", f"Plan access targets have no policy: {missing}"
-        )
-    plan_inbounds = set(version.inbounds)
-    forbidden = sorted(
-        settings.admin_id
-        for settings in settings_rows
-        if not settings.all_inbounds
-        and not plan_inbounds.issubset(set(settings.allowed_inbounds))
-    )
-    if forbidden:
-        raise admin_hierarchy.HierarchyError(
-            "plan_access_network_forbidden",
-            f"Plan network exceeds target administrator scope: {forbidden}",
-        )
 
 
 def _replace_access(
@@ -484,15 +432,6 @@ def _add_version(
     )
     db.add(version)
     db.flush()
-    db.add_all(
-        AdminUserPlanInbound(version_id=version.id, inbound_tag=tag)
-        for tag in values.inbounds
-    )
-    db.add_all(
-        AdminUserPlanHost(version_id=version.id, inbound_tag=tag, host_id=host_id)
-        for tag, host_ids in values.hosts.items()
-        for host_id in host_ids
-    )
     plan.current_version_id = version.id
     return version
 
@@ -505,7 +444,7 @@ def add_network_revision(
     inbounds: set[str],
     hosts: dict[str, set[int]],
 ) -> tuple[AdminUserPlanVersion, AdminUserPlanVersion]:
-    """Create a network-only Plan revision without rewriting financial history."""
+    """Preserve a legacy Plan network revision during compatibility operations."""
     current = db.get(AdminUserPlanVersion, plan.current_version_id)
     if current is None:
         raise admin_hierarchy.HierarchyError("plan_version_missing", "Current Plan version is missing")
@@ -521,9 +460,16 @@ def add_network_revision(
             reset_strategy=current.reset_strategy,
             renewal_volume_strategy=current.renewal_volume_strategy,
             renewal_time_strategy=current.renewal_time_strategy,
-            inbounds=sorted(inbounds),
-            hosts={tag: sorted(hosts[tag]) for tag in sorted(inbounds)},
         ),
+    )
+    db.add_all(
+        AdminUserPlanInbound(version_id=revision.id, inbound_tag=tag)
+        for tag in sorted(inbounds)
+    )
+    db.add_all(
+        AdminUserPlanHost(version_id=revision.id, inbound_tag=tag, host_id=host_id)
+        for tag in sorted(inbounds)
+        for host_id in sorted(hosts.get(tag, set()))
     )
     return current, revision
 
@@ -579,9 +525,6 @@ def create_plan(db: Session, actor: Admin, values: PlanCreate) -> AdminUserPlan:
     _validate_version(db, actor, values.version)
     _validate_category(db, actor, values.category_id)
     _validate_access_targets(db, actor, values.allowed_admin_ids)
-    _validate_access_network_targets(
-        db, values.version, values.allowed_admin_ids, values.include_subtree
-    )
     if values.is_trial and not admin_hierarchy.is_owner(db, actor):
         raise admin_hierarchy.HierarchyError(
             "trial_plan_owner_required", "Only Owner can create Trial plans"
@@ -614,9 +557,6 @@ def update_plan(db: Session, actor: Admin, plan: AdminUserPlan, values: PlanUpda
     _validate_version(db, actor, values.version)
     _validate_category(db, actor, values.category_id)
     _validate_access_targets(db, actor, values.allowed_admin_ids)
-    _validate_access_network_targets(
-        db, values.version, values.allowed_admin_ids, values.include_subtree
-    )
     plan = db.query(AdminUserPlan).filter(AdminUserPlan.id == plan.id).with_for_update().one()
     plan.description = values.description
     plan.category_id = values.category_id

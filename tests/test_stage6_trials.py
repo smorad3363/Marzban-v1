@@ -30,9 +30,9 @@ from app.db.models import (
     User,
     UserPlanAssignment,
 )
-from app.models.admin_hierarchy import PlanCreate, PlanVersionInput
+from app.models.admin_hierarchy import AccessGroupInput, PlanCreate, PlanVersionInput
 from app.models.user import UserStatus
-from app.utils import admin_hierarchy, admin_plans, trials
+from app.utils import access_groups, admin_hierarchy, admin_plans, trials
 from app.utils.marzhelp_policy import MarzhelpPolicyError
 
 
@@ -99,8 +99,13 @@ def db(tmp_path, monkeypatch):
     }
     monkeypatch.setattr(xray.config, "inbounds_by_tag", {tag: inbound_config})
     monkeypatch.setattr(xray.config, "inbounds_by_protocol", {"vless": [inbound_config]})
+    group = access_groups.create(
+        session,
+        owner,
+        AccessGroupInput(name="trial access", inbounds=[tag], hosts={tag: [host.id]}),
+    )
     try:
-        yield session, owner, tag, host
+        yield session, owner, tag, host, group.id
     finally:
         session.close()
         engine.dispose()
@@ -117,8 +122,6 @@ def _trial_plan(db, owner, tag, host_id, *, data_limit, devices, name):
                 data_limit=data_limit,
                 duration_days=1,
                 concurrent_user_limit=devices,
-                inbounds=[tag],
-                hosts={tag: [host_id]},
             ),
         ),
     )
@@ -141,7 +144,7 @@ def test_stage6_api_contract_is_registered():
     [(GIB, 1), (2 * GIB, 1), (0, 1), (0, 2)],
 )
 def test_required_trial_shapes_are_first_class_and_accounted(db, data_limit, devices):
-    session, owner, tag, host = db
+    session, owner, tag, host, group_id = db
     plan = _trial_plan(
         session,
         owner,
@@ -160,6 +163,7 @@ def test_required_trial_shapes_are_first_class_and_accounted(db, data_limit, dev
         status="active",
         note=None,
         idempotency_key=f"stage6-shape-{data_limit}-{devices}",
+        access_group_id=group_id,
     )
     assert created is True
     assert plan.is_trial is True
@@ -170,7 +174,7 @@ def test_required_trial_shapes_are_first_class_and_accounted(db, data_limit, dev
 
 
 def test_trial_quota_exhaustion_and_retry_consumes_once(db):
-    session, owner, tag, host = db
+    session, owner, tag, host, group_id = db
     plan = _trial_plan(session, owner, tag, host.id, data_limit=GIB, devices=1, name="quota")
     settings = session.get(MarzhelpAdminSettings, owner.id)
     settings.trial_quota = 1
@@ -183,6 +187,7 @@ def test_trial_quota_exhaustion_and_retry_consumes_once(db):
         status="active",
         note=None,
         idempotency_key="stage6-create-once",
+        access_group_id=group_id,
     )
     replay = admin_plans.create_user_from_plan(
         session,
@@ -192,6 +197,7 @@ def test_trial_quota_exhaustion_and_retry_consumes_once(db):
         status="active",
         note=None,
         idempotency_key="stage6-create-once",
+        access_group_id=group_id,
     )
     assert first[2] is True and replay[2] is False
     assert session.get(MarzhelpAdminSettings, owner.id).trial_quota == 0
@@ -205,12 +211,13 @@ def test_trial_quota_exhaustion_and_retry_consumes_once(db):
             status="active",
             note=None,
             idempotency_key="stage6-create-exhausted",
+            access_group_id=group_id,
         )
     assert exc.value.code == "trial_quota_exhausted"
 
 
 def test_trial_quota_reset_is_valid_when_already_at_limit(db):
-    session, owner, _, _ = db
+    session, owner, _, _, _ = db
     child = Admin(
         username="trial-reset-child",
         hashed_password="x",
@@ -252,7 +259,7 @@ def test_trial_quota_reset_is_valid_when_already_at_limit(db):
 
 
 def test_unlimited_allocated_trial_with_finite_credit_fails_closed(db):
-    session, owner, tag, host = db
+    session, owner, tag, host, group_id = db
     child = Admin(
         username="allocated-child",
         hashed_password="x",
@@ -266,12 +273,13 @@ def test_unlimited_allocated_trial_with_finite_credit_fails_closed(db):
         [
             AdminHierarchy(ancestor_id=child.id, descendant_id=child.id, depth=0),
             AdminHierarchy(ancestor_id=owner.id, descendant_id=child.id, depth=1),
-            MarzhelpAdminSettings(
-                admin_id=child.id,
-                billing_mode="ALLOCATED_TRAFFIC",
-                total_traffic=10 * GIB,
-                trial_quota=1,
-            ),
+                MarzhelpAdminSettings(
+                    admin_id=child.id,
+                    billing_mode="ALLOCATED_TRAFFIC",
+                    total_traffic=10 * GIB,
+                    trial_quota=1,
+                    user_creation_mode_id=2,
+                ),
         ]
     )
     session.commit()
@@ -286,8 +294,6 @@ def test_unlimited_allocated_trial_with_finite_credit_fails_closed(db):
                 data_limit=0,
                 duration_days=1,
                 concurrent_user_limit=1,
-                inbounds=[tag],
-                hosts={tag: [host.id]},
             ),
         ),
     )
@@ -300,12 +306,13 @@ def test_unlimited_allocated_trial_with_finite_credit_fails_closed(db):
             status="active",
             note=None,
             idempotency_key="stage6-unsafe-unlimited",
+            access_group_id=group_id,
         )
     assert exc.value.code == "unlimited_traffic_forbidden"
 
 
 def test_owner_trial_quota_grant_reclaim_is_idempotent_and_audited(db):
-    session, owner, _, _ = db
+    session, owner, _, _, _ = db
     settings = session.get(MarzhelpAdminSettings, owner.id)
     settings.trial_quota = 0
     session.commit()
@@ -345,7 +352,7 @@ def test_owner_trial_quota_grant_reclaim_is_idempotent_and_audited(db):
 
 
 def test_cleanup_preview_and_execute_use_metadata_and_preserve_deleted_accounting(db):
-    session, owner, tag, host = db
+    session, owner, tag, host, group_id = db
     plan = _trial_plan(session, owner, tag, host.id, data_limit=GIB, devices=1, name="cleanup")
     trial_user, _, _ = admin_plans.create_user_from_plan(
         session,
@@ -355,6 +362,7 @@ def test_cleanup_preview_and_execute_use_metadata_and_preserve_deleted_accountin
         status="active",
         note="real trial",
         idempotency_key="stage6-cleanup-create",
+        access_group_id=group_id,
     )
     trial_user.expire = int((datetime.now(timezone.utc) - timedelta(days=2)).timestamp())
     trial_user.used_traffic = 1234
@@ -528,12 +536,15 @@ def test_mysql_stage6_migration_and_last_trial_quota_concurrency(monkeypatch):
                 data_limit=GIB,
                 duration_days=1,
                 concurrent_user_limit=1,
-                inbounds=[tag],
-                hosts={tag: [host.id]},
             ),
         ),
     )
-    plan_id, child_id, owner_id = plan.id, child.id, owner.id
+    group = access_groups.create(
+        seed,
+        owner,
+        AccessGroupInput(name="mysql trial access", inbounds=[tag], hosts={tag: [host.id]}),
+    )
+    plan_id, child_id, owner_id, group_id = plan.id, child.id, owner.id, group.id
     seed.close()
 
     def create_trial(number: int):
@@ -547,6 +558,7 @@ def test_mysql_stage6_migration_and_last_trial_quota_concurrency(monkeypatch):
                 status="active",
                 note=None,
                 idempotency_key=f"stage6-mysql-race-{number}",
+                access_group_id=group_id,
             )
             return "created" if created and user.id else "replayed"
         except (admin_hierarchy.HierarchyError, MarzhelpPolicyError) as exc:

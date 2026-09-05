@@ -16,11 +16,14 @@ from app.db.models import (
     AdminSuspensionReason,
     AdminUserCreationMode,
     AdminUserPlan,
+    AdminUserPlanHost,
+    AdminUserPlanInbound,
+    AdminUserPlanVersion,
     MarzhelpAdminSettings,
     ProxyHost,
     ProxyInbound,
 )
-from app.models.admin_hierarchy import AccessGroupInput, PlanCreate, PlanVersionInput
+from app.models.admin_hierarchy import AccessGroupInput, PlanCreate, PlanUpdate, PlanVersionInput
 from app.models.proxy import ProxySettings, ProxyTypes
 from app.models import user as user_models
 from app.models.user import UserResponse
@@ -98,8 +101,6 @@ def _version(tag: str, host_id: int) -> PlanVersionInput:
         data_limit=1024,
         duration_days=30,
         concurrent_user_limit=1,
-        inbounds=[tag],
-        hosts={tag: [host_id]},
     )
 
 
@@ -135,15 +136,23 @@ class _CaptureConfiguration:
         return self.remarks
 
 
-def test_empty_inbound_or_host_scope_is_rejected():
-    commercial = PlanVersionInput(data_limit=1, duration_days=1, inbounds=[], hosts={})
-    assert commercial.inbounds == []
-    with pytest.raises(ValidationError, match="at least one host"):
+def test_plan_request_contract_rejects_network_fields():
+    commercial = PlanVersionInput(data_limit=1, duration_days=1)
+    assert commercial.model_dump() == {
+        "price_toman": 0,
+        "data_limit": 1,
+        "duration_days": 1,
+        "concurrent_user_limit": None,
+        "reset_strategy": "no_reset",
+        "renewal_volume_strategy": "replace",
+        "renewal_time_strategy": "extend_max",
+    }
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
         PlanVersionInput(
             data_limit=1,
             duration_days=1,
             inbounds=["VLESS TCP"],
-            hosts={"VLESS TCP": []},
+            hosts={"VLESS TCP": [1]},
         )
 
 
@@ -221,49 +230,38 @@ def test_node_scope_filters_all_slots_and_preserves_source_config(db, monkeypatc
     assert len(config["inbounds"][0]["settings"]["clients"]) == 3
 
 
-def test_plan_scope_persists_and_disabled_or_deleted_host_fails_closed(db, monkeypatch):
+def test_plan_create_and_update_do_not_write_network_topology(db, monkeypatch):
     session, owner = db
     tag, first, _ = _configure_network(session, monkeypatch)
     plan = admin_plans.create_plan(
         session,
         owner,
-        PlanCreate(name="strict", version=_version(tag, first.id)),
+        PlanCreate(name="commercial", version=_version(tag, first.id)),
     )
-    response = admin_plans.plan_response(session, plan)
-    assert response.version.inbounds == [tag]
-    assert response.version.hosts == {tag: [first.id]}
+    first_version_id = plan.current_version_id
+    assert session.query(AdminUserPlanInbound).count() == 0
+    assert session.query(AdminUserPlanHost).count() == 0
 
-    first.is_disabled = True
+    session.add(AdminUserPlanInbound(version_id=first_version_id, inbound_tag=tag))
+    session.add(AdminUserPlanHost(version_id=first_version_id, inbound_tag=tag, host_id=first.id))
     session.commit()
-    with pytest.raises(admin_hierarchy.HierarchyError) as disabled:
-        admin_plans.create_user_from_plan(
-            session,
-            actor=owner,
-            plan_id=plan.id,
-            username="blocked-disabled",
-            status="active",
-            note=None,
-            idempotency_key="stage4-disabled-host",
-        )
-    assert disabled.value.code == "plan_host_unavailable"
 
-    first.is_disabled = False
-    session.commit()
-    user, _, created = admin_plans.create_user_from_plan(
+    updated = admin_plans.update_plan(
         session,
-        actor=owner,
-        plan_id=plan.id,
-        username="strict-user",
-        status="active",
-        note=None,
-        idempotency_key="stage4-create-user",
+        owner,
+        plan,
+        PlanUpdate(
+            description="new commercial terms",
+            version=PlanVersionInput(data_limit=2048, duration_days=60),
+        ),
     )
-    assert created is True
-    assert user.inbounds == {ProxyTypes.VLESS: [tag]}
-
-    session.delete(first)
-    session.commit()
-    assert admin_plans.subscription_host_scope(session, user) == {}
+    assert updated.current_version_id != first_version_id
+    assert session.query(AdminUserPlanVersion).count() == 2
+    assert session.query(AdminUserPlanInbound).filter_by(version_id=first_version_id).count() == 1
+    assert session.query(AdminUserPlanHost).filter_by(version_id=first_version_id).count() == 1
+    assert session.query(AdminUserPlanInbound).filter_by(version_id=updated.current_version_id).count() == 0
+    assert session.query(AdminUserPlanHost).filter_by(version_id=updated.current_version_id).count() == 0
+    assert admin_plans.plan_response(session, updated).version.inbounds == []
 
 
 def test_subscription_emits_only_explicit_active_plan_hosts(db, monkeypatch):
@@ -274,6 +272,11 @@ def test_subscription_emits_only_explicit_active_plan_hosts(db, monkeypatch):
         owner,
         PlanCreate(name="subscription-scope", version=_version(tag, first.id)),
     )
+    group = access_groups.create(
+        session,
+        owner,
+        AccessGroupInput(name="subscription access", inbounds=[tag], hosts={tag: [first.id]}),
+    )
     user, _, _ = admin_plans.create_user_from_plan(
         session,
         actor=owner,
@@ -282,6 +285,7 @@ def test_subscription_emits_only_explicit_active_plan_hosts(db, monkeypatch):
         status="active",
         note=None,
         idempotency_key="stage4-subscription-user",
+        access_group_id=group.id,
     )
     scope = admin_plans.subscription_host_scope(session, user)
     assert scope == {tag: {first.id}}
@@ -319,36 +323,24 @@ def test_subscription_emits_only_explicit_active_plan_hosts(db, monkeypatch):
     assert rendered == [(f"selected {user.username}", "one.example")]
 
 
-def test_out_of_admin_scope_and_host_inbound_mismatch_are_rejected(db, monkeypatch):
+def test_plan_create_rejects_network_payload_before_service_execution(db, monkeypatch):
     session, owner = db
     tag, first, _ = _configure_network(session, monkeypatch)
-    settings = session.get(MarzhelpAdminSettings, owner.id)
-    settings.all_inbounds = False
-    session.commit()
-    with pytest.raises(admin_hierarchy.HierarchyError) as forbidden:
-        admin_plans.create_plan(
-            session,
-            owner,
-            PlanCreate(name="forbidden", version=_version(tag, first.id)),
+    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
+        PlanCreate(
+            name="forbidden-network",
+            version=PlanVersionInput.model_validate(
+                {
+                    "data_limit": 1024,
+                    "duration_days": 30,
+                    "inbounds": [tag],
+                    "hosts": {tag: [first.id]},
+                }
+            ),
         )
-    assert forbidden.value.code == "inbound_forbidden"
-
-    settings.all_inbounds = True
-    other = ProxyInbound(tag="VMESS TCP")
-    session.add(other)
-    wrong_host = ProxyHost(remark="wrong {USERNAME}", address="wrong.example", inbound=other)
-    session.add(wrong_host)
-    session.commit()
-    with pytest.raises(admin_hierarchy.HierarchyError) as mismatch:
-        admin_plans.create_plan(
-            session,
-            owner,
-            PlanCreate(name="mismatch", version=_version(tag, wrong_host.id)),
-        )
-    assert mismatch.value.code == "plan_host_inbound_mismatch"
 
 
-def test_plan_access_cannot_be_granted_beyond_target_admin_network_scope(db, monkeypatch):
+def test_plan_access_grant_is_independent_from_target_network_scope(db, monkeypatch):
     session, owner = db
     tag, first, _ = _configure_network(session, monkeypatch)
     child = Admin(username="child", hashed_password="x", is_sudo=False)
@@ -370,17 +362,18 @@ def test_plan_access_cannot_be_granted_beyond_target_admin_network_scope(db, mon
         child_role=admin_hierarchy.ADMIN,
     )
 
-    with pytest.raises(admin_hierarchy.HierarchyError) as forbidden:
-        admin_plans.create_plan(
-            session,
-            owner,
-            PlanCreate(
-                name="target-scope",
-                version=_version(tag, first.id),
-                allowed_admin_ids=[child.id],
-            ),
-        )
-    assert forbidden.value.code == "plan_access_network_forbidden"
+    plan = admin_plans.create_plan(
+        session,
+        owner,
+        PlanCreate(
+            name="target-commercial-access",
+            version=_version(tag, first.id),
+            allowed_admin_ids=[child.id],
+        ),
+    )
+    assert admin_plans.can_use_plan(session, child, plan.id)
+    assert session.query(AdminUserPlanInbound).count() == 0
+    assert session.query(AdminUserPlanHost).count() == 0
 
 
 def test_plan_response_batch_has_constant_query_count(db, monkeypatch):

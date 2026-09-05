@@ -26,12 +26,12 @@ from app.db.models import (
 )
 from app.models.admin import Admin as APIAdmin, AdminCreate
 from app.models import user as user_models
-from app.models.admin_hierarchy import PlanCreate, PlanVersionInput
+from app.models.admin_hierarchy import AccessGroupInput, PlanCreate, PlanVersionInput
 from app.models.proxy import ProxyTypes
 from app.models.user import UserCreate, UserModify, UserResponse, UserStatus
 from app.routers.user import add_user
 from app.subscription import share as subscription_share
-from app.utils import admin_hierarchy, admin_plans, marzhelp_policy
+from app.utils import access_groups, admin_hierarchy, admin_plans, marzhelp_policy
 
 
 @pytest.fixture()
@@ -448,10 +448,13 @@ def test_seat_plan_renewal_charges_exact_cost_once_on_retry(db, monkeypatch):
                 data_limit=1024,
                 duration_days=30,
                 concurrent_user_limit=2,
-                inbounds=[tag],
-                hosts={tag: [host.id]},
             ),
         ),
+    )
+    group = access_groups.create(
+        session,
+        owner,
+        AccessGroupInput(name="seat access", inbounds=[tag], hosts={tag: [host.id]}),
     )
     user, _, created = admin_plans.create_user_from_plan(
         session,
@@ -461,6 +464,7 @@ def test_seat_plan_renewal_charges_exact_cost_once_on_retry(db, monkeypatch):
         status="active",
         note=None,
         idempotency_key="stage5-seat-create",
+        access_group_id=group.id,
     )
     assert created is True
     assert settings.capacity_used == 2

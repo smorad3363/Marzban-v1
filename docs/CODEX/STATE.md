@@ -8,8 +8,8 @@
 ## Current State
 
 - Current branch: `main`
-- Current HEAD: V1 identity checkpoint commit containing this file
-- Current milestone/checkpoint: canonical V1 identity converted and dashboard rebuilt
+- Current HEAD: Plan commercial-contract checkpoint commit containing this file
+- Current milestone/checkpoint: Plan create/update request and persistence detached from network topology
 
 ## Completed Checkpoints
 
@@ -17,6 +17,9 @@
 - Converted active application, installer, repository, branch, container, workflow, documentation, and release-test identity to V1.
 - Renamed reviewed image publish/verification workflows for V1 and removed stale fixed vNext image digest.
 - Rebuilt committed dashboard assets with version `1.0.0`.
+- Removed Inbound/Host fields from `PlanVersionInput`; unexpected network fields now fail validation.
+- Removed Plan create/update network validation and `AdminUserPlanInbound`/`AdminUserPlanHost` writes while retaining legacy response reads.
+- Updated focused service, Access Group, seat-renewal, and trial tests for commercial-only Plans.
 
 ## Tests Passed
 
@@ -26,6 +29,8 @@
 - PyYAML `safe_load` of `.github/workflows/build.yml`, `.github/workflows/release-v1.yml`, and `.github/workflows/verify-v1-image.yml` — passed.
 - Targeted `rg` for stale active vNext/`5.2.0`/`master` identity outside legacy docs, dependency locks, and intentional compatibility fixtures — no matches.
 - `git diff --check` — passed.
+- `uv run --with-requirements requirements.txt --with pytest --python C:\Users\Saji\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\python.exe python -m pytest -q tests/test_stage4_plan_network_scope.py` — `8 passed`.
+- Same environment, `python -m pytest -q tests/test_stage5_restricted_creation_namespace.py::test_seat_plan_renewal_charges_exact_cost_once_on_retry tests/test_stage6_trials.py` — `11 passed, 1 skipped`.
 
 ## Tests Failed
 
@@ -41,4 +46,4 @@
 
 ## NEXT EXACT TASK
 
-Remove legacy Plan network fields from Plan create/update API contracts and service writes, preserve legacy data only for compatibility, add focused backend tests proving Plan mutations cannot create or modify network topology, verify, update this file, and commit the backend Plan-contract checkpoint.
+Require a valid Access Group for Plan user creation, preserve the current Access Group on renewal, remove all runtime fallback to legacy Plan network scope (including subscription resolution and host-change Plan revisions), add focused fail-closed and renewal-preservation tests, verify, update this file, and commit the runtime Access Group checkpoint.

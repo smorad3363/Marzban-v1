@@ -289,6 +289,8 @@ class PlanCategoryResponse(BaseModel):
 
 
 class PlanVersionInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     price_toman: int = Field(default=0, ge=0)
     data_limit: int = Field(ge=0)
     duration_days: int = Field(ge=1, le=3650)
@@ -296,35 +298,6 @@ class PlanVersionInput(BaseModel):
     reset_strategy: Literal["no_reset", "day", "week", "month", "year"] = "no_reset"
     renewal_volume_strategy: Literal["replace"] = "replace"
     renewal_time_strategy: Literal["extend_max"] = "extend_max"
-    # Deprecated migration-only compatibility. New network access belongs to AccessGroup.
-    inbounds: list[str] = Field(default_factory=list)
-    hosts: dict[str, list[int]] = Field(default_factory=dict)
-
-    @field_validator("inbounds")
-    @classmethod
-    def normalize_inbounds(cls, value: list[str]) -> list[str]:
-        return sorted({item.strip() for item in value if item.strip()})
-
-    @field_validator("hosts")
-    @classmethod
-    def normalize_hosts(cls, value: dict[str, list[int]]) -> dict[str, list[int]]:
-        return {
-            tag.strip(): sorted({int(host_id) for host_id in host_ids if int(host_id) > 0})
-            for tag, host_ids in value.items()
-            if tag.strip()
-        }
-
-    @model_validator(mode="after")
-    def require_explicit_network_scope(self):
-        if not self.inbounds and not self.hosts:
-            return self
-        if not self.inbounds:
-            raise ValueError("Legacy Plan network scope requires at least one allowed inbound")
-        if set(self.hosts) != set(self.inbounds):
-            raise ValueError("Plan host scope must exactly match selected inbounds")
-        if any(not self.hosts[tag] for tag in self.inbounds):
-            raise ValueError("Every selected inbound requires at least one host")
-        return self
 
 
 class PlanCreate(BaseModel):
