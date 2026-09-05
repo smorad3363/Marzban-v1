@@ -43,7 +43,6 @@ jobs:
           test "$(docker image inspect "$IMAGE@$DIGEST" --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')" = "$SOURCE_COMMIT"
       - name: Validate exact fresh-install, Owner, version, and mature upgrade contracts
         env:
-          GHCR_TOKEN: ${{ github.token }}
           RELEASE_DISPOSABLE_LAB: "1"
           RELEASE_IMAGE_DIGEST: ${{ inputs.digest }}
           RELEASE_SOURCE_COMMIT: ${{ inputs.source_commit }}
@@ -51,6 +50,5 @@ jobs:
           set -euo pipefail
           sudo --preserve-env=RELEASE_DISPOSABLE_LAB,RELEASE_IMAGE_DIGEST,RELEASE_SOURCE_COMMIT \
             bash tests/release_installer_lab.sh
-          printf '%s' "$GHCR_TOKEN" | sudo docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
           sudo --preserve-env=RELEASE_DISPOSABLE_LAB \
             bash tests/release_upgrade_lab.sh

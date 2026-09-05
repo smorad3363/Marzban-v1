@@ -12,7 +12,20 @@ mkdir -p /opt/marzban /var/lib/marzban
 cp /opt/marzban-fresh-evidence/.env /opt/marzban/.env
 cp /opt/marzban-fresh-evidence/docker-compose.yml /opt/marzban/docker-compose.yml
 cp /var/lib/marzban-fresh-evidence/xray_config.json /var/lib/marzban/xray_config.json
-yq -i '.services.marzban.image = "ghcr.io/smorad3363/marzban-vnext:v5.2.0" | .services.mysql.image = "mysql:8.0.46" | .services.mysql.volumes = ["/var/lib/marzban/mysql:/var/lib/mysql"]' /opt/marzban/docker-compose.yml
+baseline_commit="2d8df17b526236c9980ade37d802531dbca0d06f"
+baseline_image="ghcr.io/smorad3363/marzban-vnext:v5.2.0"
+baseline_build_dir="$(mktemp -d)"
+mkdir -p "$baseline_build_dir/source"
+curl -fsSL "https://github.com/smorad3363/Marzban-vNext/archive/${baseline_commit}.tar.gz" \
+  -o "$baseline_build_dir/source.tar.gz"
+tar -xzf "$baseline_build_dir/source.tar.gz" -C "$baseline_build_dir/source" --strip-components=1
+docker build --pull \
+  --label "org.opencontainers.image.source=https://github.com/smorad3363/Marzban-vNext" \
+  --label "org.opencontainers.image.revision=${baseline_commit}" \
+  --label "org.opencontainers.image.version=v5.2.0" \
+  --tag "$baseline_image" \
+  "$baseline_build_dir/source"
+yq -i ".services.marzban.image = \"${baseline_image}\" | .services.mysql.image = \"mysql:8.0.46\" | .services.mysql.volumes = [\"/var/lib/marzban/mysql:/var/lib/mysql\"]" /opt/marzban/docker-compose.yml
 docker compose -f /opt/marzban/docker-compose.yml -p marzban up -d mysql marzban
 for attempt in $(seq 1 90); do
   if docker exec marzban-marzban-1 python /code/scripts/healthcheck.py --mode internal --timeout 2 >/dev/null 2>&1; then break; fi
