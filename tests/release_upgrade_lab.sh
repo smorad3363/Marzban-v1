@@ -23,11 +23,11 @@ docker exec marzban-marzban-1 python -c 'from app import __version__; assert __v
 docker exec marzban-marzban-1 python /code/marzban-cli.py admin bootstrap-owner --username upgrade_owner --password Upgrade-Disposable-Only-927
 docker exec marzban-mysql-1 sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -uroot "$MYSQL_DATABASE" -e "CREATE TABLE release_upgrade_sentinel(id INT PRIMARY KEY, value VARCHAR(64)); INSERT INTO release_upgrade_sentinel VALUES (1, '\''preserved-through-upgrade'\'');"'
 export PATH="/fixtures/bin:$PATH" TERM=xterm MARZBAN_DOCKER_IMAGE=localhost:5000/marzban
-bash /fixtures/marzban.sh update --version v5.2.0
+bash /fixtures/marzban.sh update --version v1.0.0
 bash /usr/local/bin/marzban version
 docker exec marzban-mysql-1 sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -uroot "$MYSQL_DATABASE" -N -e "SELECT value FROM release_upgrade_sentinel WHERE id=1; SELECT username FROM admins WHERE username='\''upgrade_owner'\''; SELECT version_num FROM alembic_version;"'
 test -d /var/lib/marzban/mysql
 test -s /opt/marzban/.mysql-migration/state
 grep -q 'phase=COMPLETE' /opt/marzban/.mysql-migration/state
 test -s /opt/marzban/backup/mysql-migration-*/marzban.sql
-echo UPGRADE_V510_TO_V520_PASS
+echo UPGRADE_V510_TO_V100_PASS

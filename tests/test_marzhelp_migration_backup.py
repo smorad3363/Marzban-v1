@@ -134,9 +134,9 @@ def test_sqlite_backup_contains_and_restores_marzhelp_data(tmp_path):
 def test_installer_targets_release_image_and_pinned_mysql_image():
     installer = Path("scripts/marzban.sh").read_text(encoding="utf-8")
 
-    assert 'MARZBAN_GITHUB_REPO="${MARZBAN_GITHUB_REPO:-smorad3363/Marzban-vNext}"' in installer
-    assert 'MARZBAN_GITHUB_BRANCH="${MARZBAN_GITHUB_BRANCH:-vnext-ui}"' in installer
-    assert 'MARZBAN_DOCKER_IMAGE="${MARZBAN_DOCKER_IMAGE:-ghcr.io/smorad3363/marzban-vnext}"' in installer
+    assert 'MARZBAN_GITHUB_REPO="${MARZBAN_GITHUB_REPO:-smorad3363/Marzban-v1}"' in installer
+    assert 'MARZBAN_GITHUB_BRANCH="${MARZBAN_GITHUB_BRANCH:-main}"' in installer
+    assert 'MARZBAN_DOCKER_IMAGE="${MARZBAN_DOCKER_IMAGE:-ghcr.io/smorad3363/marzban-v1}"' in installer
     assert 'database_type="mysql"' in installer
     assert "This Marzban build supports MySQL only" in installer
     assert 'marzban_version="latest"' in installer

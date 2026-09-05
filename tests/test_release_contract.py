@@ -6,13 +6,16 @@ def test_release_version_and_install_rollback_contract():
     version = Path("VERSION").read_text().strip()
     app = Path("app/__init__.py").read_text(encoding="utf-8")
     installer = Path("scripts/marzban.sh").read_text(encoding="utf-8")
-    workflow = Path(".github/workflows/release-vnext.yml").read_text()
-    assert version == "5.2.0"
+    workflow = Path(".github/workflows/release-v1.yml").read_text()
+    verify_workflow = Path(".github/workflows/verify-v1-image.yml").read_text()
+    build_workflow = Path(".github/workflows/build.yml").read_text()
+    assert version == "1.0.0"
     assert f'__version__ = "{version}"' in app
     assert f'CLI_RELEASE_VERSION="v{version}"' in installer
-    assert f"ghcr.io/smorad3363/marzban-vnext:v{version}" in Path("docker-compose.yml").read_text()
-    assert 'MARZBAN_GITHUB_REPO="${MARZBAN_GITHUB_REPO:-smorad3363/Marzban-vNext}"' in installer
-    assert 'MARZBAN_GITHUB_BRANCH="${MARZBAN_GITHUB_BRANCH:-vnext-ui}"' in installer
+    assert f"ghcr.io/smorad3363/marzban-v1:v{version}" in Path("docker-compose.yml").read_text()
+    assert 'MARZBAN_GITHUB_REPO="${MARZBAN_GITHUB_REPO:-smorad3363/Marzban-v1}"' in installer
+    assert 'MARZBAN_GITHUB_BRANCH="${MARZBAN_GITHUB_BRANCH:-main}"' in installer
+    assert 'MARZBAN_DOCKER_IMAGE="${MARZBAN_DOCKER_IMAGE:-ghcr.io/smorad3363/marzban-v1}"' in installer
     assert "Application downgrade refused" in installer
     assert "automatic image rollback is unsafe after migrations" in installer
     assert 'flock -n 9' in installer
@@ -37,6 +40,14 @@ def test_release_version_and_install_rollback_contract():
     assert 'Runtime MySQL version:' in installer
     assert 'Refuse overwriting an existing release image' in workflow
     assert 'org.opencontainers.image.revision' in workflow
+    assert 'org.opencontainers.image.source=https://github.com/smorad3363/Marzban-v1' in workflow
+    assert 'IMAGE: ghcr.io/smorad3363/marzban-v1' in verify_workflow
+    assert '= 1.0.0' in verify_workflow
+    assert "      - main" in build_workflow
+    assert "refs/heads/main" in build_workflow
+    assert "ghcr.io/${{ github.repository_owner }}/marzban-v1" in build_workflow
+    assert "vnext" not in workflow.lower()
+    assert "vnext" not in verify_workflow.lower()
     assert ':latest' not in workflow
     assert 'gh release create' not in workflow  # Publish notes only after runtime verification.
     assert 'readFileSync("../../VERSION", "utf8").trim()' in Path("app/dashboard/vite.config.ts").read_text()

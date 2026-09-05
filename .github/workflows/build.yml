@@ -3,16 +3,16 @@ name: Release
 on:
   push:
     branches:
-      - master
+      - main
     tags:
       - "v*"
-      - "!v5.2.0"
+      - "!v1.0.0"
   workflow_dispatch:
     inputs:
       git_ref:
         description: Git ref to build
         required: true
-        default: master
+        default: main
       image_tag:
         description: Container image tag
         required: true
@@ -252,7 +252,7 @@ jobs:
           version_tag=""
           if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
             version_tag="${GITHUB_REF_NAME}"
-          elif [[ "${GITHUB_REF}" == "refs/heads/master" ]]; then
+          elif [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
             version_tag="v$(tr -d '[:space:]' < VERSION)"
             if [[ ! "${version_tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
               echo "Invalid VERSION value: ${version_tag}" >&2
@@ -303,7 +303,7 @@ jobs:
         id: image-tags
         shell: bash
         env:
-          IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/marzban
+          IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/marzban-v1
           REQUESTED_TAG: ${{ inputs.image_tag }}
           VERSION_TAG: ${{ steps.release-version.outputs.version_tag }}
         run: |
@@ -337,7 +337,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           VERSION_TAG: ${{ steps.release-version.outputs.version_tag }}
         run: |
-          if [[ "${GITHUB_REF}" == "refs/heads/master" ]]; then
+          if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git tag -a "${VERSION_TAG}" "${GITHUB_SHA}" -m "Marzban ${VERSION_TAG}"

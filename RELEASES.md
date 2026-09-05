@@ -3,8 +3,8 @@
 Every published release uses an immutable Git tag and two permanent container
 references:
 
-- `ghcr.io/smorad3363/marzban:vX.Y.Z`
-- `ghcr.io/smorad3363/marzban:sha-<12-character-commit-sha>`
+- `ghcr.io/smorad3363/marzban-v1:vX.Y.Z`
+- `ghcr.io/smorad3363/marzban-v1:sha-<commit-sha>`
 
 The `latest` tag is only a moving pointer to the newest stable tagged release.
 Prereleases never move `latest`. Older version and SHA tags remain available and
@@ -250,7 +250,7 @@ sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban/
 This candidate keeps all `rc.7` application behavior. It fixes prerelease update
 parity so `marzban update --version` downloads both the container image and the
 installed `marzban` script from the same immutable prerelease tag instead of using
-the moving `master` branch for the script.
+the moving `main` branch for the script.
 
 Update to this exact candidate:
 
@@ -267,7 +267,7 @@ sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban/
 ## Release process
 
 1. Update `VERSION` and `app.__version__`.
-2. Commit and push `master`.
+2. Commit and push `main`.
 3. Create and push an annotated `vX.Y.Z` tag.
 4. Wait for the GitHub `Release` workflow to finish.
 

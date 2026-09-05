@@ -18,7 +18,7 @@ while (($#)); do
   esac
 done
 case "$url" in
-  https://api.github.com/repos/*/releases) printf '[{"tag_name":"v5.2.0","draft":false,"prerelease":false}]'; exit ;;
+  https://api.github.com/repos/*/releases) printf '[{"tag_name":"v1.0.0","draft":false,"prerelease":false}]'; exit ;;
   https://raw.githubusercontent.com/*/scripts/marzban.sh) source_file=/fixtures/marzban.sh ;;
   https://raw.githubusercontent.com/*/.env.example) source_file=/fixtures/.env.example ;;
   https://raw.githubusercontent.com/*/xray_config.json) source_file=/fixtures/xray_config.json ;;
@@ -32,11 +32,11 @@ export PATH="/fixtures/bin:$PATH" TERM=xterm
 export MARZBAN_DOCKER_IMAGE=localhost:5000/marzban
 bash /fixtures/marzban.sh help >/tmp/cli-help.txt
 grep -q 'mysql-upgrade' /tmp/cli-help.txt
-printf '\n' | bash /fixtures/marzban.sh install --version v5.2.0 --database mysql
+printf '\n' | bash /fixtures/marzban.sh install --version v1.0.0 --database mysql
 bash /usr/local/bin/marzban version
 bash /usr/local/bin/marzban status
 before=$(sha256sum /opt/marzban/.env)
-if bash /usr/local/bin/marzban install --version v5.2.0; then
+if bash /usr/local/bin/marzban install --version v1.0.0; then
   echo 'Reinstall unexpectedly succeeded' >&2; exit 1
 fi
 test "$before" = "$(sha256sum /opt/marzban/.env)"

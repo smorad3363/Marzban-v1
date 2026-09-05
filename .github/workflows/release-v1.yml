@@ -1,4 +1,4 @@
-name: Publish reviewed vNext
+name: Publish reviewed V1
 on:
   workflow_dispatch:
     inputs:
@@ -8,12 +8,12 @@ on:
       image_tag:
         description: Exact release tag (no latest)
         required: true
-        default: v5.2.0
+        default: v1.0.0
 permissions:
   contents: read
   packages: write
 concurrency:
-  group: publish-reviewed-vnext
+  group: publish-reviewed-v1
   cancel-in-progress: false
 jobs:
   publish:
@@ -30,9 +30,9 @@ jobs:
           set -eu
           test "$(git rev-parse HEAD)" = "$REVIEWED_COMMIT"
           test "$RELEASE_TAG" = "v$(tr -d '[:space:]' < VERSION)"
-          test "$RELEASE_TAG" = v5.2.0
-          grep -Fx '__version__ = "5.2.0"' app/__init__.py
-          grep -Fx 'CLI_RELEASE_VERSION="v5.2.0"' scripts/marzban.sh
+          test "$RELEASE_TAG" = v1.0.0
+          grep -Fx '__version__ = "1.0.0"' app/__init__.py
+          grep -Fx 'CLI_RELEASE_VERSION="v1.0.0"' scripts/marzban.sh
           test -s app/dashboard/build/index.html
           test -s app/dashboard/build/404.html
           bash -n scripts/marzban.sh
@@ -45,7 +45,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Refuse overwriting an existing release image
         env:
-          IMAGE: ghcr.io/smorad3363/marzban-vnext:${{ inputs.image_tag }}
+          IMAGE: ghcr.io/smorad3363/marzban-v1:${{ inputs.image_tag }}
         run: |
           if docker buildx imagetools inspect "$IMAGE" >/dev/null 2>&1; then
             echo 'Release image already exists; verify its digest instead of overwriting.' >&2
@@ -58,9 +58,9 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ghcr.io/smorad3363/marzban-vnext:${{ inputs.image_tag }}
-            ghcr.io/smorad3363/marzban-vnext:sha-${{ inputs.git_ref }}
+            ghcr.io/smorad3363/marzban-v1:${{ inputs.image_tag }}
+            ghcr.io/smorad3363/marzban-v1:sha-${{ inputs.git_ref }}
           labels: |
-            org.opencontainers.image.source=https://github.com/smorad3363/Marzban-vNext
+            org.opencontainers.image.source=https://github.com/smorad3363/Marzban-v1
             org.opencontainers.image.revision=${{ inputs.git_ref }}
             org.opencontainers.image.version=${{ inputs.image_tag }}

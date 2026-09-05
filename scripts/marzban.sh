@@ -14,11 +14,11 @@ LAST_XRAY_CORES=10
 # Fork configuration
 # Override at runtime, e.g. MARZBAN_GITHUB_REPO=another-user/Marzban marzban install
 # =============================================================================
-CLI_RELEASE_VERSION="v5.2.0"
-MARZBAN_GITHUB_REPO="${MARZBAN_GITHUB_REPO:-smorad3363/Marzban-vNext}"
-MARZBAN_GITHUB_BRANCH="${MARZBAN_GITHUB_BRANCH:-vnext-ui}"
+CLI_RELEASE_VERSION="v1.0.0"
+MARZBAN_GITHUB_REPO="${MARZBAN_GITHUB_REPO:-smorad3363/Marzban-v1}"
+MARZBAN_GITHUB_BRANCH="${MARZBAN_GITHUB_BRANCH:-main}"
 MARZBAN_SCRIPTS_PATH="${MARZBAN_SCRIPTS_PATH:-scripts/marzban.sh}"
-MARZBAN_DOCKER_IMAGE="${MARZBAN_DOCKER_IMAGE:-ghcr.io/smorad3363/marzban-vnext}"
+MARZBAN_DOCKER_IMAGE="${MARZBAN_DOCKER_IMAGE:-ghcr.io/smorad3363/marzban-v1}"
 MYSQL_TARGET_VERSION="26.7.0"
 MYSQL_TARGET_IMAGE="mysql:${MYSQL_TARGET_VERSION}"
 CLI_VERSION_FILE="$APP_DIR/.cli-version"
