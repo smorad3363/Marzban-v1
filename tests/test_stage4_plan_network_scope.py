@@ -22,6 +22,8 @@ from app.db.models import (
     MarzhelpAdminSettings,
     ProxyHost,
     ProxyInbound,
+    User,
+    UserPlanAssignment,
 )
 from app.models.admin_hierarchy import AccessGroupInput, PlanCreate, PlanUpdate, PlanVersionInput
 from app.models.proxy import ProxySettings, ProxyTypes
@@ -202,6 +204,128 @@ def test_commercial_plan_and_access_group_are_independent(db, monkeypatch):
     with pytest.raises(admin_hierarchy.HierarchyError, match="Access Group is unavailable"):
         admin_plans.renew_user_from_plan(session, actor=owner, user=user, plan_id=plan.id,
                                        idempotency_key="archived-access-renew")
+
+
+def test_plan_user_creation_requires_access_group_before_trial_mutation(db, monkeypatch):
+    session, owner = db
+    tag, first, _ = _configure_network(session, monkeypatch)
+    settings = session.get(MarzhelpAdminSettings, owner.id)
+    settings.trial_quota = 2
+    session.commit()
+    plan = admin_plans.create_plan(
+        session,
+        owner,
+        PlanCreate(
+            name="trial-requires-access",
+            is_trial=True,
+            version=_version(tag, first.id),
+        ),
+    )
+
+    with pytest.raises(admin_hierarchy.HierarchyError) as exc:
+        admin_plans.create_user_from_plan(
+            session,
+            actor=owner,
+            plan_id=plan.id,
+            username="missing-access-user",
+            status="active",
+            note=None,
+            idempotency_key="missing-access-create",
+        )
+
+    assert exc.value.code == "access_group_required"
+    session.expire(settings)
+    assert settings.trial_quota == 2
+    assert settings.trials_used == 0
+    assert session.query(User).filter_by(username="missing-access-user").count() == 0
+    assert session.query(UserPlanAssignment).count() == 0
+
+
+def test_plan_renewal_preserves_access_group_topology_by_default(db, monkeypatch):
+    session, owner = db
+    tag, first, _ = _configure_network(session, monkeypatch)
+    plan = admin_plans.create_plan(
+        session,
+        owner,
+        PlanCreate(name="renew-commercial", version=_version(tag, first.id)),
+    )
+    group = access_groups.create(
+        session,
+        owner,
+        AccessGroupInput(name="renew-access", inbounds=[tag], hosts={tag: [first.id]}),
+    )
+    user, _, _ = admin_plans.create_user_from_plan(
+        session,
+        actor=owner,
+        plan_id=plan.id,
+        access_group_id=group.id,
+        username="renew-preserves-access",
+        status="active",
+        note=None,
+        idempotency_key="renew-preserves-create",
+    )
+    before_inbounds = {proxy_type: list(tags) for proxy_type, tags in user.inbounds.items()}
+    before_proxies = sorted((proxy.type, dict(proxy.settings)) for proxy in user.proxies)
+    before_hosts = [
+        (row.inbound_tag, row.host_id)
+        for row in session.query(access_groups.AccessGroupHost)
+        .filter_by(access_group_id=group.id)
+        .order_by(access_groups.AccessGroupHost.inbound_tag, access_groups.AccessGroupHost.host_id)
+    ]
+
+    admin_plans.update_plan(
+        session,
+        owner,
+        plan,
+        PlanUpdate(
+            description="commercial renewal changed",
+            version=PlanVersionInput(data_limit=2048, duration_days=60),
+        ),
+    )
+    renewed, _, created = admin_plans.renew_user_from_plan(
+        session,
+        actor=owner,
+        user=user,
+        plan_id=plan.id,
+        idempotency_key="renew-preserves-renewal",
+    )
+
+    assert created is True
+    assert renewed.access_group_id == group.id
+    assert renewed.inbounds == before_inbounds
+    assert sorted((proxy.type, dict(proxy.settings)) for proxy in renewed.proxies) == before_proxies
+    assert [
+        (row.inbound_tag, row.host_id)
+        for row in session.query(access_groups.AccessGroupHost)
+        .filter_by(access_group_id=group.id)
+        .order_by(access_groups.AccessGroupHost.inbound_tag, access_groups.AccessGroupHost.host_id)
+    ] == before_hosts
+    assert admin_plans.subscription_host_scope(session, renewed) == {tag: {first.id}}
+
+
+def test_plan_assignment_without_access_group_fails_subscription_closed(db, monkeypatch):
+    session, owner = db
+    tag, first, _ = _configure_network(session, monkeypatch)
+    plan = admin_plans.create_plan(
+        session,
+        owner,
+        PlanCreate(name="legacy-no-access", version=_version(tag, first.id)),
+    )
+    user = User(username="legacy-no-access", admin_id=owner.id, status=user_models.UserStatus.active)
+    session.add(user)
+    session.flush()
+    session.add(UserPlanAssignment(
+        user_id=user.id,
+        plan_id=plan.id,
+        version_id=plan.current_version_id,
+        actor_admin_id=owner.id,
+        operation_type="create",
+        idempotency_key="legacy-no-access-assignment",
+    ))
+    session.commit()
+
+    assert admin_plans.subscription_host_scope(session, user) == {}
+    assert admin_plans.subscription_host_scopes(session, [user]) == {user.id: {}}
 
 
 def test_node_scope_filters_all_slots_and_preserves_source_config(db, monkeypatch):

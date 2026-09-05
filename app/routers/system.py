@@ -4,12 +4,12 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 
 from app import __version__, xray
 from app.db import Session, crud, get_db
-from app.db.models import AdminUserPlan, MarzhelpMetadata, ProxyHost as DBProxyHost
+from app.db.models import MarzhelpMetadata, ProxyHost as DBProxyHost
 from app.models.admin import Admin
 from app.models.proxy import HostUpdateAction, HostUpdateImpact, ProxyHost, ProxyInbound, ProxyTypes
 from app.models.system import DashboardOverview, SystemStats
 from app.models.user import UserStatus
-from app.utils import access_groups, admin_hierarchy, admin_plans, dashboard_metrics, marzhelp_policy, responses
+from app.utils import access_groups, admin_hierarchy, dashboard_metrics, marzhelp_policy, responses
 from app.utils.audit import AuditLogService
 from app.utils.network_impact import analyze_host_update
 from app.utils.system import cpu_usage, memory_usage, realtime_bandwidth
@@ -177,12 +177,12 @@ def modify_hosts(
             )
 
     impact = analyze_host_update(db, modified_hosts)
-    if impact.invalid_plan_ids:
+    if impact.invalid_access_group_ids:
         raise HTTPException(
             status_code=409,
             detail={
-                "error_code": "host_change_would_invalidate_plan",
-                "message": "این تغییر حداقل یک پلن را بدون اتصال معتبر باقی می‌گذارد. ابتدا برای پلن‌های نمایش‌داده‌شده Host جایگزین انتخاب کنید.",
+                "error_code": "host_change_would_invalidate_access_group",
+                "message": "این تغییر حداقل یک Access Group را بدون Host معتبر باقی می‌گذارد. ابتدا Host جایگزین انتخاب کنید.",
                 "impact": impact.model_dump(),
                 "allowed_actions": ["cancel"],
             },
@@ -195,7 +195,7 @@ def modify_hosts(
             status_code=409,
             detail={
                 "error_code": "host_change_confirmation_required",
-                "message": f"این تغییر روی {impact.affected_plan_count} پلن و {impact.active_user_count} کاربر فعال اثر می‌گذارد. روش اعمال را انتخاب کنید.",
+                "message": f"این تغییر روی {impact.affected_access_group_count} Access Group و {impact.active_user_count} کاربر فعال اثر می‌گذارد. روش اعمال را انتخاب کنید.",
                 "impact": impact.model_dump(),
                 "allowed_actions": allowed_actions,
             },
@@ -237,39 +237,6 @@ def modify_hosts(
             replacement_ids=replacement_ids,
             removed_ids=set(impact.removed_host_ids),
         ))
-        for plan_id in impact.affected_plan_ids:
-            plan = (
-                db.query(AdminUserPlan)
-                .filter(AdminUserPlan.id == plan_id)
-                .with_for_update()
-                .one()
-            )
-            inbounds, hosts = admin_plans.version_network_scope(db, plan.current_version_id)
-            revised_hosts = {
-                tag: {
-                    replacement_ids.get(host_id, host_id)
-                    for host_id in host_ids
-                    if host_id not in impact.removed_host_ids
-                }
-                for tag, host_ids in hosts.items()
-            }
-            if revised_hosts != hosts:
-                previous, revision = admin_plans.add_network_revision(
-                    db,
-                    actor=admin,
-                    plan=plan,
-                    inbounds=inbounds,
-                    hosts=revised_hosts,
-                )
-                if impact_action != HostUpdateAction.future_only:
-                    synced_user_ids.extend(admin_plans.sync_active_users_to_network_revision(
-                        db,
-                        actor=admin,
-                        plan=plan,
-                        previous_version=previous,
-                        revision=revision,
-                    ))
-
         AuditLogService.log(
             db,
             admin,
@@ -282,7 +249,7 @@ def modify_hosts(
                     for inbound_tag, hosts in modified_hosts.items()
                 },
                 "impact_action": impact_action.value if impact_action else None,
-                "affected_plan_count": impact.affected_plan_count,
+                "affected_access_group_count": impact.affected_access_group_count,
                 "active_user_count": impact.active_user_count,
                 "host_values_stored": False,
             },
@@ -311,7 +278,7 @@ def host_update_impact(
     db: Session = Depends(get_db),
     admin: Admin = Depends(Admin.check_sudo_admin),
 ):
-    """Preview Plan and active-User impact without mutating data."""
+    """Preview Access Group and active-User impact without mutating data."""
     for inbound_tag in modified_hosts:
         if inbound_tag not in xray.config.inbounds_by_tag:
             raise HTTPException(status_code=400, detail=f"Inbound {inbound_tag} doesn't exist")

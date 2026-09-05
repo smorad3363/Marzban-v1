@@ -203,18 +203,22 @@ class ProxyHost(BaseModel):
 
 
 class HostUpdateImpact(BaseModel):
-    affected_plan_count: int
-    affected_plan_version_count: int
+    affected_access_group_count: int
     active_user_count: int
-    affected_plan_ids: list[int]
-    affected_version_ids: list[int]
-    invalid_plan_ids: list[int]
+    affected_access_group_ids: list[int]
+    invalid_access_group_ids: list[int]
     changed_host_ids: list[int]
     removed_host_ids: list[int]
+    # Read-only response compatibility for older dashboards.
+    affected_plan_count: int = 0
+    affected_plan_version_count: int = 0
+    affected_plan_ids: list[int] = Field(default_factory=list)
+    affected_version_ids: list[int] = Field(default_factory=list)
+    invalid_plan_ids: list[int] = Field(default_factory=list)
 
     @property
     def requires_confirmation(self) -> bool:
-        return bool(self.affected_plan_count or self.active_user_count)
+        return bool(self.affected_access_group_count or self.active_user_count)
 
 
 class HostUpdateAction(str, Enum):

@@ -8,8 +8,8 @@
 ## Current State
 
 - Current branch: `main`
-- Current HEAD: Plan commercial-contract checkpoint commit containing this file
-- Current milestone/checkpoint: Plan create/update request and persistence detached from network topology
+- Current HEAD: runtime Access Group checkpoint commit containing this file
+- Current milestone/checkpoint: Plan runtime is commercial-only; Access Group is the sole network authority
 
 ## Completed Checkpoints
 
@@ -20,6 +20,12 @@
 - Removed Inbound/Host fields from `PlanVersionInput`; unexpected network fields now fail validation.
 - Removed Plan create/update network validation and `AdminUserPlanInbound`/`AdminUserPlanHost` writes while retaining legacy response reads.
 - Updated focused service, Access Group, seat-renewal, and trial tests for commercial-only Plans.
+- Required a valid active Access Group before Plan user creation and before renewal.
+- Preserved the current Access Group and user topology during default Plan renewal; topology changes only when an explicit replacement group is supplied.
+- Removed runtime subscription and Host-change fallback to legacy Plan network snapshots.
+- Changed Host impact analysis, confirmation, propagation, and active-user sync to Access Groups.
+- Added fail-closed single/batch subscription scope resolution for Plan-assigned users without an Access Group.
+- Added migration `c9e1f4a7b203` and model index `ix_access_group_hosts_host_group` for Host-to-Access-Group reverse lookups.
 
 ## Tests Passed
 
@@ -32,13 +38,20 @@
 - `uv run --with-requirements requirements.txt --with pytest --python C:\Users\Saji\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\python.exe python -m pytest -q tests/test_stage4_plan_network_scope.py` — `8 passed`.
 - Same environment, `python -m pytest -q tests/test_stage5_restricted_creation_namespace.py::test_seat_plan_renewal_charges_exact_cost_once_on_retry tests/test_stage6_trials.py` — `11 passed, 1 skipped`.
 
+- Same environment, `python -m compileall -q app` — passed.
+- Same environment, `python -m pytest -q tests/test_stage2_network_sync.py tests/test_stage4_plan_network_scope.py` — `21 passed`.
+- Same environment, `python -m pytest -q tests/test_stage5_restricted_creation_namespace.py tests/test_stage6_trials.py tests/test_admin_hierarchy_service.py` — relevant runtime coverage passed; aggregate result `47 passed, 1 skipped, 3 failed`.
+
 ## Tests Failed
 
 - `bash -n scripts/marzban.sh` — not run: Windows WSL launcher reports `execvpe(/bin/bash) failed: No such file or directory`; Docker Desktop daemon is also unavailable for fallback.
 
+- Broader Stage 5 suite has three unrelated failures: one raw-endpoint expectation reaches response rendering with `used_traffic=None`, and two pricing tests use fixed expiry `2000000000`, which no longer matches an Owner duration preset on the current date.
+
 ## Known Blockers
 
 - Local Bash runtime unavailable; installer syntax verification remains required before publication.
+- No live MySQL endpoint is available for `EXPLAIN`; index verification is limited to model/migration structure until the MySQL release lab runs.
 
 ## Uncommitted Work
 
@@ -46,4 +59,4 @@
 
 ## NEXT EXACT TASK
 
-Require a valid Access Group for Plan user creation, preserve the current Access Group on renewal, remove all runtime fallback to legacy Plan network scope (including subscription resolution and host-change Plan revisions), add focused fail-closed and renewal-preservation tests, verify, update this file, and commit the runtime Access Group checkpoint.
+Remove Plan network selectors and Plan-named network endpoints from the dashboard/API, complete Owner Access Group CRUD UI with Inbound/Host/Node controls, update Host impact UI to Access Group terminology, rebuild dashboard assets, verify, update this file, and commit the frontend Access Group checkpoint.

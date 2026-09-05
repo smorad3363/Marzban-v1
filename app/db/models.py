@@ -658,6 +658,9 @@ class AccessGroupInbound(Base):
 
 class AccessGroupHost(Base):
     __tablename__ = "access_group_hosts"
+    __table_args__ = (
+        Index("ix_access_group_hosts_host_group", "host_id", "access_group_id"),
+    )
 
     access_group_id = Column(
         BigInteger().with_variant(Integer, "sqlite"),

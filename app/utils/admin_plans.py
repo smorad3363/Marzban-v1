@@ -227,60 +227,6 @@ def _validate_category(db: Session, actor: Admin, category_id: int | None) -> No
         raise admin_hierarchy.HierarchyError("category_access_forbidden", "Plan category is unavailable")
 
 
-def _validate_network_scope(
-    db: Session,
-    settings: MarzhelpAdminSettings,
-    inbounds: set[str],
-    hosts: dict[str, set[int]],
-) -> None:
-    if not inbounds:
-        raise admin_hierarchy.HierarchyError(
-            "plan_inbound_required", "Plan requires at least one allowed inbound"
-        )
-    if set(hosts) != inbounds or any(not hosts[tag] for tag in inbounds):
-        raise admin_hierarchy.HierarchyError(
-            "plan_host_required", "Every selected inbound requires at least one explicit host"
-        )
-    if not settings.all_inbounds:
-        unauthorized = inbounds - set(settings.allowed_inbounds)
-        if unauthorized:
-            raise admin_hierarchy.HierarchyError(
-                "inbound_forbidden", f"Plan contains unauthorized inbounds: {sorted(unauthorized)}"
-            )
-    unknown = inbounds - set(xray.config.inbounds_by_tag)
-    if unknown:
-        raise admin_hierarchy.HierarchyError(
-            "unknown_inbound", f"Unknown or unavailable inbounds: {sorted(unknown)}"
-        )
-
-    selected_ids = {host_id for host_ids in hosts.values() for host_id in host_ids}
-    rows = (
-        db.query(ProxyHost.id, ProxyHost.inbound_tag, ProxyHost.is_disabled, ProxyHost.address)
-        .filter(ProxyHost.id.in_(selected_ids))
-        .all()
-    )
-    active_by_id = {
-        host_id: inbound_tag
-        for host_id, inbound_tag, is_disabled, address in rows
-        if not bool(is_disabled) and bool((address or "").strip())
-    }
-    missing = sorted(selected_ids - set(active_by_id))
-    if missing:
-        raise admin_hierarchy.HierarchyError(
-            "plan_host_unavailable", f"Plan contains disabled, deleted, or unavailable hosts: {missing}"
-        )
-    mismatched = sorted(
-        host_id
-        for inbound_tag, host_ids in hosts.items()
-        for host_id in host_ids
-        if active_by_id.get(host_id) != inbound_tag
-    )
-    if mismatched:
-        raise admin_hierarchy.HierarchyError(
-            "plan_host_inbound_mismatch", f"Plan hosts do not belong to selected inbounds: {mismatched}"
-        )
-
-
 def network_options(db: Session, actor: Admin) -> list[dict]:
     settings = db.get(MarzhelpAdminSettings, actor.id)
     if settings is None:
@@ -316,31 +262,6 @@ def network_options(db: Session, actor: Admin) -> list[dict]:
         for tag, inbound in sorted(xray.config.inbounds_by_tag.items())
         if tag in allowed
     ]
-
-
-def _version_network_scope(
-    db: Session, version_id: int
-) -> tuple[set[str], dict[str, set[int]]]:
-    inbounds = {
-        row[0]
-        for row in db.query(AdminUserPlanInbound.inbound_tag)
-        .filter(AdminUserPlanInbound.version_id == version_id)
-        .all()
-    }
-    hosts = {tag: set() for tag in inbounds}
-    for inbound_tag, host_id in (
-        db.query(AdminUserPlanHost.inbound_tag, AdminUserPlanHost.host_id)
-        .filter(AdminUserPlanHost.version_id == version_id)
-        .all()
-    ):
-        hosts.setdefault(inbound_tag, set()).add(host_id)
-    return inbounds, hosts
-
-
-def version_network_scope(
-    db: Session, version_id: int
-) -> tuple[set[str], dict[str, set[int]]]:
-    return _version_network_scope(db, version_id)
 
 
 def _validate_version(db: Session, actor: Admin, version: PlanVersionInput) -> None:
@@ -434,89 +355,6 @@ def _add_version(
     db.flush()
     plan.current_version_id = version.id
     return version
-
-
-def add_network_revision(
-    db: Session,
-    *,
-    actor: Admin,
-    plan: AdminUserPlan,
-    inbounds: set[str],
-    hosts: dict[str, set[int]],
-) -> tuple[AdminUserPlanVersion, AdminUserPlanVersion]:
-    """Preserve a legacy Plan network revision during compatibility operations."""
-    current = db.get(AdminUserPlanVersion, plan.current_version_id)
-    if current is None:
-        raise admin_hierarchy.HierarchyError("plan_version_missing", "Current Plan version is missing")
-    revision = _add_version(
-        db,
-        plan,
-        actor,
-        PlanVersionInput(
-            price_toman=current.price_toman,
-            data_limit=current.data_limit,
-            duration_days=current.duration_days,
-            concurrent_user_limit=current.concurrent_user_limit,
-            reset_strategy=current.reset_strategy,
-            renewal_volume_strategy=current.renewal_volume_strategy,
-            renewal_time_strategy=current.renewal_time_strategy,
-        ),
-    )
-    db.add_all(
-        AdminUserPlanInbound(version_id=revision.id, inbound_tag=tag)
-        for tag in sorted(inbounds)
-    )
-    db.add_all(
-        AdminUserPlanHost(version_id=revision.id, inbound_tag=tag, host_id=host_id)
-        for tag in sorted(inbounds)
-        for host_id in sorted(hosts.get(tag, set()))
-    )
-    return current, revision
-
-
-def sync_active_users_to_network_revision(
-    db: Session,
-    *,
-    actor: Admin,
-    plan: AdminUserPlan,
-    previous_version: AdminUserPlanVersion,
-    revision: AdminUserPlanVersion,
-) -> list[int]:
-    """Move only currently assigned active Users to a network-only revision."""
-    latest = (
-        db.query(
-            UserPlanAssignment.user_id.label("user_id"),
-            func.max(UserPlanAssignment.id).label("assignment_id"),
-        )
-        .group_by(UserPlanAssignment.user_id)
-        .subquery()
-    )
-    users = (
-        db.query(User)
-        .join(latest, latest.c.user_id == User.id)
-        .join(UserPlanAssignment, UserPlanAssignment.id == latest.c.assignment_id)
-        .filter(
-            User.status == UserStatus.active,
-            UserPlanAssignment.plan_id == plan.id,
-            UserPlanAssignment.version_id == previous_version.id,
-        )
-        .order_by(User.id)
-        .all()
-    )
-    inbounds, _ = _version_network_scope(db, revision.id)
-    for user in users:
-        _apply_plan_network_to_user(db, user, inbounds)
-        db.add(UserPlanAssignment(
-            user_id=user.id,
-            plan_id=plan.id,
-            version_id=revision.id,
-            actor_admin_id=actor.id,
-            operation_type="network_sync",
-            is_trial=bool(plan.is_trial),
-            idempotency_key=f"network-sync:{revision.id}:{user.id}",
-        ))
-    db.flush()
-    return [user.id for user in users]
 
 
 def create_plan(db: Session, actor: Admin, values: PlanCreate) -> AdminUserPlan:
@@ -726,12 +564,15 @@ def plan_response(db: Session, plan: AdminUserPlan, actor: Admin | None = None) 
     return plan_responses(db, [plan], actor=actor)[0]
 
 
-def _plan_user_payload(plan: AdminUserPlan, version: AdminUserPlanVersion, username: str, status, note):
-    tags = []
-    # Caller loaded these into the transient attribute to avoid an extra query here.
-    tags.extend(getattr(version, "_inbound_tags", []))
+def _plan_user_payload(
+    version: AdminUserPlanVersion,
+    username: str,
+    status,
+    note,
+    inbound_tags: set[str],
+):
     inbounds: dict[ProxyTypes, list[str]] = {}
-    for tag in tags:
+    for tag in sorted(inbound_tags):
         protocol = xray.config.inbounds_by_tag[tag]["protocol"]
         proxy_type = ProxyTypes(protocol)
         inbounds.setdefault(proxy_type, []).append(tag)
@@ -750,7 +591,7 @@ def _plan_user_payload(plan: AdminUserPlan, version: AdminUserPlanVersion, usern
     )
 
 
-def _apply_plan_network_to_user(
+def _apply_network_to_user(
     db: Session,
     user: User,
     inbound_tags: set[str],
@@ -790,120 +631,30 @@ def subscription_host_scope(db: Session, user: User) -> dict[str, set[int]] | No
     )
     if assignment is None:
         return None
-    settings = db.get(MarzhelpAdminSettings, user.admin_id)
-    if settings is None:
-        return {}
-    inbounds, hosts = _version_network_scope(db, assignment.version_id)
-    try:
-        _validate_network_scope(db, settings, inbounds, hosts)
-    except admin_hierarchy.HierarchyError:
-        return {}
-    return hosts
+    return {}
 
 
 def subscription_host_scopes(
     db: Session, users: list[User]
 ) -> dict[int, dict[str, set[int]] | None]:
-    """Resolve Plan Host snapshots for a bounded User page without N+1 queries."""
+    """Resolve Access Group Host scopes for a bounded User page without N+1 queries."""
     if not users:
         return {}
-    user_ids = [user.id for user in users]
-    latest = (
-        db.query(
-            UserPlanAssignment.user_id.label("user_id"),
-            func.max(UserPlanAssignment.id).label("assignment_id"),
-        )
-        .filter(UserPlanAssignment.user_id.in_(user_ids))
-        .group_by(UserPlanAssignment.user_id)
-        .subquery()
-    )
-    assignments = {
-        assignment.user_id: assignment
-        for assignment in (
-            db.query(UserPlanAssignment)
-            .join(latest, latest.c.assignment_id == UserPlanAssignment.id)
-            .all()
-        )
-    }
-    version_ids = sorted({row.version_id for row in assignments.values()})
-    inbounds = {version_id: set() for version_id in version_ids}
-    for version_id, tag in (
-        db.query(AdminUserPlanInbound.version_id, AdminUserPlanInbound.inbound_tag)
-        .filter(AdminUserPlanInbound.version_id.in_(version_ids))
-        .all()
-    ):
-        inbounds[version_id].add(tag)
-    hosts = {version_id: {} for version_id in version_ids}
-    host_ids: set[int] = set()
-    for version_id, tag, host_id in (
-        db.query(
-            AdminUserPlanHost.version_id,
-            AdminUserPlanHost.inbound_tag,
-            AdminUserPlanHost.host_id,
-        )
-        .filter(AdminUserPlanHost.version_id.in_(version_ids))
-        .all()
-    ):
-        hosts[version_id].setdefault(tag, set()).add(host_id)
-        host_ids.add(host_id)
-    active_hosts = {
-        row.id: row.inbound_tag
-        for row in db.query(ProxyHost.id, ProxyHost.inbound_tag)
-        .filter(ProxyHost.id.in_(host_ids), ProxyHost.is_disabled.is_not(True))
+    from app.utils import access_groups
+
+    result = access_groups.host_scopes(db, users)
+    without_group = [user.id for user in users if user.access_group_id is None]
+    if not without_group:
+        return result
+    assigned_user_ids = {
+        row[0]
+        for row in db.query(UserPlanAssignment.user_id)
+        .filter(UserPlanAssignment.user_id.in_(without_group))
+        .distinct()
         .all()
     }
-    admin_ids = sorted({user.admin_id for user in users if user.admin_id is not None})
-    settings = {
-        row.admin_id: row
-        for row in db.query(MarzhelpAdminSettings)
-        .filter(MarzhelpAdminSettings.admin_id.in_(admin_ids))
-        .all()
-    }
-    result: dict[int, dict[str, set[int]] | None] = {}
-    configured_tags = set(xray.config.inbounds_by_tag)
-    for user in users:
-        assignment = assignments.get(user.id)
-        if assignment is None:
-            result[user.id] = None
-            continue
-        user_settings = settings.get(user.admin_id)
-        version_inbounds = inbounds.get(assignment.version_id, set())
-        version_hosts = hosts.get(assignment.version_id, {})
-        allowed_tags = (
-            configured_tags
-            if user_settings and user_settings.all_inbounds
-            else set(user_settings.allowed_inbounds or []) if user_settings else set()
-        )
-        valid = (
-            bool(version_inbounds)
-            and set(version_hosts) == version_inbounds
-            and all(version_hosts.get(tag) for tag in version_inbounds)
-            and version_inbounds <= allowed_tags
-            and all(
-                active_hosts.get(host_id) == tag
-                for tag, ids in version_hosts.items()
-                for host_id in ids
-            )
-        )
-        result[user.id] = version_hosts if valid else {}
-    group_ids = {user.access_group_id for user in users if user.access_group_id is not None}
-    if group_ids:
-        from app.db.models import AccessGroup, AccessGroupInbound, AccessGroupHost
-        active_groups = {row[0] for row in db.query(AccessGroup.id).filter(
-            AccessGroup.id.in_(group_ids), AccessGroup.archived_at.is_(None))}
-        group_inbounds = {group_id: set() for group_id in active_groups}
-        group_hosts = {group_id: {} for group_id in active_groups}
-        for group_id, tag in db.query(AccessGroupInbound.access_group_id, AccessGroupInbound.inbound_tag).filter(
-            AccessGroupInbound.access_group_id.in_(active_groups)):
-            group_inbounds[group_id].add(tag)
-        for group_id, tag, host_id in db.query(AccessGroupHost.access_group_id, AccessGroupHost.inbound_tag, AccessGroupHost.host_id).filter(
-            AccessGroupHost.access_group_id.in_(active_groups)):
-            group_hosts[group_id].setdefault(tag, set()).add(host_id)
-        for user in users:
-            if user.access_group_id is not None:
-                tags = group_inbounds.get(user.access_group_id, set())
-                selected = group_hosts.get(user.access_group_id, {})
-                result[user.id] = selected if tags and set(selected) == tags and all(selected.values()) else {}
+    for user_id in assigned_user_ids:
+        result[user_id] = {}
     return result
 
 
@@ -1018,6 +769,14 @@ def create_user_from_plan(
     version = db.get(AdminUserPlanVersion, plan.current_version_id)
     if settings is None:
         raise admin_hierarchy.HierarchyError("policy_missing", "Administrator policy is missing")
+    if access_group_id is None:
+        raise admin_hierarchy.HierarchyError(
+            "access_group_required",
+            "Select an active Access Group before creating a User from a Plan",
+        )
+    from app.utils import access_groups
+
+    group_inbounds, _, _ = access_groups.validated_scope(db, access_group_id, actor.id)
     if plan.is_trial:
         replay = _assignment_replay(
             db,
@@ -1046,18 +805,7 @@ def create_user_from_plan(
                 "trial_quota_exhausted", "Trial creation quota is exhausted"
             )
         db.expire(settings, ["trial_quota", "trials_used"])
-    version_inbounds, version_hosts = _version_network_scope(db, version.id)
-    if access_group_id is not None:
-        from app.utils import access_groups
-
-        group = db.get(access_groups.AccessGroup, access_group_id)
-        if group is None or group.archived_at is not None:
-            raise admin_hierarchy.HierarchyError("access_group_unavailable", "Access Group is unavailable")
-        version_inbounds, version_hosts, _ = access_groups._scope(db, access_group_id)
-    else:
-        _validate_network_scope(db, settings, version_inbounds, version_hosts)
-    version._inbound_tags = sorted(version_inbounds)
-    payload = _plan_user_payload(plan, version, username, status, note)
+    payload = _plan_user_payload(version, username, status, note, group_inbounds)
     try:
         user = crud.create_user(
             db,
@@ -1066,8 +814,7 @@ def create_user_from_plan(
             commit=False,
             apply_namespace=False,
         )
-        if access_group_id is not None:
-            access_groups.apply_to_user(db, user, access_group_id)
+        access_groups.apply_to_user(db, user, access_group_id)
         assignment = UserPlanAssignment(
             user_id=user.id,
             plan_id=plan.id,
@@ -1144,8 +891,18 @@ def renew_user_from_plan(
     )
     if replay:
         return replay[0], replay[1], False
+    requested_access_group_id = access_group_id
     if access_group_id is None:
         access_group_id = user.access_group_id
+    if access_group_id is None:
+        raise admin_hierarchy.HierarchyError(
+            "access_group_required",
+            "User has no active Access Group; assign one before renewal",
+        )
+    change_access_group = (
+        requested_access_group_id is not None
+        and requested_access_group_id != user.access_group_id
+    )
     marzhelp_policy.validate_no_active_penalty(user)
     if not admin_hierarchy.can_access_user(db, actor, user):
         raise admin_hierarchy.HierarchyError("user_scope_forbidden", "User is outside actor scope")
@@ -1182,15 +939,9 @@ def renew_user_from_plan(
         and version.concurrent_user_limit not in settings.allowed_user_limits
     ):
         raise admin_hierarchy.HierarchyError("user_limit_forbidden", "Plan device limit is not allowed")
-    version_inbounds, version_hosts = _version_network_scope(db, version.id)
-    if access_group_id is not None:
-        from app.utils import access_groups
+    from app.utils import access_groups
 
-        group = db.get(access_groups.AccessGroup, access_group_id)
-        if group is None or group.archived_at is not None:
-            raise admin_hierarchy.HierarchyError("access_group_unavailable", "Access Group is unavailable")
-    elif user.access_group_id is None:
-        _validate_network_scope(db, settings, version_inbounds, version_hosts)
+    access_groups.validated_scope(db, access_group_id, user.admin_id)
     available = admin_hierarchy.available_credit(db, settings)
     seat_cost = 0
     if mode == admin_billing.BillingMode.SEAT_CREDIT:
@@ -1215,10 +966,8 @@ def renew_user_from_plan(
     user.status = UserStatus.active
     user.concurrent_user_limit = version.concurrent_user_limit
     user.data_limit_reset_strategy = UserDataLimitResetStrategy(version.reset_strategy)
-    if access_group_id is not None:
+    if change_access_group:
         access_groups.apply_to_user(db, user, access_group_id)
-    elif user.access_group_id is None:
-        _apply_plan_network_to_user(db, user, version_inbounds)
     sync_device_slots(db, user)
     now_ts = int(datetime.now(timezone.utc).timestamp())
     user.expire = max(now_ts, int(user.expire or 0)) + version.duration_days * 86400

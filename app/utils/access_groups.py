@@ -47,6 +47,64 @@ def _scope(db: Session, group_id: int) -> tuple[set[str], dict[str, set[int]], s
     return inbounds, hosts, nodes
 
 
+def validated_scope(
+    db: Session,
+    group_id: int,
+    admin_id: int,
+) -> tuple[set[str], dict[str, set[int]], set[int]]:
+    """Resolve one active Access Group and fail closed on invalid network scope."""
+    group = db.get(AccessGroup, group_id)
+    if group is None or group.archived_at is not None:
+        raise admin_hierarchy.HierarchyError(
+            "access_group_unavailable", "Access Group is unavailable"
+        )
+    inbounds, hosts, nodes = _scope(db, group_id)
+    if not inbounds or set(hosts) != inbounds or any(not hosts[tag] for tag in inbounds):
+        raise admin_hierarchy.HierarchyError(
+            "access_group_invalid", "Access Group has incomplete network scope"
+        )
+    unknown = inbounds - set(xray.config.inbounds_by_tag)
+    if unknown:
+        raise admin_hierarchy.HierarchyError(
+            "access_group_inbound_unavailable",
+            f"Access Group contains unavailable inbounds: {sorted(unknown)}",
+        )
+    settings = db.get(MarzhelpAdminSettings, admin_id)
+    if settings is None:
+        raise admin_hierarchy.HierarchyError("policy_missing", "Administrator policy is missing")
+    if not settings.all_inbounds:
+        forbidden = inbounds - set(settings.allowed_inbounds or [])
+        if forbidden:
+            raise admin_hierarchy.HierarchyError(
+                "access_group_scope_forbidden",
+                f"Access Group exceeds Admin scope: {sorted(forbidden)}",
+            )
+    selected_ids = {host_id for ids in hosts.values() for host_id in ids}
+    active_hosts = {
+        row.id: row.inbound_tag
+        for row in db.query(ProxyHost.id, ProxyHost.inbound_tag)
+        .filter(
+            ProxyHost.id.in_(selected_ids),
+            ProxyHost.is_legacy.is_(False),
+            ProxyHost.is_disabled.is_(False),
+            ProxyHost.address != "",
+        )
+        .all()
+    }
+    invalid = sorted(
+        host_id
+        for tag, host_ids in hosts.items()
+        for host_id in host_ids
+        if active_hosts.get(host_id) != tag
+    )
+    if invalid:
+        raise admin_hierarchy.HierarchyError(
+            "access_group_host_unavailable",
+            f"Access Group contains unavailable or mismatched hosts: {invalid}",
+        )
+    return inbounds, hosts, nodes
+
+
 def _validate_scope(db: Session, values: AccessGroupInput) -> None:
     configured = set(xray.config.inbounds_by_tag)
     unknown = set(values.inbounds) - configured
@@ -148,27 +206,11 @@ def create(db: Session, actor: Admin, values: AccessGroupInput) -> AccessGroup:
 
 
 def apply_to_user(db: Session, user: User, group_id: int) -> None:
-    group = db.get(AccessGroup, group_id)
-    if group is None or group.archived_at is not None:
-        raise admin_hierarchy.HierarchyError("access_group_unavailable", "Access Group is unavailable")
-    inbounds, hosts, _ = _scope(db, group.id)
-    if not inbounds or set(hosts) != inbounds or any(not hosts[tag] for tag in inbounds):
-        raise admin_hierarchy.HierarchyError("access_group_invalid", "Access Group has incomplete network scope")
-    settings = db.get(MarzhelpAdminSettings, user.admin_id)
-    if settings is not None and not settings.all_inbounds:
-        forbidden = inbounds - set(settings.allowed_inbounds or [])
-        if forbidden:
-            raise admin_hierarchy.HierarchyError(
-                "access_group_scope_forbidden", f"Access Group exceeds Admin scope: {sorted(forbidden)}"
-            )
-    from app.utils.admin_plans import _apply_plan_network_to_user, _validate_network_scope
+    inbounds, _, _ = validated_scope(db, group_id, user.admin_id)
+    from app.utils.admin_plans import _apply_network_to_user
 
-    if settings is None:
-        raise admin_hierarchy.HierarchyError("policy_missing", "Administrator policy is missing")
-    _validate_network_scope(db, settings, inbounds, hosts)
-
-    _apply_plan_network_to_user(db, user, inbounds)
-    user.access_group_id = group.id
+    _apply_network_to_user(db, user, inbounds)
+    user.access_group_id = group_id
 
 
 def update(db: Session, actor: Admin, group: AccessGroup, values: AccessGroupInput) -> list[int]:
@@ -209,13 +251,95 @@ def archive(db: Session, actor: Admin, group: AccessGroup) -> None:
 def host_scope(db: Session, user: User) -> dict[str, set[int]] | None:
     if getattr(user, "access_group_id", None) is None:
         return None
-    group = db.get(AccessGroup, user.access_group_id)
-    if group is None or group.archived_at is not None:
-        return {}
-    inbounds, hosts, _ = _scope(db, group.id)
-    if not inbounds or set(hosts) != inbounds or any(not hosts[tag] for tag in inbounds):
+    try:
+        _, hosts, _ = validated_scope(db, user.access_group_id, user.admin_id)
+    except admin_hierarchy.HierarchyError:
         return {}
     return hosts
+
+
+def host_scopes(
+    db: Session,
+    users: list[User],
+) -> dict[int, dict[str, set[int]] | None]:
+    """Resolve Access Group Host scopes for a bounded User page with fixed query count."""
+    result = {user.id: None for user in users}
+    group_ids = sorted(
+        {user.access_group_id for user in users if user.access_group_id is not None}
+    )
+    if not group_ids:
+        return result
+    active_groups = {
+        row[0]
+        for row in db.query(AccessGroup.id)
+        .filter(AccessGroup.id.in_(group_ids), AccessGroup.archived_at.is_(None))
+        .all()
+    }
+    group_inbounds = {group_id: set() for group_id in active_groups}
+    for group_id, tag in (
+        db.query(AccessGroupInbound.access_group_id, AccessGroupInbound.inbound_tag)
+        .filter(AccessGroupInbound.access_group_id.in_(active_groups))
+        .all()
+    ):
+        group_inbounds[group_id].add(tag)
+    group_hosts = {group_id: {} for group_id in active_groups}
+    host_ids: set[int] = set()
+    for group_id, tag, host_id in (
+        db.query(
+            AccessGroupHost.access_group_id,
+            AccessGroupHost.inbound_tag,
+            AccessGroupHost.host_id,
+        )
+        .filter(AccessGroupHost.access_group_id.in_(active_groups))
+        .all()
+    ):
+        group_hosts[group_id].setdefault(tag, set()).add(host_id)
+        host_ids.add(host_id)
+    active_hosts = {
+        row.id: row.inbound_tag
+        for row in db.query(ProxyHost.id, ProxyHost.inbound_tag)
+        .filter(
+            ProxyHost.id.in_(host_ids),
+            ProxyHost.is_legacy.is_(False),
+            ProxyHost.is_disabled.is_(False),
+            ProxyHost.address != "",
+        )
+        .all()
+    }
+    admin_ids = sorted({user.admin_id for user in users if user.admin_id is not None})
+    settings_by_admin = {
+        row.admin_id: row
+        for row in db.query(MarzhelpAdminSettings)
+        .filter(MarzhelpAdminSettings.admin_id.in_(admin_ids))
+        .all()
+    }
+    configured = set(xray.config.inbounds_by_tag)
+    for user in users:
+        group_id = user.access_group_id
+        if group_id is None:
+            continue
+        inbounds = group_inbounds.get(group_id, set())
+        hosts = group_hosts.get(group_id, {})
+        settings = settings_by_admin.get(user.admin_id)
+        allowed = (
+            configured
+            if settings is not None and settings.all_inbounds
+            else set(settings.allowed_inbounds or []) if settings is not None else set()
+        )
+        valid = (
+            bool(inbounds)
+            and set(hosts) == inbounds
+            and all(hosts.get(tag) for tag in inbounds)
+            and inbounds <= configured
+            and inbounds <= allowed
+            and all(
+                active_hosts.get(host_id) == tag
+                for tag, ids in hosts.items()
+                for host_id in ids
+            )
+        )
+        result[user.id] = hosts if valid else {}
+    return result
 
 
 def user_node_scope(user: User) -> set[int] | None:

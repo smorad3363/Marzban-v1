@@ -7,10 +7,14 @@ from sqlalchemy.orm import sessionmaker
 from app.db import crud
 from app.db.base import Base
 from app.db.models import (
+    AccessGroup,
+    AccessGroupHost,
+    AccessGroupInbound,
     AdminUserPlan,
     AdminUserPlanHost,
     AdminUserPlanInbound,
     AdminUserPlanVersion,
+    MarzhelpAdminSettings,
     ProxyHost,
     ProxyInbound,
     User,
@@ -20,7 +24,6 @@ from app.models.proxy import ProxyHost as ProxyHostModify
 from app.models.user import UserStatus
 from app.utils.network_impact import analyze_host_update
 from app.routers.system import modify_hosts
-from app.utils import admin_plans
 
 
 def _session():
@@ -82,6 +85,20 @@ def test_update_hosts_is_transaction_neutral(monkeypatch):
 
 
 def _plan_assignment(db, host_id: int, tag: str):
+    if db.get(MarzhelpAdminSettings, 1) is None:
+        db.add(MarzhelpAdminSettings(
+            admin_id=1,
+            all_inbounds=True,
+            total_traffic=None,
+            calculate_volume="used_traffic",
+        ))
+    group = AccessGroup(owner_admin_id=1, name=f"affected-{host_id}")
+    db.add(group)
+    db.flush()
+    db.add_all([
+        AccessGroupInbound(access_group_id=group.id, inbound_tag=tag),
+        AccessGroupHost(access_group_id=group.id, inbound_tag=tag, host_id=host_id),
+    ])
     plan = AdminUserPlan(owner_admin_id=1, name="affected")
     db.add(plan)
     db.flush()
@@ -103,7 +120,12 @@ def _plan_assignment(db, host_id: int, tag: str):
         AdminUserPlanInbound(version_id=version.id, inbound_tag=tag),
         AdminUserPlanHost(version_id=version.id, inbound_tag=tag, host_id=host_id),
     ])
-    user = User(username="active-user", status=UserStatus.active, admin_id=1)
+    user = User(
+        username="active-user",
+        status=UserStatus.active,
+        admin_id=1,
+        access_group_id=group.id,
+    )
     db.add(user)
     db.flush()
     db.add(UserPlanAssignment(
@@ -115,51 +137,50 @@ def _plan_assignment(db, host_id: int, tag: str):
         idempotency_key="stage2-impact",
     ))
     db.commit()
-    return plan, version
+    return plan, version, group, user
 
 
-def test_host_impact_counts_plan_versions_and_active_users():
+def test_host_impact_counts_access_groups_and_active_users():
     db = _session()
     try:
         inbound = ProxyInbound(tag="VLESS TCP")
         host = ProxyHost(remark="stable {USERNAME}", address="one.example", inbound=inbound)
         db.add(inbound)
         db.commit()
-        plan, version = _plan_assignment(db, host.id, inbound.tag)
+        _, _, group, _ = _plan_assignment(db, host.id, inbound.tag)
 
         impact = analyze_host_update(
             db,
             {inbound.tag: [_host(host_id=host.id, address="changed.example")]},
         )
 
-        assert impact.affected_plan_ids == [plan.id]
-        assert impact.affected_version_ids == [version.id]
-        assert impact.affected_plan_count == 1
-        assert impact.affected_plan_version_count == 1
+        assert impact.affected_access_group_ids == [group.id]
+        assert impact.affected_access_group_count == 1
         assert impact.active_user_count == 1
-        assert impact.invalid_plan_ids == []
+        assert impact.invalid_access_group_ids == []
+        assert impact.affected_plan_ids == []
     finally:
         db.close()
 
 
-def test_host_impact_marks_plan_invalid_when_only_host_is_removed():
+def test_host_impact_marks_access_group_invalid_when_only_host_is_removed():
     db = _session()
     try:
         inbound = ProxyInbound(tag="VLESS TCP")
         host = ProxyHost(remark="stable {USERNAME}", address="one.example", inbound=inbound)
         db.add(inbound)
         db.commit()
-        plan, _ = _plan_assignment(db, host.id, inbound.tag)
+        _, _, group, _ = _plan_assignment(db, host.id, inbound.tag)
 
         impact = analyze_host_update(db, {inbound.tag: []})
 
         assert impact.removed_host_ids == [host.id]
-        assert impact.invalid_plan_ids == [plan.id]
+        assert impact.invalid_access_group_ids == [group.id]
     finally:
         db.close()
 
 
-def test_host_impact_keeps_plan_valid_when_another_selected_host_remains():
+def test_host_impact_keeps_access_group_valid_when_another_selected_host_remains():
     db = _session()
     try:
         inbound = ProxyInbound(tag="VLESS TCP")
@@ -167,8 +188,12 @@ def test_host_impact_keeps_plan_valid_when_another_selected_host_remains():
         retained = ProxyHost(remark="retained {USERNAME}", address="two.example", inbound=inbound)
         db.add(inbound)
         db.commit()
-        plan, version = _plan_assignment(db, removed.id, inbound.tag)
-        db.add(AdminUserPlanHost(version_id=version.id, inbound_tag=inbound.tag, host_id=retained.id))
+        _, _, group, _ = _plan_assignment(db, removed.id, inbound.tag)
+        db.add(AccessGroupHost(
+            access_group_id=group.id,
+            inbound_tag=inbound.tag,
+            host_id=retained.id,
+        ))
         db.commit()
 
         impact = analyze_host_update(
@@ -176,8 +201,8 @@ def test_host_impact_keeps_plan_valid_when_another_selected_host_remains():
             {inbound.tag: [_host(host_id=retained.id, address="two.example")]},
         )
 
-        assert impact.affected_plan_ids == [plan.id]
-        assert impact.invalid_plan_ids == []
+        assert impact.affected_access_group_ids == [group.id]
+        assert impact.invalid_access_group_ids == []
     finally:
         db.close()
 
@@ -208,38 +233,32 @@ def test_host_mutation_requires_explicit_action_and_keeps_db_unchanged(monkeypat
 
         assert raised.value.status_code == 409
         assert raised.value.detail["error_code"] == "host_change_confirmation_required"
-        assert raised.value.detail["message"] == "این تغییر روی 1 پلن و 1 کاربر فعال اثر می‌گذارد. روش اعمال را انتخاب کنید."
+        assert "1 Access Group" in raised.value.detail["message"]
         db.expire_all()
         assert db.get(ProxyHost, host.id).address == "one.example"
     finally:
         db.close()
 
 
-def test_future_only_network_revision_preserves_assignment_and_financial_snapshot():
+def test_host_impact_ignores_legacy_plan_network_rows():
     db = _session()
     try:
         inbound = ProxyInbound(tag="VLESS TCP")
         first = ProxyHost(remark="first {USERNAME}", address="one.example", inbound=inbound)
-        second = ProxyHost(remark="second {USERNAME}", address="two.example", inbound=inbound)
         db.add(inbound)
         db.commit()
-        plan, previous = _plan_assignment(db, first.id, inbound.tag)
+        plan, previous, group, _ = _plan_assignment(db, first.id, inbound.tag)
         assignment = db.query(UserPlanAssignment).one()
 
-        old, revision = admin_plans.add_network_revision(
+        impact = analyze_host_update(
             db,
-            actor=type("Admin", (), {"id": 1})(),
-            plan=plan,
-            inbounds={inbound.tag},
-            hosts={inbound.tag: {second.id}},
+            {inbound.tag: [_host(host_id=first.id, address="changed.example")]},
         )
-        db.flush()
 
-        assert old.id == previous.id
-        assert plan.current_version_id == revision.id
-        assert revision.price_toman == previous.price_toman
-        assert revision.data_limit == previous.data_limit
-        assert revision.duration_days == previous.duration_days
+        assert impact.affected_access_group_ids == [group.id]
+        assert impact.affected_plan_ids == []
+        assert impact.affected_version_ids == []
+        assert plan.current_version_id == previous.id
         assert assignment.version_id == previous.id
         assert db.query(UserPlanAssignment).count() == 1
     finally:
@@ -295,7 +314,7 @@ def test_future_only_endpoint_retires_old_host_and_preserves_current_assignment(
         host = ProxyHost(remark="old {USERNAME}", address="old.example", inbound=inbound)
         db.add(inbound)
         db.commit()
-        plan, previous = _plan_assignment(db, host.id, tag)
+        plan, previous, group, user = _plan_assignment(db, host.id, tag)
         _runtime(monkeypatch, tag)
 
         modify_hosts(
@@ -312,13 +331,16 @@ def test_future_only_endpoint_retires_old_host_and_preserves_current_assignment(
         active_hosts = crud.get_hosts(db, tag, include_legacy=False)
         assert old.is_legacy is True
         assert [(row.address, row.is_legacy) for row in active_hosts] == [("new.example", False)]
-        assert plan.current_version_id != previous.id
+        selected = db.query(AccessGroupHost).filter_by(access_group_id=group.id).one()
+        assert selected.host_id == active_hosts[0].id
+        assert user.access_group_id == group.id
+        assert plan.current_version_id == previous.id
         assert db.query(UserPlanAssignment).one().version_id == previous.id
     finally:
         db.close()
 
 
-def test_detach_endpoint_creates_revision_and_syncs_active_user(monkeypatch):
+def test_detach_endpoint_updates_access_group_and_syncs_active_user(monkeypatch):
     db = _session()
     try:
         tag = "VLESS TCP"
@@ -328,8 +350,12 @@ def test_detach_endpoint_creates_revision_and_syncs_active_user(monkeypatch):
         db.add(inbound)
         db.commit()
         removed_id = removed.id
-        plan, previous = _plan_assignment(db, removed.id, tag)
-        db.add(AdminUserPlanHost(version_id=previous.id, inbound_tag=tag, host_id=retained.id))
+        plan, previous, group, _ = _plan_assignment(db, removed.id, tag)
+        db.add(AccessGroupHost(
+            access_group_id=group.id,
+            inbound_tag=tag,
+            host_id=retained.id,
+        ))
         db.commit()
         _runtime(monkeypatch, tag)
         bg = BackgroundTasks()
@@ -345,10 +371,12 @@ def test_detach_endpoint_creates_revision_and_syncs_active_user(monkeypatch):
 
         db.expire_all()
         assert db.get(ProxyHost, removed_id) is None
-        assert plan.current_version_id != previous.id
+        assert plan.current_version_id == previous.id
+        assert [row.host_id for row in db.query(AccessGroupHost).filter_by(
+            access_group_id=group.id
+        ).all()] == [retained.id]
         assignments = db.query(UserPlanAssignment).order_by(UserPlanAssignment.id).all()
-        assert [row.operation_type for row in assignments] == ["create", "network_sync"]
-        assert assignments[-1].version_id == plan.current_version_id
+        assert [row.operation_type for row in assignments] == ["create"]
         assert len(bg.tasks) == 1
     finally:
         db.close()

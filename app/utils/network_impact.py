@@ -1,15 +1,13 @@
 """Impact analysis for transactional proxy-host changes."""
 
-from sqlalchemy import case, func
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.db.models import (
-    AdminUserPlan,
-    AdminUserPlanHost,
-    AdminUserPlanVersion,
+    AccessGroup,
+    AccessGroupHost,
     ProxyHost,
     User,
-    UserPlanAssignment,
 )
 from app.models.proxy import HostUpdateImpact, ProxyHost as ProxyHostModify
 from app.models.user import UserStatus
@@ -58,52 +56,34 @@ def analyze_host_update(
     affected_host_ids = sorted(set(removed_ids) | set(changed_ids))
     if not affected_host_ids:
         return HostUpdateImpact(
-            affected_plan_count=0,
-            affected_plan_version_count=0,
+            affected_access_group_count=0,
             active_user_count=0,
-            affected_plan_ids=[],
-            affected_version_ids=[],
-            invalid_plan_ids=[],
+            affected_access_group_ids=[],
+            invalid_access_group_ids=[],
             changed_host_ids=changed_ids,
             removed_host_ids=removed_ids,
         )
 
-    version_rows = (
-        db.query(AdminUserPlanHost.version_id)
-        .filter(AdminUserPlanHost.host_id.in_(affected_host_ids))
-        .distinct()
-        .all()
-    )
-    version_ids = sorted(row[0] for row in version_rows)
-    plan_rows = (
-        db.query(AdminUserPlanVersion.plan_id)
-        .filter(AdminUserPlanVersion.id.in_(version_ids))
-        .distinct()
-        .all()
-        if version_ids
-        else []
-    )
-    plan_ids = sorted(row[0] for row in plan_rows)
-
-    latest_assignment = (
-        db.query(
-            UserPlanAssignment.user_id.label("user_id"),
-            func.max(UserPlanAssignment.id).label("assignment_id"),
+    group_rows = (
+        db.query(AccessGroupHost.access_group_id)
+        .join(AccessGroup, AccessGroup.id == AccessGroupHost.access_group_id)
+        .filter(
+            AccessGroupHost.host_id.in_(affected_host_ids),
+            AccessGroup.archived_at.is_(None),
         )
-        .group_by(UserPlanAssignment.user_id)
-        .subquery()
+        .distinct()
+        .all()
     )
+    group_ids = sorted(row[0] for row in group_rows)
     active_user_count = (
         db.query(func.count(User.id))
-        .join(latest_assignment, latest_assignment.c.user_id == User.id)
-        .join(UserPlanAssignment, UserPlanAssignment.id == latest_assignment.c.assignment_id)
         .filter(
             User.status == UserStatus.active,
-            UserPlanAssignment.version_id.in_(version_ids),
+            User.access_group_id.in_(group_ids),
         )
         .scalar()
         or 0
-        if version_ids
+        if group_ids
         else 0
     )
 
@@ -111,32 +91,32 @@ def analyze_host_update(
         host.id
         for hosts in modified_hosts.values()
         for host in hosts
-        if host.id is not None and host.is_disabled
+        if host.id is not None and (host.is_disabled or not host.address.strip())
     }
-    invalid_plan_ids = sorted(
-        row[0]
-        for row in (
-            db.query(AdminUserPlan.id)
-            .join(AdminUserPlanVersion, AdminUserPlan.current_version_id == AdminUserPlanVersion.id)
-            .join(AdminUserPlanHost, AdminUserPlanHost.version_id == AdminUserPlanVersion.id)
-            .filter(AdminUserPlan.id.in_(plan_ids))
-            .group_by(AdminUserPlan.id, AdminUserPlanHost.inbound_tag)
-            .having(func.sum(case(
-                (AdminUserPlanHost.host_id.notin_(unavailable_ids), 1),
-                else_=0,
-            )) == 0)
+    hosts_by_group: dict[int, dict[str, set[int]]] = {
+        group_id: {} for group_id in group_ids
+    }
+    if group_ids:
+        for group_id, inbound_tag, host_id in (
+            db.query(
+                AccessGroupHost.access_group_id,
+                AccessGroupHost.inbound_tag,
+                AccessGroupHost.host_id,
+            )
+            .filter(AccessGroupHost.access_group_id.in_(group_ids))
             .all()
-            if unavailable_ids
-            else []
-        )
+        ):
+            hosts_by_group[group_id].setdefault(inbound_tag, set()).add(host_id)
+    invalid_group_ids = sorted(
+        group_id
+        for group_id, by_tag in hosts_by_group.items()
+        if any(not (host_ids - unavailable_ids) for host_ids in by_tag.values())
     )
     return HostUpdateImpact(
-        affected_plan_count=len(plan_ids),
-        affected_plan_version_count=len(version_ids),
+        affected_access_group_count=len(group_ids),
         active_user_count=int(active_user_count),
-        affected_plan_ids=plan_ids,
-        affected_version_ids=version_ids,
-        invalid_plan_ids=invalid_plan_ids,
+        affected_access_group_ids=group_ids,
+        invalid_access_group_ids=invalid_group_ids,
         changed_host_ids=changed_ids,
         removed_host_ids=removed_ids,
     )
