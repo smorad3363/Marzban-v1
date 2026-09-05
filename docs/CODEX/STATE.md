@@ -8,8 +8,8 @@
 ## Current State
 
 - Current branch: `main`
-- Current HEAD: installer-validation harness repair checkpoint commit containing this file
-- Current milestone/checkpoint: public V1 source, image, tag, and stable release exist; disposable installer run `33977032363` passed the complete fresh-install contract before confirming this repository's scoped token cannot read the historical private VNext baseline package
+- Current HEAD: documentation-only V1 completion record commit containing this file
+- Current milestone/checkpoint: V1 source, immutable multi-platform image, `v1.0.0` tag, stable GitHub Release, public installer, fresh-install path, Owner creation, integrity/refusal gates, and mature `v5.2.0` upgrade path are published and verified
 
 ## Completed Checkpoints
 
@@ -52,6 +52,8 @@
 - Repaired the installer lab's Owner lookup assertion to query the disposable MySQL database directly after the successful `marzban create-owner` command, avoiding presentation-layer output and closed-pipe behavior.
 - Added failure-only expected/actual diagnostics to the installer lab's exact version and Owner assertions; no credentials are printed.
 - Kept V1 anonymous-access verification unchanged and made the upgrade lab build the exact historical VNext `v5.2.0` tag commit `2d8df17b526236c9980ade37d802531dbca0d06f` from its public source, matching the recorded VNext installer fallback without changing package visibility.
+- Disposable installer-validation run `33977212649` passed the full fresh-install and mature-upgrade contract against immutable V1 commit `6bc7688a294bc603eb30f320428e3002288bb8b2` and digest `sha256:99c1a1e20a042c3385e7c31ad9084ea233314e8f9047585a6c834a720a123906`.
+- Final public verification confirmed repository readability, stable release state, peeled `v1.0.0` tag parity, anonymous OCI manifest access, exact GHCR digest, immutable raw installer readability/syntax, and V1 repository/image/version defaults.
 
 ## Tests Passed
 
@@ -85,7 +87,13 @@
 - `bash -n` for `scripts/marzban.sh`, `tests/release_installer_lab.sh`, and `tests/release_upgrade_lab.sh` — passed.
 - Updated release contract test for the disposable published-installer workflow — `1 passed`; workflow YAML validation passed.
 
+- GitHub Actions run `33977212649` passed in `3m33s`; emitted `FRESH_INSTALL_CREATE_OWNER_VERSION_PASS`, `BASELINE_RUNTIME 5.2.0`, preserved the upgrade sentinel/Owner/Alembic state, and emitted `UPGRADE_V520_TO_V100_PASS`.
+- Final anonymous GHCR manifest request returned HTTP `200` with OCI image-index digest `sha256:99c1a1e20a042c3385e7c31ad9084ea233314e8f9047585a6c834a720a123906`.
+- Immutable installer URL syntax/default verification passed for `v1.0.0`, `smorad3363/Marzban-v1`, and `ghcr.io/smorad3363/marzban-v1`.
+
 ## Tests Failed
+
+- No current release-blocking failures remain. The entries below are retained as resolved historical diagnostics.
 
 - Published-installer run `33976252559`: install, version integrity, and Owner creation succeeded; the combined step then failed because `docker exec ... | grep -q` triggered a test-only closed-pipe failure under `pipefail`. Production behavior was not implicated; the harness is repaired for the next run.
 - Published-installer run `33976563658`: the same production checks again succeeded, but the CLI table-based Owner lookup produced no stable assertion output. The harness now verifies the committed Owner row directly in the disposable MySQL database.
@@ -99,12 +107,12 @@
 
 ## Known Blockers
 
-- No live MySQL endpoint is available for `EXPLAIN`; index verification is limited to model/migration structure until the MySQL release lab runs.
+- None.
 
 ## Uncommitted Work
 
-- None expected after committing this harness-repair checkpoint.
+- None expected after committing and pushing this documentation-only completion record.
 
 ## NEXT EXACT TASK
 
-Commit and push the installer-lab `pipefail` repair without force. Dispatch the published-installer workflow again with digest `sha256:99c1a1e20a042c3385e7c31ad9084ea233314e8f9047585a6c834a720a123906` and source commit `6bc7688a294bc603eb30f320428e3002288bb8b2`. Stop on any real failure; on success, verify public repository/release/tag/image and immutable installer defaults one final time, update this file to `NEXT EXACT TASK: NONE`, commit, and push the documentation-only completion record.
+NONE
