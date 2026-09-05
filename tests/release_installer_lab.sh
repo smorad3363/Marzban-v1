@@ -22,8 +22,9 @@ grep -Fxq 'CLI version: v1.0.0' <<< "$version_output"
 grep -Fxq 'Runtime app version: 1.0.0' <<< "$version_output"
 grep -Fq "Immutable image digest: ghcr.io/smorad3363/marzban-v1@${RELEASE_IMAGE_DIGEST}" <<< "$version_output"
 grep -Fxq "Source revision: ${RELEASE_SOURCE_COMMIT}" <<< "$version_output"
-owner_output="$(docker exec marzban-marzban-1 python /code/marzban-cli.py admin list --username release_owner)"
-grep -Fq release_owner <<< "$owner_output"
+owner_row="$(docker exec marzban-mysql-1 sh -c \
+  'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -uroot "$MYSQL_DATABASE" -N -e "SELECT username FROM admins WHERE username='\''release_owner'\'';"')"
+grep -Fxq release_owner <<< "$owner_row"
 
 before="$(sha256sum /opt/marzban/.env)"
 if bash -c "$installer" @ install --version v1.0.0 --database mysql; then

@@ -9,7 +9,7 @@
 
 - Current branch: `main`
 - Current HEAD: installer-validation harness repair checkpoint commit containing this file
-- Current milestone/checkpoint: public V1 source, image, tag, and stable release exist; disposable installer validation run `33976252559` proved anonymous image access, fresh installation, version integrity, and Owner creation before a test-only `pipefail` false negative
+- Current milestone/checkpoint: public V1 source, image, tag, and stable release exist; disposable installer runs `33976252559` and `33976563658` proved anonymous image access, fresh installation, version integrity, and Owner creation before test-only Owner lookup assertions failed
 
 ## Completed Checkpoints
 
@@ -49,7 +49,7 @@
 - Verification run `33975841184` confirmed AMD64/ARM64 manifests, source label, runtime `1.0.0`, MySQL client `26.7.0`, and dashboard/CLI content before creating the tag/release.
 - Created immutable tag `v1.0.0` at `6bc7688a294bc603eb30f320428e3002288bb8b2` and stable GitHub release `Marzban V1.0.0`.
 - Added a disposable published-installer workflow for anonymous GHCR access, the exact fresh-install command, Owner creation, version integrity, reinstall/downgrade refusal, and mature `5.2.0` to V1 upgrade preservation.
-- Repaired the installer lab's Owner lookup assertion to capture `docker exec` output before `grep -q`, preventing the successful producer from receiving a closed pipe under `set -o pipefail`.
+- Repaired the installer lab's Owner lookup assertion to query the disposable MySQL database directly after the successful `marzban create-owner` command, avoiding presentation-layer output and closed-pipe behavior.
 
 ## Tests Passed
 
@@ -86,6 +86,7 @@
 ## Tests Failed
 
 - Published-installer run `33976252559`: install, version integrity, and Owner creation succeeded; the combined step then failed because `docker exec ... | grep -q` triggered a test-only closed-pipe failure under `pipefail`. Production behavior was not implicated; the harness is repaired for the next run.
+- Published-installer run `33976563658`: the same production checks again succeeded, but the CLI table-based Owner lookup produced no stable assertion output. The harness now verifies the committed Owner row directly in the disposable MySQL database.
 
 - `bash -n scripts/marzban.sh` — not run: Windows WSL launcher reports `execvpe(/bin/bash) failed: No such file or directory`; Docker Desktop daemon is also unavailable for fallback.
 
