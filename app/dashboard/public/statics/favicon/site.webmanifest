@@ -1,0 +1,14 @@
+{
+    "name": "Operations Console",
+    "short_name": "Console",
+    "icons": [
+        {
+            "src": "/statics/favicon/operations-mark.svg",
+            "sizes": "any",
+            "type": "image/svg+xml"
+        }
+    ],
+    "theme_color": "#07130e",
+    "background_color": "#07130e",
+    "display": "standalone"
+}
