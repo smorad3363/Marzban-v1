@@ -8,8 +8,8 @@
 ## Current State
 
 - Current branch: `main`
-- Current HEAD: release-readiness checkpoint commit containing this file
-- Current milestone/checkpoint: V1 UI separation and local immutable installer/release contract are complete
+- Current HEAD: final local review checkpoint commit containing this file
+- Current milestone/checkpoint: V1 implementation and local release gates are complete; publication has not started
 
 ## Completed Checkpoints
 
@@ -37,6 +37,10 @@
 - Required the reviewed 40-character commit and an unused `v1.0.0` tag before immutable image publication.
 - Made published-image verification confirm the `v1.0.0` image tag digest and source commit before creating the immutable tag and stable GitHub release.
 - Added V1 release notes covering the new baseline, Plan/Access Group separation, and preserved mature functionality.
+- Completed the final `baseline-v1-source..HEAD` change inventory and security/release review.
+- Confirmed the authenticated GitHub account is `smorad3363`, the target repository does not exist, no `origin` remote exists, and no local `v1.0.0` tag exists.
+- Scanned tracked source for common private-key and token signatures; no matches were found.
+- Confirmed remaining active `5.2.0`/vNext references are limited to the explicit, tested V1 lineage-transition guard and its documentation/tests.
 
 ## Tests Passed
 
@@ -62,6 +66,9 @@
 - `C:\Program Files\Git\bin\bash.exe tests/test_installer_v1_contract.sh` — `INSTALLER_V1_CONTRACT_OK`; validated the exact lineage gate, `marzban version`, and `marzban create-owner USERNAME` wrapper contract.
 - Same backend environment, `python -m pytest -q tests/test_release_contract.py tests/test_marzhelp_migration_backup.py` — `7 passed, 1 skipped`.
 - PyYAML `safe_load` of `.github/workflows/build.yml`, `.github/workflows/release-v1.yml`, and `.github/workflows/verify-v1-image.yml` after publication-order changes — passed.
+- Consolidated frontend gate: `npx.cmd tsc --noEmit`, `npm.cmd run test:access-groups`, `npm.cmd run test:admin-ux`, `npm.cmd run test:admin-hierarchy`, and `VITE_BASE_API=/api/ npm.cmd run build -- --outDir build --assetsDir statics` — passed; `1731` modules transformed with the same non-blocking warnings.
+- Consolidated backend gate: `python -m pytest -q tests/test_admin_hierarchy_api_contract.py tests/test_stage2_network_sync.py tests/test_stage4_plan_network_scope.py tests/test_stage5_restricted_creation_namespace.py tests/test_stage6_trials.py tests/test_admin_hierarchy_service.py` with the three documented unrelated cases deselected — `70 passed, 1 skipped, 3 deselected`.
+- `git diff --check baseline-v1-source..HEAD` — passed after removing two trailing blank lines in execution documentation.
 
 ## Tests Failed
 
@@ -79,4 +86,4 @@
 
 ## NEXT EXACT TASK
 
-Run consolidated V1 verification and a final baseline-to-HEAD security/release review. Re-run the required frontend, backend, installer, and release-contract gates; scan for secrets and stale active identities; inspect publication preconditions read-only; fix only V1-caused failures; update this file; and commit the final local review checkpoint before publishing anything.
+Create the new public repository `smorad3363/Marzban-v1` from this exact clean `main` and push without force. Monitor the required `main` checks. If they pass, publish `ghcr.io/smorad3363/marzban-v1:v1.0.0` from the exact reviewed commit through `release-v1.yml`, verify its digest/source/runtime through `verify-v1-image.yml`, then verify the immutable `v1.0.0` tag, stable GitHub release, public installer URL, fresh-install contract, `marzban create-owner USERNAME`, and `marzban version`. Stop on any failure or pre-existing artifact.

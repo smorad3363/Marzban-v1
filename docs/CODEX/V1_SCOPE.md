@@ -38,4 +38,3 @@ sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-
 ```
 
 - Validate `marzban create-owner USERNAME` and `marzban version` before claiming readiness.
-

@@ -13,4 +13,3 @@
 - Preserve existing Access Group implementation and historical migrations. Add forward migrations only when required.
 - Preserve installer/release integrity safeguards. Never force-push, move immutable tags, overwrite artifacts, publish secrets, or remove `baseline-v1-source`.
 - Before publication, complete required verification and compare the full diff with `baseline-v1-source`.
-
