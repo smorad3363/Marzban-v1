@@ -8,8 +8,8 @@
 ## Current State
 
 - Current branch: `main`
-- Current HEAD: first-push CI repair checkpoint commit containing this file
-- Current milestone/checkpoint: public repository exists; image/tag/release publication has not started
+- Current HEAD: published-installer validation checkpoint commit containing this file
+- Current milestone/checkpoint: public V1 source, image, tag, and stable release exist; disposable installer validation is pending
 
 ## Completed Checkpoints
 
@@ -44,6 +44,11 @@
 - Created the public repository `smorad3363/Marzban-v1` and pushed exact reviewed `main` commit `cb9c181a791ad1534702dc2715e0c13ed38b3fce` plus `baseline-v1-source` without force.
 - First GitHub CI run `33974555761` passed the real MySQL `8.0` to `26.7.0` logical migration and failed before any image/tag/release publication.
 - Repaired the CI-only `httpx` dependency, two missing creation-mode fixtures, and one stale localization assertion; explicitly deselected only the three previously documented unrelated Stage 5 cases.
+- GitHub CI run `33974990272` passed both MySQL matrices, isolated Stage 8-11 migration evidence, logical MySQL migration, backup/restore, and v4.8.0 rollback compatibility.
+- Published immutable multi-platform image `ghcr.io/smorad3363/marzban-v1:v1.0.0` from exact commit `6bc7688a294bc603eb30f320428e3002288bb8b2`; digest `sha256:99c1a1e20a042c3385e7c31ad9084ea233314e8f9047585a6c834a720a123906`.
+- Verification run `33975841184` confirmed AMD64/ARM64 manifests, source label, runtime `1.0.0`, MySQL client `26.7.0`, and dashboard/CLI content before creating the tag/release.
+- Created immutable tag `v1.0.0` at `6bc7688a294bc603eb30f320428e3002288bb8b2` and stable GitHub release `Marzban V1.0.0`.
+- Added a disposable published-installer workflow for anonymous GHCR access, the exact fresh-install command, Owner creation, version integrity, reinstall/downgrade refusal, and mature `5.2.0` to V1 upgrade preservation.
 
 ## Tests Passed
 
@@ -74,6 +79,8 @@
 - `git diff --check baseline-v1-source..HEAD` — passed after removing two trailing blank lines in execution documentation.
 - Focused first-push CI repair verification with `httpx`: backup upload contract, localization response contract, Stage 6 trials, both user-access creation cases, and release contract — `15 passed, 1 skipped`.
 - PyYAML validation of the repaired `.github/workflows/build.yml` — passed.
+- `bash -n` for `scripts/marzban.sh`, `tests/release_installer_lab.sh`, and `tests/release_upgrade_lab.sh` — passed.
+- Updated release contract test for the disposable published-installer workflow — `1 passed`; workflow YAML validation passed.
 
 ## Tests Failed
 
@@ -91,4 +98,4 @@
 
 ## NEXT EXACT TASK
 
-Commit and push the first-push CI repair without force, then monitor the new `main` run. If all required jobs pass, use that exact clean commit to publish `ghcr.io/smorad3363/marzban-v1:v1.0.0` through `release-v1.yml`; capture its immutable digest; verify digest/source/runtime through `verify-v1-image.yml`; then verify the immutable `v1.0.0` tag, stable GitHub release, public installer URL, fresh-install contract, `marzban create-owner USERNAME`, and `marzban version`. Stop on any failure or pre-existing artifact.
+Commit and push the disposable installer-validation workflow without force. Dispatch it with digest `sha256:99c1a1e20a042c3385e7c31ad9084ea233314e8f9047585a6c834a720a123906` and source commit `6bc7688a294bc603eb30f320428e3002288bb8b2`. Verify anonymous image access, the exact public installer URL/fresh-install path, `marzban create-owner USERNAME`, `marzban version`, protection against overwrite/downgrade, and mature `5.2.0` to V1 data migration. Stop on failure; on success, verify public repository/release/tag/image one final time, update this file to `NEXT EXACT TASK: NONE`, commit, and push the documentation-only completion record.

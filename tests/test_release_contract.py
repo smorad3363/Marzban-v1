@@ -8,6 +8,7 @@ def test_release_version_and_install_rollback_contract():
     installer = Path("scripts/marzban.sh").read_text(encoding="utf-8")
     workflow = Path(".github/workflows/release-v1.yml").read_text()
     verify_workflow = Path(".github/workflows/verify-v1-image.yml").read_text()
+    installer_workflow = Path(".github/workflows/validate-v1-installer.yml").read_text()
     build_workflow = Path(".github/workflows/build.yml").read_text()
     assert version == "1.0.0"
     assert f'__version__ = "{version}"' in app
@@ -66,6 +67,11 @@ def test_release_version_and_install_rollback_contract():
     assert '--title "Marzban V1.0.0"' in verify_workflow
     assert '--notes-file docs/RELEASE_NOTES_v1.0.0.md' in verify_workflow
     assert '--prerelease' not in verify_workflow
+    assert "Verify public tag, source, and anonymous image access" in installer_workflow
+    assert "bash tests/release_installer_lab.sh" in installer_workflow
+    assert "bash tests/release_upgrade_lab.sh" in installer_workflow
+    assert "FRESH_INSTALL_CREATE_OWNER_VERSION_PASS" in Path("tests/release_installer_lab.sh").read_text()
+    assert "UPGRADE_V520_TO_V100_PASS" in Path("tests/release_upgrade_lab.sh").read_text()
     release_notes = Path("docs/RELEASE_NOTES_v1.0.0.md").read_text(encoding="utf-8")
     assert "new canonical `1.0.0` product baseline" in release_notes
     assert "Plans are commercial entitlements" in release_notes

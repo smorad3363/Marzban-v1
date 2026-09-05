@@ -1,0 +1,54 @@
+name: Validate published V1 installer
+
+on:
+  workflow_dispatch:
+    inputs:
+      digest:
+        description: Exact published V1 multi-platform digest
+        required: true
+      source_commit:
+        description: Exact immutable V1 source commit
+        required: true
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify public tag, source, and anonymous image access
+        env:
+          DIGEST: ${{ inputs.digest }}
+          IMAGE: ghcr.io/smorad3363/marzban-v1
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+        run: |
+          set -euo pipefail
+          [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          [[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          tag_commit="$(git ls-remote origin 'refs/tags/v1.0.0^{}' | awk '{print $1}')"
+          test "$tag_commit" = "$SOURCE_COMMIT"
+          registry_token="$(curl -fsSL 'https://ghcr.io/token?scope=repository%3Asmorad3363%2Fmarzban-v1%3Apull&service=ghcr.io' | jq -r .token)"
+          test -n "$registry_token"
+          headers="$(mktemp)"
+          curl -fsSI \
+            -H "Authorization: Bearer $registry_token" \
+            -H 'Accept: application/vnd.oci.image.index.v1+json' \
+            "https://ghcr.io/v2/smorad3363/marzban-v1/manifests/v1.0.0" > "$headers"
+          grep -Fiq "docker-content-digest: $DIGEST" "$headers"
+          docker pull --platform linux/amd64 "$IMAGE@$DIGEST"
+          test "$(docker image inspect "$IMAGE@$DIGEST" --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')" = "$SOURCE_COMMIT"
+      - name: Validate exact fresh-install, Owner, version, and mature upgrade contracts
+        env:
+          RELEASE_DISPOSABLE_LAB: "1"
+          RELEASE_IMAGE_DIGEST: ${{ inputs.digest }}
+          RELEASE_SOURCE_COMMIT: ${{ inputs.source_commit }}
+        run: |
+          set -euo pipefail
+          sudo --preserve-env=RELEASE_DISPOSABLE_LAB,RELEASE_IMAGE_DIGEST,RELEASE_SOURCE_COMMIT \
+            bash tests/release_installer_lab.sh
+          sudo --preserve-env=RELEASE_DISPOSABLE_LAB \
+            bash tests/release_upgrade_lab.sh

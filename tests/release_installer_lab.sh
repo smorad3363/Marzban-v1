@@ -1,46 +1,38 @@
 #!/usr/bin/env bash
-# Run only inside the disposable Docker-in-Docker release lab.
+# Run only on an isolated disposable Linux release runner.
 set -euo pipefail
+
 test "${RELEASE_DISPOSABLE_LAB:-}" = "1"
-test -f /fixtures/marzban.sh
-mkdir -p /fixtures/bin
-cat > /fixtures/bin/curl <<'CURL'
-#!/usr/bin/env bash
-set -euo pipefail
-destination=''
-url=''
-while (($#)); do
-  case "$1" in
-    -o) destination="$2"; shift 2 ;;
-    --header) shift 2 ;;
-    http*) url="$1"; shift ;;
-    *) shift ;;
-  esac
-done
-case "$url" in
-  https://api.github.com/repos/*/releases) printf '[{"tag_name":"v1.0.0","draft":false,"prerelease":false}]'; exit ;;
-  https://raw.githubusercontent.com/*/scripts/marzban.sh) source_file=/fixtures/marzban.sh ;;
-  https://raw.githubusercontent.com/*/.env.example) source_file=/fixtures/.env.example ;;
-  https://raw.githubusercontent.com/*/xray_config.json) source_file=/fixtures/xray_config.json ;;
-  *) echo "Unexpected fixture request: $url" >&2; exit 1 ;;
-esac
-test -n "$destination"
-cp "$source_file" "$destination"
-CURL
-chmod 755 /fixtures/bin/curl
-export PATH="/fixtures/bin:$PATH" TERM=xterm
-export MARZBAN_DOCKER_IMAGE=localhost:5000/marzban
-bash /fixtures/marzban.sh help >/tmp/cli-help.txt
-grep -q 'mysql-upgrade' /tmp/cli-help.txt
-printf '\n' | bash /fixtures/marzban.sh install --version v1.0.0 --database mysql
-bash /usr/local/bin/marzban version
-bash /usr/local/bin/marzban status
-before=$(sha256sum /opt/marzban/.env)
-if bash /usr/local/bin/marzban install --version v1.0.0; then
-  echo 'Reinstall unexpectedly succeeded' >&2; exit 1
+test "${RELEASE_SOURCE_COMMIT:-}" = "6bc7688a294bc603eb30f320428e3002288bb8b2"
+test "${RELEASE_IMAGE_DIGEST:-}" = "sha256:99c1a1e20a042c3385e7c31ad9084ea233314e8f9047585a6c834a720a123906"
+test "$(id -u)" = "0"
+test ! -e /opt/marzban
+test ! -e /var/lib/marzban
+
+installer_url="https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.0.0/scripts/marzban.sh"
+installer="$(curl -fsSL "$installer_url")"
+bash -n <<< "$installer"
+grep -Fq 'CLI_RELEASE_VERSION="v1.0.0"' <<< "$installer"
+grep -Fq 'MARZBAN_GITHUB_REPO="${MARZBAN_GITHUB_REPO:-smorad3363/Marzban-v1}"' <<< "$installer"
+
+printf '\n' | bash -c "$installer" @ install --version v1.0.0 --database mysql
+printf '%s\n' 'Release-Disposable-Owner-927' | marzban create-owner release_owner
+version_output="$(marzban version)"
+grep -Fxq 'CLI version: v1.0.0' <<< "$version_output"
+grep -Fxq 'Runtime app version: 1.0.0' <<< "$version_output"
+grep -Fq "Immutable image digest: ghcr.io/smorad3363/marzban-v1@${RELEASE_IMAGE_DIGEST}" <<< "$version_output"
+grep -Fxq "Source revision: ${RELEASE_SOURCE_COMMIT}" <<< "$version_output"
+docker exec marzban-marzban-1 python /code/marzban-cli.py admin list --username release_owner | grep -Fq release_owner
+
+before="$(sha256sum /opt/marzban/.env)"
+if bash -c "$installer" @ install --version v1.0.0 --database mysql; then
+  echo 'Reinstall unexpectedly succeeded' >&2
+  exit 1
 fi
 test "$before" = "$(sha256sum /opt/marzban/.env)"
-if bash /usr/local/bin/marzban rollback v5.1.0; then
-  echo 'Downgrade unexpectedly succeeded' >&2; exit 1
+if marzban rollback v0.9.0; then
+  echo 'Downgrade unexpectedly succeeded' >&2
+  exit 1
 fi
-echo 'FRESH_INSTALL_AND_DISPATCH_PASS'
+
+printf '%s\n' 'FRESH_INSTALL_CREATE_OWNER_VERSION_PASS'
