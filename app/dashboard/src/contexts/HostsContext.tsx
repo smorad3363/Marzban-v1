@@ -17,12 +17,10 @@ export type HostsSchema = Record<
 export type HostImpactAction = "apply_current" | "future_only" | "detach";
 
 export type HostUpdateImpact = {
-  affected_plan_count: number;
-  affected_plan_version_count: number;
+  affected_access_group_count: number;
   active_user_count: number;
-  affected_plan_ids: number[];
-  affected_version_ids: number[];
-  invalid_plan_ids: number[];
+  affected_access_group_ids: number[];
+  invalid_access_group_ids: number[];
   changed_host_ids: number[];
   removed_host_ids: number[];
 };

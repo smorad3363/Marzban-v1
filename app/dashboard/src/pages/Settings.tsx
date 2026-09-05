@@ -4,6 +4,7 @@ import {
   Skeleton, useToast,
 } from "@chakra-ui/react";
 import { AppShell } from "components/AppShell";
+import { AccessGroupManager } from "components/AccessGroupManager";
 import { ChangeEvent, FC, FormEvent, useEffect, useState } from "react";
 import { useMutation, useQuery } from "react-query";
 import { fetch } from "service/http";
@@ -13,7 +14,6 @@ import { localizedApiError } from "utils/apiError";
 
 type Pricing = { price_per_gib_toman: number; allow_unlimited_duration: boolean; duration_presets: Array<{ duration_days: number; multiplier: number; enabled: boolean }> };
 type BackupSettings = { enabled: boolean; destination: "LOCAL" | "TELEGRAM" | "EMAIL" | "TELEGRAM_EMAIL"; schedule: string; retention_count: number; telegram_bot_token?: string | null; telegram_chat_id?: string | null; smtp_host?: string | null; smtp_port?: number | null; smtp_username?: string | null; smtp_password?: string | null; smtp_use_tls: boolean; email_from?: string | null; email_to?: string | null; telegram_configured: boolean; smtp_configured: boolean };
-type AccessGroupSummary = { id: number; name: string; archived_at: string | null; active_user_count: number; inbounds: string[] };
 const sectionNames = ["General", "Users", "Admin Policies", "Plans & Pricing", "Access Groups", "Nodes", "Backup & Restore", "Branding", "System"];
 
 const Section: FC<{ id: string; title: string; description: string; children: React.ReactNode }> = ({ id, title, description, children }) => <Card tabIndex={-1} id={id} p={{ base: 4, md: 6 }} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="var(--radius-panel)" boxShadow="var(--shadow-panel)">
@@ -22,7 +22,6 @@ const Section: FC<{ id: string; title: string; description: string; children: Re
 
 export const Settings: FC = () => {
   const toast = useToast();
-  const groupsQuery = useQuery<AccessGroupSummary[]>("access-groups", () => fetch("/access-groups"));
   const [uploading, setUploading] = useState(false);
   const brandingQuery = useQuery<SystemBranding>("system-branding", () => fetch("/branding/public"));
   const pricingQuery = useQuery<Pricing>("owner-pricing", () => fetch("/owner/pricing"), { refetchOnWindowFocus: false });
@@ -62,7 +61,7 @@ export const Settings: FC = () => {
     <Grid templateColumns={{ base: "1fr", xl: "240px minmax(0, 1fr)" }} gap={5} alignItems="start">
       <Card as="nav" position={{ xl: "sticky" }} top={{ xl: 6 }} p={3} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="var(--radius-panel)"><Stack spacing={1}>{sectionNames.map((name) => <Button key={name} onClick={() => { const section = document.getElementById(name.toLowerCase().replace(/ /g, "-").replace("&", "and")); section?.scrollIntoView({ block: "start" }); section?.focus({ preventScroll: true }); }} variant="ghost" justifyContent="flex-start" size="sm">{name}</Button>)}</Stack></Card>
       <Stack spacing={5} minW={0}>
-        {[["Access Groups", groupsQuery], ["Pricing", pricingQuery], ["Backup", backupQuery], ["Branding", brandingQuery]].map(([name, query]: any) => query.isLoading ? <Skeleton key={name} height="64px" aria-label={`Loading ${name}`} /> : query.isError ? <Alert key={name} status="error"><AlertIcon />{name} could not load.<Button ms={3} onClick={() => query.refetch()}>Retry</Button></Alert> : null)}
+        {[["Pricing", pricingQuery], ["Backup", backupQuery], ["Branding", brandingQuery]].map(([name, query]: any) => query.isLoading ? <Skeleton key={name} height="64px" aria-label={`Loading ${name}`} /> : query.isError ? <Alert key={name} status="error"><AlertIcon />{name} could not load.<Button ms={3} onClick={() => query.refetch()}>Retry</Button></Alert> : null)}
         <Section id="general" title="General" description="Shared defaults for the operator workspace."><Alert status="info" variant="left-accent"><AlertIcon />Locale, theme, and session behavior remain per operator.</Alert></Section>
         <Section id="users" title="Users" description="Creation paths and fixed duration choices."><Text fontSize="sm">User operations inherit the central backend policy. Manual duration choices use Owner presets below.</Text></Section>
         <Section id="admin-policies" title="Admin Policies" description="Delegation remains explicit and least-privileged."><HStack><Badge>Plan Only</Badge><Badge>Form Only</Badge><Badge>Both</Badge></HStack></Section>
@@ -73,7 +72,7 @@ export const Settings: FC = () => {
             <Button type="submit" alignSelf="flex-start" colorScheme="primary" isLoading={savePricing.isLoading}>Save pricing</Button>
           </Stack>}
         </Section>
-        <Section id="access-groups" title="Access Groups" description="Network assignments are independent from commercial Plans."><Text fontSize="sm">Group management uses the Owner API; users can select a group when creating from a Plan. Network assignments remain independent from pricing.</Text><Stack mt={3}>{groupsQuery.data?.map((group) => <Box key={group.id} p={3} borderWidth="1px" borderRadius="md"><Text fontWeight="700">{group.name} {group.archived_at && <Badge>Archived</Badge>}</Text><Text fontSize="sm">{group.active_user_count} active users · {group.inbounds.join(", ")}</Text></Box>)}{groupsQuery.isSuccess && !groupsQuery.data?.length && <Text role="status">No Access Groups configured.</Text>}</Stack></Section>
+        <Section id="access-groups" title="Access Groups" description="مرجع مستقل دسترسی شبکه؛ جدا از قیمت و شرایط تجاری Plan."><AccessGroupManager /></Section>
         <Section id="nodes" title="Nodes" description="Health, collector telemetry, and reconnect state."><Text fontSize="sm">Node operations remain in the sidebar quick controls. Telemetry loss is reported separately from client inactivity.</Text></Section>
         <Section id="backup-and-restore" title="Backup & Restore" description="Logical MySQL backups, archive validation, and offline recovery.">
           {backup && <Stack spacing={4}>

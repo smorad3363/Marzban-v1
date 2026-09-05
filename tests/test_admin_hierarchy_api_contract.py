@@ -25,7 +25,9 @@ def test_admin_hierarchy_openapi_contract_is_registered():
         "/api/account/activity",
         "/api/user-plans",
         "/api/user-plans/{plan_id}",
-        "/api/plan-network-options",
+        "/api/access-group-network-options",
+        "/api/access-groups",
+        "/api/access-groups/{group_id}",
         "/api/users/from-plan",
         "/api/users/{username}/renew-from-plan",
     }
@@ -35,7 +37,7 @@ def test_admin_hierarchy_openapi_contract_is_registered():
 def test_automation_token_scope_mapping_is_deny_by_default():
     assert Admin._required_api_scope("GET", "/api/account/summary") == "account:read"
     assert Admin._required_api_scope("GET", "/api/user-plans") == "plans:read"
-    assert Admin._required_api_scope("GET", "/api/plan-network-options") == "plans:read"
+    assert Admin._required_api_scope("GET", "/api/access-group-network-options") is None
     assert Admin._required_api_scope("POST", "/api/user-plans") == "plans:write"
     assert Admin._required_api_scope("GET", "/api/users") == "users:read"
     assert Admin._required_api_scope("POST", "/api/user") == "users:write"

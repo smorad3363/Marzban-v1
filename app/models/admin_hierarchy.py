@@ -398,18 +398,18 @@ class OwnerPricingResponse(OwnerPricingUpdate):
     pass
 
 
-class PlanNetworkHostOption(BaseModel):
+class AccessGroupNetworkHostOption(BaseModel):
     id: int
     remark: str
 
 
-class PlanNetworkOption(BaseModel):
+class AccessGroupNetworkOption(BaseModel):
     tag: str
     protocol: str
     network: str
     tls: str
     port: Optional[int] = None
-    hosts: list[PlanNetworkHostOption]
+    hosts: list[AccessGroupNetworkHostOption]
 
 
 class PlanUserCreate(BaseModel):

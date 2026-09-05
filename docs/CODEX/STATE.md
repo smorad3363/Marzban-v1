@@ -8,8 +8,8 @@
 ## Current State
 
 - Current branch: `main`
-- Current HEAD: runtime Access Group checkpoint commit containing this file
-- Current milestone/checkpoint: Plan runtime is commercial-only; Access Group is the sole network authority
+- Current HEAD: frontend Access Group checkpoint commit containing this file
+- Current milestone/checkpoint: Plan is commercial-only in backend and UI; Access Group is the sole network authority
 
 ## Completed Checkpoints
 
@@ -26,6 +26,11 @@
 - Changed Host impact analysis, confirmation, propagation, and active-user sync to Access Groups.
 - Added fail-closed single/batch subscription scope resolution for Plan-assigned users without an Access Group.
 - Added migration `c9e1f4a7b203` and model index `ix_access_group_hosts_host_group` for Host-to-Access-Group reverse lookups.
+- Removed Inbound, Host, and Node controls from Plan create/edit UI and retired the Plan-named network option endpoint/utilities.
+- Added Owner-facing Access Group create/edit/archive UI with explicit Node, Inbound, and Host controls.
+- Required explicit Access Group selection in both Plan-based user-creation surfaces.
+- Updated Host impact UI and query contracts to Access Group terminology.
+- Rebuilt committed dashboard assets after the Access Group UI change.
 
 ## Tests Passed
 
@@ -41,6 +46,12 @@
 - Same environment, `python -m compileall -q app` — passed.
 - Same environment, `python -m pytest -q tests/test_stage2_network_sync.py tests/test_stage4_plan_network_scope.py` — `21 passed`.
 - Same environment, `python -m pytest -q tests/test_stage5_restricted_creation_namespace.py tests/test_stage6_trials.py tests/test_admin_hierarchy_service.py` — relevant runtime coverage passed; aggregate result `47 passed, 1 skipped, 3 failed`.
+
+- `npx.cmd tsc --noEmit` in `app/dashboard` with `C:\Program Files\nodejs` on `PATH` — passed.
+- `npm.cmd run test:access-groups`, `npm.cmd run test:admin-ux`, and `npm.cmd run test:admin-hierarchy` in `app/dashboard` — passed.
+- `VITE_BASE_API=/api/ npm.cmd run build -- --outDir build --assetsDir statics` in `app/dashboard` — passed; `1731` modules transformed. Existing vendor chunk-size and `use client` warnings remain non-blocking.
+- Same backend environment, `python -m pytest -q tests/test_admin_hierarchy_api_contract.py tests/test_stage4_plan_network_scope.py tests/test_stage2_network_sync.py` — `23 passed`.
+- Playwright mock verification at `1440x900` and `375x812` — Access Group create/list controls rendered, Host choices appeared after Inbound selection, no horizontal overflow, and no console errors.
 
 ## Tests Failed
 
@@ -59,4 +70,4 @@
 
 ## NEXT EXACT TASK
 
-Remove Plan network selectors and Plan-named network endpoints from the dashboard/API, complete Owner Access Group CRUD UI with Inbound/Host/Node controls, update Host impact UI to Access Group terminology, rebuild dashboard assets, verify, update this file, and commit the frontend Access Group checkpoint.
+Audit installer and release workflows for the immutable V1 publication order. Verify mature-source upgrade handling for the lower semantic V1 product version without weakening downgrade protection, validate `marzban create-owner USERNAME` and `marzban version`, add or update focused release-contract and installer tests, obtain Bash syntax verification, update this file, and commit the release-readiness checkpoint.

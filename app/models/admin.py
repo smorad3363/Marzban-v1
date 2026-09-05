@@ -144,7 +144,7 @@ class Admin(BaseModel):
         write = method.upper() not in {"GET", "HEAD", "OPTIONS"}
         if path.startswith("/api/account"):
             return "account:read"
-        if path.startswith("/api/user-plans") or path.startswith("/api/plan-network-options"):
+        if path.startswith("/api/user-plans"):
             return "plans:write" if write else "plans:read"
         if path.startswith("/api/user") or path.startswith("/api/users"):
             return "users:write" if write else "users:read"

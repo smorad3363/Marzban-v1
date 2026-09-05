@@ -31,6 +31,7 @@ from app.db.models import (
 from app.models.admin import Admin, AdminCreate, MarzhelpAdminPolicy
 from app.models.admin_hierarchy import (
     AccessGroupInput,
+    AccessGroupNetworkOption,
     AccessGroupResponse,
     AccountSummary,
     ApiTokenCreate,
@@ -50,7 +51,6 @@ from app.models.admin_hierarchy import (
     MoneyTransferRequest,
     MoneyTransferResponse,
     PlanCreate,
-    PlanNetworkOption,
     PlanCategoryCreate,
     PlanCategoryResponse,
     PlanCategoryUpdate,
@@ -1645,14 +1645,14 @@ def get_available_user_plan_summaries(
     ]
 
 
-@router.get("/plan-network-options", response_model=list[PlanNetworkOption])
-def get_plan_network_options(
+@router.get("/access-group-network-options", response_model=list[AccessGroupNetworkOption])
+def get_access_group_network_options(
     db: Session = Depends(get_db),
     admin: Admin = Depends(Admin.get_current),
 ):
     actor = _db_actor(db, admin)
     try:
-        return admin_plans.network_options(db, actor)
+        return access_groups.network_options(db, actor)
     except Exception as exc:
         _raise_domain(exc)
 

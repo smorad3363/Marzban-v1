@@ -131,10 +131,10 @@ assert.ok(overview.includes("منابع سرور"), "dashboard Owner resource gr
 assert.ok(dashboard.includes("mobileUsersOpen") && dashboard.includes("نمایش کاربران"), "mobile user list must be collapsed behind an explicit toggle");
 assert.ok(http.includes('import.meta.env.VITE_BASE_API || "/api/"'), "production login must retain the /api/ fallback");
 assert.ok(dashboard.includes("{isOwner && ("), "Owner-only infrastructure dialogs must not query restricted APIs for children");
-assert.ok(hostsContext.includes('fetch<HostUpdateImpact>("/hosts/impact"'), "Host save must preview Plan/User impact");
+assert.ok(hostsContext.includes('fetch<HostUpdateImpact>("/hosts/impact"'), "Host save must preview Access Group/User impact");
 assert.ok(hostsContext.includes("impact_action=${encodeURIComponent(action)}"), "confirmed Host action must be sent explicitly");
-assert.ok(hostsDialog.includes("اثر تغییر Host روی پلن‌ها و کاربران"), "Host impact confirmation must be Persian and explicit");
-assert.ok(hostsDialog.includes("affected_plan_count") && hostsDialog.includes("active_user_count"), "Host impact modal must show Plan/User counts");
+assert.ok(hostsDialog.includes("اثر تغییر Host روی Access Groupها"), "Host impact confirmation must be Persian and explicit");
+assert.ok(hostsDialog.includes("affected_access_group_count") && hostsDialog.includes("active_user_count"), "Host impact modal must show Access Group/User counts");
 for (const action of ["apply_current", "future_only", "detach"]) {
   assert.ok(hostsDialog.includes(`confirmImpact("${action}")`), `Host impact action missing: ${action}`);
 }

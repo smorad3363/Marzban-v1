@@ -1,4 +1,4 @@
-export type PlanInboundOption = {
+export type AccessGroupInboundOption = {
   tag: string;
   protocol: string;
   network: string;
@@ -6,41 +6,27 @@ export type PlanInboundOption = {
   port?: number;
 };
 
-export const normalizePlanInboundTags = (tags: readonly string[]): string[] =>
+export const normalizeAccessGroupInboundTags = (tags: readonly string[]): string[] =>
   [...new Set(tags.map((tag) => tag.trim()).filter(Boolean))].sort();
 
-export const collectPlanInboundOptions = (
-  inbounds: ReadonlyMap<string, readonly PlanInboundOption[]>
-): PlanInboundOption[] => {
-  const byTag = new Map<string, PlanInboundOption>();
-  for (const group of inbounds.values()) {
-    for (const inbound of group) {
-      if (!byTag.has(inbound.tag)) byTag.set(inbound.tag, inbound);
-    }
-  }
-  return [...byTag.values()].sort((left, right) =>
-    left.tag.localeCompare(right.tag)
-  );
-};
-
-export const togglePlanInboundTag = (
+export const toggleAccessGroupInboundTag = (
   selected: readonly string[],
   tag: string,
   checked: boolean
 ): string[] =>
-  normalizePlanInboundTags(
+  normalizeAccessGroupInboundTags(
     checked ? [...selected, tag] : selected.filter((value) => value !== tag)
   );
 
-export const missingPlanInboundTags = (
+export const missingAccessGroupInboundTags = (
   selected: readonly string[],
-  options: readonly PlanInboundOption[]
+  options: readonly AccessGroupInboundOption[]
 ): string[] => {
   const configured = new Set(options.map((option) => option.tag));
-  return normalizePlanInboundTags(selected).filter((tag) => !configured.has(tag));
+  return normalizeAccessGroupInboundTags(selected).filter((tag) => !configured.has(tag));
 };
 
-export const normalizePlanHostScope = (
+export const normalizeAccessGroupHostScope = (
   hosts: Readonly<Record<string, readonly number[]>>
 ): Record<string, number[]> =>
   Object.fromEntries(
@@ -53,20 +39,20 @@ export const normalizePlanHostScope = (
       .sort(([left], [right]) => left.localeCompare(right))
   );
 
-export const togglePlanHostId = (
+export const toggleAccessGroupHostId = (
   hosts: Readonly<Record<string, readonly number[]>>,
   inboundTag: string,
   hostId: number,
   checked: boolean
 ): Record<string, number[]> =>
-  normalizePlanHostScope({
+  normalizeAccessGroupHostScope({
     ...hosts,
     [inboundTag]: checked
       ? [...(hosts[inboundTag] || []), hostId]
       : (hosts[inboundTag] || []).filter((id) => id !== hostId),
   });
 
-export const missingPlanHostIds = (
+export const missingAccessGroupHostIds = (
   hosts: Readonly<Record<string, readonly number[]>>,
   options: readonly { tag: string; hosts: readonly { id: number }[] }[]
 ): number[] => {

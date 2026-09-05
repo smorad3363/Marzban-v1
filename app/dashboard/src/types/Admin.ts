@@ -172,22 +172,32 @@ export type UserPlanVersion = {
   reset_strategy: "no_reset" | "day" | "week" | "month" | "year";
   renewal_volume_strategy: "replace";
   renewal_time_strategy: "extend_max";
-  inbounds: string[];
-  hosts: Record<string, number[]>;
 };
 
-export type PlanNetworkHostOption = {
+export type AccessGroupNetworkHostOption = {
   id: number;
   remark: string;
 };
 
-export type PlanNetworkOption = {
+export type AccessGroupNetworkOption = {
   tag: string;
   protocol: string;
   network: string;
   tls: string;
   port?: number;
-  hosts: PlanNetworkHostOption[];
+  hosts: AccessGroupNetworkHostOption[];
+};
+
+export type AccessGroup = {
+  id: number;
+  owner_admin_id: number;
+  name: string;
+  description: string | null;
+  node_ids: number[];
+  inbounds: string[];
+  hosts: Record<string, number[]>;
+  archived_at: string | null;
+  active_user_count: number;
 };
 
 export type UserPlan = {

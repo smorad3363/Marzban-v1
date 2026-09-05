@@ -1265,10 +1265,10 @@ export const HostsDialog: FC = () => {
   const handleFormSubmit = async (values: z.infer<typeof hostsSchema>) => {
     try {
       const preview = await previewHosts(values);
-      if (preview.invalid_plan_ids.length) {
+      if (preview.invalid_access_group_ids.length) {
         toast({
-          title: "این تغییر یک یا چند پلن را بدون اتصال معتبر باقی می‌گذارد.",
-          description: `پلن‌های نیازمند Host جایگزین: ${preview.invalid_plan_ids.join("، ")}`,
+          title: "این تغییر یک یا چند Access Group را بدون اتصال معتبر باقی می‌گذارد.",
+          description: `Access Groupهای نیازمند Host جایگزین: ${preview.invalid_access_group_ids.join("، ")}`,
           status: "error",
           isClosable: true,
           position: "top",
@@ -1276,7 +1276,7 @@ export const HostsDialog: FC = () => {
         });
         return;
       }
-      if (preview.affected_plan_count || preview.active_user_count) {
+      if (preview.affected_access_group_count || preview.active_user_count) {
         setPendingHosts(values);
         setImpact(preview);
         return;
@@ -1371,24 +1371,24 @@ export const HostsDialog: FC = () => {
     <Modal isOpen={Boolean(impact)} onClose={() => { setImpact(null); setPendingHosts(null); }} isCentered>
       <ModalOverlay bg="blackAlpha.500" />
       <ModalContent mx={3} dir="rtl" maxW="lg">
-        <ModalHeader fontSize="lg">اثر تغییر Host روی پلن‌ها و کاربران</ModalHeader>
+        <ModalHeader fontSize="lg">اثر تغییر Host روی Access Groupها</ModalHeader>
         <ModalCloseButton insetInlineStart={3} insetInlineEnd="auto" />
         <ModalBody>
           <Text mb={4}>
-            این تغییر روی <b>{impact?.affected_plan_count || 0} پلن</b>، <b>{impact?.affected_plan_version_count || 0} نسخه پلن</b> و <b>{impact?.active_user_count || 0} کاربر فعال</b> اثر می‌گذارد. روش اعمال را انتخاب کنید.
+            این تغییر روی <b>{impact?.affected_access_group_count || 0} Access Group</b> و <b>{impact?.active_user_count || 0} کاربر فعال</b> اثر می‌گذارد. روش اعمال را انتخاب کنید.
           </Text>
           <VStack align="stretch" spacing={3}>
             <Button h="auto" py={3} whiteSpace="normal" onClick={() => confirmImpact("apply_current")} isLoading={isPostLoading}>
-              اعمال روی پلن‌ها و کاربران فعلی
+              اعمال و همگام‌سازی کاربران فعلی
             </Button>
-            <Text fontSize="sm" color="gray.400">network revision ساخته می‌شود؛ قیمت و سابقه خرید تغییر نمی‌کند.</Text>
+            <Text fontSize="sm" color="gray.400">همان Host به‌روزرسانی می‌شود و عضویت Access Group ثابت می‌ماند.</Text>
             <Button h="auto" py={3} whiteSpace="normal" variant="outline" onClick={() => confirmImpact("future_only")} isLoading={isPostLoading}>
-              فقط کاربران جدید یا تمدید بعدی
+              ساخت Host جدید و جایگزینی در Access Group
             </Button>
-            <Text fontSize="sm" color="gray.400">کاربران فعلی snapshot قبلی را حفظ می‌کنند.</Text>
+            <Text fontSize="sm" color="gray.400">Host قبلی legacy می‌شود و کاربران فعلی گروه همگام می‌شوند.</Text>
             {Boolean(impact?.removed_host_ids.length) && (
               <Button h="auto" py={3} whiteSpace="normal" colorScheme="orange" variant="outline" onClick={() => confirmImpact("detach")} isLoading={isPostLoading}>
-                حذف Host از پلن‌های مرتبط و همگام‌سازی کاربران فعلی
+                حذف Host از Access Groupهای مرتبط و همگام‌سازی کاربران
               </Button>
             )}
           </VStack>

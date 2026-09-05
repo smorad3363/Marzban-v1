@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "vite --port 3000",
     "build": "tsc && vite build",
-    "test:plan-inbounds": "node scripts/test-plan-inbounds.cjs",
+    "test:access-groups": "node scripts/test-access-groups.cjs",
     "test:admin-hierarchy": "node scripts/test-admin-hierarchy-authorization.cjs",
     "test:admin-ux": "node scripts/test-admin-ux.cjs",
     "preview": "vite preview --port 3000",

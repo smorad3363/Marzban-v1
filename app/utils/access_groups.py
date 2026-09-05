@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import object_session
 
@@ -103,6 +103,45 @@ def validated_scope(
             f"Access Group contains unavailable or mismatched hosts: {invalid}",
         )
     return inbounds, hosts, nodes
+
+
+def network_options(db: Session, actor: Admin) -> list[dict]:
+    """Return active Inbound/Host choices for Owner-managed Access Groups."""
+    _require_owner(db, actor)
+    settings = db.get(MarzhelpAdminSettings, actor.id)
+    if settings is None:
+        raise admin_hierarchy.HierarchyError("policy_missing", "Administrator policy is missing")
+    allowed = set(xray.config.inbounds_by_tag)
+    if not settings.all_inbounds:
+        allowed &= set(settings.allowed_inbounds)
+    host_rows = (
+        db.query(ProxyHost.id, ProxyHost.inbound_tag, ProxyHost.remark)
+        .filter(
+            ProxyHost.inbound_tag.in_(allowed),
+            or_(ProxyHost.is_disabled.is_(False), ProxyHost.is_disabled.is_(None)),
+            ProxyHost.is_legacy.is_(False),
+            ProxyHost.address != "",
+        )
+        .order_by(ProxyHost.inbound_tag, ProxyHost.id)
+        .all()
+        if allowed
+        else []
+    )
+    hosts_by_tag = {tag: [] for tag in allowed}
+    for host_id, inbound_tag, remark in host_rows:
+        hosts_by_tag[inbound_tag].append({"id": host_id, "remark": remark})
+    return [
+        {
+            "tag": tag,
+            "protocol": inbound.get("protocol", ""),
+            "network": inbound.get("network", ""),
+            "tls": inbound.get("tls", ""),
+            "port": inbound.get("port"),
+            "hosts": hosts_by_tag.get(tag, []),
+        }
+        for tag, inbound in sorted(xray.config.inbounds_by_tag.items())
+        if tag in allowed
+    ]
 
 
 def _validate_scope(db: Session, values: AccessGroupInput) -> None:
