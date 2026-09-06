@@ -23,7 +23,7 @@ LAST_XRAY_CORES=10
 # Fork configuration
 # Override at runtime, e.g. MARZBAN_GITHUB_REPO=another-user/Marzban marzban install
 # =============================================================================
-CLI_RELEASE_VERSION="v1.0.2"
+CLI_RELEASE_VERSION="v1.0.3"
 V1_LINEAGE_SOURCE_VERSION="5.2.0"
 V1_LINEAGE_SOURCE_IMAGE="ghcr.io/smorad3363/marzban-vnext:v5.2.0"
 V1_LINEAGE_TARGET_VERSION="v1.0.0"
@@ -2185,6 +2185,57 @@ node_validate_client_cert() {
     fi
 }
 
+NODE_INTERACTIVE_CERT_FILE=""
+
+node_prompt_client_cert() {
+    local temp_file line found_end="false" line_count=0
+    temp_file=$(mktemp /tmp/marzban-node-cert.XXXXXXXX)
+    chmod 600 "$temp_file"
+
+    colorized_echo blue "Paste the Marzban Node certificate from the Master panel."
+    colorized_echo yellow "Paste the full PEM block including BEGIN/END CERTIFICATE lines. Input finishes automatically after END CERTIFICATE."
+
+    if ! IFS= read -r line; then
+        rm -f "$temp_file"
+        colorized_echo red "Certificate paste was incomplete. Paste the full certificate from BEGIN CERTIFICATE through END CERTIFICATE."
+        return 1
+    fi
+    line="${line%$'\r'}"
+    if [ "$line" != "-----BEGIN CERTIFICATE-----" ]; then
+        rm -f "$temp_file"
+        colorized_echo red "Certificate paste must start with -----BEGIN CERTIFICATE-----."
+        return 1
+    fi
+    printf '%s\n' "$line" >> "$temp_file"
+    line_count=1
+
+    while IFS= read -r line; do
+        line="${line%$'\r'}"
+        printf '%s\n' "$line" >> "$temp_file"
+        line_count=$((line_count + 1))
+        if [ "$line" = "-----END CERTIFICATE-----" ]; then
+            found_end="true"
+            break
+        fi
+        if [ "$line_count" -ge 256 ]; then
+            break
+        fi
+    done
+
+    if [ "$found_end" != "true" ]; then
+        rm -f "$temp_file"
+        colorized_echo red "Certificate paste was incomplete. Paste the full certificate from BEGIN CERTIFICATE through END CERTIFICATE."
+        return 1
+    fi
+    if ! openssl x509 -in "$temp_file" -noout >/dev/null 2>&1; then
+        rm -f "$temp_file"
+        colorized_echo red "The pasted certificate is not a valid X.509 PEM certificate."
+        return 1
+    fi
+
+    NODE_INTERACTIVE_CERT_FILE="$temp_file"
+}
+
 node_source_ref_path() {
     local requested_version="$1"
     local ref
@@ -2345,6 +2396,7 @@ node_install_command() {
     local service_port="62050"
     local api_port="62051"
     local event_max_rows="20000"
+    NODE_INTERACTIVE_CERT_FILE=""
     while [ "$#" -gt 0 ]; do
         case "$1" in
             -v|--version)
@@ -2363,7 +2415,7 @@ node_install_command() {
                 [ -n "${2:-}" ] || { colorized_echo red "--event-max-rows requires a value."; return 1; }
                 event_max_rows="$2"; shift 2 ;;
             -h|--help)
-                echo "Usage: marzban node install [--version VERSION] --client-cert-file PATH [--service-port PORT] [--api-port PORT] [--event-max-rows ROWS]"
+                echo "Usage: marzban node install [--version VERSION] [--client-cert-file PATH] [--service-port PORT] [--api-port PORT] [--event-max-rows ROWS]"
                 return 0 ;;
             *)
                 colorized_echo red "Unknown node install option: $1"
@@ -2386,15 +2438,30 @@ node_install_command() {
     node_validate_port "$api_port" "--api-port" || return 1
     [ "$service_port" != "$api_port" ] || { colorized_echo red "Node service and Xray API ports must differ."; return 1; }
     node_validate_event_rows "$event_max_rows" || return 1
-    node_validate_client_cert "$client_cert_file" || return 1
+    if [ -n "$client_cert_file" ]; then
+        node_validate_client_cert "$client_cert_file" || return 1
+    fi
     if ! node_source_supports_runtime "$requested_version"; then
         colorized_echo red "Release ${requested_version} does not contain the built-in Node Runtime V2."
         return 1
     fi
     ensure_marzban_image "$requested_version" || return 1
 
+    if [ -z "$client_cert_file" ]; then
+        node_prompt_client_cert || return 1
+        client_cert_file="$NODE_INTERACTIVE_CERT_FILE"
+    fi
+
     install -d -m 700 "$NODE_APP_DIR" "$NODE_DATA_DIR"
-    install -m 600 "$client_cert_file" "$NODE_CLIENT_CERT_FILE"
+    if ! install -m 600 "$client_cert_file" "$NODE_CLIENT_CERT_FILE"; then
+        [ -n "$NODE_INTERACTIVE_CERT_FILE" ] && rm -f "$NODE_INTERACTIVE_CERT_FILE"
+        NODE_INTERACTIVE_CERT_FILE=""
+        return 1
+    fi
+    if [ -n "$NODE_INTERACTIVE_CERT_FILE" ]; then
+        rm -f "$NODE_INTERACTIVE_CERT_FILE"
+        NODE_INTERACTIVE_CERT_FILE=""
+    fi
     node_fetch_compose "$requested_version" || return 1
     node_write_env "$requested_version" "$service_port" "$api_port" "$event_max_rows"
     node_compose up -d --remove-orphans || return 1
