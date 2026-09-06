@@ -1,0 +1,73 @@
+name: Align V1.0.2 Stage4 Node Trust Tests
+
+on:
+  push:
+    branches:
+      - release/v1.0.2
+    paths:
+      - .github/workflows/fix-v102-stage4-node-trust-tests.yml
+
+permissions:
+  contents: write
+
+env:
+  SQLALCHEMY_DATABASE_URL: mysql+pymysql://marzban:test@127.0.0.1:3306/marzban_test
+  DEBUG: "false"
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: release/v1.0.2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install -r requirements.txt pytest httpx
+      - name: Mark direct node fixtures as V2-capable
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('tests/test_stage4_device_limit_integration.py')
+          text = path.read_text(encoding='utf-8')
+          import_old = 'from unittest.mock import patch\n'
+          import_new = 'from unittest.mock import patch\nfrom types import SimpleNamespace\n'
+          if text.count(import_old) != 1 or 'from types import SimpleNamespace' in text:
+              raise SystemExit('unexpected Stage4 import context')
+          text = text.replace(import_old, import_new, 1)
+
+          marker1 = '''    source = LogSource(\n        accepted_lines(\n            "8.8.8.8",\n            "8.8.8.8",\n            "8.8.8.8",\n            "1.1.1.1",\n            "1.1.1.1",\n            "1.1.1.1",\n        )\n    )\n\n    collect_payloads(tracker, source, "node:7")\n'''
+          repl1 = '''    source = LogSource(\n        accepted_lines(\n            "8.8.8.8",\n            "8.8.8.8",\n            "8.8.8.8",\n            "1.1.1.1",\n            "1.1.1.1",\n            "1.1.1.1",\n        )\n    )\n    source.runtime_handshake = SimpleNamespace(supports_direct_client_ip=True)\n\n    collect_payloads(tracker, source, "node:7")\n'''
+          if text.count(marker1) != 1:
+              raise SystemExit(f'expected one batched node fixture, found {text.count(marker1)}')
+          text = text.replace(marker1, repl1, 1)
+
+          marker2 = '''    source = LogSource(\n        "from tcp:192.168.13.1:51000 accepted tcp:8.8.8.8:443 "\n        "[vless >> direct] email: 42.stage4-user X-Forwarded-For: 1.1.1.1"\n    )\n\n    collect_payloads(tracker, source, "node:7")\n'''
+          repl2 = '''    source = LogSource(\n        "from tcp:192.168.13.1:51000 accepted tcp:8.8.8.8:443 "\n        "[vless >> direct] email: 42.stage4-user X-Forwarded-For: 1.1.1.1"\n    )\n    source.runtime_handshake = SimpleNamespace(supports_direct_client_ip=True)\n\n    collect_payloads(tracker, source, "node:7")\n'''
+          if text.count(marker2) != 1:
+              raise SystemExit(f'expected one NAT node fixture, found {text.count(marker2)}')
+          path.write_text(text.replace(marker2, repl2, 1), encoding='utf-8')
+          PY
+      - name: Enforce test-only scope
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mapfile -t changed < <(git status --short | awk '{print $2}')
+          test "${#changed[@]}" -eq 1
+          test "${changed[0]}" = "tests/test_stage4_device_limit_integration.py"
+      - name: Focused trust tests
+        run: python -m pytest -q tests/test_stage4_device_limit_integration.py tests/test_v102_node_runtime.py tests/test_v102_node_runtime_protocol.py
+      - name: Diff hygiene
+        run: git diff --check tests/test_stage4_device_limit_integration.py
+      - name: Commit updated fixtures
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git config user.name "Eliot"
+          git config user.email "42266703+smorad3363@users.noreply.github.com"
+          git add tests/test_stage4_device_limit_integration.py
+          git commit -m "test: require v2 capability for trusted node ip logs"
+          git push origin HEAD:release/v1.0.2
