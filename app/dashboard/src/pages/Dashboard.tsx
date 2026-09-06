@@ -1,12 +1,22 @@
-import { Badge, Box, Button, Card, Collapse, HStack, Text, useBreakpointValue, useDisclosure } from "@chakra-ui/react";
+import {
+  Badge,
+  Box,
+  Button,
+  Card,
+  Collapse,
+  HStack,
+  Stack,
+  Text,
+  useBreakpointValue,
+  useDisclosure,
+} from "@chakra-ui/react";
 import { AdminFormDrawer } from "components/AdminFormDrawer";
 import { AppShell } from "components/AppShell";
-import { DashboardOverview } from "components/DashboardOverview";
 import { CoreSettingsModal } from "components/CoreSettingsModal";
+import { DashboardOverviewCompact } from "components/DashboardOverviewCompact";
 import { DeleteUserModal } from "components/DeleteUserModal";
-import { Filters } from "components/Filters";
+import { FiltersCompact } from "components/FiltersCompact";
 import { HostsDialog } from "components/HostsDialog";
-import { NodeBandwidthPanel } from "components/NodeBandwidthPanel";
 import { NodesDialog } from "components/NodesModal";
 import { NodesUsage } from "components/NodesUsage";
 import { PlanCreateModal } from "components/PlanCreateModal";
@@ -15,10 +25,26 @@ import { ResetAllUsageModal } from "components/ResetAllUsageModal";
 import { ResetUserUsageModal } from "components/ResetUserUsageModal";
 import { RevokeSubscriptionModal } from "components/RevokeSubscriptionModal";
 import { UserDialog } from "components/UserDialog";
-import { UsersTable } from "components/UsersTable";
+import { UsersTablePro } from "components/UsersTablePro";
 import { fetchInbounds, useDashboard } from "contexts/DashboardContext";
-import { FC, useEffect, useState } from "react";
 import useGetUser from "hooks/useGetUser";
+import { FC, useEffect, useState } from "react";
+import { useQuery } from "react-query";
+import { fetch } from "service/http";
+import { AccountSummary, AdminCapabilities } from "types/Admin";
+
+const shortMessages = [
+  "همه‌چیز تحت کنترل است؛ پایدار ادامه بده.",
+  "مدیریت خوب یعنی تصمیم سریع با داده درست.",
+  "وضعیت روشن، تصمیم بهتر، سرویس پایدارتر.",
+  "هر تغییر کوچک، کیفیت سرویس را بهتر می‌کند.",
+];
+
+const messageForToday = () => {
+  const now = new Date();
+  const key = now.getFullYear() * 372 + (now.getMonth() + 1) * 31 + now.getDate();
+  return shortMessages[key % shortMessages.length];
+};
 
 const calendarParts = (date: Date, calendar: "persian" | "islamic") => {
   const parts = new Intl.DateTimeFormat(`en-US-u-ca-${calendar}`, { month: "numeric", day: "numeric" }).formatToParts(date);
@@ -49,85 +75,135 @@ const iranHoliday = (date: Date) => {
 };
 
 export const Dashboard: FC = () => {
-  const { userData } = useGetUser();
+  const { userData, getUserIsSuccess } = useGetUser();
   const isOwner = userData.role === "OWNER" || userData.is_sudo;
-  const desktopUsersVisible = useBreakpointValue({ base: false, md: true }) ?? false;
   const adminCreate = useDisclosure();
   const planCreate = useDisclosure();
-  const [mobileUsersOpen, setMobileUsersOpen] = useState(false);
+  const desktopUsersVisible = useBreakpointValue({ base: false, md: true }) ?? false;
+  const [mobileUsersOpen, setMobileUsersOpen] = useState(true);
   const today = new Date();
   const holiday = iranHoliday(today);
+
+  const capabilities = useQuery<AdminCapabilities, Error>(
+    ["admin-capabilities", userData.username],
+    () => fetch("/admin/capabilities"),
+    { enabled: getUserIsSuccess }
+  );
+  const account = useQuery<AccountSummary, Error>(
+    ["account-summary", userData.username],
+    () => fetch("/account/summary"),
+    { enabled: getUserIsSuccess }
+  );
+
+  const accountActive = account.data?.account_status === "ACTIVE";
+  const canCreateAdmin = Boolean(accountActive && capabilities.data?.can_create_admins);
+  const canCreatePlan = Boolean(accountActive && (account.data?.role === "OWNER" || account.data?.can_manage_plans));
+
   useEffect(() => {
     useDashboard.getState().refetchUsers();
     fetchInbounds();
   }, []);
-  useEffect(() => {
-    const openUsers = () => setMobileUsersOpen(true);
-    window.addEventListener("open-users-panel", openUsers);
-    return () => window.removeEventListener("open-users-panel", openUsers);
-  }, []);
+
   return (
     <AppShell>
-      <Card as="header" p={{ base: 4, md: 5 }} mb={3} bg="linear-gradient(145deg, var(--panel-surface), var(--panel-nested))" color="inherit" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="14px">
-      <HStack justify="space-between" align="center" flexWrap="wrap" gap={3}>
-        <Box>
-          <Text color="primary.600" _dark={{ color: "primary.300" }} fontSize="xs" fontWeight="800">مرکز کنترل</Text>
-          <Text as="h1" mt={1} fontSize={{ base: "xl", md: "2xl" }} fontWeight="800" letterSpacing="-0.035em">
-            خوش آمدی، <Text as="span" dir="ltr">{userData.username}</Text>
-          </Text>
-          <Text color="gray.600" _dark={{ color: "gray.400" }} mt={1} fontSize="sm">وضعیت حساب، کاربران، فعالیت‌ها و منابع مجاز را یکجا ببینید.</Text>
+      <Stack spacing={3}>
+        <Card
+          as="header"
+          px={{ base: 3.5, md: 4 }}
+          py={3}
+          bg="linear-gradient(145deg, var(--panel-surface), var(--panel-nested))"
+          color="inherit"
+          borderWidth="1px"
+          borderColor="var(--panel-border)"
+          borderRadius="12px"
+        >
+          <HStack justify="space-between" align="center" gap={4} flexWrap="wrap">
+            <Box minW={0}>
+              <Text as="h1" fontSize={{ base: "xl", md: "2xl" }} fontWeight="850" letterSpacing="-0.035em">
+                خوش آمدی، <Text as="span" dir="ltr">{userData.username}</Text>
+              </Text>
+              <Text mt={1} color="gray.400" fontSize="12px">مرکز مدیریت کاربران و سرویس‌های Marzban</Text>
+            </Box>
+            <HStack spacing={2} flexWrap="wrap" justify="end">
+              {canCreateAdmin && (
+                <Button size="sm" h="34px" variant="outline" borderColor="var(--panel-border)" onClick={adminCreate.onOpen}>
+                  ساخت ادمین
+                </Button>
+              )}
+              {canCreatePlan && (
+                <Button size="sm" h="34px" variant="outline" borderColor="var(--panel-border)" onClick={planCreate.onOpen}>
+                  ساخت پلن
+                </Button>
+              )}
+              <Badge colorScheme="green" px={2.5} py={1.5} borderRadius="full" fontSize="10px">سیستم در حال اجرا</Badge>
+              <Text color="gray.400" fontSize="11px">{messageForToday()}</Text>
+              <Badge colorScheme={holiday ? "orange" : "green"} px={2} py={1} borderRadius="full" fontSize="9px">
+                {holiday || "روز کاری"}
+              </Badge>
+              <Text color="gray.300" fontSize="11px" fontWeight="700">
+                {today.toLocaleDateString("fa-IR-u-ca-persian", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+              </Text>
+              <Text dir="ltr" color="blue.300" fontSize="11px" fontWeight="800">
+                {today.toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit", hour12: false })}
+              </Text>
+            </HStack>
+          </HStack>
+        </Card>
+
+        <DashboardOverviewCompact />
+
+        <Box as="section" aria-labelledby="user-operations-title">
+          <Card
+            bg="var(--panel-surface)"
+            color="inherit"
+            borderWidth="1px"
+            borderColor="rgba(148,163,184,.14)"
+            borderRadius="14px"
+            boxShadow="0 16px 42px rgba(0,0,0,.22)"
+            overflow="hidden"
+          >
+            <HStack px={{ base: 3, md: 4 }} pt={3.5} justify="space-between" align="end" gap={3}>
+              <Box>
+                <Text color="primary.300" fontSize="10px" fontWeight="800">کاربران</Text>
+                <Text id="user-operations-title" as="h2" mt={0.5} fontSize="lg" fontWeight="850">مدیریت کاربران</Text>
+                <Text mt={1} color="gray.500" fontSize="11px">اطلاعات مهم، وضعیت، مصرف و عملیات هر کاربر بدون باز کردن پنجره اضافی.</Text>
+              </Box>
+              <Button
+                display={{ base: "inline-flex", md: "none" }}
+                size="sm"
+                variant="ghost"
+                aria-expanded={mobileUsersOpen}
+                onClick={() => setMobileUsersOpen((value) => !value)}
+              >
+                {mobileUsersOpen ? "بستن کاربران" : "نمایش کاربران"}
+              </Button>
+            </HStack>
+            <Collapse in={desktopUsersVisible || mobileUsersOpen} animateOpacity={false}>
+              <FiltersCompact />
+              <Box px={{ base: 3, md: 4 }} pb={4}>
+                <UsersTablePro />
+              </Box>
+            </Collapse>
+          </Card>
         </Box>
-        <Box textAlign="end" px={3} py={2} bg="rgba(255,255,255,.03)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="10px">
-          <Text fontSize="sm" fontWeight="750">{today.toLocaleDateString("fa-IR-u-ca-persian", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</Text>
-          <Badge mt={1} colorScheme={holiday ? "orange" : "green"}>{holiday || "روز کاری"}</Badge>
-        </Box>
-      </HStack>
-      </Card>
-      <DashboardOverview onCreateAdmin={adminCreate.onOpen} onCreatePlan={planCreate.onOpen} />
-      {isOwner && <NodeBandwidthPanel />}
-      <Box as="section" aria-labelledby="user-operations-title">
-        <Text color="primary.600" _dark={{ color: "primary.300" }} fontSize="xs" fontWeight="800">کاربران</Text>
-        <Text id="user-operations-title" as="h2" mt={1} fontSize="lg" fontWeight="800">مدیریت کاربران</Text>
-        <HStack justify="space-between" align="center" mt={1} gap={3}>
-          <Text color="gray.600" _dark={{ color: "gray.400" }} fontSize="sm">کاربر بسازید، جست‌وجو کنید یا فیلترها را تغییر دهید.</Text>
-          <Button display={{ base: "inline-flex", md: "none" }} size="sm" variant="outline" borderColor="var(--panel-border)" aria-expanded={mobileUsersOpen} onClick={() => setMobileUsersOpen((value) => !value)}>{mobileUsersOpen ? "بستن کاربران" : "نمایش کاربران"}</Button>
-        </HStack>
-      <Collapse in={desktopUsersVisible || mobileUsersOpen} animateOpacity={false}>
-      <Box
-        mt={3}
-        w="full"
-        minW={0}
-        bg="var(--panel-surface)"
-        borderWidth="1px"
-        borderColor="rgba(148, 163, 184, .14)"
-        borderRadius="14px"
-        boxShadow="0 18px 48px rgba(0, 0, 0, .24)"
-        backdropFilter="blur(18px)"
-        overflow="hidden"
-      >
-        <Filters />
-        <Box px={{ base: 3, md: 4, xl: 5 }} pb={5} minW={0}>
-          <UsersTable />
-        </Box>
-      </Box>
-      </Collapse>
-      </Box>
-        <UserDialog />
-        <AdminFormDrawer isOpen={adminCreate.isOpen} admin={null} onClose={adminCreate.onClose} />
-        <PlanCreateModal isOpen={planCreate.isOpen} isOwner={isOwner} onClose={planCreate.onClose} />
-        <DeleteUserModal />
-        <QRCodeDialog />
-        <ResetUserUsageModal />
-        <RevokeSubscriptionModal />
-        {isOwner && (
-          <>
-            <HostsDialog />
-            <NodesDialog />
-            <NodesUsage />
-            <ResetAllUsageModal />
-            <CoreSettingsModal />
-          </>
-        )}
+      </Stack>
+
+      <UserDialog />
+      <AdminFormDrawer isOpen={adminCreate.isOpen} admin={null} onClose={adminCreate.onClose} />
+      <PlanCreateModal isOpen={planCreate.isOpen} isOwner={isOwner} onClose={planCreate.onClose} />
+      <DeleteUserModal />
+      <QRCodeDialog />
+      <ResetUserUsageModal />
+      <RevokeSubscriptionModal />
+      {isOwner && (
+        <>
+          <HostsDialog />
+          <NodesDialog />
+          <NodesUsage />
+          <ResetAllUsageModal />
+          <CoreSettingsModal />
+        </>
+      )}
     </AppShell>
   );
 };
