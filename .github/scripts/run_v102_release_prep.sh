@@ -2,6 +2,11 @@
 set -Eeuo pipefail
 
 python .github/scripts/apply_v102_release_prep.py
+python - <<'PY'
+from pathlib import Path
+p = Path('docs/CODEX/STATE.md')
+p.write_text(p.read_text(encoding='utf-8').rstrip() + '\n', encoding='utf-8')
+PY
 
 pushd app/dashboard >/dev/null
 npm ci
