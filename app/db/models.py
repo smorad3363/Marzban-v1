@@ -1574,6 +1574,9 @@ class Node(Base):
     usages = relationship("NodeUsage", back_populates="node", cascade="all, delete-orphan")
     usage_coefficient = Column(Float, nullable=False, server_default=text("1.0"), default=1)
     watchdog_enabled = Column(Boolean, nullable=False, server_default=text("1"), default=True)
+    ip_source_mode = Column(String(24), nullable=False, server_default=text("'direct'"), default="direct")
+    cdn_provider = Column(String(24), nullable=True, default=None)
+    trusted_proxy_cidrs = Column(JSON, nullable=True, default=None)
 
 
 class NodeWatchdogSettings(Base):

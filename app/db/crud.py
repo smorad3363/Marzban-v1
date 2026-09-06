@@ -1796,7 +1796,10 @@ def create_node(db: Session, node: NodeCreate) -> Node:
                   port=node.port,
                   api_port=node.api_port,
                   usage_coefficient=node.usage_coefficient,
-                  watchdog_enabled=node.watchdog_enabled)
+                  watchdog_enabled=node.watchdog_enabled,
+                  ip_source_mode=node.ip_source_mode.value,
+                  cdn_provider=node.cdn_provider.value if node.cdn_provider is not None else None,
+                  trusted_proxy_cidrs=node.trusted_proxy_cidrs or None)
 
     db.add(dbnode)
     db.commit()
@@ -1856,6 +1859,12 @@ def update_node(db: Session, dbnode: Node, modify: NodeModify) -> Node:
 
     if modify.watchdog_enabled is not None:
         dbnode.watchdog_enabled = modify.watchdog_enabled
+
+    ip_source_fields = {"ip_source_mode", "cdn_provider", "trusted_proxy_cidrs"}
+    if ip_source_fields & modify.model_fields_set:
+        dbnode.ip_source_mode = modify.ip_source_mode.value
+        dbnode.cdn_provider = modify.cdn_provider.value if modify.cdn_provider is not None else None
+        dbnode.trusted_proxy_cidrs = modify.trusted_proxy_cidrs or None
 
     db.commit()
     db.refresh(dbnode)

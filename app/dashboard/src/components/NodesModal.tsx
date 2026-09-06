@@ -26,7 +26,9 @@ import {
   ModalHeader,
   ModalOverlay,
   Switch,
+  Select,
   Text,
+  Textarea,
   Tooltip,
   useToast,
   VStack,
@@ -495,6 +497,18 @@ const NodeForm: NodeFormType = ({
 }) => {
   const { t } = useTranslation();
   const [showCertificate, setShowCertificate] = useState(false);
+  const ipSourceMode = form.watch("ip_source_mode") || "direct";
+  const cdnProvider = form.watch("cdn_provider");
+  const submitNode = (value: NodeType) => {
+    const normalized: NodeType = { ...value };
+    if (normalized.ip_source_mode === "direct") {
+      normalized.cdn_provider = null;
+      normalized.trusted_proxy_cidrs = [];
+    } else if (normalized.ip_source_mode === "proxy_protocol") {
+      normalized.cdn_provider = null;
+    }
+    mutate(normalized);
+  };
   const { data: nodeSettings, isLoading: nodeSettingsLoading } = useQuery({
     queryKey: "node-settings",
     queryFn: () =>
@@ -522,7 +536,7 @@ const NodeForm: NodeFormType = ({
   }
 
   return (
-    <form onSubmit={form.handleSubmit((v) => mutate(v))}>
+    <form onSubmit={form.handleSubmit(submitNode)}>
       <VStack>
         {nodeSettings && nodeSettings.certificate && (
           <Alert status="info" alignItems="start">
@@ -679,6 +693,90 @@ const NodeForm: NodeFormType = ({
             />
           </Box>
         </HStack>
+        <Box w="full" borderWidth="1px" borderRadius="md" p={3}>
+          <VStack align="stretch" spacing={3}>
+            <FormControl>
+              <FormLabel mb={1}>{t("nodes.ipSourceMode")}</FormLabel>
+              <Controller
+                name="ip_source_mode"
+                control={form.control}
+                render={({ field }) => (
+                  <Select size="sm" value={field.value || "direct"} onChange={field.onChange}>
+                    <option value="direct">{t("nodes.ipSourceDirect")}</option>
+                    <option value="trusted_xff">{t("nodes.ipSourceTrustedXff")}</option>
+                    <option value="proxy_protocol">{t("nodes.ipSourceProxyProtocol")}</option>
+                  </Select>
+                )}
+              />
+              <Text mt={1} fontSize="xs" color="gray.500">
+                {t("nodes.ipSourceModeHint")}
+              </Text>
+            </FormControl>
+
+            {ipSourceMode === "trusted_xff" && (
+              <FormControl>
+                <FormLabel mb={1}>{t("nodes.cdnProvider")}</FormLabel>
+                <Controller
+                  name="cdn_provider"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Select
+                      size="sm"
+                      value={field.value || ""}
+                      onChange={(event) => field.onChange(event.target.value || null)}
+                    >
+                      <option value="">{t("nodes.selectCdnProvider")}</option>
+                      <option value="cloudflare">Cloudflare</option>
+                      <option value="custom">{t("nodes.customProxy")}</option>
+                    </Select>
+                  )}
+                />
+              </FormControl>
+            )}
+
+            {(ipSourceMode === "proxy_protocol" ||
+              (ipSourceMode === "trusted_xff" && cdnProvider === "custom")) && (
+              <FormControl>
+                <FormLabel mb={1}>{t("nodes.trustedProxyCidrs")}</FormLabel>
+                <Controller
+                  name="trusted_proxy_cidrs"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Textarea
+                      size="sm"
+                      rows={3}
+                      dir="ltr"
+                      textAlign="left"
+                      value={(field.value || []).join("
+")}
+                      onChange={(event) =>
+                        field.onChange(
+                          event.target.value
+                            .split(/[
+,]+/)
+                            .map((value) => value.trim())
+                            .filter(Boolean)
+                        )
+                      }
+                      placeholder={"173.245.48.0/20
+2400:cb00::/32"}
+                    />
+                  )}
+                />
+                <Text mt={1} fontSize="xs" color="gray.500">
+                  {t("nodes.trustedProxyCidrsHint")}
+                </Text>
+              </FormControl>
+            )}
+
+            {ipSourceMode !== "direct" && (
+              <Alert status="warning" borderRadius="md" alignItems="flex-start">
+                <AlertIcon mt={0.5} />
+                <Text fontSize="xs">{t("nodes.ipSourceRuntimePending")}</Text>
+              </Alert>
+            )}
+          </VStack>
+        </Box>
         {addAsHost && (
           <FormControl py={1}>
             <Checkbox {...form.register("add_as_new_host")}>
