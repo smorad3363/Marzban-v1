@@ -1,0 +1,51 @@
+name: Temporary interactive Node certificate patch
+
+on:
+  push:
+    branches:
+      - hotfix/v1.0.3-interactive-node-cert
+    paths:
+      - scripts/_patch_interactive_node_cert.py
+      - .github/workflows/_interactive-node-cert-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: hotfix/v1.0.3-interactive-node-cert
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install focused test dependencies
+        run: python -m pip install --disable-pip-version-check pytest PyYAML
+      - name: Apply context-checked patch
+        run: python scripts/_patch_interactive_node_cert.py
+      - name: Shell syntax
+        run: bash -n scripts/marzban.sh
+      - name: Focused Node installer tests
+        run: python -m pytest -q tests/test_v102_node_deployment.py
+      - name: Scope and diff hygiene
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          mapfile -t changed < <(git diff --name-only | sort)
+          expected=(scripts/marzban.sh tests/test_v102_node_deployment.py)
+          if [ "${changed[*]}" != "${expected[*]}" ]; then
+            printf 'Unexpected changed files:\n%s\n' "${changed[*]}"
+            exit 1
+          fi
+      - name: Commit tested product change
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/marzban.sh tests/test_v102_node_deployment.py
+          git commit -m "fix: restore interactive Node certificate install"
+          git push origin HEAD:hotfix/v1.0.3-interactive-node-cert
