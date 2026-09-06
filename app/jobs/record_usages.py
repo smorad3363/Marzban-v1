@@ -90,7 +90,7 @@ def record_user_stats(params: list, node_id: Union[int, None],
         safe_execute(db, stmt, params)
 
 
-def record_node_stats(params: dict, node_id: Union[int, None]):
+def record_node_stats(params: list[dict], node_id: Union[int, None]):
     if not params:
         return
 
@@ -125,11 +125,16 @@ def get_users_stats(api: XRayAPI):
 
 def get_outbounds_stats(api: XRayAPI):
     try:
-        params = [{"up": stat.value, "down": 0} if stat.link == "uplink" else {"up": 0, "down": stat.value}
-                  for stat in filter(attrgetter('value'), api.get_outbounds_stats(reset=True, timeout=10))]
-        return params
+        return [
+            {"up": stat.value, "down": 0}
+            if stat.link == "uplink"
+            else {"up": 0, "down": stat.value}
+            for stat in filter(attrgetter('value'), api.get_outbounds_stats(reset=True, timeout=10))
+        ]
     except xray_exc.XrayError:
-        return []
+        # None means the sample itself failed. An empty list means a successful
+        # poll with zero traffic; bandwidth health must not confuse the two.
+        return None
 
 
 def aggregate_user_usages(api_params, usage_coefficient):
@@ -230,10 +235,12 @@ def record_node_usages():
 
     total_up = 0
     total_down = 0
-    per_node_totals: dict[int | None, tuple[int, int]] = {}
+    successful_params: dict[int | None, list[dict]] = {}
     for node_id, params in api_params.items():
+        if params is None:
+            continue
+        successful_params[node_id] = params
         uplink, downlink = _aggregate_link_bytes(params)
-        per_node_totals[node_id] = (uplink, downlink)
         total_up += uplink
         total_down += downlink
         bandwidth_store.observe(node_id, uplink, downlink)
@@ -251,7 +258,7 @@ def record_node_usages():
     if DISABLE_RECORDING_NODE_USAGE:
         return
 
-    for node_id, params in api_params.items():
+    for node_id, params in successful_params.items():
         record_node_stats(params, node_id)
 
 
