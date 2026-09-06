@@ -1,0 +1,192 @@
+name: Temporary v1.0.3 Review Fix
+
+on:
+  push:
+    branches:
+      - hotfix/v1.0.3-interactive-node-cert
+    paths:
+      - .github/workflows/_v103-review-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: hotfix/v1.0.3-interactive-node-cert
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Apply only CodeRabbit certificate findings
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          installer_path = Path("scripts/marzban.sh")
+          installer = installer_path.read_text(encoding="utf-8")
+          old = '''node_prompt_client_cert() {
+              local temp_file line found_begin="false" found_end="false" line_count=0
+              temp_file=$(mktemp /tmp/marzban-node-cert.XXXXXXXX)
+              chmod 600 "$temp_file"
+
+              colorized_echo blue "Paste the Marzban Node certificate from the Master panel."
+              colorized_echo yellow "Paste the full PEM block including BEGIN/END CERTIFICATE lines. Input finishes automatically after END CERTIFICATE."
+
+              while IFS= read -r line; do
+                  line="${line%$'\\r'}"
+                  if [ "$found_begin" = "false" ]; then
+                      [ "$line" = "-----BEGIN CERTIFICATE-----" ] || continue
+                      found_begin="true"
+                  fi
+                  printf '%s\\n' "$line" >> "$temp_file"
+                  line_count=$((line_count + 1))
+                  if [ "$line" = "-----END CERTIFICATE-----" ]; then
+                      found_end="true"
+                      break
+                  fi
+                  if [ "$line_count" -ge 256 ]; then
+                      break
+                  fi
+              done
+
+              if [ "$found_begin" != "true" ] || [ "$found_end" != "true" ]; then
+                  rm -f "$temp_file"
+                  colorized_echo red "Certificate paste was incomplete. Paste the full certificate from BEGIN CERTIFICATE through END CERTIFICATE."
+                  return 1
+              fi
+              if ! openssl x509 -in "$temp_file" -noout >/dev/null 2>&1; then
+                  rm -f "$temp_file"
+                  colorized_echo red "The pasted certificate is not a valid X.509 PEM certificate."
+                  return 1
+              fi
+
+              NODE_INTERACTIVE_CERT_FILE="$temp_file"
+          }
+          '''
+          new = '''node_prompt_client_cert() {
+              local temp_file line found_end="false" line_count=0
+              temp_file=$(mktemp /tmp/marzban-node-cert.XXXXXXXX)
+              chmod 600 "$temp_file"
+
+              colorized_echo blue "Paste the Marzban Node certificate from the Master panel."
+              colorized_echo yellow "Paste the full PEM block including BEGIN/END CERTIFICATE lines. Input finishes automatically after END CERTIFICATE."
+
+              if ! IFS= read -r line; then
+                  rm -f "$temp_file"
+                  colorized_echo red "Certificate paste was incomplete. Paste the full certificate from BEGIN CERTIFICATE through END CERTIFICATE."
+                  return 1
+              fi
+              line="${line%$'\\r'}"
+              if [ "$line" != "-----BEGIN CERTIFICATE-----" ]; then
+                  rm -f "$temp_file"
+                  colorized_echo red "Certificate paste must start with -----BEGIN CERTIFICATE-----."
+                  return 1
+              fi
+              printf '%s\\n' "$line" >> "$temp_file"
+              line_count=1
+
+              while IFS= read -r line; do
+                  line="${line%$'\\r'}"
+                  printf '%s\\n' "$line" >> "$temp_file"
+                  line_count=$((line_count + 1))
+                  if [ "$line" = "-----END CERTIFICATE-----" ]; then
+                      found_end="true"
+                      break
+                  fi
+                  if [ "$line_count" -ge 256 ]; then
+                      break
+                  fi
+              done
+
+              if [ "$found_end" != "true" ]; then
+                  rm -f "$temp_file"
+                  colorized_echo red "Certificate paste was incomplete. Paste the full certificate from BEGIN CERTIFICATE through END CERTIFICATE."
+                  return 1
+              fi
+              if ! openssl x509 -in "$temp_file" -noout >/dev/null 2>&1; then
+                  rm -f "$temp_file"
+                  colorized_echo red "The pasted certificate is not a valid X.509 PEM certificate."
+                  return 1
+              fi
+
+              NODE_INTERACTIVE_CERT_FILE="$temp_file"
+          }
+          '''
+          if installer.count(old) != 1:
+              raise SystemExit("installer review-fix target did not match exactly once")
+          installer_path.write_text(installer.replace(old, new, 1), encoding="utf-8")
+
+          tests_path = Path("tests/test_v102_node_deployment.py")
+          tests = tests_path.read_text(encoding="utf-8")
+          if "test_node_interactive_certificate_prompt_rejects_missing_pem_header" in tests:
+              raise SystemExit("missing-header test already exists")
+          addition = '''
+
+          def test_node_interactive_certificate_prompt_rejects_missing_pem_header():
+              script = (
+                  "source scripts/marzban.sh\\n"
+                  'NODE_INTERACTIVE_CERT_FILE=""\\n'
+                  "node_prompt_client_cert\\n"
+              )
+              result = subprocess.run(
+                  ["bash", "-c", script],
+                  input="not-a-certificate\\n",
+                  text=True,
+                  stdout=subprocess.PIPE,
+                  stderr=subprocess.PIPE,
+              )
+              assert result.returncode != 0
+              assert "Certificate paste must start with -----BEGIN CERTIFICATE-----." in result.stdout
+
+
+          def test_node_interactive_certificate_prompt_rejects_complete_invalid_x509():
+              script = (
+                  "source scripts/marzban.sh\\n"
+                  'NODE_INTERACTIVE_CERT_FILE=""\\n'
+                  "node_prompt_client_cert\\n"
+              )
+              result = subprocess.run(
+                  ["bash", "-c", script],
+                  input=(
+                      "-----BEGIN CERTIFICATE-----\\n"
+                      "not-a-valid-x509-certificate\\n"
+                      "-----END CERTIFICATE-----\\n"
+                  ),
+                  text=True,
+                  stdout=subprocess.PIPE,
+                  stderr=subprocess.PIPE,
+              )
+              assert result.returncode != 0
+              assert "The pasted certificate is not a valid X.509 PEM certificate." in result.stdout
+          '''
+          tests_path.write_text(tests.rstrip() + "\n" + addition.lstrip(), encoding="utf-8")
+          PY
+      - name: Focused validation
+        run: |
+          set -Eeuo pipefail
+          python -m pip install pytest PyYAML
+          bash -n scripts/marzban.sh
+          bash tests/test_installer_v1_contract.sh
+          python -m pytest -q tests/test_v102_node_deployment.py tests/test_release_contract.py
+      - name: Scope guard
+        run: |
+          set -Eeuo pipefail
+          changed="$(git diff --name-only)"
+          test "$changed" = $'scripts/marzban.sh\ntests/test_v102_node_deployment.py'
+          grep -Fx 'V1_LINEAGE_SOURCE_VERSION="5.2.0"' scripts/marzban.sh
+          grep -Fx 'V1_LINEAGE_SOURCE_IMAGE="ghcr.io/smorad3363/marzban-vnext:v5.2.0"' scripts/marzban.sh
+          grep -Fx 'V1_LINEAGE_TARGET_VERSION="v1.0.0"' scripts/marzban.sh
+          ! grep -q 'PRIVATE KEY' scripts/marzban.sh
+      - name: Commit focused review fix
+        run: |
+          set -Eeuo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/marzban.sh tests/test_v102_node_deployment.py
+          git commit -m "fix: reject invalid interactive Node certificate input"
+          git push origin HEAD:hotfix/v1.0.3-interactive-node-cert
