@@ -33,6 +33,25 @@ def test_phpmyadmin_is_not_started_in_the_default_profile():
     assert "restart: unless-stopped" in phpmyadmin
 
 
+def test_installer_uses_exact_ref_compose_and_normalizes_existing_installs():
+    script = Path("scripts/marzban.sh").read_text(encoding="utf-8")
+    assert 'source_ref=$(marzban_script_ref "$marzban_version")' in script
+    assert 'github_download -fsSL "$files_url_prefix/docker-compose.yml" -o "$COMPOSE_FILE"' in script
+    assert 'apply_runtime_resource_defaults() {' in script
+    assert 'profiles = ["tools"]' in script
+    assert 'pull mysql phpmyadmin' not in script
+
+    backup_index = script.index('cp "$COMPOSE_FILE" "$ENV_FILE" "$backup_path/"')
+    normalize_index = script.index(
+        "apply_runtime_resource_defaults", backup_index
+    )
+    image_switch_index = script.index(
+        'previous_image=$(yq -r \'.services.marzban.image\' "$COMPOSE_FILE")',
+        normalize_index,
+    )
+    assert backup_index < normalize_index < image_switch_index
+
+
 def test_bandwidth_route_is_owner_protected():
     dependency = inspect.signature(get_bandwidth).parameters["_"].default.dependency
     assert dependency.__func__ is AdminSchema.check_sudo_admin.__func__
