@@ -1,3 +1,4 @@
+from datetime import datetime
 from enum import Enum
 from typing import List, Optional
 
@@ -76,6 +77,28 @@ class NodeUsageResponse(BaseModel):
 
 class NodesUsageResponse(BaseModel):
     usages: List[NodeUsageResponse]
+
+
+class NodeBandwidthResponse(BaseModel):
+    node_id: Optional[int] = None
+    node_name: str
+    state: str
+    sampled_at: Optional[datetime] = None
+    sample_age_seconds: Optional[float] = None
+    uplink_bps: float = 0
+    downlink_bps: float = 0
+    total_bps: float = 0
+    peak_5m_uplink_bps: float = 0
+    peak_5m_downlink_bps: float = 0
+
+
+class NodesBandwidthResponse(BaseModel):
+    nodes: List[NodeBandwidthResponse]
+    total_uplink_bps: float = 0
+    total_downlink_bps: float = 0
+    total_bps: float = 0
+    online_nodes: int = 0
+    total_nodes: int = 0
 
 
 class NodeWatchdogSettingsUpdate(BaseModel):
