@@ -1,8 +1,11 @@
 services:
   marzban:
-    image: ghcr.io/smorad3363/marzban-v1:v1.0.1
+    image: ghcr.io/smorad3363/marzban-v1:v1.0.2
     restart: always
     env_file: .env
+    environment:
+      SQLALCHEMY_POOL_SIZE: ${SQLALCHEMY_POOL_SIZE:-5}
+      SQLIALCHEMY_MAX_OVERFLOW: ${SQLIALCHEMY_MAX_OVERFLOW:-5}
     network_mode: host
     volumes:
       - /opt/marzban/.env:/opt/marzban/.env:ro
@@ -36,7 +39,7 @@ services:
       - --collation_server=utf8mb4_unicode_ci
       - --host-cache-size=0
       - --innodb-open-files=1024
-      - --innodb-buffer-pool-size=256M
+      - --innodb-buffer-pool-size=${MYSQL_INNODB_BUFFER_POOL_SIZE:-128M}
       - --general_log=0
       - --slow_query_log=1
       - --slow_query_log_file=/var/lib/mysql/slow.log
@@ -53,7 +56,8 @@ services:
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin:latest
-    restart: always
+    profiles: ["tools"]
+    restart: unless-stopped
     env_file: .env
     network_mode: host
     environment:

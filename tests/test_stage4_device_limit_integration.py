@@ -3,6 +3,7 @@ from contextlib import contextmanager
 import threading
 import time
 from unittest.mock import patch
+from types import SimpleNamespace
 from app import xray
 
 from app.device_limit.engine import DeviceLimitEngine
@@ -69,6 +70,7 @@ def test_rest_node_batched_log_payload_distinguishes_two_public_ips():
             "1.1.1.1",
         )
     )
+    source.runtime_handshake = SimpleNamespace(supports_direct_client_ip=True)
 
     collect_payloads(tracker, source, "node:7")
 
@@ -87,6 +89,7 @@ def test_nat_source_is_fail_closed_and_x_forwarded_for_is_not_trusted():
         "from tcp:192.168.13.1:51000 accepted tcp:8.8.8.8:443 "
         "[vless >> direct] email: 42.stage4-user X-Forwarded-For: 1.1.1.1"
     )
+    source.runtime_handshake = SimpleNamespace(supports_direct_client_ip=True)
 
     collect_payloads(tracker, source, "node:7")
 

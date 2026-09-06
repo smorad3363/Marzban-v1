@@ -13,13 +13,20 @@ from app import scheduler, xray
 from app.db import GetDB
 from app.db.models import Admin, NodeUsage, NodeUserUsage, System, User
 from app.utils import money_billing
+from app.utils.bandwidth import bandwidth_store
 from config import (
     DISABLE_RECORDING_NODE_USAGE,
     JOB_RECORD_NODE_USAGES_INTERVAL,
     JOB_RECORD_USER_USAGES_INTERVAL,
+    XRAY_STATS_MAX_WORKERS,
 )
 from xray_api import XRay as XRayAPI
 from xray_api import exc as xray_exc
+
+
+def _worker_count(instance_count: int) -> int:
+    """Keep stats fan-out bounded on small VPSes while retaining parallel I/O."""
+    return max(1, min(int(instance_count or 1), int(XRAY_STATS_MAX_WORKERS)))
 
 
 def safe_execute(db: Session, stmt, params=None):
@@ -55,7 +62,6 @@ def record_user_stats(params: list, node_id: Union[int, None],
     created_at = datetime.fromisoformat(datetime.utcnow().strftime('%Y-%m-%dT%H:00:00'))
 
     with GetDB() as db:
-        # make user usage row if doesn't exist
         select_stmt = select(NodeUserUsage.user_id) \
             .where(and_(NodeUserUsage.node_id == node_id, NodeUserUsage.created_at == created_at))
         existings = [r[0] for r in db.execute(select_stmt).fetchall()]
@@ -76,7 +82,6 @@ def record_user_stats(params: list, node_id: Union[int, None],
             )
             safe_execute(db, stmt, [{'uid': uid} for uid in uids_to_insert])
 
-        # record
         stmt = update(NodeUserUsage) \
             .values(used_traffic=NodeUserUsage.used_traffic + bindparam('value') * consumption_factor) \
             .where(and_(NodeUserUsage.user_id == bindparam('uid'),
@@ -85,15 +90,13 @@ def record_user_stats(params: list, node_id: Union[int, None],
         safe_execute(db, stmt, params)
 
 
-def record_node_stats(params: dict, node_id: Union[int, None]):
+def record_node_stats(params: list[dict], node_id: Union[int, None]):
     if not params:
         return
 
     created_at = datetime.fromisoformat(datetime.utcnow().strftime('%Y-%m-%dT%H:00:00'))
 
     with GetDB() as db:
-
-        # make node usage row if doesn't exist
         select_stmt = select(NodeUsage.node_id). \
             where(and_(NodeUsage.node_id == node_id, NodeUsage.created_at == created_at))
         notfound = db.execute(select_stmt).first() is None
@@ -101,10 +104,10 @@ def record_node_stats(params: dict, node_id: Union[int, None]):
             stmt = insert(NodeUsage).values(created_at=created_at, node_id=node_id, uplink=0, downlink=0)
             safe_execute(db, stmt)
 
-        # record
         stmt = update(NodeUsage). \
             values(uplink=NodeUsage.uplink + bindparam('up'), downlink=NodeUsage.downlink + bindparam('down')). \
-            where(and_(NodeUsage.node_id == node_id, NodeUsage.created_at == created_at))
+            where(and_(NodeUsage.node_id == node_id,
+                        NodeUsage.created_at == created_at))
 
         safe_execute(db, stmt, params)
 
@@ -122,11 +125,16 @@ def get_users_stats(api: XRayAPI):
 
 def get_outbounds_stats(api: XRayAPI):
     try:
-        params = [{"up": stat.value, "down": 0} if stat.link == "uplink" else {"up": 0, "down": stat.value}
-                  for stat in filter(attrgetter('value'), api.get_outbounds_stats(reset=True, timeout=10))]
-        return params
+        return [
+            {"up": stat.value, "down": 0}
+            if stat.link == "uplink"
+            else {"up": 0, "down": stat.value}
+            for stat in filter(attrgetter('value'), api.get_outbounds_stats(reset=True, timeout=10))
+        ]
     except xray_exc.XrayError:
-        return []
+        # None means the sample itself failed. An empty list means a successful
+        # poll with zero traffic; bandwidth health must not confuse the two.
+        return None
 
 
 def aggregate_user_usages(api_params, usage_coefficient):
@@ -138,16 +146,25 @@ def aggregate_user_usages(api_params, usage_coefficient):
     return [{"uid": uid, "value": value} for uid, value in users_usage.items()]
 
 
+def _aggregate_link_bytes(params: list[dict]) -> tuple[int, int]:
+    uplink = 0
+    downlink = 0
+    for param in params:
+        uplink += int(param.get('up') or 0)
+        downlink += int(param.get('down') or 0)
+    return uplink, downlink
+
+
 def record_user_usages():
     api_instances = {None: xray.api}
-    usage_coefficient = {None: 1}  # default usage coefficient for the main api instance
+    usage_coefficient = {None: 1}
 
     for node_id, node in list(xray.nodes.items()):
         if node.connected and node.started:
             api_instances[node_id] = node.api
-            usage_coefficient[node_id] = node.usage_coefficient  # fetch the usage coefficient
+            usage_coefficient[node_id] = node.usage_coefficient
 
-    with ThreadPoolExecutor(max_workers=10) as executor:
+    with ThreadPoolExecutor(max_workers=_worker_count(len(api_instances))) as executor:
         futures = {node_id: executor.submit(get_users_stats, api) for node_id, api in api_instances.items()}
     api_params = {node_id: future.result() for node_id, future in futures.items()}
 
@@ -167,8 +184,6 @@ def record_user_usages():
         if admin_id:
             admin_usage[admin_id] += user_usage["value"]
 
-    # Record user totals, lifetime Admin totals, and monetary usage billing in
-    # one transaction so traffic can never be stored without its matching bill.
     with GetDB() as db:
         stmt = update(User). \
             where(User.id == bindparam('uid')). \
@@ -214,20 +229,25 @@ def record_node_usages():
         if node.connected and node.started:
             api_instances[node_id] = node.api
 
-    with ThreadPoolExecutor(max_workers=10) as executor:
+    with ThreadPoolExecutor(max_workers=_worker_count(len(api_instances))) as executor:
         futures = {node_id: executor.submit(get_outbounds_stats, api) for node_id, api in api_instances.items()}
     api_params = {node_id: future.result() for node_id, future in futures.items()}
 
     total_up = 0
     total_down = 0
+    successful_params: dict[int | None, list[dict]] = {}
     for node_id, params in api_params.items():
-        for param in params:
-            total_up += param['up']
-            total_down += param['down']
+        if params is None:
+            continue
+        successful_params[node_id] = params
+        uplink, downlink = _aggregate_link_bytes(params)
+        total_up += uplink
+        total_down += downlink
+        bandwidth_store.observe(node_id, uplink, downlink)
+
     if not (total_up or total_down):
         return
 
-    # record nodes usage
     with GetDB() as db:
         stmt = update(System).values(
             uplink=System.uplink + total_up,
@@ -238,7 +258,7 @@ def record_node_usages():
     if DISABLE_RECORDING_NODE_USAGE:
         return
 
-    for node_id, params in api_params.items():
+    for node_id, params in successful_params.items():
         record_node_stats(params, node_id)
 
 

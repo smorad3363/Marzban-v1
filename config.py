@@ -9,8 +9,9 @@ if not SQLALCHEMY_DATABASE_URL.lower().startswith("mysql+pymysql://"):
     raise RuntimeError(
         "SQLALCHEMY_DATABASE_URL must use MySQL with the mysql+pymysql:// driver"
     )
-SQLALCHEMY_POOL_SIZE = config("SQLALCHEMY_POOL_SIZE", cast=int, default=10)
-SQLIALCHEMY_MAX_OVERFLOW = config("SQLIALCHEMY_MAX_OVERFLOW", cast=int, default=30)
+SQLALCHEMY_POOL_SIZE = config("SQLALCHEMY_POOL_SIZE", cast=int, default=5)
+SQLIALCHEMY_MAX_OVERFLOW = config("SQLIALCHEMY_MAX_OVERFLOW", cast=int, default=5)
+XRAY_STATS_MAX_WORKERS = max(1, config("XRAY_STATS_MAX_WORKERS", cast=int, default=2))
 
 UVICORN_HOST = config("UVICORN_HOST", default="0.0.0.0")
 UVICORN_PORT = config("UVICORN_PORT", cast=int, default=8000)

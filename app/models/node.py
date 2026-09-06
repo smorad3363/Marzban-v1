@@ -1,7 +1,9 @@
+from datetime import datetime
 from enum import Enum
+from ipaddress import ip_network
 from typing import List, Optional
 
-from pydantic import ConfigDict, BaseModel, Field
+from pydantic import ConfigDict, BaseModel, Field, field_validator, model_validator
 
 
 class NodeStatus(str, Enum):
@@ -9,6 +11,43 @@ class NodeStatus(str, Enum):
     connecting = "connecting"
     error = "error"
     disabled = "disabled"
+
+
+class NodeIPSourceMode(str, Enum):
+    direct = "direct"
+    trusted_xff = "trusted_xff"
+    proxy_protocol = "proxy_protocol"
+
+
+class NodeCDNProvider(str, Enum):
+    cloudflare = "cloudflare"
+    custom = "custom"
+
+
+MAX_TRUSTED_PROXY_CIDRS = 128
+
+
+def _validate_complete_ip_source_policy(
+    mode: NodeIPSourceMode,
+    provider: Optional[NodeCDNProvider],
+    cidrs: Optional[List[str]],
+) -> None:
+    networks = cidrs or []
+    if mode is NodeIPSourceMode.direct:
+        if provider is not None or networks:
+            raise ValueError("direct IP source mode cannot define a CDN provider or trusted proxy CIDRs")
+        return
+    if mode is NodeIPSourceMode.trusted_xff:
+        if provider is None:
+            raise ValueError("trusted_xff requires a CDN provider")
+        if provider is NodeCDNProvider.custom and not networks:
+            raise ValueError("custom trusted_xff requires at least one trusted proxy CIDR")
+        return
+    if mode is NodeIPSourceMode.proxy_protocol:
+        if provider is not None:
+            raise ValueError("proxy_protocol does not accept a CDN provider")
+        if not networks:
+            raise ValueError("proxy_protocol requires at least one trusted proxy CIDR")
 
 
 class NodeSettings(BaseModel):
@@ -23,10 +62,43 @@ class Node(BaseModel):
     api_port: int = 62051
     usage_coefficient: float = Field(gt=0, default=1.0)
     watchdog_enabled: bool = True
+    ip_source_mode: NodeIPSourceMode = NodeIPSourceMode.direct
+    cdn_provider: Optional[NodeCDNProvider] = None
+    trusted_proxy_cidrs: Optional[List[str]] = None
+
+    @field_validator("trusted_proxy_cidrs")
+    @classmethod
+    def canonicalize_trusted_proxy_cidrs(cls, value: Optional[List[str]]) -> Optional[List[str]]:
+        if value is None:
+            return None
+        if len(value) > MAX_TRUSTED_PROXY_CIDRS:
+            raise ValueError(f"at most {MAX_TRUSTED_PROXY_CIDRS} trusted proxy CIDRs are allowed")
+        normalized = []
+        seen = set()
+        for raw in value:
+            candidate = str(raw).strip()
+            if not candidate:
+                continue
+            try:
+                canonical = str(ip_network(candidate, strict=False))
+            except ValueError as exc:
+                raise ValueError(f"invalid trusted proxy CIDR: {candidate}") from exc
+            if canonical not in seen:
+                seen.add(canonical)
+                normalized.append(canonical)
+        return normalized or None
 
 
 class NodeCreate(Node):
     add_as_new_host: bool = True
+
+    @model_validator(mode="after")
+    def validate_ip_source_policy(self):
+        _validate_complete_ip_source_policy(
+            self.ip_source_mode, self.cdn_provider, self.trusted_proxy_cidrs
+        )
+        return self
+
     model_config = ConfigDict(json_schema_extra={
         "example": {
             "name": "DE node",
@@ -47,6 +119,23 @@ class NodeModify(Node):
     status: Optional[NodeStatus] = Field(None, nullable=True)
     usage_coefficient: Optional[float] = Field(None, nullable=True)
     watchdog_enabled: Optional[bool] = Field(None, nullable=True)
+    ip_source_mode: Optional[NodeIPSourceMode] = Field(None, nullable=True)
+    cdn_provider: Optional[NodeCDNProvider] = Field(None, nullable=True)
+    trusted_proxy_cidrs: Optional[List[str]] = Field(None, nullable=True)
+
+    @model_validator(mode="after")
+    def validate_complete_ip_source_update(self):
+        fields = {"ip_source_mode", "cdn_provider", "trusted_proxy_cidrs"}
+        if fields & self.model_fields_set:
+            if not fields.issubset(self.model_fields_set):
+                raise ValueError("ip source policy updates must include mode, provider, and trusted proxy CIDRs together")
+            if self.ip_source_mode is None:
+                raise ValueError("ip_source_mode cannot be null when updating the IP source policy")
+            _validate_complete_ip_source_policy(
+                self.ip_source_mode, self.cdn_provider, self.trusted_proxy_cidrs
+            )
+        return self
+
     model_config = ConfigDict(json_schema_extra={
         "example": {
             "name": "DE node",
@@ -76,6 +165,28 @@ class NodeUsageResponse(BaseModel):
 
 class NodesUsageResponse(BaseModel):
     usages: List[NodeUsageResponse]
+
+
+class NodeBandwidthResponse(BaseModel):
+    node_id: Optional[int] = None
+    node_name: str
+    state: str
+    sampled_at: Optional[datetime] = None
+    sample_age_seconds: Optional[float] = None
+    uplink_bps: float = 0
+    downlink_bps: float = 0
+    total_bps: float = 0
+    peak_5m_uplink_bps: float = 0
+    peak_5m_downlink_bps: float = 0
+
+
+class NodesBandwidthResponse(BaseModel):
+    nodes: List[NodeBandwidthResponse]
+    total_uplink_bps: float = 0
+    total_downlink_bps: float = 0
+    total_bps: float = 0
+    online_nodes: int = 0
+    total_nodes: int = 0
 
 
 class NodeWatchdogSettingsUpdate(BaseModel):

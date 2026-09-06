@@ -6,6 +6,7 @@ import { CoreSettingsModal } from "components/CoreSettingsModal";
 import { DeleteUserModal } from "components/DeleteUserModal";
 import { Filters } from "components/Filters";
 import { HostsDialog } from "components/HostsDialog";
+import { NodeBandwidthPanel } from "components/NodeBandwidthPanel";
 import { NodesDialog } from "components/NodesModal";
 import { NodesUsage } from "components/NodesUsage";
 import { PlanCreateModal } from "components/PlanCreateModal";
@@ -83,6 +84,7 @@ export const Dashboard: FC = () => {
       </HStack>
       </Card>
       <DashboardOverview onCreateAdmin={adminCreate.onOpen} onCreatePlan={planCreate.onOpen} />
+      {isOwner && <NodeBandwidthPanel />}
       <Box as="section" aria-labelledby="user-operations-title">
         <Text color="primary.600" _dark={{ color: "primary.300" }} fontSize="xs" fontWeight="800">کاربران</Text>
         <Text id="user-operations-title" as="h2" mt={1} fontSize="lg" fontWeight="800">مدیریت کاربران</Text>

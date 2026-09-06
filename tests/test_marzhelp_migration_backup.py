@@ -140,11 +140,12 @@ def test_installer_targets_release_image_and_pinned_mysql_image():
     assert 'database_type="mysql"' in installer
     assert "This Marzban build supports MySQL only" in installer
     assert 'marzban_version="latest"' in installer
-    assert 'elif [ "$database_type" == "mysql" ]; then' in installer
-    assert 'image: $(marzban_docker_image "${marzban_version}")' in installer
+    assert 'source_ref=$(marzban_script_ref "$marzban_version")' in installer
+    assert 'github_download -fsSL "$files_url_prefix/docker-compose.yml" -o "$COMPOSE_FILE"' in installer
+    assert 'yq -i ".services.marzban.image = \\"$(marzban_docker_image "${marzban_version}")\\"" "$COMPOSE_FILE"' in installer
     assert 'MYSQL_TARGET_IMAGE="mysql:${MYSQL_TARGET_VERSION}"' in installer
-    assert "image: ${MYSQL_TARGET_IMAGE}" in installer
-    assert "mysql-${MYSQL_TARGET_VERSION}:/var/lib/mysql" in installer
+    assert 'yq -i ".services.mysql.image = \\"${MYSQL_TARGET_IMAGE}\\"" "$COMPOSE_FILE"' in installer
+    assert 'apply_runtime_resource_defaults' in installer
     assert "    image: mysql:8.0\n" not in installer
     assert 'requested_version="latest"' in installer
     assert 'ensure_marzban_image "$marzban_version"' in installer

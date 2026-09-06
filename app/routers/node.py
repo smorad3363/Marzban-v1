@@ -11,11 +11,13 @@ from app.db import Session, crud, get_db
 from app.dependencies import get_dbnode, validate_dates
 from app.models.admin import Admin
 from app.models.node import (
+    NodeBandwidthResponse,
     NodeCreate,
     NodeModify,
     NodeResponse,
     NodeSettings,
     NodeStatus,
+    NodesBandwidthResponse,
     NodesUsageResponse,
     NodeWatchdogSettingsResponse,
     NodeWatchdogSettingsUpdate,
@@ -24,10 +26,24 @@ from app.utils.node_watchdog import send_telegram_message
 from app.models.proxy import ProxyHost
 from app.utils import admin_hierarchy, responses
 from app.utils.audit import AuditLogService, sanitize_audit_value
+from app.utils.bandwidth import bandwidth_store
 
 router = APIRouter(
     tags=["Node"], prefix="/api", responses={401: responses._401, 403: responses._403}
 )
+
+
+def _sync_device_limit_ip_policy(dbnode) -> None:
+    from app.device_limit.engine import engine as device_limit_engine
+
+    mode = getattr(dbnode, "ip_source_mode", "direct") or "direct"
+    device_limit_engine.set_source_ip_trust(f"node:{dbnode.id}", mode == "direct")
+
+
+def _forget_device_limit_ip_policy(node_id: int) -> None:
+    from app.device_limit.engine import engine as device_limit_engine
+
+    device_limit_engine.forget_source_ip_trust(f"node:{node_id}")
 
 
 def add_host_if_needed(new_node: NodeCreate, db: Session):
@@ -141,6 +157,7 @@ def add_node(
             status_code=409, detail=f'Node "{new_node.name}" already exists'
         )
 
+    _sync_device_limit_ip_policy(dbnode)
     bg.add_task(xray.operations.connect_node, node_id=dbnode.id)
     bg.add_task(add_host_if_needed, new_node, db)
 
@@ -245,6 +262,55 @@ def get_nodes(
     return crud.get_nodes(db)
 
 
+@router.get("/nodes/bandwidth", response_model=NodesBandwidthResponse)
+def get_bandwidth(
+    db: Session = Depends(get_db),
+    _: Admin = Depends(Admin.check_sudo_admin),
+):
+    """Return bounded live Xray throughput without polling Xray from the request path."""
+
+    def response_for(node_id, name: str, runtime_online: bool) -> NodeBandwidthResponse:
+        snapshot = bandwidth_store.snapshot(node_id)
+        if not runtime_online:
+            snapshot = {
+                **snapshot,
+                "state": "offline",
+                "uplink_bps": 0.0,
+                "downlink_bps": 0.0,
+            }
+        return NodeBandwidthResponse(
+            node_id=node_id,
+            node_name=name,
+            total_bps=snapshot["uplink_bps"] + snapshot["downlink_bps"],
+            **snapshot,
+        )
+
+    rows: list[NodeBandwidthResponse] = [
+        response_for(None, "Master", bool(getattr(xray.core, "started", False)))
+    ]
+    for dbnode in crud.get_nodes(db):
+        status = getattr(dbnode.status, "value", dbnode.status)
+        rows.append(
+            response_for(
+                dbnode.id,
+                dbnode.name,
+                status == NodeStatus.connected.value,
+            )
+        )
+
+    fresh = [item for item in rows if item.state == "online"]
+    total_uplink = sum(item.uplink_bps for item in fresh)
+    total_downlink = sum(item.downlink_bps for item in fresh)
+    return NodesBandwidthResponse(
+        nodes=rows,
+        total_uplink_bps=total_uplink,
+        total_downlink_bps=total_downlink,
+        total_bps=total_uplink + total_downlink,
+        online_nodes=sum(item.state in ("online", "warming_up") for item in rows),
+        total_nodes=len(rows),
+    )
+
+
 @router.put("/node/{node_id}", response_model=NodeResponse)
 def modify_node(
     request: Request,
@@ -257,6 +323,8 @@ def modify_node(
     """Update a node's details. Only accessible to sudo admins."""
     previous_value = sanitize_audit_value(dbnode)
     updated_node = crud.update_node(db, dbnode, modified_node)
+    _sync_device_limit_ip_policy(updated_node)
+    bandwidth_store.forget(updated_node.id)
     xray.operations.remove_node(updated_node.id)
     if updated_node.status != NodeStatus.disabled:
         bg.add_task(xray.operations.connect_node, node_id=updated_node.id)
@@ -286,6 +354,7 @@ def reconnect_node(
     admin: Admin = Depends(Admin.check_sudo_admin),
 ):
     """Trigger a reconnection for the specified node. Only accessible to sudo admins."""
+    bandwidth_store.forget(dbnode.id)
     bg.add_task(xray.operations.connect_node, node_id=dbnode.id)
     AuditLogService.log(
         db,
@@ -312,6 +381,8 @@ def remove_node(
     target_name = dbnode.name
     previous_value = sanitize_audit_value(dbnode)
     crud.remove_node(db, dbnode)
+    _forget_device_limit_ip_policy(target_id)
+    bandwidth_store.forget(target_id)
     xray.operations.remove_node(target_id)
 
     logger.info(f'Node "{dbnode.name}" deleted')

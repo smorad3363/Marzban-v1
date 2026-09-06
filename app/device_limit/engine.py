@@ -24,6 +24,7 @@ from app.db.models import (
     DeviceLimitSettings,
     DeviceLimitUserState,
     DeviceSlot,
+    Node,
     User,
 )
 from app.device_limit.constants import DeviceEventState, PenaltyAction, PenaltyStatus
@@ -46,6 +47,7 @@ DIAGNOSTIC_COUNTERS = (
     "received_lines",
     "accepted_lines",
     "rejected_runtime_disabled",
+    "rejected_untrusted_ip_source",
     "rejected_not_accepted",
     "rejected_source_parse",
     "rejected_identity_parse",
@@ -90,6 +92,8 @@ class DeviceLimitEngine:
         self._runtime_enabled = False
         self._ip_detection_enabled = True
         self._limited_user_ids: set[int] | None = None
+        self._untrusted_ip_sources: set[str] = set()
+        self._runtime_untrusted_ip_sources: set[str] = set()
         self._last_user_cache_refresh = 0.0
         self._diagnostic_counts = Counter(
             {counter: 0 for counter in DIAGNOSTIC_COUNTERS}
@@ -104,6 +108,7 @@ class DeviceLimitEngine:
         self._configure_event_logger()
         try:
             with GetDB() as db:
+                self._refresh_node_ip_source_policies(db)
                 settings = db.get(DeviceLimitSettings, 1)
                 if settings is not None:
                     self.configure(
@@ -124,6 +129,43 @@ class DeviceLimitEngine:
 
     def stop(self) -> None:
         self._stop.set()
+
+    def set_source_ip_trust(self, source_name: str, trusted: bool) -> None:
+        """Update the in-memory trust decision for one log source."""
+        if not source_name.startswith("node:"):
+            return
+        with self._lock:
+            if trusted:
+                self._untrusted_ip_sources.discard(source_name)
+            else:
+                self._untrusted_ip_sources.add(source_name)
+
+    def forget_source_ip_trust(self, source_name: str) -> None:
+        with self._lock:
+            self._untrusted_ip_sources.discard(source_name)
+
+    def set_runtime_source_ip_trust(self, source_name: str, trusted: bool) -> None:
+        if not source_name.startswith("node:"):
+            return
+        with self._lock:
+            if trusted:
+                self._runtime_untrusted_ip_sources.discard(source_name)
+            else:
+                self._runtime_untrusted_ip_sources.add(source_name)
+
+    def forget_runtime_source_ip_trust(self, source_name: str) -> None:
+        with self._lock:
+            self._runtime_untrusted_ip_sources.discard(source_name)
+
+    def _refresh_node_ip_source_policies(self, db) -> None:
+        rows = db.query(Node.id, Node.ip_source_mode).all()
+        untrusted = {
+            f"node:{node_id}"
+            for node_id, mode in rows
+            if (mode or "direct") != "direct"
+        }
+        with self._lock:
+            self._untrusted_ip_sources = untrusted
 
     def _configure_event_logger(self) -> None:
         event_logger = logging.getLogger("marzban.device_limit.events")
@@ -176,6 +218,38 @@ class DeviceLimitEngine:
 
     def _collect(self, source, source_name: str) -> None:
         generation = (getattr(source, "process", None), getattr(source, "_session_id", None))
+        runtime_handshake = getattr(source, "runtime_handshake", None)
+        if source_name.startswith("node:"):
+            if runtime_handshake is None:
+                self.set_runtime_source_ip_trust(source_name, False)
+            else:
+                self.set_runtime_source_ip_trust(
+                    source_name,
+                    bool(getattr(runtime_handshake, "supports_direct_client_ip", False)),
+                )
+        consume_events = getattr(source, "consume_events", None)
+        if callable(consume_events):
+            def should_stop() -> bool:
+                if self._stop.is_set():
+                    return True
+                if source_name.startswith("node:"):
+                    node_id = int(source_name.split(":", 1)[1])
+                    if xray.nodes.get(node_id) is not source:
+                        return True
+                return generation != (
+                    getattr(source, "process", None),
+                    getattr(source, "_session_id", None),
+                )
+
+            try:
+                consume_events(
+                    "device-limit",
+                    lambda line: self.record_log(line, source_name),
+                    should_stop,
+                )
+            except Exception as exc:
+                logger.debug("Device-limit durable collector %s stopped: %s", source_name, exc)
+            return
         try:
             with source.get_logs() as logs:
                 while not self._stop.wait(0.2):
@@ -204,8 +278,18 @@ class DeviceLimitEngine:
                 if self._limited_user_ids is None
                 else set(self._limited_user_ids)
             )
+            untrusted_ip_source = (
+                source_name in self._untrusted_ip_sources
+                or source_name in self._runtime_untrusted_ip_sources
+            )
         if not runtime_enabled:
             counts["rejected_runtime_disabled"] = len(lines)
+            with self._lock:
+                self._diagnostic_counts.update(counts)
+                self._last_log_seen_at = now
+            return 0
+        if untrusted_ip_source:
+            counts["rejected_untrusted_ip_source"] = len(lines)
             with self._lock:
                 self._diagnostic_counts.update(counts)
                 self._last_log_seen_at = now
@@ -277,6 +361,9 @@ class DeviceLimitEngine:
                 {
                     "runtime_enabled": self._runtime_enabled,
                     "ip_detection_enabled": self._ip_detection_enabled,
+                    "untrusted_ip_sources": sorted(
+                        self._untrusted_ip_sources | self._runtime_untrusted_ip_sources
+                    ),
                     "active_collectors": sorted(
                         key
                         for key, thread in self._collector_threads.items()
@@ -443,6 +530,7 @@ class DeviceLimitEngine:
 
     def evaluate(self) -> None:
         with GetDB() as db:
+            self._refresh_node_ip_source_policies(db)
             settings = db.get(DeviceLimitSettings, 1)
             self.configure(
                 bool(settings and settings.enabled),

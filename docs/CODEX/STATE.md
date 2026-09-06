@@ -7,9 +7,9 @@
 
 ## Current State
 
-- Current branch: `main`
-- Current HEAD: documentation-only V1 completion record commit containing this file
-- Current milestone/checkpoint: V1 source, immutable multi-platform image, `v1.0.0` tag, stable GitHub Release, public installer, fresh-install path, Owner creation, integrity/refusal gates, and mature `v5.2.0` upgrade path are published and verified
+- Current branch: `release/v1.0.2`
+- Current HEAD: V1.0.2 release-prep branch tip; exact source commit is finalized only after clean release-prep CI
+- Current milestone/checkpoint: V1.0.2 Built-in Node Runtime V2, fail-closed Node IP trust, bandwidth/resource telemetry, built-in Node deployment, CLI co-location isolation, and permanent Node deployment CI are implemented; clean feature checkpoint run `34040916354` passed all four jobs before release-prep
 
 ## Completed Checkpoints
 
@@ -113,6 +113,13 @@
 
 - None expected after committing and pushing this documentation-only completion record.
 
+## V1.0.2 Release-Prep Update
+
+- Node Runtime V2 and deployment are complete, including durable event delivery, strict certificate verification, source-integrity checks, and co-located CLI isolation.
+- Permanent checkpoint CI now covers panel compose, Node compose, installer contracts, MySQL 8.0, MySQL 26.7.0, Stage 8-11 evidence, and dashboard production builds.
+- The V1 release publisher, image verifier, and published-installer validator are generalized to the requested release tag and must match `VERSION`.
+- Historical lineage remains exactly `5.2.0 -> v1.0.0`; current release validation upgrades from that historical baseline into the requested V1 release without widening the exception.
+
 ## NEXT EXACT TASK
 
-NONE
+Run the clean V1.0.2 release-prep CI, review `main...release/v1.0.2`, then merge and publish only from the exact verified main commit.

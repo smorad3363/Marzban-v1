@@ -8,7 +8,7 @@ on:
       image_tag:
         description: Exact release tag (no latest)
         required: true
-        default: v1.0.0
+        default: v1.0.2
 permissions:
   contents: read
   packages: write
@@ -27,16 +27,17 @@ jobs:
           RELEASE_TAG: ${{ inputs.image_tag }}
           REVIEWED_COMMIT: ${{ inputs.git_ref }}
         run: |
-          set -eu
+          set -euo pipefail
           echo "$REVIEWED_COMMIT" | grep -Eq '^[0-9a-f]{40}$'
           test "$(git rev-parse HEAD)" = "$REVIEWED_COMMIT"
-          test "$RELEASE_TAG" = "v$(tr -d '[:space:]' < VERSION)"
-          test "$RELEASE_TAG" = v1.0.0
-          grep -Fx '__version__ = "1.0.0"' app/__init__.py
-          grep -Fx 'CLI_RELEASE_VERSION="v1.0.0"' scripts/marzban.sh
+          VERSION_TEXT="$(tr -d '[:space:]' < VERSION)"
+          test "$RELEASE_TAG" = "v${VERSION_TEXT}"
+          grep -Fx "__version__ = \"${VERSION_TEXT}\"" app/__init__.py
+          grep -Fx "CLI_RELEASE_VERSION=\"${RELEASE_TAG}\"" scripts/marzban.sh
+          grep -Fq "ghcr.io/smorad3363/marzban-v1:${RELEASE_TAG}" docker-compose.yml
           test -s app/dashboard/build/index.html
           test -s app/dashboard/build/404.html
-          test -s docs/RELEASE_NOTES_v1.0.0.md
+          test -s "docs/RELEASE_NOTES_${RELEASE_TAG}.md"
           bash -n scripts/marzban.sh
           if git ls-remote --exit-code --tags origin "refs/tags/${RELEASE_TAG}" >/dev/null 2>&1; then
             echo 'Release tag already exists; do not publish another image for it.' >&2

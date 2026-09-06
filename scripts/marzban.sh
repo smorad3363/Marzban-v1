@@ -9,12 +9,21 @@ APP_DIR="$INSTALL_DIR/$APP_NAME"
 DATA_DIR="/var/lib/$APP_NAME"
 COMPOSE_FILE="$APP_DIR/docker-compose.yml"
 ENV_FILE="$APP_DIR/.env"
+NODE_APP_NAME="marzban-node"
+NODE_APP_DIR="$INSTALL_DIR/$NODE_APP_NAME"
+NODE_DATA_DIR="/var/lib/$NODE_APP_NAME"
+NODE_COMPOSE_FILE="$NODE_APP_DIR/docker-compose.yml"
+NODE_ENV_FILE="$NODE_APP_DIR/.env"
+NODE_CLIENT_CERT_FILE="$NODE_DATA_DIR/panel-client.crt"
+NODE_RELEASE_REVISION_FILE="$NODE_APP_DIR/.release-revision"
+NODE_CLI_VERSION_FILE="$NODE_APP_DIR/.cli-version"
+NODE_SCRIPT_PATH="/usr/local/bin/marzban-node"
 LAST_XRAY_CORES=10
 # =============================================================================
 # Fork configuration
 # Override at runtime, e.g. MARZBAN_GITHUB_REPO=another-user/Marzban marzban install
 # =============================================================================
-CLI_RELEASE_VERSION="v1.0.1"
+CLI_RELEASE_VERSION="v1.0.2"
 V1_LINEAGE_SOURCE_VERSION="5.2.0"
 V1_LINEAGE_SOURCE_IMAGE="ghcr.io/smorad3363/marzban-vnext:v5.2.0"
 V1_LINEAGE_TARGET_VERSION="v1.0.0"
@@ -22,6 +31,7 @@ MARZBAN_GITHUB_REPO="${MARZBAN_GITHUB_REPO:-smorad3363/Marzban-v1}"
 MARZBAN_GITHUB_BRANCH="${MARZBAN_GITHUB_BRANCH:-main}"
 MARZBAN_SCRIPTS_PATH="${MARZBAN_SCRIPTS_PATH:-scripts/marzban.sh}"
 MARZBAN_DOCKER_IMAGE="${MARZBAN_DOCKER_IMAGE:-ghcr.io/smorad3363/marzban-v1}"
+MARZBAN_NODE_COMPOSE_PATH="${MARZBAN_NODE_COMPOSE_PATH:-docker-compose.node.yml}"
 MYSQL_TARGET_VERSION="26.7.0"
 MYSQL_TARGET_IMAGE="mysql:${MYSQL_TARGET_VERSION}"
 CLI_VERSION_FILE="$APP_DIR/.cli-version"
@@ -198,6 +208,33 @@ detect_compose() {
     else
         colorized_echo red "docker compose not found"
         exit 1
+    fi
+}
+
+
+apply_runtime_resource_defaults() {
+    [ -f "$COMPOSE_FILE" ] || return 0
+    command -v yq >/dev/null 2>&1 || return 0
+
+    # Existing installations may still have the pre-1.0.2 always-on
+    # phpMyAdmin container. Stop and remove it before assigning the
+    # opt-in tools profile, so an update actually releases its RAM.
+    local phpmyadmin_id
+    phpmyadmin_id=$($COMPOSE -f "$COMPOSE_FILE" -p "$APP_NAME" ps -q phpmyadmin 2>/dev/null || true)
+    if [ -n "$phpmyadmin_id" ]; then
+        $COMPOSE -f "$COMPOSE_FILE" -p "$APP_NAME" stop phpmyadmin >/dev/null 2>&1 || true
+        $COMPOSE -f "$COMPOSE_FILE" -p "$APP_NAME" rm -f phpmyadmin >/dev/null 2>&1 || true
+    fi
+
+    # Keep defaults conservative on 1 vCPU / 1 GB installations but
+    # preserve operator overrides through normal Compose substitution.
+    yq -i '.services.marzban.environment = (.services.marzban.environment // {})' "$COMPOSE_FILE"
+    yq -i '.services.marzban.environment.SQLALCHEMY_POOL_SIZE = "${SQLALCHEMY_POOL_SIZE:-5}"' "$COMPOSE_FILE"
+    yq -i '.services.marzban.environment.SQLIALCHEMY_MAX_OVERFLOW = "${SQLIALCHEMY_MAX_OVERFLOW:-5}"' "$COMPOSE_FILE"
+    sed -i 's/--innodb-buffer-pool-size=256M/--innodb-buffer-pool-size=${MYSQL_INNODB_BUFFER_POOL_SIZE:-128M}/g' "$COMPOSE_FILE"
+    if yq -e '.services.phpmyadmin' "$COMPOSE_FILE" >/dev/null 2>&1; then
+        yq -i '.services.phpmyadmin.profiles = ["tools"]' "$COMPOSE_FILE"
+        yq -i '.services.phpmyadmin.restart = "unless-stopped"' "$COMPOSE_FILE"
     fi
 }
 
@@ -1019,263 +1056,54 @@ update_core_command() {
 install_marzban() {
     local marzban_version=$1
     local database_type=$2
+    local source_ref files_url_prefix
     if [ "$database_type" != "mysql" ]; then
         colorized_echo red "Error: This Marzban build supports MySQL only. Use --database mysql."
         exit 1
     fi
-    # Fetch releases
-    if is_release_version "$marzban_version"; then
-        FILES_URL_PREFIX="https://raw.githubusercontent.com/${MARZBAN_GITHUB_REPO}/${marzban_version}"
-    else
-        FILES_URL_PREFIX="$MARZBAN_FILES_URL_PREFIX"
-    fi
+
+    source_ref=$(marzban_script_ref "$marzban_version")
+    files_url_prefix="https://raw.githubusercontent.com/${MARZBAN_GITHUB_REPO}/${source_ref}"
 
     umask 077
     mkdir -p "$DATA_DIR"
     mkdir -p "$APP_DIR"
 
-    colorized_echo blue "Setting up docker-compose.yml"
-    docker_file_path="$APP_DIR/docker-compose.yml"
+    # Compose is release-owned configuration. Fetch the exact same ref
+    # as the installer so fresh installs cannot drift from the tested
+    # runtime defaults. Only the requested application image is changed.
+    colorized_echo blue "Fetching docker-compose.yml from ${MARZBAN_GITHUB_REPO}@${source_ref}"
+    github_download -fsSL "$files_url_prefix/docker-compose.yml" -o "$COMPOSE_FILE"
+    yq -i ".services.marzban.image = \"$(marzban_docker_image "${marzban_version}")\"" "$COMPOSE_FILE"
+    yq -i ".services.mysql.image = \"${MYSQL_TARGET_IMAGE}\"" "$COMPOSE_FILE"
+    apply_runtime_resource_defaults
+    colorized_echo green "File saved in $COMPOSE_FILE"
 
-    if [ "$database_type" == "mariadb" ]; then
-        # Generate docker-compose.yml with MariaDB content
-        cat > "$docker_file_path" <<EOF
-services:
-  marzban:
-    image: $(marzban_docker_image "${marzban_version}")
-    restart: always
-    env_file: .env
-    network_mode: host
-    volumes:
-      - /var/lib/marzban:/var/lib/marzban
-      - /var/lib/marzban/logs:/var/lib/marzban-node
-      - /opt/marzban/.env:/opt/marzban/.env:ro
-    depends_on:
-      mariadb:
-        condition: service_healthy
+    colorized_echo blue "Fetching .env file"
+    github_download -fsSL "$files_url_prefix/.env.example" -o "$ENV_FILE"
+    sed -i 's/^# \(XRAY_JSON = .*\)$/\1/' "$ENV_FILE"
+    sed -i 's~\(XRAY_JSON = \).*~\1"/var/lib/marzban/xray_config.json"~' "$ENV_FILE"
 
-  mariadb:
-    image: mariadb:lts
-    env_file: .env
-    network_mode: host
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: \${MYSQL_ROOT_PASSWORD}
-      MYSQL_ROOT_HOST: '%'
-      MYSQL_DATABASE: \${MYSQL_DATABASE}
-      MYSQL_USER: \${MYSQL_USER}
-      MYSQL_PASSWORD: \${MYSQL_PASSWORD}
-    command:
-      - --bind-address=127.0.0.1                  # Restricts access to localhost for increased security
-      - --character_set_server=utf8mb4            # Sets UTF-8 character set for full Unicode support
-      - --collation_server=utf8mb4_unicode_ci     # Defines collation for Unicode
-      - --host-cache-size=0                       # Disables host cache to prevent DNS issues
-      - --innodb-open-files=1024                  # Sets the limit for InnoDB open files
-      - --innodb-buffer-pool-size=256M            # Allocates buffer pool size for InnoDB
-      - --binlog_expire_logs_seconds=1209600      # Sets binary log expiration to 14 days (2 weeks)
-      - --innodb-log-file-size=64M                # Sets InnoDB log file size to balance log retention and performance
-      - --innodb-log-files-in-group=2             # Uses two log files to balance recovery and disk I/O
-      - --innodb-doublewrite=0                    # Disables doublewrite buffer (reduces disk I/O; may increase data loss risk)
-      - --general_log=0                           # Disables general query log to reduce disk usage
-      - --slow_query_log=1                        # Enables slow query log for identifying performance issues
-      - --slow_query_log_file=/var/lib/mysql/slow.log # Logs slow queries for troubleshooting
-      - --long_query_time=2                       # Defines slow query threshold as 2 seconds
-    volumes:
-      - /var/lib/marzban/mysql:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
-      start_period: 10s
-      start_interval: 3s
-      interval: 10s
-      timeout: 5s
-      retries: 3
-EOF
-        echo "----------------------------"
-        colorized_echo red "Using MariaDB as database"
-        echo "----------------------------"
-        colorized_echo green "File generated at $APP_DIR/docker-compose.yml"
+    prompt_for_marzban_password
+    MYSQL_ROOT_PASSWORD=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 20)
 
-        # Modify .env file
-        colorized_echo blue "Fetching .env file"
-        github_download -fsSL "$FILES_URL_PREFIX/.env.example" -o "$APP_DIR/.env"
-
-        # Comment out the SQLite line
-        sed -i 's~^\(SQLALCHEMY_DATABASE_URL = "sqlite:////var/lib/marzban/db.sqlite3"\)~#\1~' "$APP_DIR/.env"
-
-
-        # Add the MySQL connection string
-        #echo -e '\nSQLALCHEMY_DATABASE_URL = "mysql+pymysql://marzban:password@127.0.0.1:3306/marzban"' >> "$APP_DIR/.env"
-
-        sed -i 's/^# \(XRAY_JSON = .*\)$/\1/' "$APP_DIR/.env"
-        sed -i 's~\(XRAY_JSON = \).*~\1"/var/lib/marzban/xray_config.json"~' "$APP_DIR/.env"
-
-
-        prompt_for_marzban_password
-        MYSQL_ROOT_PASSWORD=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 20)
-
-        echo "" >> "$ENV_FILE"
-        echo "" >> "$ENV_FILE"
-        echo "# Database configuration" >> "$ENV_FILE"
-        echo "MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD" >> "$ENV_FILE"
-        echo "MYSQL_DATABASE=marzban" >> "$ENV_FILE"
-        echo "MYSQL_USER=marzban" >> "$ENV_FILE"
-        echo "MYSQL_PASSWORD=$MYSQL_PASSWORD" >> "$ENV_FILE"
-
-        SQLALCHEMY_DATABASE_URL="mysql+pymysql://marzban:${MYSQL_PASSWORD}@127.0.0.1:3306/marzban"
-
-        echo "" >> "$ENV_FILE"
-        echo "# SQLAlchemy Database URL" >> "$ENV_FILE"
-        echo "SQLALCHEMY_DATABASE_URL=\"$SQLALCHEMY_DATABASE_URL\"" >> "$ENV_FILE"
-
-        colorized_echo green "File saved in $APP_DIR/.env"
-
-    elif [ "$database_type" == "mysql" ]; then
-        # Generate docker-compose.yml with MySQL content
-        cat > "$docker_file_path" <<EOF
-services:
-  marzban:
-    image: $(marzban_docker_image "${marzban_version}")
-    restart: always
-    env_file: .env
-    network_mode: host
-    volumes:
-      - /var/lib/marzban:/var/lib/marzban
-      - /var/lib/marzban/logs:/var/lib/marzban-node
-      - /opt/marzban/.env:/opt/marzban/.env:ro
-    depends_on:
-      mysql:
-        condition: service_healthy
-    # Read-only configuration is included in Owner backup archives.
-    # The application already receives the same values through env_file.
-    healthcheck:
-      test: ["CMD", "python", "/code/scripts/healthcheck.py", "--mode", "internal", "--timeout", "2"]
-      start_period: 10s
-      interval: 10s
-      timeout: 3s
-      retries: 3
-
-  mysql:
-    image: ${MYSQL_TARGET_IMAGE}
-    env_file: .env
-    network_mode: host
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: \${MYSQL_ROOT_PASSWORD}
-      MYSQL_ROOT_HOST: '%'
-      MYSQL_DATABASE: \${MYSQL_DATABASE}
-      MYSQL_USER: \${MYSQL_USER}
-      MYSQL_PASSWORD: \${MYSQL_PASSWORD}
-    command:
-      - --mysqlx=OFF                             # Disables MySQL X Plugin to save resources if X Protocol isn't used
-      - --bind-address=127.0.0.1                  # Restricts access to localhost for increased security
-      - --character_set_server=utf8mb4            # Sets UTF-8 character set for full Unicode support
-      - --collation_server=utf8mb4_unicode_ci     # Defines collation for Unicode
-      - --host-cache-size=0                       # Disables host cache to prevent DNS issues
-      - --innodb-open-files=1024                  # Sets the limit for InnoDB open files
-      - --innodb-buffer-pool-size=256M            # Allocates buffer pool size for InnoDB
-      - --general_log=0                           # Disables general query log for lower disk usage
-      - --slow_query_log=1                        # Enables slow query log for performance analysis
-      - --slow_query_log_file=/var/lib/mysql/slow.log # Logs slow queries for troubleshooting
-      - --long_query_time=2                       # Defines slow query threshold as 2 seconds
-      - --skip-log-bin                            # Disables binary logging entirely
-    volumes:
-      - /var/lib/marzban/mysql-${MYSQL_TARGET_VERSION}:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "marzban", "--password=\${MYSQL_PASSWORD}"]
-      start_period: 5s
-      interval: 5s
-      timeout: 5s
-      retries: 55
-
-  phpmyadmin:
-    image: phpmyadmin/phpmyadmin:latest
-    restart: always
-    env_file: .env
-    network_mode: host
-    environment:
-      PMA_HOST: 127.0.0.1
-      APACHE_PORT: 8010
-      UPLOAD_LIMIT: 1024M
-    depends_on:
-      - mysql
-
-EOF
-        echo "----------------------------"
-        colorized_echo red "Using MySQL as database"
-        echo "----------------------------"
-        colorized_echo green "File generated at $APP_DIR/docker-compose.yml"
-
-        # Modify .env file
-        colorized_echo blue "Fetching .env file"
-        github_download -fsSL "$FILES_URL_PREFIX/.env.example" -o "$APP_DIR/.env"
-
-        # Comment out the SQLite line
-        sed -i 's~^\(SQLALCHEMY_DATABASE_URL = "sqlite:////var/lib/marzban/db.sqlite3"\)~#\1~' "$APP_DIR/.env"
-
-
-        # Add the MySQL connection string
-        #echo -e '\nSQLALCHEMY_DATABASE_URL = "mysql+pymysql://marzban:password@127.0.0.1:3306/marzban"' >> "$APP_DIR/.env"
-
-        sed -i 's/^# \(XRAY_JSON = .*\)$/\1/' "$APP_DIR/.env"
-        sed -i 's~\(XRAY_JSON = \).*~\1"/var/lib/marzban/xray_config.json"~' "$APP_DIR/.env"
-
-
-        prompt_for_marzban_password
-        MYSQL_ROOT_PASSWORD=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 20)
-
-        echo "" >> "$ENV_FILE"
-        echo "" >> "$ENV_FILE"
-        echo "# Database configuration" >> "$ENV_FILE"
-        echo "MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD" >> "$ENV_FILE"
-        echo "MYSQL_DATABASE=marzban" >> "$ENV_FILE"
-        echo "MYSQL_USER=marzban" >> "$ENV_FILE"
-        echo "MYSQL_PASSWORD=$MYSQL_PASSWORD" >> "$ENV_FILE"
-
-        SQLALCHEMY_DATABASE_URL="mysql+pymysql://marzban:${MYSQL_PASSWORD}@127.0.0.1:3306/marzban"
-
-        echo "" >> "$ENV_FILE"
-        echo "# SQLAlchemy Database URL" >> "$ENV_FILE"
-        echo "SQLALCHEMY_DATABASE_URL=\"$SQLALCHEMY_DATABASE_URL\"" >> "$ENV_FILE"
-
-        colorized_echo green "File saved in $APP_DIR/.env"
-
-    else
-        echo "----------------------------"
-        colorized_echo red "Using SQLite as database"
-        echo "----------------------------"
-        colorized_echo blue "Fetching compose file"
-        curl -sL "$FILES_URL_PREFIX/docker-compose.yml" -o "$docker_file_path"
-
-        # Install requested version
-        if [ "$marzban_version" == "latest" ]; then
-            yq -i ".services.marzban.image = \"$(marzban_docker_image latest)\"" "$docker_file_path"
-        else
-            yq -i ".services.marzban.image = \"$(marzban_docker_image \"${marzban_version}\")\"" "$docker_file_path"
-        fi
-        echo "Installing $marzban_version version"
-        colorized_echo green "File saved in $APP_DIR/docker-compose.yml"
-
-
-        colorized_echo blue "Fetching .env file"
-        github_download -fsSL "$FILES_URL_PREFIX/.env.example" -o "$APP_DIR/.env"
-
-        sed -i 's/^# \(XRAY_JSON = .*\)$/\1/' "$APP_DIR/.env"
-        sed -i 's/^# \(SQLALCHEMY_DATABASE_URL = .*\)$/\1/' "$APP_DIR/.env"
-        sed -i 's~\(XRAY_JSON = \).*~\1"/var/lib/marzban/xray_config.json"~' "$APP_DIR/.env"
-        sed -i 's~\(SQLALCHEMY_DATABASE_URL = \).*~\1"sqlite:////var/lib/marzban/db.sqlite3"~' "$APP_DIR/.env"
-
-
-
-
-
-
-        colorized_echo green "File saved in $APP_DIR/.env"
-    fi
+    {
+        echo ""
+        echo "# Database configuration"
+        echo "MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD"
+        echo "MYSQL_DATABASE=marzban"
+        echo "MYSQL_USER=marzban"
+        echo "MYSQL_PASSWORD=$MYSQL_PASSWORD"
+        echo ""
+        echo "# SQLAlchemy Database URL"
+        echo "SQLALCHEMY_DATABASE_URL=\"mysql+pymysql://marzban:${MYSQL_PASSWORD}@127.0.0.1:3306/marzban\""
+    } >> "$ENV_FILE"
+    chmod 600 "$ENV_FILE"
+    colorized_echo green "File saved in $ENV_FILE"
 
     colorized_echo blue "Fetching xray config file"
-    github_download -fsSL "$FILES_URL_PREFIX/xray_config.json" -o "$DATA_DIR/xray_config.json"
+    github_download -fsSL "$files_url_prefix/xray_config.json" -o "$DATA_DIR/xray_config.json"
     colorized_echo green "File saved in $DATA_DIR/xray_config.json"
-
     colorized_echo green "Marzban's files downloaded successfully"
 }
 
@@ -1495,6 +1323,7 @@ install_command() {
         if check_version_exists "$marzban_version"; then
             ensure_marzban_image "$marzban_version" || exit 1
             install_marzban "$marzban_version" "$database_type"
+            apply_runtime_resource_defaults
             record_marzban_release_revision || exit 1
             echo "Installing $marzban_version version"
         else
@@ -2040,6 +1869,10 @@ update_command() {
         fi
     fi
 
+    # Normalize resource defaults only after the pre-update recovery snapshot
+    # and any required logical MySQL migration have completed.
+    apply_runtime_resource_defaults
+
     local previous_image
     local target_image
     previous_image=$(yq -r '.services.marzban.image' "$COMPOSE_FILE")
@@ -2089,7 +1922,7 @@ update_marzban_script() {
 update_marzban() {
     local requested_version="$1"
     ensure_marzban_image "$requested_version" || return 1
-    $COMPOSE -f $COMPOSE_FILE -p "$APP_NAME" pull mysql phpmyadmin
+    $COMPOSE -f $COMPOSE_FILE -p "$APP_NAME" pull mysql
 }
 
 mysql_upgrade_required_for_update() {
@@ -2299,6 +2132,397 @@ mysql_upgrade_command() {
     colorized_echo green "Original data preserved: ${source_data}"
 }
 
+node_is_installed() {
+    [ -f "$NODE_COMPOSE_FILE" ] && [ -f "$NODE_ENV_FILE" ]
+}
+
+node_prepare_host() {
+    detect_os
+    if ! command -v jq >/dev/null 2>&1; then
+        install_package jq
+    fi
+    if ! command -v curl >/dev/null 2>&1; then
+        install_package curl
+    fi
+    if ! command -v tar >/dev/null 2>&1; then
+        install_package tar
+    fi
+    if ! command -v openssl >/dev/null 2>&1; then
+        install_package openssl
+    fi
+    if ! command -v docker >/dev/null 2>&1; then
+        install_docker
+    fi
+    detect_compose
+}
+
+node_validate_port() {
+    local value="$1"
+    local name="$2"
+    if [[ ! "$value" =~ ^[0-9]+$ ]] || [ "$value" -lt 1 ] || [ "$value" -gt 65535 ]; then
+        colorized_echo red "$name must be an integer between 1 and 65535."
+        return 1
+    fi
+}
+
+node_validate_event_rows() {
+    local value="$1"
+    if [[ ! "$value" =~ ^[0-9]+$ ]] || [ "$value" -lt 1000 ] || [ "$value" -gt 1000000 ]; then
+        colorized_echo red "--event-max-rows must be between 1000 and 1000000."
+        return 1
+    fi
+}
+
+node_validate_client_cert() {
+    local path="$1"
+    if [ -z "$path" ] || [ ! -f "$path" ]; then
+        colorized_echo red "A readable panel certificate is required with --client-cert-file."
+        return 1
+    fi
+    if ! openssl x509 -in "$path" -noout >/dev/null 2>&1; then
+        colorized_echo red "--client-cert-file is not a valid X.509 PEM certificate."
+        return 1
+    fi
+}
+
+node_source_ref_path() {
+    local requested_version="$1"
+    local ref
+    ref=$(marzban_script_ref "$requested_version")
+    if [ "$ref" = "$MARZBAN_GITHUB_BRANCH" ]; then
+        printf 'refs/heads/%s\n' "$ref"
+    else
+        printf '%s\n' "$ref"
+    fi
+}
+
+install_node_script_from_repo() {
+    local requested_version="$1"
+    local ref_path script_url temp_script
+    ref_path=$(node_source_ref_path "$requested_version")
+    script_url="https://raw.githubusercontent.com/${MARZBAN_GITHUB_REPO}/${ref_path}/${MARZBAN_SCRIPTS_PATH}"
+    temp_script=$(mktemp)
+    if ! github_download -fsSL "$script_url" -o "$temp_script"; then
+        rm -f "$temp_script"
+        colorized_echo red "Could not download Node CLI from ${requested_version}."
+        return 1
+    fi
+    if ! bash -n "$temp_script"; then
+        rm -f "$temp_script"
+        colorized_echo red "Downloaded Node CLI failed syntax validation."
+        return 1
+    fi
+    if ! install -m 755 "$temp_script" "$NODE_SCRIPT_PATH"; then
+        rm -f "$temp_script"
+        return 1
+    fi
+    # A co-located panel owns /usr/local/bin/marzban and its CLI metadata.
+    # Never replace either from a Node install/update. Node-only hosts keep the
+    # familiar `marzban node ...` command in addition to `marzban-node node ...`.
+    if ! is_marzban_installed; then
+        if ! install -m 755 "$temp_script" /usr/local/bin/marzban; then
+            rm -f "$temp_script"
+            return 1
+        fi
+    fi
+    rm -f "$temp_script"
+    printf '%s\n' "$requested_version" > "$NODE_CLI_VERSION_FILE"
+    chmod 644 "$NODE_CLI_VERSION_FILE"
+    colorized_echo green "Node CLI installed at $NODE_SCRIPT_PATH"
+}
+
+node_source_supports_runtime() {
+    local requested_version="$1"
+    local ref_path
+    ref_path=$(node_source_ref_path "$requested_version")
+    github_download -fsSL \
+        "https://raw.githubusercontent.com/${MARZBAN_GITHUB_REPO}/${ref_path}/node_runtime/main.py" \
+        -o /dev/null 2>/dev/null
+}
+
+node_fetch_compose() {
+    local requested_version="$1"
+    local ref_path
+    ref_path=$(node_source_ref_path "$requested_version")
+    install -d -m 700 "$NODE_APP_DIR"
+    github_download -fsSL \
+        "https://raw.githubusercontent.com/${MARZBAN_GITHUB_REPO}/${ref_path}/${MARZBAN_NODE_COMPOSE_PATH}" \
+        -o "$NODE_COMPOSE_FILE"
+    chmod 600 "$NODE_COMPOSE_FILE"
+}
+
+node_env_value() {
+    local key="$1"
+    local fallback="$2"
+    local value=""
+    if [ -f "$NODE_ENV_FILE" ]; then
+        value=$(sed -n "s/^${key}=//p" "$NODE_ENV_FILE" | tail -n 1)
+    fi
+    printf '%s\n' "${value:-$fallback}"
+}
+
+node_write_env() {
+    local requested_version="$1"
+    local service_port="$2"
+    local api_port="$3"
+    local event_max_rows="$4"
+    umask 077
+    cat > "$NODE_ENV_FILE" <<EOF
+MARZBAN_NODE_IMAGE=$(marzban_docker_image "$requested_version")
+NODE_RUNTIME_VERSION=$requested_version
+NODE_RUNTIME_PORT=$service_port
+XRAY_API_PORT=$api_port
+EVENT_MAX_ROWS=$event_max_rows
+EOF
+    chmod 600 "$NODE_ENV_FILE"
+}
+
+node_compose() {
+    $COMPOSE --env-file "$NODE_ENV_FILE" -f "$NODE_COMPOSE_FILE" -p "$NODE_APP_NAME" "$@"
+}
+
+node_service_container() {
+    node_compose ps -q marzban-node 2>/dev/null
+}
+
+node_wait_for_health() {
+    local container_id=""
+    local state=""
+    local health=""
+    local attempt
+    for attempt in $(seq 1 45); do
+        container_id=$(node_service_container)
+        if [ -n "$container_id" ]; then
+            state=$(docker inspect --format '{{.State.Status}}' "$container_id" 2>/dev/null || true)
+            health=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "$container_id" 2>/dev/null || true)
+            if [ "$state" = "running" ] && { [ "$health" = "healthy" ] || [ -z "$health" ]; }; then
+                return 0
+            fi
+            if [ "$state" = "exited" ] || [ "$state" = "dead" ]; then
+                break
+            fi
+        fi
+        sleep 2
+    done
+    colorized_echo red "Marzban Node did not become healthy."
+    if [ -n "$container_id" ]; then
+        docker logs --tail 200 "$container_id" || true
+    fi
+    return 1
+}
+
+verify_node_version_integrity() {
+    local expected_version="$1"
+    local expected_image expected_revision container_id running_image image_id running_revision
+    expected_image=$(marzban_docker_image "$expected_version")
+    expected_revision=$(release_commit_for_version "$expected_version")
+    [[ "$expected_revision" =~ ^[0-9a-f]{40}$ ]] || {
+        colorized_echo red "Node integrity failed: release source revision is unavailable."
+        return 1
+    }
+    container_id=$(node_service_container)
+    [ -n "$container_id" ] || { colorized_echo red "Node integrity failed: container is not running."; return 1; }
+    running_image=$(docker inspect --format '{{.Config.Image}}' "$container_id" 2>/dev/null || true)
+    [ "$running_image" = "$expected_image" ] || {
+        colorized_echo red "Node integrity failed: running image is ${running_image:-unavailable}, expected ${expected_image}."
+        return 1
+    }
+    image_id=$(docker inspect --format '{{.Image}}' "$container_id" 2>/dev/null || true)
+    running_revision=$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "$image_id" 2>/dev/null || true)
+    [ "$running_revision" = "$expected_revision" ] || {
+        colorized_echo red "Node integrity failed: source revision is ${running_revision:-unavailable}, expected ${expected_revision}."
+        return 1
+    }
+    printf '%s\n' "$expected_revision" > "$NODE_RELEASE_REVISION_FILE"
+    printf '%s\n' "$expected_version" > "$NODE_CLI_VERSION_FILE"
+    chmod 644 "$NODE_RELEASE_REVISION_FILE" "$NODE_CLI_VERSION_FILE"
+    colorized_echo green "Node image integrity verified for ${expected_version}."
+}
+
+node_install_command() {
+    local requested_version="latest"
+    local client_cert_file=""
+    local service_port="62050"
+    local api_port="62051"
+    local event_max_rows="20000"
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+            -v|--version)
+                [ -n "${2:-}" ] || { colorized_echo red "--version requires a value."; return 1; }
+                requested_version="$2"; shift 2 ;;
+            --client-cert-file)
+                [ -n "${2:-}" ] || { colorized_echo red "--client-cert-file requires a path."; return 1; }
+                client_cert_file="$2"; shift 2 ;;
+            --service-port)
+                [ -n "${2:-}" ] || { colorized_echo red "--service-port requires a value."; return 1; }
+                service_port="$2"; shift 2 ;;
+            --api-port)
+                [ -n "${2:-}" ] || { colorized_echo red "--api-port requires a value."; return 1; }
+                api_port="$2"; shift 2 ;;
+            --event-max-rows)
+                [ -n "${2:-}" ] || { colorized_echo red "--event-max-rows requires a value."; return 1; }
+                event_max_rows="$2"; shift 2 ;;
+            -h|--help)
+                echo "Usage: marzban node install [--version VERSION] --client-cert-file PATH [--service-port PORT] [--api-port PORT] [--event-max-rows ROWS]"
+                return 0 ;;
+            *)
+                colorized_echo red "Unknown node install option: $1"
+                return 1 ;;
+        esac
+    done
+
+    check_running_as_root
+    if node_is_installed; then
+        colorized_echo red "Marzban Node already exists at $NODE_APP_DIR. Use: marzban node update"
+        return 1
+    fi
+    node_prepare_host
+    requested_version=$(resolve_requested_version "$requested_version") || return 1
+    if ! is_release_version "$requested_version"; then
+        colorized_echo red "Built-in Node deployment accepts published release versions only."
+        return 1
+    fi
+    node_validate_port "$service_port" "--service-port" || return 1
+    node_validate_port "$api_port" "--api-port" || return 1
+    [ "$service_port" != "$api_port" ] || { colorized_echo red "Node service and Xray API ports must differ."; return 1; }
+    node_validate_event_rows "$event_max_rows" || return 1
+    node_validate_client_cert "$client_cert_file" || return 1
+    if ! node_source_supports_runtime "$requested_version"; then
+        colorized_echo red "Release ${requested_version} does not contain the built-in Node Runtime V2."
+        return 1
+    fi
+    ensure_marzban_image "$requested_version" || return 1
+
+    install -d -m 700 "$NODE_APP_DIR" "$NODE_DATA_DIR"
+    install -m 600 "$client_cert_file" "$NODE_CLIENT_CERT_FILE"
+    node_fetch_compose "$requested_version" || return 1
+    node_write_env "$requested_version" "$service_port" "$api_port" "$event_max_rows"
+    node_compose up -d --remove-orphans || return 1
+    node_wait_for_health || return 1
+    verify_node_version_integrity "$requested_version" || return 1
+    install_node_script_from_repo "$requested_version" || return 1
+    colorized_echo green "Marzban Node ${requested_version} is installed and healthy."
+    colorized_echo blue "Node data: $NODE_DATA_DIR"
+    colorized_echo blue "Panel certificate: $NODE_CLIENT_CERT_FILE"
+}
+
+node_update_command() {
+    local requested_version="latest"
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+            -v|--version)
+                [ -n "${2:-}" ] || { colorized_echo red "--version requires a value."; return 1; }
+                requested_version="$2"; shift 2 ;;
+            -h|--help)
+                echo "Usage: marzban node update [--version VERSION]"
+                return 0 ;;
+            *)
+                colorized_echo red "Unknown node update option: $1"
+                return 1 ;;
+        esac
+    done
+
+    check_running_as_root
+    node_is_installed || { colorized_echo red "Marzban Node is not installed."; return 1; }
+    node_prepare_host
+    requested_version=$(resolve_requested_version "$requested_version") || return 1
+    if ! is_release_version "$requested_version"; then
+        colorized_echo red "Built-in Node deployment accepts published release versions only."
+        return 1
+    fi
+    if ! node_source_supports_runtime "$requested_version"; then
+        colorized_echo red "Release ${requested_version} does not contain the built-in Node Runtime V2."
+        return 1
+    fi
+    [ -f "$NODE_CLIENT_CERT_FILE" ] || { colorized_echo red "Stored panel certificate is missing: $NODE_CLIENT_CERT_FILE"; return 1; }
+    node_validate_client_cert "$NODE_CLIENT_CERT_FILE" || return 1
+    ensure_marzban_image "$requested_version" || return 1
+
+    local service_port api_port event_max_rows backup_dir
+    service_port=$(node_env_value NODE_RUNTIME_PORT 62050)
+    api_port=$(node_env_value XRAY_API_PORT 62051)
+    event_max_rows=$(node_env_value EVENT_MAX_ROWS 20000)
+    node_validate_port "$service_port" "NODE_RUNTIME_PORT" || return 1
+    node_validate_port "$api_port" "XRAY_API_PORT" || return 1
+    node_validate_event_rows "$event_max_rows" || return 1
+    backup_dir="$NODE_APP_DIR/update-backup-$(date +%Y%m%d%H%M%S)"
+    install -d -m 700 "$backup_dir"
+    cp "$NODE_COMPOSE_FILE" "$backup_dir/docker-compose.yml"
+    cp "$NODE_ENV_FILE" "$backup_dir/.env"
+    chmod 600 "$backup_dir/.env" "$backup_dir/docker-compose.yml"
+
+    node_fetch_compose "$requested_version" || return 1
+    node_write_env "$requested_version" "$service_port" "$api_port" "$event_max_rows"
+    if ! node_compose up -d --remove-orphans || ! node_wait_for_health || ! verify_node_version_integrity "$requested_version"; then
+        colorized_echo red "Node update failed. Previous configuration is preserved at $backup_dir."
+        return 1
+    fi
+    install_node_script_from_repo "$requested_version" || return 1
+    colorized_echo green "Marzban Node updated successfully to ${requested_version}."
+}
+
+node_status_command() {
+    check_running_as_root
+    node_is_installed || { colorized_echo red "Marzban Node is not installed."; return 1; }
+    detect_compose
+    local container_id state health image version revision
+    container_id=$(node_service_container)
+    if [ -z "$container_id" ]; then
+        colorized_echo red "Marzban Node is down."
+        return 1
+    fi
+    state=$(docker inspect --format '{{.State.Status}}' "$container_id" 2>/dev/null || true)
+    health=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "$container_id" 2>/dev/null || true)
+    image=$(docker inspect --format '{{.Config.Image}}' "$container_id" 2>/dev/null || true)
+    version=$(node_env_value NODE_RUNTIME_VERSION unknown)
+    revision=$(cat "$NODE_RELEASE_REVISION_FILE" 2>/dev/null || true)
+    echo "Status: ${state:-unknown}"
+    echo "Health: ${health:-unavailable}"
+    echo "Runtime version: ${version}"
+    echo "Image: ${image:-unavailable}"
+    echo "Source revision: ${revision:-unavailable}"
+}
+
+node_logs_command() {
+    local follow="true"
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+            -n|--no-follow) follow="false"; shift ;;
+            -h|--help)
+                echo "Usage: marzban node logs [--no-follow]"
+                return 0 ;;
+            *) colorized_echo red "Unknown node logs option: $1"; return 1 ;;
+        esac
+    done
+    check_running_as_root
+    node_is_installed || { colorized_echo red "Marzban Node is not installed."; return 1; }
+    detect_compose
+    if [ "$follow" = "true" ]; then
+        node_compose logs -f marzban-node
+    else
+        node_compose logs marzban-node
+    fi
+}
+
+node_command() {
+    local action="${1:-help}"
+    [ "$#" -gt 0 ] && shift || true
+    case "$action" in
+        install) node_install_command "$@" ;;
+        update) node_update_command "$@" ;;
+        status) node_status_command "$@" ;;
+        logs) node_logs_command "$@" ;;
+        help|-h|--help)
+            echo "Usage: marzban node <install|update|status|logs> [options]"
+            ;;
+        *)
+            colorized_echo red "Unknown node command: $action"
+            echo "Usage: marzban node <install|update|status|logs> [options]"
+            return 1
+            ;;
+    esac
+}
+
 rollback_command() {
     if [ "$#" -ne 1 ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
         colorized_echo red "Usage: marzban rollback <version>"
@@ -2371,6 +2595,7 @@ usage() {
     colorized_echo yellow "  rollback        $(tput sgr0)– Roll back to an exact version"
     colorized_echo yellow "  version         $(tput sgr0)– Show CLI, runtime, image, and digest integrity"
     colorized_echo yellow "  mysql-upgrade   $(tput sgr0)– Safely migrate MySQL to ${MYSQL_TARGET_IMAGE}"
+    colorized_echo yellow "  node            $(tput sgr0)– Install, update, inspect, or read logs from built-in Node Runtime V2"
     colorized_echo yellow "  uninstall       $(tput sgr0)– Uninstall Marzban"
     colorized_echo yellow "  install-script  $(tput sgr0)– Install Marzban script"
     colorized_echo yellow "  backup          $(tput sgr0)– Manual backup launch"
@@ -2421,6 +2646,8 @@ case "$1" in
         shift; rollback_command "$@";;
     mysql-upgrade)
         shift; mysql_upgrade_command "$@";;
+    node)
+        shift; node_command "$@";;
     uninstall)
         shift; uninstall_command "$@";;
     install-script)

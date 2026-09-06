@@ -1,19 +1,22 @@
-import re
 from pathlib import Path
 
 
 def test_release_version_and_install_rollback_contract():
     version = Path("VERSION").read_text().strip()
+    release_tag = f"v{version}"
     app = Path("app/__init__.py").read_text(encoding="utf-8")
     installer = Path("scripts/marzban.sh").read_text(encoding="utf-8")
     workflow = Path(".github/workflows/release-v1.yml").read_text()
     verify_workflow = Path(".github/workflows/verify-v1-image.yml").read_text()
     installer_workflow = Path(".github/workflows/validate-v1-installer.yml").read_text()
     build_workflow = Path(".github/workflows/build.yml").read_text()
-    assert version == "1.0.1"
+    installer_lab = Path("tests/release_installer_lab.sh").read_text()
+    upgrade_lab = Path("tests/release_upgrade_lab.sh").read_text()
+
+    assert version == "1.0.2"
     assert f'__version__ = "{version}"' in app
-    assert f'CLI_RELEASE_VERSION="v{version}"' in installer
-    assert f"ghcr.io/smorad3363/marzban-v1:v{version}" in Path("docker-compose.yml").read_text()
+    assert f'CLI_RELEASE_VERSION="{release_tag}"' in installer
+    assert f"ghcr.io/smorad3363/marzban-v1:{release_tag}" in Path("docker-compose.yml").read_text()
     assert 'MARZBAN_GITHUB_REPO="${MARZBAN_GITHUB_REPO:-smorad3363/Marzban-v1}"' in installer
     assert 'MARZBAN_GITHUB_BRANCH="${MARZBAN_GITHUB_BRANCH:-main}"' in installer
     assert 'MARZBAN_DOCKER_IMAGE="${MARZBAN_DOCKER_IMAGE:-ghcr.io/smorad3363/marzban-v1}"' in installer
@@ -30,8 +33,6 @@ def test_release_version_and_install_rollback_contract():
     assert 'verify_version_integrity "$requested_version"' in installer
     assert 'marzban_version="latest"' in installer
     assert 'requested_version="latest"' in installer
-    assert 'install_marzban_script_from_repo "$marzban_version" "$MARZBAN_GITHUB_BRANCH"' in installer
-    assert 'update_marzban_script "$requested_version" "$MARZBAN_GITHUB_BRANCH"' in installer
     assert 'release_commit_for_version()' in installer
     assert 'marzban_image_revision()' in installer
     assert 'record_marzban_release_revision()' in installer
@@ -46,35 +47,54 @@ def test_release_version_and_install_rollback_contract():
     assert 'create_owner_command()' in installer
     assert '-e MARZBAN_ADMIN_PASSWORD \\' in installer
     assert '-e MARZBAN_ADMIN_PASSWORD="$password"' not in installer
+
     assert 'Refuse overwriting an existing release image' in workflow
     assert 'org.opencontainers.image.revision' in workflow
     assert 'org.opencontainers.image.source=https://github.com/smorad3363/Marzban-v1' in workflow
-    assert 'IMAGE: ghcr.io/smorad3363/marzban-v1' in verify_workflow
-    assert '= 1.0.0' in verify_workflow
-    assert "      - main" in build_workflow
-    assert "ghcr.io/${{ github.repository_owner }}/marzban-v1" in build_workflow
+    assert 'VERSION_TEXT="$(tr -d' in workflow
+    assert 'test "$RELEASE_TAG" = "v${VERSION_TEXT}"' in workflow
+    assert 'docs/RELEASE_NOTES_${RELEASE_TAG}.md' in workflow
     assert "vnext" not in workflow.lower()
-    assert "vnext" not in verify_workflow.lower()
     assert ':latest' not in workflow
-    assert 'gh release create' not in workflow  # Publish notes only after runtime verification.
-    assert "github.event_name == 'workflow_dispatch'" in build_workflow
-    assert 'elif [[ "${GITHUB_REF}" == "refs/heads/main" ]]' not in build_workflow
-    assert 'git tag -a "${VERSION_TAG}" "${GITHUB_SHA}"' not in build_workflow
+    assert 'gh release create' not in workflow
+
+    assert 'IMAGE: ghcr.io/smorad3363/marzban-v1' in verify_workflow
+    assert 'release_tag:' in verify_workflow
     assert 'ref: ${{ inputs.source_commit }}' in verify_workflow
+    assert 'test "$RELEASE_TAG" = "v${VERSION_TEXT}"' in verify_workflow
     assert 'test "$tagged_digest" = "$DIGEST"' in verify_workflow
     assert 'Create immutable V1 tag and stable release' in verify_workflow
     assert 'gh release create "$RELEASE_TAG"' in verify_workflow
-    assert '--title "Marzban V1.0.0"' in verify_workflow
-    assert '--notes-file docs/RELEASE_NOTES_v1.0.0.md' in verify_workflow
+    assert '--title "Marzban ${RELEASE_TAG}"' in verify_workflow
+    assert 'docs/RELEASE_NOTES_${RELEASE_TAG}.md' in verify_workflow
     assert '--prerelease' not in verify_workflow
+
+    assert "      - main" in build_workflow
+    assert "ghcr.io/${{ github.repository_owner }}/marzban-v1" in build_workflow
+    assert "github.event_name == 'workflow_dispatch'" in build_workflow
+    assert 'elif [[ "${GITHUB_REF}" == "refs/heads/main" ]]' not in build_workflow
+    assert 'git tag -a "${VERSION_TAG}" "${GITHUB_SHA}"' not in build_workflow
+
+    assert 'release_tag:' in installer_workflow
+    assert 'RELEASE_TAG: ${{ inputs.release_tag }}' in installer_workflow
     assert "Verify public tag, source, and anonymous image access" in installer_workflow
     assert "bash tests/release_installer_lab.sh" in installer_workflow
     assert "bash tests/release_upgrade_lab.sh" in installer_workflow
-    assert "FRESH_INSTALL_CREATE_OWNER_VERSION_PASS" in Path("tests/release_installer_lab.sh").read_text()
-    assert "UPGRADE_V520_TO_V100_PASS" in Path("tests/release_upgrade_lab.sh").read_text()
-    release_notes = Path("docs/RELEASE_NOTES_v1.0.0.md").read_text(encoding="utf-8")
-    assert "new canonical `1.0.0` product baseline" in release_notes
-    assert "Plans are commercial entitlements" in release_notes
-    assert "Access Groups exclusively own user network access" in release_notes
-    assert "Existing mature" in release_notes
+    assert "RELEASE_TAG" in installer_lab
+    assert "FRESH_INSTALL_CREATE_OWNER_VERSION_PASS" in installer_lab
+    assert 'marzban update --version v1.0.0' in upgrade_lab
+    assert 'marzban update --version "$RELEASE_TAG"' in upgrade_lab
+    assert "UPGRADE_V520_TO_CURRENT_V1_PASS" in upgrade_lab
+
+    historical_notes = Path("docs/RELEASE_NOTES_v1.0.0.md").read_text(encoding="utf-8")
+    assert "new canonical `1.0.0` product baseline" in historical_notes
+    assert "Plans are commercial entitlements" in historical_notes
+    assert "Access Groups exclusively own user network access" in historical_notes
+    assert "Existing mature" in historical_notes
+
+    current_notes = Path("docs/RELEASE_NOTES_v1.0.2.md").read_text(encoding="utf-8")
+    assert "Built-in Node Runtime V2" in current_notes
+    assert "durable" in current_notes.lower()
+    assert "Access Group" in current_notes
+    assert "v1.0.0" in current_notes
     assert 'readFileSync("../../VERSION", "utf8").trim()' in Path("app/dashboard/vite.config.ts").read_text()

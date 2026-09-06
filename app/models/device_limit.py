@@ -69,9 +69,11 @@ class DeviceLimitDiagnosticsResponse(BaseModel):
     runtime_enabled: bool
     ip_detection_enabled: bool
     active_collectors: list[str]
+    untrusted_ip_sources: list[str]
     received_lines: int
     accepted_lines: int
     rejected_runtime_disabled: int
+    rejected_untrusted_ip_source: int
     rejected_not_accepted: int
     rejected_source_parse: int
     rejected_identity_parse: int

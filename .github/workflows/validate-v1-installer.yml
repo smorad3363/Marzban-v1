@@ -9,6 +9,10 @@ on:
       source_commit:
         description: Exact immutable V1 source commit
         required: true
+      release_tag:
+        description: Exact V1 release tag
+        required: true
+        default: v1.0.2
 
 permissions:
   contents: read
@@ -20,16 +24,23 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_commit }}
+          fetch-depth: 0
       - name: Verify public tag, source, and anonymous image access
         env:
           DIGEST: ${{ inputs.digest }}
           IMAGE: ghcr.io/smorad3363/marzban-v1
           SOURCE_COMMIT: ${{ inputs.source_commit }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
           set -euo pipefail
           [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
           [[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
-          tag_commit="$(git ls-remote origin 'refs/tags/v1.0.0^{}' | awk '{print $1}')"
+          VERSION_TEXT="$(tr -d '[:space:]' < VERSION)"
+          test "$RELEASE_TAG" = "v${VERSION_TEXT}"
+          test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
+          tag_commit="$(git ls-remote origin "refs/tags/${RELEASE_TAG}^{}" | awk '{print $1}')"
           test "$tag_commit" = "$SOURCE_COMMIT"
           registry_token="$(curl -fsSL 'https://ghcr.io/token?scope=repository%3Asmorad3363%2Fmarzban-v1%3Apull&service=ghcr.io' | jq -r .token)"
           test -n "$registry_token"
@@ -37,7 +48,7 @@ jobs:
           curl -fsSI \
             -H "Authorization: Bearer $registry_token" \
             -H 'Accept: application/vnd.oci.image.index.v1+json' \
-            "https://ghcr.io/v2/smorad3363/marzban-v1/manifests/v1.0.0" > "$headers"
+            "https://ghcr.io/v2/smorad3363/marzban-v1/manifests/${RELEASE_TAG}" > "$headers"
           grep -Fiq "docker-content-digest: $DIGEST" "$headers"
           docker pull --platform linux/amd64 "$IMAGE@$DIGEST"
           test "$(docker image inspect "$IMAGE@$DIGEST" --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')" = "$SOURCE_COMMIT"
@@ -46,9 +57,10 @@ jobs:
           RELEASE_DISPOSABLE_LAB: "1"
           RELEASE_IMAGE_DIGEST: ${{ inputs.digest }}
           RELEASE_SOURCE_COMMIT: ${{ inputs.source_commit }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
           set -euo pipefail
-          sudo --preserve-env=RELEASE_DISPOSABLE_LAB,RELEASE_IMAGE_DIGEST,RELEASE_SOURCE_COMMIT \
+          sudo --preserve-env=RELEASE_DISPOSABLE_LAB,RELEASE_IMAGE_DIGEST,RELEASE_SOURCE_COMMIT,RELEASE_TAG \
             bash tests/release_installer_lab.sh
-          sudo --preserve-env=RELEASE_DISPOSABLE_LAB \
+          sudo --preserve-env=RELEASE_DISPOSABLE_LAB,RELEASE_TAG \
             bash tests/release_upgrade_lab.sh

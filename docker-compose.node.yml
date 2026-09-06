@@ -1,0 +1,28 @@
+services:
+  marzban-node:
+    image: ${MARZBAN_NODE_IMAGE:?MARZBAN_NODE_IMAGE is required}
+    restart: unless-stopped
+    network_mode: host
+    command: ["python", "-m", "node_runtime.main"]
+    environment:
+      NODE_RUNTIME_VERSION: ${NODE_RUNTIME_VERSION:?NODE_RUNTIME_VERSION is required}
+      NODE_RUNTIME_PORT: ${NODE_RUNTIME_PORT:-62050}
+      XRAY_API_PORT: ${XRAY_API_PORT:-62051}
+      EVENT_MAX_ROWS: ${EVENT_MAX_ROWS:-20000}
+      SSL_CLIENT_CERT_FILE: /var/lib/marzban-node/panel-client.crt
+      SSL_CERT_FILE: /var/lib/marzban-node/ssl_cert.pem
+      SSL_KEY_FILE: /var/lib/marzban-node/ssl_key.pem
+      EVENT_DB_PATH: /var/lib/marzban-node/events.sqlite3
+    volumes:
+      - /var/lib/marzban-node:/var/lib/marzban-node
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import os,socket; s=socket.create_connection(("127.0.0.1", int(os.getenv("NODE_RUNTIME_PORT", "62050"))), 2); s.close()
+      start_period: 5s
+      interval: 10s
+      timeout: 3s
+      retries: 6

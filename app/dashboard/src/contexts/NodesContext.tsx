@@ -25,6 +25,9 @@ export const NodeSchema = z.object({
   add_as_new_host: z.boolean().optional(),
   usage_coefficient: z.number().or(z.string().transform((v) => parseFloat(v))),
   watchdog_enabled: z.boolean().optional(),
+  ip_source_mode: z.enum(["direct", "trusted_xff", "proxy_protocol"]).default("direct"),
+  cdn_provider: z.enum(["cloudflare", "custom"]).nullable().optional(),
+  trusted_proxy_cidrs: z.array(z.string()).nullable().optional(),
 });
 
 export type NodeType = z.infer<typeof NodeSchema>;
@@ -37,6 +40,9 @@ export const getNodeDefaultValues = (): NodeType => ({
   xray_version: "",
   usage_coefficient: 1,
   watchdog_enabled: true,
+  ip_source_mode: "direct",
+  cdn_provider: null,
+  trusted_proxy_cidrs: [],
 });
 
 export type NodeWatchdogSettings = {
