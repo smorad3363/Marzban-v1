@@ -11,6 +11,10 @@ permissions:
 jobs:
   focused:
     runs-on: ubuntu-latest
+    env:
+      SQLALCHEMY_DATABASE_URL: mysql+pymysql://marzban:test@127.0.0.1:3306/marzban_test
+      TEST_MYSQL_DATABASE_URL: mysql+pymysql://marzban:test@127.0.0.1:3306/marzban_test
+      XRAY_JSON: ./xray_config.json
     steps:
       - uses: actions/checkout@v4
         with:
