@@ -11,11 +11,13 @@ from app.db import Session, crud, get_db
 from app.dependencies import get_dbnode, validate_dates
 from app.models.admin import Admin
 from app.models.node import (
+    NodeBandwidthResponse,
     NodeCreate,
     NodeModify,
     NodeResponse,
     NodeSettings,
     NodeStatus,
+    NodesBandwidthResponse,
     NodesUsageResponse,
     NodeWatchdogSettingsResponse,
     NodeWatchdogSettingsUpdate,
@@ -24,6 +26,7 @@ from app.utils.node_watchdog import send_telegram_message
 from app.models.proxy import ProxyHost
 from app.utils import admin_hierarchy, responses
 from app.utils.audit import AuditLogService, sanitize_audit_value
+from app.utils.bandwidth import bandwidth_store
 
 router = APIRouter(
     tags=["Node"], prefix="/api", responses={401: responses._401, 403: responses._403}
@@ -243,6 +246,55 @@ def get_nodes(
 ):
     """Retrieve a list of all nodes. Accessible only to sudo admins."""
     return crud.get_nodes(db)
+
+
+@router.get("/nodes/bandwidth", response_model=NodesBandwidthResponse)
+def get_bandwidth(
+    db: Session = Depends(get_db),
+    _: Admin = Depends(Admin.check_sudo_admin),
+):
+    """Return bounded live Xray throughput without polling Xray from the request path."""
+
+    def response_for(node_id, name: str, runtime_online: bool) -> NodeBandwidthResponse:
+        snapshot = bandwidth_store.snapshot(node_id)
+        if not runtime_online:
+            snapshot = {
+                **snapshot,
+                "state": "offline",
+                "uplink_bps": 0.0,
+                "downlink_bps": 0.0,
+            }
+        return NodeBandwidthResponse(
+            node_id=node_id,
+            node_name=name,
+            total_bps=snapshot["uplink_bps"] + snapshot["downlink_bps"],
+            **snapshot,
+        )
+
+    rows: list[NodeBandwidthResponse] = [
+        response_for(None, "Master", bool(getattr(xray.core, "started", False)))
+    ]
+    for dbnode in crud.get_nodes(db):
+        status = getattr(dbnode.status, "value", dbnode.status)
+        rows.append(
+            response_for(
+                dbnode.id,
+                dbnode.name,
+                status == NodeStatus.connected.value,
+            )
+        )
+
+    fresh = [item for item in rows if item.state == "online"]
+    total_uplink = sum(item.uplink_bps for item in fresh)
+    total_downlink = sum(item.downlink_bps for item in fresh)
+    return NodesBandwidthResponse(
+        nodes=rows,
+        total_uplink_bps=total_uplink,
+        total_downlink_bps=total_downlink,
+        total_bps=total_uplink + total_downlink,
+        online_nodes=sum(item.state in ("online", "warming_up") for item in rows),
+        total_nodes=len(rows),
+    )
 
 
 @router.put("/node/{node_id}", response_model=NodeResponse)
