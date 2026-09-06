@@ -1,0 +1,116 @@
+name: Users table independent review
+
+on:
+  push:
+    branches:
+      - hotfix/users-table-no-horizontal-scroll
+
+permissions:
+  contents: read
+
+jobs:
+  independent-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout hotfix with history
+        uses: actions/checkout@v4
+        with:
+          ref: hotfix/users-table-no-horizontal-scroll
+          fetch-depth: 0
+
+      - name: Review scope and user-action invariants
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git fetch origin main --depth=1
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess
+
+          changed = set(subprocess.check_output(
+              ['git', 'diff', '--name-only', 'origin/main...HEAD'], text=True
+          ).splitlines())
+          allowed_exact = {
+              '.github/workflows/_hotfix_users_table_review.yml',
+              'app/dashboard/src/components/UsersTablePro.tsx',
+              'app/dashboard/scripts/test-admin-ux.cjs',
+              'app/dashboard/build/index.html',
+          }
+          unexpected = sorted(
+              p for p in changed
+              if p not in allowed_exact and not p.startswith('app/dashboard/build/statics/')
+          )
+          if unexpected:
+              raise SystemExit(f'unexpected hotfix scope: {unexpected}')
+
+          forbidden_prefixes = ('app/', '.github/workflows/build.yml', 'VERSION', 'docker-compose.yml', 'scripts/')
+          for p in changed:
+              if p in {'app/dashboard/src/components/UsersTablePro.tsx', 'app/dashboard/scripts/test-admin-ux.cjs', 'app/dashboard/build/index.html'}:
+                  continue
+              if p.startswith('app/dashboard/build/statics/') or p == '.github/workflows/_hotfix_users_table_review.yml':
+                  continue
+              if p.startswith(forbidden_prefixes):
+                  raise SystemExit(f'forbidden non-UI change: {p}')
+
+          source = Path('app/dashboard/src/components/UsersTablePro.tsx').read_text()
+          required_layout = [
+              'overflowX="hidden"',
+              'tableLayout: "fixed"',
+              'flexWrap="wrap"',
+              'w="18%" textAlign="end">عملیات',
+          ]
+          for token in required_layout:
+              assert token in source, token
+          assert 'minW="1680px"' not in source
+
+          required_actions = [
+              'copySubscription(user)',
+              'setQRCode(user.links)',
+              'navigate(`/audit-logs/?search=${encodeURIComponent(user.username)}`)',
+              'renewalModal.onOpen()',
+              'onEditingUser(user)',
+              'toggleStatus(user)',
+              'resetUsage(user)',
+              'revoke(user)',
+              'onDeletingUser(user)',
+          ]
+          for token in required_actions:
+              assert token in source, token
+
+          contract = Path('app/dashboard/scripts/test-admin-ux.cjs').read_text()
+          for token in [
+              'tableLayout: "fixed"',
+              'minW="1680px"',
+              'overflowX="hidden"',
+              'flexWrap="wrap"',
+          ]:
+              assert token in contract, token
+
+          for forbidden in ['VERSION', 'scripts/marzban.sh', 'docker-compose.yml', '.github/workflows/build.yml']:
+              assert forbidden not in changed, forbidden
+          print('independent users table review: PASS')
+          PY
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: app/dashboard/package-lock.json
+
+      - name: Install dashboard dependencies
+        working-directory: app/dashboard
+        run: npm ci
+
+      - name: Run admin UX contract
+        working-directory: app/dashboard
+        run: npm run test:admin-ux
+
+      - name: Verify production build parity
+        working-directory: app/dashboard
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          rm -rf /tmp/users-table-hotfix-build
+          VITE_BASE_API=/api/ npm run build -- --outDir /tmp/users-table-hotfix-build --assetsDir statics
+          diff -qr build /tmp/users-table-hotfix-build
