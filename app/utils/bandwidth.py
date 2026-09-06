@@ -100,10 +100,11 @@ class BandwidthStore:
             }
 
         if not history:
+            age = max(0.0, current - last_poll)
             return {
-                "state": "warming_up",
+                "state": "stale" if age > stale_after else "warming_up",
                 "sampled_at": datetime.utcfromtimestamp(last_poll),
-                "sample_age_seconds": max(0.0, current - last_poll),
+                "sample_age_seconds": age,
                 "uplink_bps": 0.0,
                 "downlink_bps": 0.0,
                 "peak_5m_uplink_bps": 0.0,
