@@ -155,7 +155,16 @@ class ReSTXRayNode:
         return self._api
 
     def _pin_server_certificate(self):
-        self._node_cert = ssl.get_server_certificate((self.address, self.port))
+        context = ssl.create_default_context()
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_NONE
+        context.load_cert_chain(certfile=self._certfile.name, keyfile=self._keyfile.name)
+        with socket.create_connection((self.address, self.port), timeout=3) as raw_socket:
+            with context.wrap_socket(raw_socket, server_hostname=self.address) as tls_socket:
+                certificate_der = tls_socket.getpeercert(binary_form=True)
+        if not certificate_der:
+            raise ssl.SSLError("Node did not present a server certificate")
+        self._node_cert = ssl.DER_cert_to_PEM_cert(certificate_der)
         self._node_certfile = string_to_temp_file(self._node_cert)
         self.session.verify = self._node_certfile.name
 
@@ -318,19 +327,55 @@ class V2ReSTXRayNode(ReSTXRayNode):
             raise ConnectionError("Node no longer satisfies the v2 runtime handshake")
         return super().connect()
 
+    def _event_batch(self, consumer_id: str, after_id: int, limit: int = 100):
+        data = self.make_request(
+            "/v2/events",
+            timeout=5,
+            consumer_id=consumer_id,
+            after_id=after_id,
+            limit=limit,
+        )
+        return parse_event_batch(data, after_id)
+
+    def _ack_event_batch(self, consumer_id: str, event_id: int) -> None:
+        self.make_request(
+            "/v2/events/ack",
+            timeout=3,
+            consumer_id=consumer_id,
+            event_id=event_id,
+        )
+
+    def consume_events(self, consumer_id: str, callback, should_stop) -> None:
+        """Consume durable V2 events and ACK only after successful callbacks."""
+        cursor = 0
+        while not should_stop():
+            if not self._session_id:
+                time.sleep(0.2)
+                continue
+            try:
+                events, highest_seen = self._event_batch(consumer_id, cursor)
+            except NodeAPIError:
+                time.sleep(1)
+                continue
+            for event in events:
+                if event.event_type != "xray.log":
+                    continue
+                line = event.payload.get("line")
+                if isinstance(line, str) and line:
+                    callback(line)
+            if highest_seen > cursor:
+                self._ack_event_batch(consumer_id, highest_seen)
+                cursor = highest_seen
+            if not events:
+                time.sleep(0.2)
+
     def _bg_fetch_logs(self):
         while self._logs_queues:
             if not self._session_id:
                 time.sleep(0.2)
                 continue
             try:
-                data = self.make_request(
-                    "/v2/events",
-                    timeout=5,
-                    after_id=self._last_event_id,
-                    limit=100,
-                )
-                events, highest_seen = parse_event_batch(data, self._last_event_id)
+                events, highest_seen = self._event_batch("panel-logs", self._last_event_id)
                 for event in events:
                     if event.event_type != "xray.log":
                         continue
@@ -340,11 +385,7 @@ class V2ReSTXRayNode(ReSTXRayNode):
                     for buf in list(self._logs_queues):
                         buf.append(line)
                 if highest_seen > self._last_event_id:
-                    self.make_request(
-                        "/v2/events/ack",
-                        timeout=3,
-                        event_id=highest_seen,
-                    )
+                    self._ack_event_batch("panel-logs", highest_seen)
                     self._last_event_id = highest_seen
                 if not events:
                     time.sleep(0.2)

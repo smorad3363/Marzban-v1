@@ -93,6 +93,7 @@ def parse_event_batch(value: Any, after_event_id: int) -> tuple[list[RuntimeEven
     events: list[RuntimeEvent] = []
     highest_seen = max(0, int(after_event_id))
     previous_wire_id = 0
+    seen_ids: set[int] = set()
     for raw_event in raw_events:
         item = _require_mapping(raw_event, "event")
         event_id = item.get("id")
@@ -105,8 +106,9 @@ def parse_event_batch(value: Any, after_event_id: int) -> tuple[list[RuntimeEven
             raise RuntimeProtocolError("event ids must be monotonic")
         previous_wire_id = event_id
         highest_seen = max(highest_seen, event_id)
-        if event_id <= after_event_id:
+        if event_id <= after_event_id or event_id in seen_ids:
             continue
+        seen_ids.add(event_id)
         if not isinstance(event_type, str) or not event_type or len(event_type) > 96:
             raise RuntimeProtocolError("event type must be a non-empty string")
         if created_at is not None and not isinstance(created_at, str):

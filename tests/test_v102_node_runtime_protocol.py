@@ -56,7 +56,8 @@ def test_event_batch_is_monotonic_bounded_and_deduplicates_replay_cursor():
         {"id": 6, "type": "xray.log", "payload": {"line": "retry"}},
         {"id": 7, "type": "runtime.health", "payload": {"ok": True}},
     ]}, after_event_id=5)
-    assert [event.event_id for event in events] == [6, 6, 7]
+    assert [event.event_id for event in events] == [6, 7]
+    assert events[0].payload["line"] == "new"
     assert highest == 7
     with pytest.raises(RuntimeProtocolError):
         parse_event_batch({"events": [
@@ -71,4 +72,5 @@ def test_node_factory_prefers_explicit_v2_before_legacy_detection():
     legacy_probe = source.index("s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)")
     assert v2_probe < legacy_probe
     assert '"/v2/events/ack"' in source
-    assert "parse_event_batch(data, self._last_event_id)" in source
+    assert 'self._event_batch("panel-logs", self._last_event_id)' in source
+    assert "parse_event_batch(data, after_id)" in source
