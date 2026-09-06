@@ -39,14 +39,14 @@ entries = {
     "nodes.trustedProxyCidrsHint": "فقط IPهای واسطی که واقعاً تحت کنترل شما یا ارائه‌دهنده معتبر هستند وارد کنید؛ هر خط یک CIDR.",
     "nodes.ipSourceRuntimePending": "این سیاست اکنون ذخیره می‌شود، اما تا فعال‌شدن Node Runtime امن V1.0.2 به هدرهای واسط برای اعمال محدودیت دستگاه اعتماد نمی‌شود.",
 }
-if not base_locale.endswith("\n}"):
+if not base_locale.endswith("\n}\n"):
     raise SystemExit("unexpected fa.json ending")
 locale_lines = [
     f"  {json.dumps(key, ensure_ascii=False)}: {json.dumps(value, ensure_ascii=False)}"
     for key, value in entries.items()
 ]
 locale_path.write_text(
-    base_locale[:-2] + ",\n" + ",\n".join(locale_lines) + "\n}\n",
+    base_locale[:-3] + ",\n" + ",\n".join(locale_lines) + "\n}\n",
     encoding="utf-8",
 )
 
