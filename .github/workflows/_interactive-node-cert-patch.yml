@@ -6,6 +6,7 @@ on:
       - hotfix/v1.0.3-interactive-node-cert
     paths:
       - scripts/_patch_interactive_node_cert.py
+      - scripts/_patch_interactive_node_cert_v2.py
       - .github/workflows/_interactive-node-cert-patch.yml
 
 permissions:
@@ -24,7 +25,7 @@ jobs:
       - name: Install focused test dependencies
         run: python -m pip install --disable-pip-version-check pytest PyYAML
       - name: Apply context-checked patch
-        run: python scripts/_patch_interactive_node_cert.py
+        run: python scripts/_patch_interactive_node_cert_v2.py
       - name: Shell syntax
         run: bash -n scripts/marzban.sh
       - name: Focused Node installer tests
