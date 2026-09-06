@@ -48,7 +48,7 @@ jobs:
         run: |
           set -euo pipefail
           git diff --check
-          mapfile -t changed < <(git diff --name-only | sort)
+          mapfile -t changed < <({ git diff --name-only; git ls-files --others --exclude-standard; } | sort -u)
           expected=(README-fa.md README.md VERSION app/__init__.py docker-compose.yml docs/RELEASE_NOTES_v1.0.3.md scripts/marzban.sh tests/test_installer_v1_contract.sh tests/test_release_contract.py)
           mapfile -t expected_sorted < <(printf '%s\n' "${expected[@]}" | sort)
           test "${changed[*]}" = "${expected_sorted[*]}"
