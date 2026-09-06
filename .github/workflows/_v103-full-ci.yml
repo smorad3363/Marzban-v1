@@ -1,0 +1,150 @@
+name: Temporary v1.0.3 Full Gate
+
+on:
+  push:
+    branches:
+      - hotfix/v1.0.3-interactive-node-cert
+    paths:
+      - .github/workflows/_v103-full-ci.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v1.0.3-hotfix-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: backend (${{ matrix.mysql-image }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mysql-image:
+          - mysql:8.0
+          - mysql:26.7.0
+    services:
+      mysql:
+        image: ${{ matrix.mysql-image }}
+        env:
+          MYSQL_ROOT_PASSWORD: root-test-password
+          MYSQL_DATABASE: marzban_test
+          MYSQL_USER: marzban
+          MYSQL_PASSWORD: marzban-test-password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u marzban --password=marzban-test-password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+    env:
+      SQLALCHEMY_DATABASE_URL: mysql+pymysql://marzban:marzban-test-password@127.0.0.1:3306/marzban_test
+      TEST_MYSQL_DATABASE_URL: mysql+pymysql://marzban:marzban-test-password@127.0.0.1:3306/marzban_test
+      XRAY_JSON: ./xray_config.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install -r requirements.txt pytest httpx
+      - name: Backend regression suite
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m pytest -q --tb=short --disable-warnings \
+            --ignore=tests/test_mysql_device_limit_migration.py \
+            --ignore=tests/test_mysql_admin_hierarchy_migration.py \
+            --ignore=tests/test_mysql_stage8_bulk_jobs.py \
+            --ignore=tests/test_mysql_stage9_dashboard.py \
+            --ignore=tests/test_mysql_stage10_pagination.py \
+            --ignore=tests/test_mysql_stage11_operations.py \
+            --deselect=tests/test_stage5_restricted_creation_namespace.py::test_seat_raw_endpoint_is_denied_even_if_creation_mode_is_free_form \
+            --deselect='tests/test_stage5_restricted_creation_namespace.py::test_restricted_raw_endpoint_creates_from_simple_fields[USED_TRAFFIC]' \
+            --deselect='tests/test_stage5_restricted_creation_namespace.py::test_restricted_raw_endpoint_creates_from_simple_fields[ALLOCATED_TRAFFIC]'
+      - name: Verify MySQL migrations and partial-DDL recovery
+        run: >-
+          python -m pytest -q
+          tests/test_mysql_device_limit_migration.py
+          tests/test_mysql_admin_hierarchy_migration.py
+      - name: Verify Stage 8-11 isolated MySQL evidence
+        if: ${{ matrix.mysql-image == 'mysql:8.0' }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mysql_container="$(docker ps --filter publish=3306 --format '{{.ID}}' | head -1)"
+          test -n "${mysql_container}"
+          run_isolated_test() {
+            local stage="$1"
+            local test_file="$2"
+            local database="stage${stage}_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}_test"
+            local database_url="mysql+pymysql://root:root-test-password@127.0.0.1:3306/${database}"
+            docker exec -e MYSQL_PWD=root-test-password "${mysql_container}" mysql --user=root --execute "CREATE DATABASE \`${database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+            SQLALCHEMY_DATABASE_URL="${database_url}" TEST_MYSQL_DATABASE_URL="${database_url}" python -m pytest -q "${test_file}"
+          }
+          run_isolated_test 8 tests/test_mysql_stage8_bulk_jobs.py
+          run_isolated_test 9 tests/test_mysql_stage9_dashboard.py
+          run_isolated_test 10 tests/test_mysql_stage10_pagination.py
+          run_isolated_test 11 tests/test_mysql_stage11_operations.py
+
+  dashboard:
+    name: dashboard build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: app/dashboard/package-lock.json
+      - working-directory: app/dashboard
+        run: npm ci
+      - working-directory: app/dashboard
+        run: npm run build
+
+  packaging:
+    name: installer, panel compose and node contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install pytest PyYAML
+      - name: Installer syntax and contracts
+        run: |
+          bash -n scripts/marzban.sh
+          bash tests/test_installer_v1_contract.sh
+          python -m pytest -q tests/test_v102_node_deployment.py tests/test_release_contract.py
+      - name: Panel compose renders with low-memory defaults
+        env:
+          MYSQL_ROOT_PASSWORD: root-test-password
+          MYSQL_DATABASE: marzban
+          MYSQL_USER: marzban
+          MYSQL_PASSWORD: marzban-test-password
+        run: |
+          : > .env
+          docker compose -f docker-compose.yml config > /tmp/compose.yml
+          grep -F -- '--innodb-buffer-pool-size=128M' /tmp/compose.yml
+          grep -F 'SQLALCHEMY_POOL_SIZE: "5"' /tmp/compose.yml
+          if docker compose -f docker-compose.yml config --services | grep -qx phpmyadmin; then
+            echo 'phpMyAdmin must not be part of the default service profile' >&2
+            exit 1
+          fi
+          docker compose -f docker-compose.yml --profile tools config --services | grep -qx phpmyadmin
+      - name: Built-in Node compose is isolated and renderable
+        env:
+          MARZBAN_NODE_IMAGE: ghcr.io/smorad3363/marzban-v1:v1.0.3
+          NODE_RUNTIME_VERSION: v1.0.3
+        run: |
+          docker compose -f docker-compose.node.yml config > /tmp/node-compose.yml
+          test "$(docker compose -f docker-compose.node.yml config --services)" = "marzban-node"
+          grep -F 'node_runtime.main' docker-compose.node.yml
+          grep -F 'SSL_CLIENT_CERT_FILE: /var/lib/marzban-node/panel-client.crt' /tmp/node-compose.yml
+          if grep -Eiq 'mysql|sqlalchemy' /tmp/node-compose.yml; then
+            echo 'Node compose unexpectedly contains database configuration' >&2
+            exit 1
+          fi
