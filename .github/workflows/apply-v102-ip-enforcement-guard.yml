@@ -10,6 +10,10 @@ on:
 permissions:
   contents: write
 
+env:
+  SQLALCHEMY_DATABASE_URL: mysql+pymysql://localhost/marzban_test
+  XRAY_JSON: ./xray_config.json
+
 jobs:
   patch:
     runs-on: ubuntu-latest
@@ -40,3 +44,5 @@ jobs:
           git diff --cached --check
           git commit -m "feat: fail closed for untrusted node IP sources"
           git push origin HEAD:release/v1.0.2
+
+# trigger: env-fix-1
