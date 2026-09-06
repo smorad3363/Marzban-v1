@@ -117,7 +117,7 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: python -m pip install pytest
+      - run: python -m pip install pytest PyYAML
       - name: Installer syntax and contracts
         run: |
           bash -n scripts/marzban.sh
