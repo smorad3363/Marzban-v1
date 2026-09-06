@@ -23,82 +23,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          python - <<'PY'
-          from pathlib import Path
-
-          def replace_exact(path: str, old: str, new: str):
-              p = Path(path)
-              text = p.read_text(encoding="utf-8")
-              if old not in text:
-                  raise SystemExit(f"expected text not found in {path}: {old!r}")
-              p.write_text(text.replace(old, new), encoding="utf-8")
-
-          # Focused UI build fixes discovered by the TypeScript gate.
-          replace_exact(
-              "app/dashboard/src/pages/Admins.tsx",
-              'export { AdminsPage as Admins } from "./admins/AdminsPage";\nexport { default } from "./admins/AdminsPage";\n',
-              'export { AdminsPage as Admins } from "./admins/AdminsPage";\n',
-          )
-          replace_exact("app/dashboard/src/components/UsersTablePro.tsx", "  LinkSlashIcon,\n", "  LinkIcon,\n")
-          replace_exact("app/dashboard/src/components/UsersTablePro.tsx", "chakra(LinkSlashIcon,", "chakra(LinkIcon,")
-          replace_exact(
-              "app/dashboard/src/components/UsersTablePro.tsx",
-              '      onError: (error) => toast({ title: "تمدید انجام نشد", description: localizedApiError(error), status: "error", duration: 5000 }),\n',
-              '      onError: (error) => {\n        toast({ title: "تمدید انجام نشد", description: localizedApiError(error), status: "error", duration: 5000 });\n      },\n',
-          )
-
-          # Preserve all existing admin UX assertions while following the
-          # refactor that split the page wrapper, page logic and table.
-          replace_exact(
-              "app/dashboard/scripts/test-admin-ux.cjs",
-              'const admins = read("src/pages/Admins.tsx");\n',
-              'const admins = [\n  read("src/pages/Admins.tsx"),\n  read("src/pages/admins/AdminsPage.tsx"),\n  read("src/pages/admins/AdminTable.tsx"),\n].join("\\n");\n',
-          )
-
-          Path("VERSION").write_text("1.0.4\n", encoding="utf-8")
-          replace_exact("app/__init__.py", '__version__ = "1.0.3"', '__version__ = "1.0.4"')
-          replace_exact("docker-compose.yml", 'ghcr.io/smorad3363/marzban-v1:v1.0.3', 'ghcr.io/smorad3363/marzban-v1:v1.0.4')
-          replace_exact("scripts/marzban.sh", 'CLI_RELEASE_VERSION="v1.0.3"', 'CLI_RELEASE_VERSION="v1.0.4"')
-
-          p = Path("tests/test_installer_v1_contract.sh")
-          text = p.read_text(encoding="utf-8")
-          text = text.replace("v1.0.3", "v1.0.4").replace("1.0.3", "1.0.4")
-          p.write_text(text, encoding="utf-8")
-
-          p = Path("tests/test_release_contract.py")
-          text = p.read_text(encoding="utf-8")
-          text = text.replace('assert version == "1.0.3"', 'assert version == "1.0.4"')
-          old = '''    current_notes = Path("docs/RELEASE_NOTES_v1.0.3.md").read_text(encoding="utf-8")\n    assert "interactive" in current_notes.lower()\n    assert "--client-cert-file" in current_notes\n    assert "v1.0.2" in current_notes\n'''
-          new = '''    v103_notes = Path("docs/RELEASE_NOTES_v1.0.3.md").read_text(encoding="utf-8")\n    assert "interactive" in v103_notes.lower()\n    assert "--client-cert-file" in v103_notes\n    assert "v1.0.2" in v103_notes\n\n    current_notes = Path("docs/RELEASE_NOTES_v1.0.4.md").read_text(encoding="utf-8")\n    assert "admin" in current_notes.lower()\n    assert "user" in current_notes.lower()\n    assert "org.opencontainers.image.revision" in current_notes\n'''
-          if old not in text:
-              raise SystemExit("v1.0.3 release-note contract block not found")
-          p.write_text(text.replace(old, new), encoding="utf-8")
-
-          p = Path(".github/workflows/build.yml")
-          text = p.read_text(encoding="utf-8")
-          expr = lambda body: "$" + "{{ " + body + " }}"
-          tag_expr = expr("steps.image-tags.outputs.tags")
-          revision_expr = expr("github.sha")
-          repository_expr = expr("github.repository")
-          version_expr = expr("steps.release-version.outputs.version_tag || inputs.image_tag || github.ref_name")
-          old = "          push: true\n          tags: " + tag_expr + "\n"
-          new = (
-              old
-              + "          labels: |\n"
-              + "            org.opencontainers.image.revision=" + revision_expr + "\n"
-              + "            org.opencontainers.image.source=https://github.com/" + repository_expr + "\n"
-              + "            org.opencontainers.image.version=" + version_expr + "\n"
-          )
-          if old not in text:
-              raise SystemExit("docker build-push block not found")
-          updated = text.replace(old, new)
-          if "org.opencontainers.image.revision=" + revision_expr not in updated:
-              raise SystemExit("revision label was not added")
-          p.write_text(updated, encoding="utf-8")
-
-          Path("docs/RELEASE_NOTES_v1.0.4.md").write_text('''# Marzban v1.0.4\n\n## Dashboard and administration UX\n\n- Ports the approved enterprise/minimal admin management redesign onto the current v1 baseline.\n- Adds a denser RTL user-management table so users become visible much earlier on the dashboard.\n- Keeps real user/admin actions directly available, including plan renewal, enable/disable, reset usage, revoke subscription, delete, QR/subscription access, and audit navigation where the backend capability exists.\n- Preserves multi-page bulk selection by username while refreshing selected users from visible page data.\n- Keeps admin quick-credit actions visible and separate from destructive/freeze actions.\n\n## Release integrity\n\n- Preserves the v1.0.3 interactive Node certificate installer and all historical V1 lineage constraints.\n- Adds the required Docker OCI source metadata, including `org.opencontainers.image.revision`, to the release image build.\n- Published v1.0.0 through v1.0.3 remain unchanged.\n''', encoding="utf-8")
-          PY
-
+          python scripts/_v104_prepare.py
           grep -Fxq '1.0.4' VERSION
           grep -Fq '__version__ = "1.0.4"' app/__init__.py
           grep -Fq 'CLI_RELEASE_VERSION="v1.0.4"' scripts/marzban.sh
@@ -106,6 +31,7 @@ jobs:
           grep -Fq 'V1_LINEAGE_SOURCE_VERSION="5.2.0"' scripts/marzban.sh
           grep -Fq 'V1_LINEAGE_SOURCE_IMAGE="ghcr.io/smorad3363/marzban-vnext:v5.2.0"' scripts/marzban.sh
           grep -Fq 'V1_LINEAGE_TARGET_VERSION="v1.0.0"' scripts/marzban.sh
+          grep -Fq 'org.opencontainers.image.revision=' .github/workflows/build.yml
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -127,7 +53,9 @@ jobs:
 
       - name: Run dashboard contract tests
         working-directory: app/dashboard
+        shell: bash
         run: |
+          set -Eeuo pipefail
           npm run test:access-groups
           npm run test:admin-hierarchy
           npm run test:admin-ux
@@ -149,7 +77,9 @@ jobs:
           git add VERSION app/__init__.py docker-compose.yml scripts/marzban.sh \
             tests/test_release_contract.py tests/test_installer_v1_contract.sh \
             docs/RELEASE_NOTES_v1.0.4.md app/dashboard/build .github/workflows/build.yml \
-            app/dashboard/src/pages/Admins.tsx app/dashboard/src/components/UsersTablePro.tsx \
+            app/dashboard/src/pages/Admins.tsx \
+            app/dashboard/src/components/UsersTablePro.tsx \
+            app/dashboard/src/pages/admins/AdminsPage.tsx \
             app/dashboard/scripts/test-admin-ux.cjs
           git diff --cached --check
           git commit -m "release: prepare Marzban v1.0.4"
