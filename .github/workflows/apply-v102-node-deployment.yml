@@ -68,7 +68,11 @@ jobs:
           set -Eeuo pipefail
           git config user.name "Eliot"
           git config user.email "42266703+smorad3363@users.noreply.github.com"
-          git add scripts/marzban.sh docker-compose.node.yml tests/test_v102_node_deployment.py .github/workflows/v1.0.2-checkpoints.yml
+          # The permanent checkpoint workflow was validated above but GitHub App
+          # tokens cannot update workflow files. Land product files first; the
+          # connector applies the read-only checkpoint update separately.
+          git checkout -- .github/workflows/v1.0.2-checkpoints.yml
+          git add scripts/marzban.sh docker-compose.node.yml tests/test_v102_node_deployment.py
           git diff --cached --quiet && { echo 'No deployment changes to commit'; exit 1; }
           git commit -m "feat: add built-in node runtime deployment"
           git push origin HEAD:release/v1.0.2
