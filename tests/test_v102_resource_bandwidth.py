@@ -56,6 +56,16 @@ def test_bandwidth_first_sample_warms_then_uses_elapsed_time():
     assert snapshot["downlink_bps"] == 1_600_000
 
 
+def test_bandwidth_warmup_becomes_stale_when_collector_stops():
+    store = BandwidthStore()
+    store.observe(7, 1_000, 2_000, sampled_at=100.0)
+    assert store.snapshot(7, now=189.0, stale_after=90)["state"] == "warming_up"
+    stale = store.snapshot(7, now=191.0, stale_after=90)
+    assert stale["state"] == "stale"
+    assert stale["uplink_bps"] == 0
+    assert stale["downlink_bps"] == 0
+
+
 def test_bandwidth_long_gap_restarts_warmup_instead_of_inventing_rate():
     store = BandwidthStore()
     store.observe(3, 100, 200, sampled_at=10.0)
