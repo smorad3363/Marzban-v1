@@ -695,10 +695,10 @@ export const BulkUserActions: FC<BulkUserActionsProps> = ({
         gap={3}
         wrap="wrap"
         borderRadius="12px"
-        bg="rgba(15, 23, 42, .62)"
+        bg="var(--panel-nested)"
         borderWidth="1px"
         borderColor={
-          users.length > 0 ? "rgba(45, 212, 191, .3)" : "whiteAlpha.100"
+          users.length > 0 ? "var(--panel-accent-border)" : "var(--panel-border)"
         }
       >
         <HStack spacing={3} minW={0} flexWrap="wrap">
@@ -706,7 +706,7 @@ export const BulkUserActions: FC<BulkUserActionsProps> = ({
             isChecked={allVisibleSelected}
             isIndeterminate={users.length > 0 && !allVisibleSelected}
             onChange={(event) => onToggleAll(event.target.checked)}
-            colorScheme="teal"
+            colorScheme="primary"
           >
             <Text fontSize="sm" fontWeight="700">
               {allVisibleSelected
@@ -718,8 +718,8 @@ export const BulkUserActions: FC<BulkUserActionsProps> = ({
             px={2.5}
             py={1}
             borderRadius="full"
-            bg={users.length > 0 ? "rgba(45, 212, 191, .12)" : "whiteAlpha.50"}
-            color={users.length > 0 ? "teal.200" : "gray.400"}
+            bg={users.length > 0 ? "var(--panel-accent-soft)" : "var(--panel-surface)"}
+            color={users.length > 0 ? "var(--panel-accent)" : "var(--panel-text-muted)"}
             textTransform="none"
           >
             {t("usersTable.selectedCount", { count: users.length })}
@@ -755,15 +755,15 @@ export const BulkUserActions: FC<BulkUserActionsProps> = ({
               <MenuButton
                 as={Button}
                 size="sm"
-                colorScheme="teal"
+                colorScheme="primary"
                 rightIcon={<ChevronDownIcon width="16px" aria-hidden="true" />}
               >
                 {t("usersTable.bulkActions")}
               </MenuButton>
               <MenuList
                 dir={i18n.dir()}
-                bg="#111827"
-                borderColor="whiteAlpha.200"
+                bg="var(--panel-surface)"
+                borderColor="var(--panel-border)"
                 minW="230px"
               >
                 <MenuItem

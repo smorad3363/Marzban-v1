@@ -51,14 +51,14 @@ const formatRate = (value: number) => {
 
 const stateMeta = (state: string) => {
   if (state === "online") return { label: "زنده", scheme: "green" };
-  if (state === "warming_up") return { label: "در حال نمونه‌گیری", scheme: "blue" };
+  if (state === "warming_up") return { label: "در حال نمونه‌گیری", scheme: "primary" };
   if (state === "stale") return { label: "داده قدیمی", scheme: "orange" };
   return { label: "آفلاین", scheme: "gray" };
 };
 
 const Metric = ({ label, value }: { label: string; value: string }) => (
   <Box minW={0}>
-    <Text fontSize="xs" color="gray.500" _dark={{ color: "gray.400" }}>
+    <Text fontSize="xs" color="var(--panel-text-muted)">
       {label}
     </Text>
     <Text mt={1} fontSize={{ base: "lg", md: "xl" }} fontWeight="800" dir="ltr" textAlign="start">
@@ -100,13 +100,13 @@ export const NodeBandwidthPanel = () => {
     <Card p={{ base: 4, md: 5 }} mb={4} borderWidth="1px" borderColor="var(--panel-border)" bg="var(--panel-surface)">
       <HStack justify="space-between" align="start" gap={3} flexWrap="wrap">
         <Box>
-          <Text color="primary.600" _dark={{ color: "primary.300" }} fontSize="xs" fontWeight="800">
+          <Text color="var(--panel-accent)" fontSize="xs" fontWeight="800">
             شبکه
           </Text>
           <Text as="h2" mt={1} fontSize="lg" fontWeight="800">
             پهنای‌باند زنده نودها
           </Text>
-          <Text mt={1} fontSize="sm" color="gray.600" _dark={{ color: "gray.400" }}>
+          <Text mt={1} fontSize="sm" color="var(--panel-text-muted)">
             سرعت از همان شمارنده‌های حسابداری Xray محاسبه می‌شود و poll اضافه‌ای به نودها نمی‌زند.
           </Text>
         </Box>
@@ -139,7 +139,7 @@ export const NodeBandwidthPanel = () => {
                     <Badge colorScheme={state.scheme}>{state.label}</Badge>
                   </HStack>
                   {node.sample_age_seconds != null && (
-                    <Text fontSize="xs" color="gray.500">
+                    <Text fontSize="xs" color="var(--panel-text-muted)">
                       آخرین نمونه: {new Intl.NumberFormat("fa-IR", { maximumFractionDigits: 0 }).format(node.sample_age_seconds)} ثانیه پیش
                     </Text>
                   )}

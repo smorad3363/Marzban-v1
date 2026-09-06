@@ -18,6 +18,7 @@ import { DeleteUserModal } from "components/DeleteUserModal";
 import { FiltersCompact } from "components/FiltersCompact";
 import { HostsDialog } from "components/HostsDialog";
 import { NodesDialog } from "components/NodesModal";
+import { NodeBandwidthPanel } from "components/NodeBandwidthPanel";
 import { NodesUsage } from "components/NodesUsage";
 import { PlanCreateModal } from "components/PlanCreateModal";
 import { QRCodeDialog } from "components/QRCodeDialog";
@@ -122,7 +123,6 @@ export const Dashboard: FC = () => {
               <Text as="h1" fontSize={{ base: "xl", md: "2xl" }} fontWeight="850" letterSpacing="-0.035em">
                 خوش آمدی، <Text as="span" dir="ltr">{userData.username}</Text>
               </Text>
-              <Text mt={1} color="gray.400" fontSize="12px">مرکز مدیریت کاربران و سرویس‌های Marzban</Text>
             </Box>
             <HStack spacing={2} flexWrap="wrap" justify="end">
               {canCreateAdmin && (
@@ -143,7 +143,7 @@ export const Dashboard: FC = () => {
               <Text color="gray.300" fontSize="11px" fontWeight="700">
                 {today.toLocaleDateString("fa-IR-u-ca-persian", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
               </Text>
-              <Text dir="ltr" color="blue.300" fontSize="11px" fontWeight="800">
+              <Text dir="ltr" color="var(--panel-accent)" fontSize="11px" fontWeight="800">
                 {today.toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit", hour12: false })}
               </Text>
             </HStack>
@@ -151,15 +151,16 @@ export const Dashboard: FC = () => {
         </Card>
 
         <DashboardOverviewCompact />
+        {isOwner && <NodeBandwidthPanel />}
 
         <Box as="section" aria-labelledby="user-operations-title">
           <Card
             bg="var(--panel-surface)"
             color="inherit"
             borderWidth="1px"
-            borderColor="rgba(148,163,184,.14)"
+            borderColor="var(--panel-border)"
             borderRadius="14px"
-            boxShadow="0 16px 42px rgba(0,0,0,.22)"
+            boxShadow="var(--shadow-panel)"
             overflow="hidden"
           >
             <HStack px={{ base: 3, md: 4 }} pt={3.5} justify="space-between" align="end" gap={3}>

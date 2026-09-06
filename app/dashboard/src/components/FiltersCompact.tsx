@@ -34,19 +34,19 @@ const AddIcon = chakra(PlusIcon, { baseStyle: { w: 4, h: 4 } });
 type AdminOption = { username: string };
 
 const control = {
-  bg: "rgba(2,6,23,.48)",
-  color: "gray.100",
-  borderColor: "rgba(148,163,184,.18)",
-  _hover: { borderColor: "rgba(148,163,184,.34)" },
-  _focusVisible: { borderColor: "yellow.400", boxShadow: "0 0 0 2px rgba(250,204,21,.12)" },
+  bg: "var(--panel-nested)",
+  color: "var(--panel-text)",
+  borderColor: "var(--panel-border)",
+  _hover: { borderColor: "var(--panel-border-strong)" },
+  _focusVisible: { borderColor: "var(--panel-accent)", boxShadow: "0 0 0 2px var(--panel-accent-soft)" },
 } as const;
 
 const StatusButton: FC<{
   active: boolean;
   label: string;
   onClick: () => void;
-  tone?: "green" | "red" | "blue" | "yellow";
-}> = ({ active, label, onClick, tone = "yellow" }) => (
+  tone?: "primary" | "green" | "red" | "orange" | "gray";
+}> = ({ active, label, onClick, tone = "primary" }) => (
   <Button
     size="sm"
     h="36px"
@@ -116,8 +116,8 @@ export const FiltersCompact: FC = () => {
               size="sm"
               minH="38px"
               px={4}
-              colorScheme="yellow"
-              color="gray.900"
+              colorScheme="primary"
+              color="var(--panel-accent-contrast)"
               leftIcon={<AddIcon />}
               onClick={() => onCreateUser(true)}
               borderRadius="8px"
@@ -130,8 +130,8 @@ export const FiltersCompact: FC = () => {
               size="sm"
               minH="38px"
               px={4}
-              colorScheme="yellow"
-              color="gray.900"
+              colorScheme="primary"
+              color="var(--panel-accent-contrast)"
               leftIcon={<AddIcon />}
               onClick={() => setPlanCreateOpen(true)}
               borderRadius="8px"
@@ -146,7 +146,7 @@ export const FiltersCompact: FC = () => {
             minW="38px"
             h="38px"
             variant="outline"
-            borderColor="rgba(148,163,184,.18)"
+            borderColor="var(--panel-border)"
             onClick={refetchUsers}
             isDisabled={loading}
             borderRadius="8px"
@@ -156,9 +156,9 @@ export const FiltersCompact: FC = () => {
         <HStack spacing={2} flexWrap="wrap" flex="1" justify="center">
           <StatusButton active={!filters.status} label="همه کاربران" onClick={() => setStatus(undefined)} />
           <StatusButton active={filters.status === "active"} label="فعال" tone="green" onClick={() => setStatus("active")} />
-          <StatusButton active={filters.status === "disabled"} label="غیرفعال" tone="blue" onClick={() => setStatus("disabled")} />
+          <StatusButton active={filters.status === "disabled"} label="غیرفعال" tone="gray" onClick={() => setStatus("disabled")} />
           <StatusButton active={filters.status === "expired"} label="منقضی" tone="red" onClick={() => setStatus("expired")} />
-          <StatusButton active={filters.status === "on_hold"} label="در انتظار" tone="yellow" onClick={() => setStatus("on_hold")} />
+          <StatusButton active={filters.status === "on_hold"} label="در انتظار" tone="orange" onClick={() => setStatus("on_hold")} />
         </HStack>
 
         <InputGroup w={{ base: "full", lg: "330px" }} flexShrink={0}>
@@ -185,7 +185,7 @@ export const FiltersCompact: FC = () => {
         flexWrap="wrap"
         pt={2.5}
         borderTopWidth="1px"
-        borderColor="rgba(148,163,184,.10)"
+        borderColor="var(--panel-border)"
       >
         <Text color="gray.500" fontSize="11px">فیلترهای تکمیلی</Text>
         <HStack spacing={2} flexWrap="wrap">
@@ -199,7 +199,7 @@ export const FiltersCompact: FC = () => {
               w={{ base: "160px", md: "180px" }}
               borderRadius="8px"
               {...control}
-              sx={{ option: { background: "#080f19", color: "#f8fafc" } }}
+              sx={{ option: { background: "var(--panel-surface)", color: "var(--panel-text)" } }}
             >
               <option value="">همه ادمین‌ها</option>
               {adminOptions.data?.map((admin) => <option key={admin.username} value={admin.username}>{admin.username}</option>)}
@@ -214,7 +214,7 @@ export const FiltersCompact: FC = () => {
             w={{ base: "170px", md: "200px" }}
             borderRadius="8px"
             {...control}
-            sx={{ option: { background: "#080f19", color: "#f8fafc" } }}
+            sx={{ option: { background: "var(--panel-surface)", color: "var(--panel-text)" } }}
           >
             <option value="-created_at">جدیدترین‌ها</option>
             <option value="created_at">قدیمی‌ترین‌ها</option>
