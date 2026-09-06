@@ -8,6 +8,10 @@ on:
       source_commit:
         description: Exact source revision label
         required: true
+      release_tag:
+        description: Exact release tag
+        required: true
+        default: v1.0.2
 permissions:
   contents: write
   packages: read
@@ -30,12 +34,16 @@ jobs:
           IMAGE: ghcr.io/smorad3363/marzban-v1
           DIGEST: ${{ inputs.digest }}
           SOURCE_COMMIT: ${{ inputs.source_commit }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
           set -euo pipefail
           [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
           [[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
           test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
-          tagged_digest="sha256:$(docker buildx imagetools inspect --raw "$IMAGE:v1.0.0" | sha256sum | awk '{print $1}')"
+          VERSION_TEXT="$(tr -d '[:space:]' < VERSION)"
+          test "$RELEASE_TAG" = "v${VERSION_TEXT}"
+          test -s "docs/RELEASE_NOTES_${RELEASE_TAG}.md"
+          tagged_digest="sha256:$(docker buildx imagetools inspect --raw "$IMAGE:$RELEASE_TAG" | sha256sum | awk '{print $1}')"
           test "$tagged_digest" = "$DIGEST"
           docker buildx imagetools inspect "$IMAGE@$DIGEST" > manifest.txt
           grep -q 'linux/amd64' manifest.txt
@@ -44,18 +52,22 @@ jobs:
           test "$(docker image inspect "$IMAGE@$DIGEST" --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')" = "$SOURCE_COMMIT"
           test "$(docker run --rm --platform linux/amd64 --entrypoint python \
             -e SQLALCHEMY_DATABASE_URL=mysql+pymysql://probe:probe@127.0.0.1/probe \
-            "$IMAGE@$DIGEST" -c 'from app import __version__; print(__version__)')" = 1.0.0
+            "$IMAGE@$DIGEST" -c 'from app import __version__; print(__version__)')" = "$VERSION_TEXT"
           docker run --rm --platform linux/amd64 --entrypoint mysqldump "$IMAGE@$DIGEST" --version | grep -q 'Ver 26.7.0'
           docker run --rm --platform linux/amd64 --entrypoint sh "$IMAGE@$DIGEST" -c \
-            "grep -q 'Upload Backup' /code/app/dashboard/build/statics/index.*.js && test -x /usr/bin/marzban-cli"
-          echo "PUBLISHED_IMAGE_VERIFIED $IMAGE@$DIGEST $SOURCE_COMMIT"
+            "test -s /code/app/dashboard/build/index.html && test -s /code/app/dashboard/build/404.html && test -x /usr/bin/marzban-cli && test -f /code/node_runtime/main.py"
+          echo "PUBLISHED_IMAGE_VERIFIED $IMAGE@$DIGEST $SOURCE_COMMIT $RELEASE_TAG"
       - name: Create immutable V1 tag and stable release
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: v1.0.0
+          RELEASE_TAG: ${{ inputs.release_tag }}
           SOURCE_COMMIT: ${{ inputs.source_commit }}
         run: |
           set -euo pipefail
+          VERSION_TEXT="$(tr -d '[:space:]' < VERSION)"
+          test "$RELEASE_TAG" = "v${VERSION_TEXT}"
+          NOTES_FILE="docs/RELEASE_NOTES_${RELEASE_TAG}.md"
+          test -s "$NOTES_FILE"
           git fetch --force --tags origin
           existing_commit="$(git rev-list -n 1 "$RELEASE_TAG" 2>/dev/null || true)"
           if [[ -n "$existing_commit" && "$existing_commit" != "$SOURCE_COMMIT" ]]; then
@@ -73,7 +85,7 @@ jobs:
             test "$(gh release view "$RELEASE_TAG" --json isPrerelease --jq .isPrerelease)" = false
           else
             gh release create "$RELEASE_TAG" \
-              --title "Marzban V1.0.0" \
-              --notes-file docs/RELEASE_NOTES_v1.0.0.md \
+              --title "Marzban ${RELEASE_TAG}" \
+              --notes-file "$NOTES_FILE" \
               --verify-tag
           fi
