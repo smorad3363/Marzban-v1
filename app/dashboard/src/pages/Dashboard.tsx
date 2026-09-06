@@ -1,4 +1,5 @@
-import { Badge, Box, Card, HStack, Stack, Text } from "@chakra-ui/react";
+import { Badge, Box, Button, Card, HStack, Stack, Text, useDisclosure } from "@chakra-ui/react";
+import { AdminFormDrawer } from "components/AdminFormDrawer";
 import { AppShell } from "components/AppShell";
 import { CoreSettingsModal } from "components/CoreSettingsModal";
 import { DashboardOverviewCompact } from "components/DashboardOverviewCompact";
@@ -7,6 +8,7 @@ import { FiltersCompact } from "components/FiltersCompact";
 import { HostsDialog } from "components/HostsDialog";
 import { NodesDialog } from "components/NodesModal";
 import { NodesUsage } from "components/NodesUsage";
+import { PlanCreateModal } from "components/PlanCreateModal";
 import { QRCodeDialog } from "components/QRCodeDialog";
 import { ResetAllUsageModal } from "components/ResetAllUsageModal";
 import { ResetUserUsageModal } from "components/ResetUserUsageModal";
@@ -16,6 +18,9 @@ import { UsersTablePro } from "components/UsersTablePro";
 import { fetchInbounds, useDashboard } from "contexts/DashboardContext";
 import useGetUser from "hooks/useGetUser";
 import { FC, useEffect } from "react";
+import { useQuery } from "react-query";
+import { fetch } from "service/http";
+import { AccountSummary, AdminCapabilities } from "types/Admin";
 
 const shortMessages = [
   "همه‌چیز تحت کنترل است؛ پایدار ادامه بده.",
@@ -31,9 +36,26 @@ const messageForToday = () => {
 };
 
 export const Dashboard: FC = () => {
-  const { userData } = useGetUser();
+  const { userData, getUserIsSuccess } = useGetUser();
   const isOwner = userData.role === "OWNER" || userData.is_sudo;
+  const adminCreate = useDisclosure();
+  const planCreate = useDisclosure();
   const today = new Date();
+
+  const capabilities = useQuery<AdminCapabilities, Error>(
+    ["admin-capabilities", userData.username],
+    () => fetch("/admin/capabilities"),
+    { enabled: getUserIsSuccess }
+  );
+  const account = useQuery<AccountSummary, Error>(
+    ["account-summary", userData.username],
+    () => fetch("/account/summary"),
+    { enabled: getUserIsSuccess }
+  );
+
+  const accountActive = account.data?.account_status === "ACTIVE";
+  const canCreateAdmin = Boolean(accountActive && capabilities.data?.can_create_admins);
+  const canCreatePlan = Boolean(accountActive && (account.data?.role === "OWNER" || account.data?.can_manage_plans));
 
   useEffect(() => {
     useDashboard.getState().refetchUsers();
@@ -60,7 +82,29 @@ export const Dashboard: FC = () => {
               </Text>
               <Text mt={1} color="gray.400" fontSize="12px">مرکز مدیریت کاربران و سرویس‌های Marzban</Text>
             </Box>
-            <HStack spacing={3} flexWrap="wrap">
+            <HStack spacing={2} flexWrap="wrap" justify="end">
+              {canCreateAdmin && (
+                <Button
+                  size="sm"
+                  h="34px"
+                  variant="outline"
+                  borderColor="var(--panel-border)"
+                  onClick={adminCreate.onOpen}
+                >
+                  ساخت ادمین
+                </Button>
+              )}
+              {canCreatePlan && (
+                <Button
+                  size="sm"
+                  h="34px"
+                  variant="outline"
+                  borderColor="var(--panel-border)"
+                  onClick={planCreate.onOpen}
+                >
+                  ساخت پلن
+                </Button>
+              )}
               <Badge colorScheme="green" px={2.5} py={1.5} borderRadius="full" fontSize="10px">سیستم در حال اجرا</Badge>
               <Text color="gray.400" fontSize="11px">{messageForToday()}</Text>
               <Text color="gray.300" fontSize="11px" fontWeight="700">
@@ -99,6 +143,8 @@ export const Dashboard: FC = () => {
       </Stack>
 
       <UserDialog />
+      <AdminFormDrawer isOpen={adminCreate.isOpen} admin={null} onClose={adminCreate.onClose} />
+      <PlanCreateModal isOpen={planCreate.isOpen} isOwner={isOwner} onClose={planCreate.onClose} />
       <DeleteUserModal />
       <QRCodeDialog />
       <ResetUserUsageModal />
