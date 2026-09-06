@@ -109,12 +109,12 @@ const UsageCell: FC<{ user: User }> = ({ user }) => {
   const percent = unlimited ? 0 : Math.min(100, Math.max(0, (used / Math.max(user.data_limit || 1, 1)) * 100));
   const color = percent >= 90 ? "#ef4444" : percent >= 70 ? "#eab308" : "#22c55e";
   return (
-    <HStack spacing={2.5} minW="136px">
-      <CircularProgress value={percent} size="44px" thickness="8px" color={unlimited ? "#3b82f6" : color} trackColor="rgba(148,163,184,.13)" capIsRound>
+    <HStack spacing={1.5} minW={0} w="full" overflow="hidden">
+      <CircularProgress flexShrink={0} value={percent} size="36px" thickness="7px" color={unlimited ? "#3b82f6" : color} trackColor="rgba(148,163,184,.13)" capIsRound>
         <CircularProgressLabel dir="ltr" fontSize="10px" fontWeight="900">{unlimited ? "∞" : `${Math.round(percent)}%`}</CircularProgressLabel>
       </CircularProgress>
       <Box minW={0}>
-        <Text dir="ltr" textAlign="start" fontSize="11px" fontWeight="800" whiteSpace="nowrap" sx={{ unicodeBidi: "isolate" }}>
+        <Text dir="ltr" textAlign="start" fontSize="10px" fontWeight="800" noOfLines={1} sx={{ unicodeBidi: "isolate" }}>
           {String(formatBytes(used))} / {user.data_limit ? String(formatBytes(user.data_limit)) : "∞"}
         </Text>
         <Text mt={1} color="gray.500" fontSize="9px">مصرف داده</Text>
@@ -146,9 +146,10 @@ const Action: FC<{ label: string; icon: React.ReactElement; onClick: () => void;
       <IconButton
         aria-label={label}
         icon={icon}
-        size="sm"
-        minW="31px"
-        h="31px"
+        size="xs"
+        minW="28px"
+        w="28px"
+        h="28px"
         borderRadius="7px"
         color={palette.color}
         bg={palette.bg}
@@ -338,24 +339,24 @@ export const UsersTablePro: FC = () => {
         </Box>
       )}
 
-      <TableContainer overflowX="auto" borderWidth="1px" borderColor="rgba(148,163,184,.12)" borderRadius="10px">
-        <Table size="sm" minW="1680px" sx={{ "th, td": { borderColor: "rgba(148,163,184,.10)" } }}>
+      <TableContainer overflowX="hidden" borderWidth="1px" borderColor="rgba(148,163,184,.12)" borderRadius="10px">
+        <Table size="sm" w="full" sx={{ tableLayout: "fixed", "th, td": { borderColor: "rgba(148,163,184,.10)", px: 2, py: 2, overflow: "hidden" }, "th": { whiteSpace: "normal", lineHeight: 1.3 } }}>
           <Thead bg="rgba(2,8,23,.46)">
             <Tr>
-              {!readOnly && <Th w="40px"><Checkbox isChecked={allVisibleSelected} onChange={(event) => toggleAllVisible(event.target.checked)} colorScheme="yellow" /></Th>}
-              <Th w="48px" textAlign="center">#</Th>
-              <Th minW="170px">کاربر</Th>
-              <Th minW="92px">وضعیت</Th>
-              <Th minW="160px">مصرف ترافیک</Th>
-              <Th minW="120px">پلن بعدی</Th>
-              <Th minW="105px">انقضا</Th>
-              <Th minW="120px">تاریخ ایجاد</Th>
-              <Th minW="100px">ادمین</Th>
-              <Th minW="125px">آخرین فعالیت</Th>
-              <Th minW="180px">کلاینت / نسخه</Th>
-              <Th minW="92px">بازنشانی</Th>
-              <Th minW="140px">توضیحات</Th>
-              <Th minW="275px" textAlign="end">عملیات</Th>
+              {!readOnly && <Th w="36px"><Checkbox isChecked={allVisibleSelected} onChange={(event) => toggleAllVisible(event.target.checked)} colorScheme="yellow" /></Th>}
+              <Th w="34px" textAlign="center">#</Th>
+              <Th>کاربر</Th>
+              <Th>وضعیت</Th>
+              <Th>مصرف ترافیک</Th>
+              <Th>پلن بعدی</Th>
+              <Th>انقضا</Th>
+              <Th>تاریخ ایجاد</Th>
+              <Th>ادمین</Th>
+              <Th>آخرین فعالیت</Th>
+              <Th>کلاینت / نسخه</Th>
+              <Th>بازنشانی</Th>
+              <Th>توضیحات</Th>
+              <Th w="18%" textAlign="end">عملیات</Th>
             </Tr>
           </Thead>
           <Tbody>
@@ -414,7 +415,7 @@ export const UsersTablePro: FC = () => {
                     </Tooltip>
                   </Td>
                   <Td textAlign="end">
-                    <HStack justify="end" spacing={1} dir="ltr" flexWrap="nowrap">
+                    <HStack justify="end" gap={1} rowGap={1} dir="ltr" flexWrap="wrap" maxW="full">
                       <Action label="کپی لینک اشتراک" icon={<CopyIcon />} onClick={() => copySubscription(user)} tone="green" />
                       <Action label="QR Code" icon={<QRIcon />} onClick={() => { setQRCode(user.links); setSubLink(user.subscription_url); }} tone="blue" />
                       <Action label="گزارش فعالیت" icon={<AuditIcon />} onClick={() => navigate(`/audit-logs/?search=${encodeURIComponent(user.username)}`)} tone="gray" />
