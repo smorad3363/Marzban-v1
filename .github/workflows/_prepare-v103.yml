@@ -6,6 +6,7 @@ on:
       - hotfix/v1.0.3-interactive-node-cert
     paths:
       - scripts/_prepare_v103.py
+      - scripts/_prepare_v103_contract.py
       - .github/workflows/_prepare-v103.yml
 
 permissions:
@@ -24,7 +25,9 @@ jobs:
       - name: Install focused dependencies
         run: python -m pip install --disable-pip-version-check pytest PyYAML
       - name: Apply context-checked release prep
-        run: python scripts/_prepare_v103.py
+        run: |
+          python scripts/_prepare_v103.py
+          python scripts/_prepare_v103_contract.py
       - name: Shell syntax
         run: bash -n scripts/marzban.sh
       - name: Focused Python contracts
@@ -46,7 +49,7 @@ jobs:
           set -euo pipefail
           git diff --check
           mapfile -t changed < <(git diff --name-only | sort)
-          expected=(README-fa.md README.md VERSION app/__init__.py docker-compose.yml docs/RELEASE_NOTES_v1.0.3.md scripts/marzban.sh tests/test_release_contract.py)
+          expected=(README-fa.md README.md VERSION app/__init__.py docker-compose.yml docs/RELEASE_NOTES_v1.0.3.md scripts/marzban.sh tests/test_installer_v1_contract.sh tests/test_release_contract.py)
           mapfile -t expected_sorted < <(printf '%s\n' "${expected[@]}" | sort)
           test "${changed[*]}" = "${expected_sorted[*]}"
           grep -Fq 'V1_LINEAGE_SOURCE_VERSION="5.2.0"' scripts/marzban.sh
@@ -60,6 +63,6 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add README-fa.md README.md VERSION app/__init__.py docker-compose.yml docs/RELEASE_NOTES_v1.0.3.md scripts/marzban.sh tests/test_release_contract.py
+          git add README-fa.md README.md VERSION app/__init__.py docker-compose.yml docs/RELEASE_NOTES_v1.0.3.md scripts/marzban.sh tests/test_installer_v1_contract.sh tests/test_release_contract.py
           git commit -m "release: prepare Marzban v1.0.3"
           git push origin HEAD:hotfix/v1.0.3-interactive-node-cert
