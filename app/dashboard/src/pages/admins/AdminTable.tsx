@@ -20,9 +20,7 @@ import {
   chakra,
 } from "@chakra-ui/react";
 import {
-  ArrowDownIcon,
   ArrowPathIcon,
-  ArrowUpIcon,
   PauseIcon,
   PencilSquareIcon,
   PlayIcon,
@@ -39,8 +37,6 @@ const DeleteIcon = chakra(TrashIcon, { baseStyle: { w: 4, h: 4 } });
 const PauseActionIcon = chakra(PauseIcon, { baseStyle: { w: 4, h: 4 } });
 const PlayActionIcon = chakra(PlayIcon, { baseStyle: { w: 4, h: 4 } });
 const ResetIcon = chakra(ArrowPathIcon, { baseStyle: { w: 4, h: 4 } });
-const UpIcon = chakra(ArrowUpIcon, { baseStyle: { w: 3.5, h: 3.5 } });
-const DownIcon = chakra(ArrowDownIcon, { baseStyle: { w: 3.5, h: 3.5 } });
 
 export type CreditOperation = "grant" | "reclaim";
 
@@ -69,12 +65,12 @@ const limitText = (value: number | null | undefined, suffix = "") =>
   value == null ? "نامحدود" : `${value.toLocaleString("fa-IR")}${suffix}`;
 
 const InlineDetails: FC<{ item: ManagedAdmin }> = ({ item }) => (
-  <HStack spacing={2} flexWrap="wrap" rowGap={2}>
+  <HStack spacing={1.5} flexWrap="wrap" rowGap={1.5}>
     <Text color="gray.400" fontSize="11px" fontWeight="800" me={1}>اطلاعات:</Text>
     <DetailChip label="والد" value={item.parent_username || "ریشه"} />
     <DetailChip label="ساخت کاربر" value={creationModeLabel(item)} />
-    <DetailChip label="مصرف کل" value={formatBytes(item.quota.lifetime_consumed_traffic)} />
-    <DetailChip label="ساخت کل" value={formatBytes(item.quota.lifetime_created_traffic)} />
+    <DetailChip label="مصرف کل" value={String(formatBytes(item.quota.lifetime_consumed_traffic))} />
+    <DetailChip label="ساخت کل" value={String(formatBytes(item.quota.lifetime_created_traffic))} />
     <DetailChip label="عملیات مانده" value={limitText(item.quota.operation_allowance_remaining)} />
     <DetailChip label="مدت کاربر" value={limitText(item.policy.max_user_duration_days, " روز")} />
     <DetailChip label="انقضا" value={item.policy.expiry_date || "نامحدود"} />
@@ -116,10 +112,34 @@ export const AdminTable: FC<Props> = ({
 
   const RowActions: FC<{ item: ManagedAdmin }> = ({ item }) => {
     const amount = creditAmounts[item.username] || "";
+    const validAmount = Number.isFinite(Number(amount)) && Number(amount) > 0;
+
     return (
-      <HStack justify="end" spacing={1.5} minW="360px">
+      <HStack justify="end" spacing={2} minW="500px">
         {canAct(item) && (
-          <HStack spacing={1} me={1}>
+          <HStack spacing={2} me={2}>
+            <Button
+              aria-label={`کاهش اعتبار ${item.username}`}
+              size="sm"
+              h="36px"
+              minW="86px"
+              px={3}
+              gap={2}
+              color="red.100"
+              bg="rgba(239,68,68,.16)"
+              borderWidth="1px"
+              borderColor="rgba(248,113,113,.30)"
+              borderRadius="9px"
+              isDisabled={!validAmount || busy}
+              onClick={() => onCredit(item, "reclaim")}
+              transition="background .16s ease, border-color .16s ease, transform .16s ease"
+              _hover={{ bg: "rgba(239,68,68,.25)", borderColor: "rgba(248,113,113,.48)", transform: "translateY(-1px)" }}
+              _active={{ transform: "translateY(0)" }}
+            >
+              <Text as="span" fontSize="19px" lineHeight="1" fontWeight="400">−</Text>
+              <Text as="span" fontSize="12px" fontWeight="800">کاهش</Text>
+            </Button>
+
             <Input
               aria-label={`مبلغ اعتبار ${item.username}`}
               type="number"
@@ -128,53 +148,41 @@ export const AdminTable: FC<Props> = ({
               inputMode="numeric"
               value={amount}
               onChange={(event) => onCreditAmountChange(item.username, event.target.value)}
-              placeholder="مبلغ"
+              placeholder="مبلغ (تومان)"
               size="sm"
               dir="ltr"
               textAlign="center"
-              w="104px"
-              h="34px"
+              w="126px"
+              h="36px"
               px={2}
-              borderRadius="8px"
+              borderRadius="9px"
               fontSize="11px"
+              fontWeight="700"
+              sx={{ fontVariantNumeric: "tabular-nums" }}
               {...control}
             />
-            <Tooltip label="افزایش اعتبار" hasArrow>
-              <IconButton
-                aria-label={`افزایش اعتبار ${item.username}`}
-                icon={<UpIcon />}
-                size="sm"
-                minW="34px"
-                h="34px"
-                color="green.200"
-                bg="rgba(34,197,94,.10)"
-                borderWidth="1px"
-                borderColor="rgba(74,222,128,.18)"
-                borderRadius="8px"
-                isDisabled={!amount || busy}
-                onClick={() => onCredit(item, "grant")}
-                _hover={{ bg: "rgba(34,197,94,.18)", transform: "translateY(-1px)" }}
-                _active={{ transform: "translateY(0)" }}
-              />
-            </Tooltip>
-            <Tooltip label="کاهش اعتبار" hasArrow>
-              <IconButton
-                aria-label={`کاهش اعتبار ${item.username}`}
-                icon={<DownIcon />}
-                size="sm"
-                minW="34px"
-                h="34px"
-                color="orange.200"
-                bg="rgba(245,158,11,.10)"
-                borderWidth="1px"
-                borderColor="rgba(245,158,11,.18)"
-                borderRadius="8px"
-                isDisabled={!amount || busy}
-                onClick={() => onCredit(item, "reclaim")}
-                _hover={{ bg: "rgba(245,158,11,.18)", transform: "translateY(-1px)" }}
-                _active={{ transform: "translateY(0)" }}
-              />
-            </Tooltip>
+
+            <Button
+              aria-label={`افزایش اعتبار ${item.username}`}
+              size="sm"
+              h="36px"
+              minW="86px"
+              px={3}
+              gap={2}
+              color="green.100"
+              bg="rgba(34,197,94,.16)"
+              borderWidth="1px"
+              borderColor="rgba(74,222,128,.30)"
+              borderRadius="9px"
+              isDisabled={!validAmount || busy}
+              onClick={() => onCredit(item, "grant")}
+              transition="background .16s ease, border-color .16s ease, transform .16s ease"
+              _hover={{ bg: "rgba(34,197,94,.25)", borderColor: "rgba(74,222,128,.48)", transform: "translateY(-1px)" }}
+              _active={{ transform: "translateY(0)" }}
+            >
+              <Text as="span" fontSize="19px" lineHeight="1" fontWeight="400">+</Text>
+              <Text as="span" fontSize="12px" fontWeight="800">افزایش</Text>
+            </Button>
           </HStack>
         )}
 
@@ -183,13 +191,13 @@ export const AdminTable: FC<Props> = ({
             aria-label={`ویرایش ${item.username}`}
             icon={<EditIcon />}
             size="sm"
-            minW="34px"
-            h="34px"
+            minW="36px"
+            h="36px"
             color="blue.100"
             bg="rgba(37,99,235,.18)"
             borderWidth="1px"
-            borderColor="rgba(96,165,250,.20)"
-            borderRadius="8px"
+            borderColor="rgba(96,165,250,.22)"
+            borderRadius="9px"
             isDisabled={!canEdit(item)}
             onClick={() => onEdit(item)}
             _hover={{ bg: "rgba(37,99,235,.28)", transform: "translateY(-1px)" }}
@@ -204,13 +212,13 @@ export const AdminTable: FC<Props> = ({
                 aria-label={`${statusActionLabel(item)} ${item.username}`}
                 icon={item.account_status === "ACTIVE" ? <PauseActionIcon /> : <PlayActionIcon />}
                 size="sm"
-                minW="34px"
-                h="34px"
+                minW="36px"
+                h="36px"
                 color={item.account_status === "ACTIVE" ? "orange.200" : "green.200"}
                 bg={item.account_status === "ACTIVE" ? "rgba(245,158,11,.12)" : "rgba(34,197,94,.10)"}
                 borderWidth="1px"
                 borderColor={item.account_status === "ACTIVE" ? "rgba(245,158,11,.20)" : "rgba(74,222,128,.18)"}
-                borderRadius="8px"
+                borderRadius="9px"
                 isDisabled={busy}
                 onClick={() => onStatus(item)}
                 _hover={{ bg: item.account_status === "ACTIVE" ? "rgba(245,158,11,.20)" : "rgba(34,197,94,.18)", transform: "translateY(-1px)" }}
@@ -224,13 +232,13 @@ export const AdminTable: FC<Props> = ({
                   aria-label={`بازنشانی سهمیه تست ${item.username}`}
                   icon={<ResetIcon />}
                   size="sm"
-                  minW="34px"
-                  h="34px"
+                  minW="36px"
+                  h="36px"
                   color="cyan.200"
                   bg="rgba(6,182,212,.10)"
                   borderWidth="1px"
                   borderColor="rgba(34,211,238,.18)"
-                  borderRadius="8px"
+                  borderRadius="9px"
                   isDisabled={busy}
                   onClick={() => onTrialReset(item)}
                   _hover={{ bg: "rgba(6,182,212,.18)", transform: "translateY(-1px)" }}
@@ -244,13 +252,13 @@ export const AdminTable: FC<Props> = ({
                 aria-label={`حذف ${item.username}`}
                 icon={<DeleteIcon />}
                 size="sm"
-                minW="34px"
-                h="34px"
+                minW="36px"
+                h="36px"
                 color="red.200"
                 bg="rgba(239,68,68,.11)"
                 borderWidth="1px"
                 borderColor="rgba(248,113,113,.18)"
-                borderRadius="8px"
+                borderRadius="9px"
                 isDisabled={busy}
                 onClick={() => onDelete(item)}
                 _hover={{ bg: "rgba(239,68,68,.19)", transform: "translateY(-1px)" }}
@@ -266,16 +274,16 @@ export const AdminTable: FC<Props> = ({
   return (
     <>
       <TableContainer display={{ base: "none", lg: "block" }} overflowX="auto">
-        <Table size="sm" minW="1360px">
+        <Table size="sm" minW="1500px">
           <Thead bg="rgba(2,8,23,.38)">
             <Tr>
-              <Th w="17%" fontSize="11px">ادمین</Th>
-              <Th w="9%" fontSize="11px">وضعیت</Th>
-              <Th w="14%" fontSize="11px">نقش و اعتبار</Th>
-              <Th w="11%" fontSize="11px">کیف پول</Th>
-              <Th w="10%" fontSize="11px">کاربران</Th>
-              <Th w="8%" fontSize="11px">والد</Th>
-              <Th w="31%" fontSize="11px" textAlign="end">عملیات سریع</Th>
+              <Th w="16%" fontSize="11px">ادمین</Th>
+              <Th w="8%" fontSize="11px">وضعیت</Th>
+              <Th w="13%" fontSize="11px">نقش و اعتبار</Th>
+              <Th w="10%" fontSize="11px">کیف پول</Th>
+              <Th w="9%" fontSize="11px">کاربران</Th>
+              <Th w="7%" fontSize="11px">والد</Th>
+              <Th w="37%" fontSize="11px" textAlign="end">عملیات سریع</Th>
             </Tr>
           </Thead>
           <Tbody>
@@ -350,6 +358,8 @@ export const AdminTable: FC<Props> = ({
         {admins.map((item) => {
           const isItemOwner = item.role === "OWNER";
           const amount = creditAmounts[item.username] || "";
+          const validAmount = Number.isFinite(Number(amount)) && Number(amount) > 0;
+
           return (
             <Box key={item.username} p={3.5} role="group" transition="background .16s ease" _hover={{ bg: "whiteAlpha.50" }}>
               <HStack justify="space-between" align="start" gap={3}>
@@ -389,11 +399,56 @@ export const AdminTable: FC<Props> = ({
               </SimpleGrid>
 
               {canAct(item) && (
-                <HStack mt={3} spacing={1.5}>
-                  <Input type="number" min={1} step={1000} value={amount} onChange={(event) => onCreditAmountChange(item.username, event.target.value)} placeholder="مبلغ اعتبار" size="sm" dir="ltr" {...control} />
-                  <Button size="sm" leftIcon={<UpIcon />} colorScheme="green" variant="outline" isDisabled={!amount || busy} onClick={() => onCredit(item, "grant")}>افزایش</Button>
-                  <Button size="sm" leftIcon={<DownIcon />} colorScheme="orange" variant="outline" isDisabled={!amount || busy} onClick={() => onCredit(item, "reclaim")}>کاهش</Button>
-                </HStack>
+                <Stack mt={3} spacing={2}>
+                  <Input
+                    type="number"
+                    min={1}
+                    step={1000}
+                    inputMode="numeric"
+                    value={amount}
+                    onChange={(event) => onCreditAmountChange(item.username, event.target.value)}
+                    placeholder="مبلغ اعتبار (تومان)"
+                    size="sm"
+                    dir="ltr"
+                    textAlign="center"
+                    borderRadius="9px"
+                    {...control}
+                  />
+                  <HStack spacing={2}>
+                    <Button
+                      flex="1"
+                      size="sm"
+                      h="38px"
+                      color="red.100"
+                      bg="rgba(239,68,68,.16)"
+                      borderWidth="1px"
+                      borderColor="rgba(248,113,113,.30)"
+                      borderRadius="9px"
+                      isDisabled={!validAmount || busy}
+                      onClick={() => onCredit(item, "reclaim")}
+                      _hover={{ bg: "rgba(239,68,68,.25)" }}
+                    >
+                      <Text as="span" me={2} fontSize="18px">−</Text>
+                      کاهش
+                    </Button>
+                    <Button
+                      flex="1"
+                      size="sm"
+                      h="38px"
+                      color="green.100"
+                      bg="rgba(34,197,94,.16)"
+                      borderWidth="1px"
+                      borderColor="rgba(74,222,128,.30)"
+                      borderRadius="9px"
+                      isDisabled={!validAmount || busy}
+                      onClick={() => onCredit(item, "grant")}
+                      _hover={{ bg: "rgba(34,197,94,.25)" }}
+                    >
+                      <Text as="span" me={2} fontSize="18px">+</Text>
+                      افزایش
+                    </Button>
+                  </HStack>
+                </Stack>
               )}
 
               <Box mt={3} pt={3} borderTopWidth="1px" borderColor="whiteAlpha.100">
