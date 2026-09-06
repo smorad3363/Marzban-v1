@@ -309,6 +309,7 @@ def modify_node(
     """Update a node's details. Only accessible to sudo admins."""
     previous_value = sanitize_audit_value(dbnode)
     updated_node = crud.update_node(db, dbnode, modified_node)
+    bandwidth_store.forget(updated_node.id)
     xray.operations.remove_node(updated_node.id)
     if updated_node.status != NodeStatus.disabled:
         bg.add_task(xray.operations.connect_node, node_id=updated_node.id)
@@ -338,6 +339,7 @@ def reconnect_node(
     admin: Admin = Depends(Admin.check_sudo_admin),
 ):
     """Trigger a reconnection for the specified node. Only accessible to sudo admins."""
+    bandwidth_store.forget(dbnode.id)
     bg.add_task(xray.operations.connect_node, node_id=dbnode.id)
     AuditLogService.log(
         db,
@@ -364,6 +366,7 @@ def remove_node(
     target_name = dbnode.name
     previous_value = sanitize_audit_value(dbnode)
     crud.remove_node(db, dbnode)
+    bandwidth_store.forget(target_id)
     xray.operations.remove_node(target_id)
 
     logger.info(f'Node "{dbnode.name}" deleted')
