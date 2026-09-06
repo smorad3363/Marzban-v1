@@ -69,7 +69,7 @@ const AuditIcon = chakra(DocumentMagnifyingGlassIcon, { baseStyle: { w: 4, h: 4 
 const statusMeta: Record<User["status"], { label: string; color: string; bg: string }> = {
   active: { label: "فعال", color: "green.200", bg: "rgba(34,197,94,.12)" },
   connected: { label: "فعال", color: "green.200", bg: "rgba(34,197,94,.12)" },
-  connecting: { label: "در اتصال", color: "cyan.200", bg: "rgba(6,182,212,.12)" },
+  connecting: { label: "در اتصال", color: "var(--panel-accent)", bg: "var(--panel-accent-soft)" },
   on_hold: { label: "در انتظار", color: "yellow.200", bg: "rgba(234,179,8,.12)" },
   disabled: { label: "غیرفعال", color: "red.200", bg: "rgba(239,68,68,.12)" },
   expired: { label: "منقضی", color: "red.200", bg: "rgba(239,68,68,.12)" },
@@ -107,10 +107,10 @@ const UsageCell: FC<{ user: User }> = ({ user }) => {
   const used = user.used_traffic ?? 0;
   const unlimited = !user.data_limit;
   const percent = unlimited ? 0 : Math.min(100, Math.max(0, (used / Math.max(user.data_limit || 1, 1)) * 100));
-  const color = percent >= 90 ? "#ef4444" : percent >= 70 ? "#eab308" : "#22c55e";
+  const color = percent >= 90 ? "var(--panel-danger)" : percent >= 70 ? "var(--panel-warning)" : "var(--panel-success)";
   return (
     <HStack spacing={1.5} minW={0} w="full" overflow="hidden">
-      <CircularProgress flexShrink={0} value={percent} size="36px" thickness="7px" color={unlimited ? "#3b82f6" : color} trackColor="rgba(148,163,184,.13)" capIsRound>
+      <CircularProgress flexShrink={0} value={percent} size="36px" thickness="7px" color={unlimited ? "var(--panel-accent)" : color} trackColor="rgba(148,163,184,.13)" capIsRound>
         <CircularProgressLabel dir="ltr" fontSize="10px" fontWeight="900">{unlimited ? "∞" : `${Math.round(percent)}%`}</CircularProgressLabel>
       </CircularProgress>
       <Box minW={0}>
@@ -134,11 +134,11 @@ const StatusPill: FC<{ status: User["status"] }> = ({ status }) => {
 
 const Action: FC<{ label: string; icon: React.ReactElement; onClick: () => void; tone?: "blue" | "green" | "yellow" | "red" | "gray"; disabled?: boolean }> = ({ label, icon, onClick, tone = "gray", disabled }) => {
   const palettes = {
-    gray: { color: "gray.200", bg: "rgba(148,163,184,.07)", border: "rgba(148,163,184,.18)" },
-    blue: { color: "blue.200", bg: "rgba(59,130,246,.12)", border: "rgba(96,165,250,.22)" },
-    green: { color: "green.200", bg: "rgba(34,197,94,.11)", border: "rgba(74,222,128,.20)" },
-    yellow: { color: "yellow.200", bg: "rgba(234,179,8,.11)", border: "rgba(250,204,21,.20)" },
-    red: { color: "red.200", bg: "rgba(239,68,68,.11)", border: "rgba(248,113,113,.20)" },
+    gray: { color: "var(--panel-text-muted)", bg: "var(--panel-muted-soft)", border: "var(--panel-border)" },
+    blue: { color: "var(--panel-accent)", bg: "var(--panel-accent-soft)", border: "var(--panel-accent-border)" },
+    green: { color: "var(--panel-success)", bg: "var(--panel-success-soft)", border: "var(--panel-success-border)" },
+    yellow: { color: "var(--panel-warning)", bg: "var(--panel-warning-soft)", border: "var(--panel-warning-border)" },
+    red: { color: "var(--panel-danger)", bg: "var(--panel-danger-soft)", border: "var(--panel-danger-border)" },
   } as const;
   const palette = palettes[tone];
   return (
@@ -332,18 +332,18 @@ export const UsersTablePro: FC = () => {
             onClear={() => setSelectedMap(new Map())}
           />
           {selectedUsers.length > users.filter((user) => selectedMap.has(user.username)).length && (
-            <Text mt={1.5} color="yellow.300" fontSize="10px">
+            <Text mt={1.5} color="var(--panel-warning)" fontSize="10px">
               انتخاب‌ها بین صفحه‌ها حفظ شده‌اند؛ مجموع انتخاب‌شده: {selectedUsers.length.toLocaleString("fa-IR")}
             </Text>
           )}
         </Box>
       )}
 
-      <TableContainer overflowX="hidden" borderWidth="1px" borderColor="rgba(148,163,184,.12)" borderRadius="10px">
-        <Table size="sm" w="full" sx={{ tableLayout: "fixed", "th, td": { borderColor: "rgba(148,163,184,.10)", px: 2, py: 2, overflow: "hidden" }, "th": { whiteSpace: "normal", lineHeight: 1.3 } }}>
-          <Thead bg="rgba(2,8,23,.46)">
+      <TableContainer overflowX="hidden" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="10px">
+        <Table size="sm" w="full" sx={{ tableLayout: "fixed", "th, td": { borderColor: "var(--panel-border)", px: 2, py: 2, overflow: "hidden" }, "th": { whiteSpace: "normal", lineHeight: 1.3 } }}>
+          <Thead bg="var(--panel-nested)">
             <Tr>
-              {!readOnly && <Th w="36px"><Checkbox isChecked={allVisibleSelected} onChange={(event) => toggleAllVisible(event.target.checked)} colorScheme="yellow" /></Th>}
+              {!readOnly && <Th w="36px"><Checkbox isChecked={allVisibleSelected} onChange={(event) => toggleAllVisible(event.target.checked)} colorScheme="primary" /></Th>}
               <Th w="34px" textAlign="center">#</Th>
               <Th>کاربر</Th>
               <Th>وضعیت</Th>
@@ -366,19 +366,19 @@ export const UsersTablePro: FC = () => {
               return (
                 <Tr
                   key={user.username}
-                  bg={selectedMap.has(user.username) ? "rgba(234,179,8,.045)" : "transparent"}
+                  bg={selectedMap.has(user.username) ? "var(--panel-accent-soft)" : "transparent"}
                   transition="background .14s ease"
-                  _hover={{ bg: selectedMap.has(user.username) ? "rgba(234,179,8,.07)" : "rgba(255,255,255,.025)" }}
+                  _hover={{ bg: selectedMap.has(user.username) ? "var(--panel-accent-soft-strong)" : "var(--panel-row-hover)" }}
                 >
-                  {!readOnly && <Td><Checkbox isChecked={selectedMap.has(user.username)} onChange={(event) => setSelected(user, event.target.checked)} colorScheme="yellow" /></Td>}
+                  {!readOnly && <Td><Checkbox isChecked={selectedMap.has(user.username)} onChange={(event) => setSelected(user, event.target.checked)} colorScheme="primary" /></Td>}
                   <Td textAlign="center" fontWeight="800">{((filters.offset || 0) + index + 1).toLocaleString("fa-IR")}</Td>
                   <Td>
                     <HStack spacing={2.5}>
-                      <Box w="32px" h="32px" display="grid" placeItems="center" borderRadius="full" bg="rgba(59,130,246,.18)" color="blue.100" fontWeight="900" flexShrink={0}>
+                      <Box w="32px" h="32px" display="grid" placeItems="center" borderRadius="full" bg="var(--panel-accent-soft)" color="var(--panel-accent)" fontWeight="900" flexShrink={0}>
                         {user.username.slice(0, 1).toUpperCase()}
                       </Box>
                       <Box minW={0}>
-                        <Text dir="ltr" textAlign="start" color="cyan.200" fontSize="12px" fontWeight="850" noOfLines={1} sx={{ unicodeBidi: "isolate" }}>{user.username}</Text>
+                        <Text dir="ltr" textAlign="start" color="var(--panel-accent)" fontSize="12px" fontWeight="850" noOfLines={1} sx={{ unicodeBidi: "isolate" }}>{user.username}</Text>
                         <Text mt={1} color="gray.500" fontSize="9px">سقف اتصال: {user.concurrent_user_limit ?? "∞"}</Text>
                       </Box>
                     </HStack>
@@ -388,7 +388,7 @@ export const UsersTablePro: FC = () => {
                   <Td>
                     {nextPlan ? (
                       <Stack spacing={0.5}>
-                        <Badge w="fit-content" colorScheme="yellow" variant="outline" textTransform="none" fontSize="9px">{nextPlan.data_limit ? String(formatBytes(nextPlan.data_limit)) : "نامحدود"}</Badge>
+                        <Badge w="fit-content" colorScheme="primary" variant="outline" textTransform="none" fontSize="9px">{nextPlan.data_limit ? String(formatBytes(nextPlan.data_limit)) : "نامحدود"}</Badge>
                         <Text color="gray.500" fontSize="9px">{nextPlan.expire ? fmtExpire(nextPlan.expire) : "بدون انقضا"}</Text>
                       </Stack>
                     ) : <Text color="gray.600" fontSize="10px">تنظیم نشده</Text>}
@@ -419,7 +419,7 @@ export const UsersTablePro: FC = () => {
                       <Action label="کپی لینک اشتراک" icon={<CopyIcon />} onClick={() => copySubscription(user)} tone="green" />
                       <Action label="QR Code" icon={<QRIcon />} onClick={() => { setQRCode(user.links); setSubLink(user.subscription_url); }} tone="blue" />
                       <Action label="گزارش فعالیت" icon={<AuditIcon />} onClick={() => navigate(`/audit-logs/?search=${encodeURIComponent(user.username)}`)} tone="gray" />
-                      {!readOnly && <Action label="تمدید با پلن" icon={<RenewIcon />} onClick={() => { renewalRequest.current = null; setRenewalUser(user); setRenewalPlanId(""); renewalModal.onOpen(); }} tone="yellow" disabled={busy} />}
+                      {!readOnly && <Action label="تمدید با پلن" icon={<RenewIcon />} onClick={() => { renewalRequest.current = null; setRenewalUser(user); setRenewalPlanId(""); renewalModal.onOpen(); }} tone="blue" disabled={busy} />}
                       {!readOnly && <Action label="ویرایش" icon={<EditIcon />} onClick={() => onEditingUser(user)} tone="blue" disabled={busy} />}
                       {!readOnly && <Action label={user.status === "disabled" ? "فعال‌سازی" : "غیرفعال‌سازی"} icon={user.status === "disabled" ? <PlayActionIcon /> : <PauseActionIcon />} onClick={() => toggleStatus(user)} tone={user.status === "disabled" ? "green" : "yellow"} disabled={busy} />}
                       {!readOnly && <Action label="بازنشانی مصرف" icon={<ResetIcon />} onClick={() => resetUsage(user)} tone="gray" disabled={busy} />}
@@ -468,7 +468,7 @@ export const UsersTablePro: FC = () => {
           </ModalBody>
           <ModalFooter gap={3}>
             <Button variant="ghost" onClick={renewalModal.onClose} isDisabled={renew.isLoading}>انصراف</Button>
-            <Button colorScheme="yellow" color="gray.900" isDisabled={!renewalUser || !renewalPlanId} isLoading={renew.isLoading} onClick={() => renewalUser && renewalPlanId && renew.mutate({ user: renewalUser, planId: Number(renewalPlanId) })}>تمدید</Button>
+            <Button colorScheme="primary" color="gray.900" isDisabled={!renewalUser || !renewalPlanId} isLoading={renew.isLoading} onClick={() => renewalUser && renewalPlanId && renew.mutate({ user: renewalUser, planId: Number(renewalPlanId) })}>تمدید</Button>
           </ModalFooter>
         </ModalContent>
       </Modal>

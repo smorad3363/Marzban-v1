@@ -41,7 +41,7 @@ const Kpi: FC<{
   hint: string;
   icon: ReactElement;
   tone?: string;
-}> = ({ label, value, hint, icon, tone = "gray.100" }) => (
+}> = ({ label, value, hint, icon, tone = "var(--panel-text)" }) => (
   <Card
     p={3.5}
     minH="96px"
@@ -54,16 +54,16 @@ const Kpi: FC<{
   >
     <HStack justify="space-between" align="start" gap={3}>
       <Box minW={0}>
-        <Text color="gray.400" fontSize="11px" fontWeight="700">{label}</Text>
+        <Text color="var(--panel-text-muted)" fontSize="11px" fontWeight="700">{label}</Text>
         <Text mt={1} color={tone} fontSize={{ base: "xl", md: "2xl" }} fontWeight="850" sx={{ fontVariantNumeric: "tabular-nums" }}>
           {value}
         </Text>
-        <Text mt={1} color="gray.500" fontSize="10px" noOfLines={1}>{hint}</Text>
+        <Text mt={1} color="var(--panel-text-muted)" fontSize="10px" noOfLines={1}>{hint}</Text>
       </Box>
       <Box
         flexShrink={0}
         p={2}
-        color="primary.300"
+        color="var(--panel-accent)"
         bg="var(--panel-nested)"
         borderWidth="1px"
         borderColor="var(--panel-border)"
@@ -119,12 +119,12 @@ export const DashboardOverviewCompact: FC = () => {
             value={system.isError ? "نامشخص" : "سالم"}
             hint={system.data?.version ? `Marzban v${system.data.version}` : "سرویس اصلی در دسترس است"}
             icon={<ServerIcon />}
-            tone={system.isError ? "orange.300" : "green.300"}
+            tone={system.isError ? "var(--panel-warning)" : "var(--panel-success)"}
           />
         )}
         <Kpi label="کل کاربران" value={fa(data.total_users)} hint="کاربران قابل مشاهده" icon={<UsersIconView />} />
-        <Kpi label="کاربران فعال" value={fa(data.active_users)} hint={`از ${fa(data.total_users)} کاربر`} icon={<ActiveIcon />} tone="green.300" />
-        <Kpi label="کاربران آنلاین" value={fa(data.online_users)} hint="اتصال در ۲۴ ساعت اخیر" icon={<OnlineIcon />} tone="blue.200" />
+        <Kpi label="کاربران فعال" value={fa(data.active_users)} hint={`از ${fa(data.total_users)} کاربر`} icon={<ActiveIcon />} tone="var(--panel-success)" />
+        <Kpi label="کاربران آنلاین" value={fa(data.online_users)} hint="اتصال در ۲۴ ساعت اخیر" icon={<OnlineIcon />} tone="var(--panel-accent)" />
         <Kpi label="ترافیک مصرفی" value={String(formatBytes(traffic))} hint="مصرف ثبت‌شده در محدوده شما" icon={<UpIcon />} />
       </SimpleGrid>
 
@@ -147,16 +147,16 @@ export const DashboardOverviewCompact: FC = () => {
               </HStack>
             </Box>
             <Box>
-              <HStack justify="space-between"><HStack spacing={1.5}><CpuIcon /><Text fontSize="11px" color="gray.400">CPU</Text></HStack><Text fontSize="11px" fontWeight="800">{fa(Math.round(cpu))}٪</Text></HStack>
+              <HStack justify="space-between"><HStack spacing={1.5}><CpuIcon /><Text fontSize="11px" color="var(--panel-text-muted)">CPU</Text></HStack><Text fontSize="11px" fontWeight="800">{fa(Math.round(cpu))}٪</Text></HStack>
               <Progress mt={1.5} value={cpu} size="xs" borderRadius="full" colorScheme={cpu > 85 ? "red" : cpu > 70 ? "orange" : "green"} />
             </Box>
             <Box>
-              <HStack justify="space-between"><Text fontSize="11px" color="gray.400">حافظه</Text><Text fontSize="11px" fontWeight="800">{String(formatBytes(system.data.mem_used))}</Text></HStack>
+              <HStack justify="space-between"><Text fontSize="11px" color="var(--panel-text-muted)">حافظه</Text><Text fontSize="11px" fontWeight="800">{String(formatBytes(system.data.mem_used))}</Text></HStack>
               <Progress mt={1.5} value={memPercent} size="xs" borderRadius="full" colorScheme={memPercent > 85 ? "red" : memPercent > 70 ? "orange" : "green"} />
             </Box>
             <HStack justify={{ base: "start", md: "end" }} spacing={4}>
-              <HStack spacing={1}><DownIcon color="#60a5fa" /><Text dir="ltr" fontSize="11px" fontWeight="800">{String(formatBytes(system.data.incoming_bandwidth_speed))}/s</Text></HStack>
-              <HStack spacing={1}><UpIcon color="#a78bfa" /><Text dir="ltr" fontSize="11px" fontWeight="800">{String(formatBytes(system.data.outgoing_bandwidth_speed))}/s</Text></HStack>
+              <HStack spacing={1}><DownIcon color="var(--panel-accent)" /><Text dir="ltr" fontSize="11px" fontWeight="800">{String(formatBytes(system.data.incoming_bandwidth_speed))}/s</Text></HStack>
+              <HStack spacing={1}><UpIcon color="var(--panel-accent)" /><Text dir="ltr" fontSize="11px" fontWeight="800">{String(formatBytes(system.data.outgoing_bandwidth_speed))}/s</Text></HStack>
             </HStack>
           </SimpleGrid>
         </Card>

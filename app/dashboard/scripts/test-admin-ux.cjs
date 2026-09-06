@@ -12,6 +12,9 @@ const admins = [
   read("src/pages/admins/AdminTable.tsx"),
 ].join("\n");
 const dashboard = read("src/pages/Dashboard.tsx");
+const compactOverview = read("src/components/DashboardOverviewCompact.tsx");
+const nodeBandwidthPanel = read("src/components/NodeBandwidthPanel.tsx");
+const dashboardStyles = read("src/index.scss");
 const overview = read("src/components/DashboardOverview.tsx");
 const userDialog = read("src/components/UserDialog.tsx");
 const filters = read("src/components/Filters.tsx");
@@ -106,6 +109,11 @@ assert.ok(!overview.includes('label="پلن‌ها"'), "quick actions must not d
 assert.ok(overview.includes('label="ساخت ادمین"') && overview.includes("capabilities.data?.can_create_admins"), "inline Admin creation must follow Admin capabilities");
 assert.ok(overview.includes('label="ساخت پلن"') && overview.includes("canCreatePlan"), "inline Plan creation must follow Plan-management permission");
 assert.ok(dashboard.includes("<AdminFormDrawer") && dashboard.includes("<PlanCreateModal"), "Dashboard quick-create forms must open in place");
+assert.ok(!dashboard.includes("مرکز مدیریت کاربران و سرویس‌های Marzban"), "dashboard welcome header must not include the redundant Marzban management subtitle");
+assert.ok(dashboard.includes("{isOwner && <NodeBandwidthPanel />}"), "Owner dashboard must render the real node bandwidth panel");
+assert.ok(nodeBandwidthPanel.includes('fetch("/nodes/bandwidth")'), "node bandwidth panel must use the real bounded node bandwidth endpoint");
+assert.ok(compactOverview.includes("var(--panel-accent)") && !compactOverview.includes('tone="blue.200"'), "compact dashboard accents must follow the selected panel palette");
+assert.ok(dashboardStyles.includes("dashboard palette normalization") && dashboardStyles.includes("--panel-accent-soft") && dashboardStyles.includes('html[data-panel-theme="black_gold"]'), "dashboard palette tokens must define coherent blue and black-gold themes");
 assert.ok(overview.includes('<Chart type="bar"') && overview.includes('<Chart type="donut"'), "dashboard must include compact charts");
 assert.ok(overview.includes('/account/activity?limit=5'), "dashboard recent activity must use the bounded cursor endpoint");
 assert.ok(overview.includes('trafficModes.length > 1'), "billing-mode chart must stay hidden when it would add no comparison value");
