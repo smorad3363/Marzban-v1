@@ -17,9 +17,15 @@ from config import (
     DISABLE_RECORDING_NODE_USAGE,
     JOB_RECORD_NODE_USAGES_INTERVAL,
     JOB_RECORD_USER_USAGES_INTERVAL,
+    XRAY_STATS_MAX_WORKERS,
 )
 from xray_api import XRay as XRayAPI
 from xray_api import exc as xray_exc
+
+
+def _worker_count(instance_count: int) -> int:
+    """Keep stats fan-out bounded on small VPSes while retaining parallel I/O."""
+    return max(1, min(int(instance_count or 1), int(XRAY_STATS_MAX_WORKERS)))
 
 
 def safe_execute(db: Session, stmt, params=None):
@@ -55,7 +61,6 @@ def record_user_stats(params: list, node_id: Union[int, None],
     created_at = datetime.fromisoformat(datetime.utcnow().strftime('%Y-%m-%dT%H:00:00'))
 
     with GetDB() as db:
-        # make user usage row if doesn't exist
         select_stmt = select(NodeUserUsage.user_id) \
             .where(and_(NodeUserUsage.node_id == node_id, NodeUserUsage.created_at == created_at))
         existings = [r[0] for r in db.execute(select_stmt).fetchall()]
@@ -76,7 +81,6 @@ def record_user_stats(params: list, node_id: Union[int, None],
             )
             safe_execute(db, stmt, [{'uid': uid} for uid in uids_to_insert])
 
-        # record
         stmt = update(NodeUserUsage) \
             .values(used_traffic=NodeUserUsage.used_traffic + bindparam('value') * consumption_factor) \
             .where(and_(NodeUserUsage.user_id == bindparam('uid'),
@@ -92,8 +96,6 @@ def record_node_stats(params: dict, node_id: Union[int, None]):
     created_at = datetime.fromisoformat(datetime.utcnow().strftime('%Y-%m-%dT%H:00:00'))
 
     with GetDB() as db:
-
-        # make node usage row if doesn't exist
         select_stmt = select(NodeUsage.node_id). \
             where(and_(NodeUsage.node_id == node_id, NodeUsage.created_at == created_at))
         notfound = db.execute(select_stmt).first() is None
@@ -101,10 +103,10 @@ def record_node_stats(params: dict, node_id: Union[int, None]):
             stmt = insert(NodeUsage).values(created_at=created_at, node_id=node_id, uplink=0, downlink=0)
             safe_execute(db, stmt)
 
-        # record
         stmt = update(NodeUsage). \
             values(uplink=NodeUsage.uplink + bindparam('up'), downlink=NodeUsage.downlink + bindparam('down')). \
-            where(and_(NodeUsage.node_id == node_id, NodeUsage.created_at == created_at))
+            where(and_(NodeUsage.node_id == node_id,
+                        NodeUsage.created_at == created_at))
 
         safe_execute(db, stmt, params)
 
@@ -140,14 +142,14 @@ def aggregate_user_usages(api_params, usage_coefficient):
 
 def record_user_usages():
     api_instances = {None: xray.api}
-    usage_coefficient = {None: 1}  # default usage coefficient for the main api instance
+    usage_coefficient = {None: 1}
 
     for node_id, node in list(xray.nodes.items()):
         if node.connected and node.started:
             api_instances[node_id] = node.api
-            usage_coefficient[node_id] = node.usage_coefficient  # fetch the usage coefficient
+            usage_coefficient[node_id] = node.usage_coefficient
 
-    with ThreadPoolExecutor(max_workers=10) as executor:
+    with ThreadPoolExecutor(max_workers=_worker_count(len(api_instances))) as executor:
         futures = {node_id: executor.submit(get_users_stats, api) for node_id, api in api_instances.items()}
     api_params = {node_id: future.result() for node_id, future in futures.items()}
 
@@ -167,8 +169,6 @@ def record_user_usages():
         if admin_id:
             admin_usage[admin_id] += user_usage["value"]
 
-    # Record user totals, lifetime Admin totals, and monetary usage billing in
-    # one transaction so traffic can never be stored without its matching bill.
     with GetDB() as db:
         stmt = update(User). \
             where(User.id == bindparam('uid')). \
@@ -214,7 +214,7 @@ def record_node_usages():
         if node.connected and node.started:
             api_instances[node_id] = node.api
 
-    with ThreadPoolExecutor(max_workers=10) as executor:
+    with ThreadPoolExecutor(max_workers=_worker_count(len(api_instances))) as executor:
         futures = {node_id: executor.submit(get_outbounds_stats, api) for node_id, api in api_instances.items()}
     api_params = {node_id: future.result() for node_id, future in futures.items()}
 
@@ -227,7 +227,6 @@ def record_node_usages():
     if not (total_up or total_down):
         return
 
-    # record nodes usage
     with GetDB() as db:
         stmt = update(System).values(
             uplink=System.uplink + total_up,
