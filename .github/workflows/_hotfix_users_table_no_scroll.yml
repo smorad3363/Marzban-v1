@@ -1,0 +1,134 @@
+name: Users table no-scroll hotfix
+
+on:
+  push:
+    branches:
+      - hotfix/users-table-no-horizontal-scroll
+
+permissions:
+  contents: write
+
+jobs:
+  patch-build-test:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout hotfix
+        uses: actions/checkout@v4
+        with:
+          ref: hotfix/users-table-no-horizontal-scroll
+
+      - name: Patch responsive users table
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          table_path = Path('app/dashboard/src/components/UsersTablePro.tsx')
+          source = table_path.read_text()
+
+          def replace_once(old: str, new: str) -> None:
+              global source
+              if source.count(old) != 1:
+                  raise SystemExit(f'expected exactly one match for: {old[:120]!r}')
+              source = source.replace(old, new, 1)
+
+          replace_once(
+              '<HStack spacing={2.5} minW="136px">',
+              '<HStack spacing={1.5} minW={0} w="full" overflow="hidden">',
+          )
+          replace_once(
+              '<CircularProgress value={percent} size="44px" thickness="8px" color={unlimited ? "#3b82f6" : color} trackColor="rgba(148,163,184,.13)" capIsRound>',
+              '<CircularProgress flexShrink={0} value={percent} size="36px" thickness="7px" color={unlimited ? "#3b82f6" : color} trackColor="rgba(148,163,184,.13)" capIsRound>',
+          )
+          replace_once(
+              '<Text dir="ltr" textAlign="start" fontSize="11px" fontWeight="800" whiteSpace="nowrap" sx={{ unicodeBidi: "isolate" }}>',
+              '<Text dir="ltr" textAlign="start" fontSize="10px" fontWeight="800" noOfLines={1} sx={{ unicodeBidi: "isolate" }}>',
+          )
+          replace_once(
+              'size="sm"\n        minW="31px"\n        h="31px"',
+              'size="xs"\n        minW="28px"\n        w="28px"\n        h="28px"',
+          )
+          replace_once(
+              '<TableContainer overflowX="auto" borderWidth="1px" borderColor="rgba(148,163,184,.12)" borderRadius="10px">',
+              '<TableContainer overflowX="hidden" borderWidth="1px" borderColor="rgba(148,163,184,.12)" borderRadius="10px">',
+          )
+          replace_once(
+              '<Table size="sm" minW="1680px" sx={{ "th, td": { borderColor: "rgba(148,163,184,.10)" } }}>',
+              '<Table size="sm" w="full" tableLayout="fixed" sx={{ "th, td": { borderColor: "rgba(148,163,184,.10)", px: 2, py: 2, overflow: "hidden" }, "th": { whiteSpace: "normal", lineHeight: 1.3 } }}>',
+          )
+          replace_once('<Th w="40px"><Checkbox', '<Th w="36px"><Checkbox')
+          replace_once('<Th w="48px" textAlign="center">#</Th>', '<Th w="34px" textAlign="center">#</Th>')
+          for old, new in [
+              ('<Th minW="170px">کاربر</Th>', '<Th>کاربر</Th>'),
+              ('<Th minW="92px">وضعیت</Th>', '<Th>وضعیت</Th>'),
+              ('<Th minW="160px">مصرف ترافیک</Th>', '<Th>مصرف ترافیک</Th>'),
+              ('<Th minW="120px">پلن بعدی</Th>', '<Th>پلن بعدی</Th>'),
+              ('<Th minW="105px">انقضا</Th>', '<Th>انقضا</Th>'),
+              ('<Th minW="120px">تاریخ ایجاد</Th>', '<Th>تاریخ ایجاد</Th>'),
+              ('<Th minW="100px">ادمین</Th>', '<Th>ادمین</Th>'),
+              ('<Th minW="125px">آخرین فعالیت</Th>', '<Th>آخرین فعالیت</Th>'),
+              ('<Th minW="180px">کلاینت / نسخه</Th>', '<Th>کلاینت / نسخه</Th>'),
+              ('<Th minW="92px">بازنشانی</Th>', '<Th>بازنشانی</Th>'),
+              ('<Th minW="140px">توضیحات</Th>', '<Th>توضیحات</Th>'),
+              ('<Th minW="275px" textAlign="end">عملیات</Th>', '<Th w="18%" textAlign="end">عملیات</Th>'),
+          ]:
+              replace_once(old, new)
+          replace_once(
+              '<HStack justify="end" spacing={1} dir="ltr" flexWrap="nowrap">',
+              '<HStack justify="end" gap={1} rowGap={1} dir="ltr" flexWrap="wrap" maxW="full">',
+          )
+
+          table_path.write_text(source)
+
+          contract_path = Path('app/dashboard/scripts/test-admin-ux.cjs')
+          contract = contract_path.read_text()
+          anchor = 'const usersTable = read("src/components/UsersTable.tsx");\n'
+          if anchor not in contract:
+              raise SystemExit('usersTable contract anchor missing')
+          contract = contract.replace(anchor, anchor + 'const usersTablePro = read("src/components/UsersTablePro.tsx");\n', 1)
+
+          anchor = 'assert.ok(usersTable.includes(\'account.data?.account_status !== "ACTIVE"\'), "suspended Admin user table must be read-only");\n'
+          if anchor not in contract:
+              raise SystemExit('users table assertion anchor missing')
+          extra = (
+              'assert.ok(usersTablePro.includes(\'tableLayout="fixed"\') && !usersTablePro.includes(\'minW="1680px"\'), "dense user table must fit the available desktop width without a forced minimum width");\n'
+              'assert.ok(usersTablePro.includes(\'overflowX="hidden"\'), "dense user table container must not render a desktop horizontal scrollbar");\n'
+              'assert.ok(usersTablePro.includes(\'flexWrap="wrap"\'), "direct user actions must wrap inside their cell instead of widening the table");\n'
+          )
+          contract = contract.replace(anchor, anchor + extra, 1)
+          contract_path.write_text(contract)
+          PY
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: app/dashboard/package-lock.json
+
+      - name: Install dashboard dependencies
+        working-directory: app/dashboard
+        run: npm ci
+
+      - name: Run dashboard UX contracts
+        working-directory: app/dashboard
+        run: npm run test:admin-ux
+
+      - name: Build production dashboard
+        working-directory: app/dashboard
+        env:
+          VITE_BASE_API: /api/
+        run: npm run build
+
+      - name: Commit validated hotfix
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/dashboard/src/components/UsersTablePro.tsx app/dashboard/scripts/test-admin-ux.cjs app/dashboard/build
+          git diff --cached --check
+          git commit -m 'fix(dashboard): remove forced users table horizontal scroll'
+          git push origin HEAD:hotfix/users-table-no-horizontal-scroll
