@@ -208,7 +208,6 @@ replace_once(
 
 # Focused tests use a real Xray access-log shape, not a mocked parser.
 test_path = Path("tests/test_v102_node_ip_policy.py")
-test_text = test_path.read_text(encoding="utf-8")
 replace_once(
     "tests/test_v102_node_ip_policy.py",
     '''from app.db.models import Node as DBNode
@@ -219,6 +218,7 @@ from app.device_limit.engine import DeviceLimitEngine
 from app.models.node import NodeCreate, NodeModify
 ''',
 )
+test_text = test_path.read_text(encoding="utf-8")
 append = '''
 
 _XRAY_ACCEPTED = (
