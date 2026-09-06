@@ -9,6 +9,7 @@ from datetime import datetime
 
 HISTORY_SECONDS = 300
 MAX_HISTORY_SAMPLES = 120
+MAX_RATE_INTERVAL_SECONDS = 120
 
 
 @dataclass(frozen=True)
@@ -36,6 +37,11 @@ class BandwidthStore:
             self._last_poll.clear()
             self._history.clear()
 
+    def forget(self, node_id: int | None) -> None:
+        with self._lock:
+            self._last_poll.pop(node_id, None)
+            self._history.pop(node_id, None)
+
     def observe(
         self,
         node_id: int | None,
@@ -52,6 +58,10 @@ class BandwidthStore:
                 return None
 
             elapsed = now - previous
+            if elapsed > MAX_RATE_INTERVAL_SECONDS:
+                self._history.pop(node_id, None)
+                return None
+
             point = BandwidthPoint(
                 sampled_at=now,
                 uplink_bps=max(0.0, float(uplink_bytes) * 8.0 / elapsed),
