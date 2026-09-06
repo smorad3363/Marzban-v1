@@ -330,6 +330,7 @@ export const AdminsPage: FC = () => {
             <Box>
               <Text fontWeight="800">ساختار ادمین‌ها روی سرور فعال نشده است.</Text>
               <Text mt={1} fontSize="sm">تا فعال‌سازی، مدیریت سلسله‌مراتب و بعضی دسترسی‌ها محدود است.</Text>
+              <Text mt={2} fontSize="sm">Use command-line administration to promote an Owner.</Text>
             </Box>
           </Alert>
         )}

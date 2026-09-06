@@ -6,7 +6,11 @@ const root = path.resolve(__dirname, "..");
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "utf8");
 
 const drawer = read("src/components/AdminFormDrawer.tsx");
-const admins = read("src/pages/Admins.tsx");
+const admins = [
+  read("src/pages/Admins.tsx"),
+  read("src/pages/admins/AdminsPage.tsx"),
+  read("src/pages/admins/AdminTable.tsx"),
+].join("\n");
 const dashboard = read("src/pages/Dashboard.tsx");
 const overview = read("src/components/DashboardOverview.tsx");
 const userDialog = read("src/components/UserDialog.tsx");
@@ -68,11 +72,11 @@ assert.ok(admins.includes("<AdminFormDrawer"), "Admins page must use the shared 
 assert.ok(admins.includes("openAdminForm") && !admins.includes("canCreate, formDisclosure, searchParams"), "Admin create deep-link must not depend on an unstable disclosure object");
 assert.ok(admins.includes("hierarchy_enabled") && admins.includes("command-line administration"), "Admins page must explain required owner initialization");
 assert.ok(!admins.includes("<AdminHierarchyPanel"), "Admins page must not render a second competing hierarchy list");
-assert.ok(admins.includes("colSpan={4}"), "Admin desktop list must stay limited to four purposeful data groups");
-assert.ok(admins.includes("statusMeta[item.account_status].background"), "Admin rows must expose status with both text and a distinct surface");
-assert.ok(admins.includes("کیف پول تومان") && admins.includes("money_balance_toman"), "Admin summary must show the monetary wallet");
-assert.ok(admins.includes("renderMoreActions(item, true)"), "mobile Admin cards must keep secondary actions in a compact accessible menu");
-assert.ok(admins.includes("فیلتر نوع اعتبار"), "Admin list must expose billing-mode filtering");
+assert.ok(admins.includes("colSpan={7}") && admins.includes("عملیات سریع"), "Admin desktop list must keep the approved dense operational columns");
+assert.ok(admins.includes("<StatusPill status={item.account_status} />"), "Admin rows must expose status with a distinct semantic surface");
+assert.ok(admins.includes("کیف پول") && admins.includes("money_balance_toman"), "Admin summary must show the monetary wallet");
+assert.ok(admins.includes("onEdit(item)") && admins.includes("onStatus(item)") && admins.includes("onDelete(item)"), "Admin cards must keep edit, status and delete as direct real actions");
+assert.ok(admins.includes("نوع اعتبار:") && admins.includes("setBillingFilter"), "Admin list must expose billing-mode filtering");
 assert.ok(admins.includes('item.account_status === "SUSPENDED"'), "Admin freeze state must remain visible");
 assert.ok(!admins.includes("bulk-credit/jobs"), "obsolete mixed-resource bulk credit must not bypass the Toman wallet");
 assert.ok(admins.includes("trial-quota/reset"), "trial allowance reset must be an inline quick action");
@@ -80,7 +84,7 @@ assert.ok(admins.includes("freezeReason.trim()"), "manual freeze must require a 
 assert.ok(admins.includes('item.account_status === "SUSPENDED"'), "every suspended Admin must expose an unfreeze action");
 assert.ok(admins.includes('item.active_owner_freeze_event_id ? "unfreeze" : "resume"'), "unfreeze action must route owner freezes and manual suspensions correctly");
 assert.ok(admins.includes('operation: "activate"'), "disabled Admins must expose an activation action");
-assert.ok(admins.includes("زیرمجموعهٔ:"), "Admin relationship label must describe the child relationship");
+assert.ok(admins.includes("parent_username") && admins.includes("والد"), "Admin relationship must expose the parent relationship");
 for (const key of ["admins.preventDelete", "admins.preventReset", "admins.preventUnlimited"]) {
   assert.ok(drawer.includes(key), `advanced Admin policy translation missing: ${key}`);
 }
@@ -88,10 +92,10 @@ assert.ok(!drawer.includes("admins.preventCreate"), "prevent-user-creation switc
 assert.ok(!drawer.includes("admins.preventRevoke"), "prevent-revoke switch must be removed");
 assert.ok(!drawer.includes("نمایش کامل IP کاربر"), "full-IP switch must be removed because visibility is always enabled");
 assert.ok(admins.includes("lifetime_consumed_traffic") && admins.includes("lifetime_created_traffic"), "Owner must see both lifetime traffic counters");
-assert.ok(admins.includes('openCredit(item, "grant")'), "Admin rows must expose quick credit grant beside status actions");
-assert.ok(admins.includes('openCredit(item, "reclaim")'), "Admin rows must expose quick credit reclaim beside status actions");
+assert.ok(admins.includes('onCredit(item, "grant")'), "Admin rows must expose direct quick credit grant beside the amount field");
+assert.ok(admins.includes('onCredit(item, "reclaim")'), "Admin rows must expose direct quick credit reclaim beside the amount field");
 assert.ok(admins.includes("/money/${operation}"), "quick credit actions must reuse the monetary ledger endpoint");
-assert.ok(admins.includes("filtersDisclosure.onToggle"), "Admin filters must be collapsed by default");
+assert.ok(admins.includes("<FilterButton") && !admins.includes("filtersDisclosure"), "approved Admin status and billing filters must stay directly visible");
 
 assert.ok(overview.includes("بازکردن دسترسی سریع"), "AssistiveTouch-style quick actions trigger missing");
 assert.ok(overview.includes('left={{ base: 4, md: 6 }}'), "quick actions trigger must stay clear of the right sidebar branding controls");
@@ -146,4 +150,4 @@ const checkedBulk = read("src/components/CheckedBulkDialog.tsx");
 const settings = read("src/pages/Settings.tsx");
 assert.ok(checkedBulk.includes("previewKey !== payloadKey") && checkedBulk.includes("operation_id: execution.current.id"), "bulk preview and retry must stay bound to the same payload");
 assert.ok(usersTable.includes("idempotency_key: renewalRequest.current.id"), "renewal retry must retain its idempotency key");
-assert.ok(!settings.includes('fetch("/owner/backups/restore"') && settings.includes("Online restore is disabled"), "UI must honor offline-only recovery");
+assert.ok(!settings.includes('fetch("/owner/backups/restore"') && settings.includes("بازیابی آنلاین برای حفاظت از داده فعال غیرفعال است"), "UI must honor offline-only recovery");

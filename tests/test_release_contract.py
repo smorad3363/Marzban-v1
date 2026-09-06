@@ -13,7 +13,7 @@ def test_release_version_and_install_rollback_contract():
     installer_lab = Path("tests/release_installer_lab.sh").read_text()
     upgrade_lab = Path("tests/release_upgrade_lab.sh").read_text()
 
-    assert version == "1.0.3"
+    assert version == "1.0.4"
     assert f'__version__ = "{version}"' in app
     assert f'CLI_RELEASE_VERSION="{release_tag}"' in installer
     assert f"ghcr.io/smorad3363/marzban-v1:{release_tag}" in Path("docker-compose.yml").read_text()
@@ -98,8 +98,13 @@ def test_release_version_and_install_rollback_contract():
     assert "Access Group" in v102_notes
     assert "v1.0.0" in v102_notes
 
-    current_notes = Path("docs/RELEASE_NOTES_v1.0.3.md").read_text(encoding="utf-8")
-    assert "interactive" in current_notes.lower()
-    assert "--client-cert-file" in current_notes
-    assert "v1.0.2" in current_notes
+    v103_notes = Path("docs/RELEASE_NOTES_v1.0.3.md").read_text(encoding="utf-8")
+    assert "interactive" in v103_notes.lower()
+    assert "--client-cert-file" in v103_notes
+    assert "v1.0.2" in v103_notes
+
+    current_notes = Path("docs/RELEASE_NOTES_v1.0.4.md").read_text(encoding="utf-8")
+    assert "admin" in current_notes.lower()
+    assert "user" in current_notes.lower()
+    assert "org.opencontainers.image.revision" in current_notes
     assert 'readFileSync("../../VERSION", "utf8").trim()' in Path("app/dashboard/vite.config.ts").read_text()

@@ -33,7 +33,7 @@ import {
   ArrowPathIcon,
   ClipboardDocumentIcon,
   DocumentMagnifyingGlassIcon,
-  LinkSlashIcon,
+  LinkIcon,
   PauseIcon,
   PencilSquareIcon,
   PlayIcon,
@@ -62,7 +62,7 @@ const PauseActionIcon = chakra(PauseIcon, { baseStyle: { w: 4, h: 4 } });
 const PlayActionIcon = chakra(PlayIcon, { baseStyle: { w: 4, h: 4 } });
 const RenewIcon = chakra(RectangleStackIcon, { baseStyle: { w: 4, h: 4 } });
 const ResetIcon = chakra(ArrowPathIcon, { baseStyle: { w: 4, h: 4 } });
-const RevokeIcon = chakra(LinkSlashIcon, { baseStyle: { w: 4, h: 4 } });
+const RevokeIcon = chakra(LinkIcon, { baseStyle: { w: 4, h: 4 } });
 const DeleteIcon = chakra(TrashIcon, { baseStyle: { w: 4, h: 4 } });
 const AuditIcon = chakra(DocumentMagnifyingGlassIcon, { baseStyle: { w: 4, h: 4 } });
 
@@ -212,7 +212,9 @@ export const UsersTablePro: FC = () => {
         setRenewalPlanId("");
         toast({ title: "کاربر با پلن تمدید شد", status: "success", duration: 2500 });
       },
-      onError: (error) => toast({ title: "تمدید انجام نشد", description: localizedApiError(error), status: "error", duration: 5000 }),
+      onError: (error) => {
+        toast({ title: "تمدید انجام نشد", description: localizedApiError(error), status: "error", duration: 5000 });
+      },
     }
   );
 
