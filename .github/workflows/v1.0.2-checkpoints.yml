@@ -109,13 +109,21 @@ jobs:
         run: npm run build
 
   packaging:
-    name: installer and compose contracts
+    name: installer, panel compose and node contracts
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Installer syntax
-        run: bash -n scripts/marzban.sh
-      - name: Compose renders with low-memory defaults
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install pytest
+      - name: Installer syntax and contracts
+        run: |
+          bash -n scripts/marzban.sh
+          bash tests/test_installer_v1_contract.sh
+          python -m pytest -q tests/test_v102_node_deployment.py tests/test_release_contract.py
+      - name: Panel compose renders with low-memory defaults
         env:
           MYSQL_ROOT_PASSWORD: root-test-password
           MYSQL_DATABASE: marzban
@@ -131,3 +139,16 @@ jobs:
             exit 1
           fi
           docker compose -f docker-compose.yml --profile tools config --services | grep -qx phpmyadmin
+      - name: Built-in Node compose is isolated and renderable
+        env:
+          MARZBAN_NODE_IMAGE: ghcr.io/smorad3363/marzban-v1:v1.0.2
+          NODE_RUNTIME_VERSION: v1.0.2
+        run: |
+          docker compose -f docker-compose.node.yml config > /tmp/node-compose.yml
+          test "$(docker compose -f docker-compose.node.yml config --services)" = "marzban-node"
+          grep -F 'node_runtime.main' docker-compose.node.yml
+          grep -F 'SSL_CLIENT_CERT_FILE: /var/lib/marzban-node/panel-client.crt' /tmp/node-compose.yml
+          if grep -Eiq 'mysql|sqlalchemy' /tmp/node-compose.yml; then
+            echo 'Node compose unexpectedly contains database configuration' >&2
+            exit 1
+          fi
