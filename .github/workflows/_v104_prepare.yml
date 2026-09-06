@@ -1,17 +1,17 @@
 name: v1.0.4 prepare
 
 on:
-  push:
+  pull_request:
     branches:
-      - release/v1.0.4
-    paths:
-      - .github/workflows/_v104_prepare.yml
+      - main
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: write
 
 jobs:
   prepare:
+    if: github.head_ref == 'release/v1.0.4'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout release candidate
