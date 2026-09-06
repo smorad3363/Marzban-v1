@@ -2188,19 +2188,29 @@ node_validate_client_cert() {
 NODE_INTERACTIVE_CERT_FILE=""
 
 node_prompt_client_cert() {
-    local temp_file line found_begin="false" found_end="false" line_count=0
+    local temp_file line found_end="false" line_count=0
     temp_file=$(mktemp /tmp/marzban-node-cert.XXXXXXXX)
     chmod 600 "$temp_file"
 
     colorized_echo blue "Paste the Marzban Node certificate from the Master panel."
     colorized_echo yellow "Paste the full PEM block including BEGIN/END CERTIFICATE lines. Input finishes automatically after END CERTIFICATE."
 
+    if ! IFS= read -r line; then
+        rm -f "$temp_file"
+        colorized_echo red "Certificate paste was incomplete. Paste the full certificate from BEGIN CERTIFICATE through END CERTIFICATE."
+        return 1
+    fi
+    line="${line%$'\r'}"
+    if [ "$line" != "-----BEGIN CERTIFICATE-----" ]; then
+        rm -f "$temp_file"
+        colorized_echo red "Certificate paste must start with -----BEGIN CERTIFICATE-----."
+        return 1
+    fi
+    printf '%s\n' "$line" >> "$temp_file"
+    line_count=1
+
     while IFS= read -r line; do
         line="${line%$'\r'}"
-        if [ "$found_begin" = "false" ]; then
-            [ "$line" = "-----BEGIN CERTIFICATE-----" ] || continue
-            found_begin="true"
-        fi
         printf '%s\n' "$line" >> "$temp_file"
         line_count=$((line_count + 1))
         if [ "$line" = "-----END CERTIFICATE-----" ]; then
@@ -2212,7 +2222,7 @@ node_prompt_client_cert() {
         fi
     done
 
-    if [ "$found_begin" != "true" ] || [ "$found_end" != "true" ]; then
+    if [ "$found_end" != "true" ]; then
         rm -f "$temp_file"
         colorized_echo red "Certificate paste was incomplete. Paste the full certificate from BEGIN CERTIFICATE through END CERTIFICATE."
         return 1

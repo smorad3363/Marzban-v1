@@ -119,3 +119,39 @@ def test_node_interactive_certificate_prompt_rejects_incomplete_paste():
     )
     assert result.returncode != 0
     assert "Certificate paste was incomplete" in result.stdout
+def test_node_interactive_certificate_prompt_rejects_missing_pem_header():
+    script = (
+        "source scripts/marzban.sh\n"
+        'NODE_INTERACTIVE_CERT_FILE=""\n'
+        "node_prompt_client_cert\n"
+    )
+    result = subprocess.run(
+        ["bash", "-c", script],
+        input="not-a-certificate\n",
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    assert result.returncode != 0
+    assert "Certificate paste must start with -----BEGIN CERTIFICATE-----." in result.stdout
+
+
+def test_node_interactive_certificate_prompt_rejects_complete_invalid_x509():
+    script = (
+        "source scripts/marzban.sh\n"
+        'NODE_INTERACTIVE_CERT_FILE=""\n'
+        "node_prompt_client_cert\n"
+    )
+    result = subprocess.run(
+        ["bash", "-c", script],
+        input=(
+            "-----BEGIN CERTIFICATE-----\n"
+            "not-a-valid-x509-certificate\n"
+            "-----END CERTIFICATE-----\n"
+        ),
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    assert result.returncode != 0
+    assert "The pasted certificate is not a valid X.509 PEM certificate." in result.stdout
