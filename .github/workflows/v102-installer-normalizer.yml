@@ -1,0 +1,167 @@
+name: V1.0.2 Installer Normalizer
+
+on:
+  push:
+    branches:
+      - release/v1.0.2
+    paths:
+      - .github/workflows/v102-installer-normalizer.yml
+
+permissions:
+  contents: write
+
+jobs:
+  normalize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: release/v1.0.2
+      - name: Normalize installer source and upgrade path
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("scripts/marzban.sh")
+          text = path.read_text(encoding="utf-8")
+          original = text
+
+          helper_marker = "\nmarzban_script_ref() {"
+          assert helper_marker in text
+          assert "apply_runtime_resource_defaults()" not in text
+          helper = r'''
+
+          apply_runtime_resource_defaults() {
+              [ -f "$COMPOSE_FILE" ] || return 0
+              command -v yq >/dev/null 2>&1 || return 0
+
+              # Existing installations may still have the pre-1.0.2 always-on
+              # phpMyAdmin container. Stop and remove it before assigning the
+              # opt-in tools profile, so an update actually releases its RAM.
+              local phpmyadmin_id
+              phpmyadmin_id=$($COMPOSE -f "$COMPOSE_FILE" -p "$APP_NAME" ps -q phpmyadmin 2>/dev/null || true)
+              if [ -n "$phpmyadmin_id" ]; then
+                  $COMPOSE -f "$COMPOSE_FILE" -p "$APP_NAME" stop phpmyadmin >/dev/null 2>&1 || true
+                  $COMPOSE -f "$COMPOSE_FILE" -p "$APP_NAME" rm -f phpmyadmin >/dev/null 2>&1 || true
+              fi
+
+              # Keep defaults conservative on 1 vCPU / 1 GB installations but
+              # preserve operator overrides through normal Compose substitution.
+              yq -i '.services.marzban.environment = (.services.marzban.environment // {})' "$COMPOSE_FILE"
+              yq -i '.services.marzban.environment.SQLALCHEMY_POOL_SIZE = "${SQLALCHEMY_POOL_SIZE:-5}"' "$COMPOSE_FILE"
+              yq -i '.services.marzban.environment.SQLIALCHEMY_MAX_OVERFLOW = "${SQLIALCHEMY_MAX_OVERFLOW:-5}"' "$COMPOSE_FILE"
+              sed -i 's/--innodb-buffer-pool-size=256M/--innodb-buffer-pool-size=${MYSQL_INNODB_BUFFER_POOL_SIZE:-128M}/g' "$COMPOSE_FILE"
+              if yq -e '.services.phpmyadmin' "$COMPOSE_FILE" >/dev/null 2>&1; then
+                  yq -i '.services.phpmyadmin.profiles = ["tools"]' "$COMPOSE_FILE"
+                  yq -i '.services.phpmyadmin.restart = "unless-stopped"' "$COMPOSE_FILE"
+              fi
+          }
+          '''
+          text = text.replace(helper_marker, helper + helper_marker, 1)
+
+          start = text.index("install_marzban() {")
+          end = text.index("\nup_marzban() {", start)
+          old_function = text[start:end]
+          assert "--innodb-buffer-pool-size=256M" in old_function
+          assert "phpmyadmin/phpmyadmin:latest" in old_function
+          new_function = r'''install_marzban() {
+              local marzban_version=$1
+              local database_type=$2
+              local source_ref files_url_prefix
+              if [ "$database_type" != "mysql" ]; then
+                  colorized_echo red "Error: This Marzban build supports MySQL only. Use --database mysql."
+                  exit 1
+              fi
+
+              source_ref=$(marzban_script_ref "$marzban_version")
+              files_url_prefix="https://raw.githubusercontent.com/${MARZBAN_GITHUB_REPO}/${source_ref}"
+
+              umask 077
+              mkdir -p "$DATA_DIR"
+              mkdir -p "$APP_DIR"
+
+              # Compose is release-owned configuration. Fetch the exact same ref
+              # as the installer so fresh installs cannot drift from the tested
+              # runtime defaults. Only the requested application image is changed.
+              colorized_echo blue "Fetching docker-compose.yml from ${MARZBAN_GITHUB_REPO}@${source_ref}"
+              github_download -fsSL "$files_url_prefix/docker-compose.yml" -o "$COMPOSE_FILE"
+              yq -i ".services.marzban.image = \"$(marzban_docker_image "${marzban_version}")\"" "$COMPOSE_FILE"
+              yq -i ".services.mysql.image = \"${MYSQL_TARGET_IMAGE}\"" "$COMPOSE_FILE"
+              apply_runtime_resource_defaults
+              colorized_echo green "File saved in $COMPOSE_FILE"
+
+              colorized_echo blue "Fetching .env file"
+              github_download -fsSL "$files_url_prefix/.env.example" -o "$ENV_FILE"
+              sed -i 's/^# \(XRAY_JSON = .*\)$/\1/' "$ENV_FILE"
+              sed -i 's~\(XRAY_JSON = \).*~\1"/var/lib/marzban/xray_config.json"~' "$ENV_FILE"
+
+              prompt_for_marzban_password
+              MYSQL_ROOT_PASSWORD=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 20)
+
+              {
+                  echo ""
+                  echo "# Database configuration"
+                  echo "MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD"
+                  echo "MYSQL_DATABASE=marzban"
+                  echo "MYSQL_USER=marzban"
+                  echo "MYSQL_PASSWORD=$MYSQL_PASSWORD"
+                  echo ""
+                  echo "# SQLAlchemy Database URL"
+                  echo "SQLALCHEMY_DATABASE_URL=\"mysql+pymysql://marzban:${MYSQL_PASSWORD}@127.0.0.1:3306/marzban\""
+              } >> "$ENV_FILE"
+              chmod 600 "$ENV_FILE"
+              colorized_echo green "File saved in $ENV_FILE"
+
+              colorized_echo blue "Fetching xray config file"
+              github_download -fsSL "$files_url_prefix/xray_config.json" -o "$DATA_DIR/xray_config.json"
+              colorized_echo green "File saved in $DATA_DIR/xray_config.json"
+              colorized_echo green "Marzban's files downloaded successfully"
+          }
+          '''
+          text = text[:start] + new_function + text[end:]
+
+          install_call = '            install_marzban "$marzban_version" "$database_type"\n            record_marzban_release_revision || exit 1'
+          assert install_call in text
+          text = text.replace(
+              install_call,
+              '            install_marzban "$marzban_version" "$database_type"\n            apply_runtime_resource_defaults\n            record_marzban_release_revision || exit 1',
+              1,
+          )
+
+          update_marker = '    local previous_image\n    local target_image\n'
+          assert update_marker in text
+          text = text.replace(
+              update_marker,
+              '    # Normalize resource defaults only after the pre-update recovery snapshot\n'
+              '    # and any required logical MySQL migration have completed.\n'
+              '    apply_runtime_resource_defaults\n\n'
+              + update_marker,
+              1,
+          )
+
+          old_pull = '    $COMPOSE -f $COMPOSE_FILE -p "$APP_NAME" pull mysql phpmyadmin\n'
+          assert old_pull in text
+          text = text.replace(
+              old_pull,
+              '    $COMPOSE -f $COMPOSE_FILE -p "$APP_NAME" pull mysql\n',
+              1,
+          )
+
+          assert text != original
+          assert text.count("apply_runtime_resource_defaults()") == 1
+          assert 'source_ref=$(marzban_script_ref "$marzban_version")' in text
+          assert 'pull mysql phpmyadmin' not in text
+          path.write_text(text, encoding="utf-8")
+          PY
+          bash -n scripts/marzban.sh
+          git diff --check
+          grep -F 'apply_runtime_resource_defaults' scripts/marzban.sh
+          grep -F 'files_url_prefix="https://raw.githubusercontent.com/${MARZBAN_GITHUB_REPO}/${source_ref}"' scripts/marzban.sh
+      - name: Commit normalized installer
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/marzban.sh
+          git diff --cached --quiet && exit 0
+          git commit -m "perf: normalize installer low-memory defaults"
+          git push origin HEAD:release/v1.0.2
