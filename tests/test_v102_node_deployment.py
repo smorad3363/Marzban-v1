@@ -1,4 +1,6 @@
 from pathlib import Path
+import shlex
+import subprocess
 
 import yaml
 
@@ -48,11 +50,72 @@ def test_node_installer_is_release_verified_and_keeps_panel_private_key_off_node
     assert "NODE_CLIENT_KEY" not in installer
 
 
-def test_node_install_requires_explicit_panel_certificate_and_separate_ports():
+def test_node_install_supports_interactive_certificate_and_explicit_file():
     installer = Path("scripts/marzban.sh").read_text(encoding="utf-8")
     assert '--client-cert-file' in installer
+    assert 'node_prompt_client_cert' in installer
+    assert 'Paste the Marzban Node certificate from the Master panel.' in installer
+    assert 'if [ -z "$client_cert_file" ]; then' in installer
+    assert 'client_cert_file="$NODE_INTERACTIVE_CERT_FILE"' in installer
     assert 'Node service and Xray API ports must differ.' in installer
     assert '--service-port' in installer
     assert '--api-port' in installer
     assert '--event-max-rows' in installer
     assert 'node_validate_event_rows' in installer
+
+
+def _make_test_certificate(tmp_path: Path) -> Path:
+    cert = tmp_path / "panel-client.crt"
+    key = tmp_path / "panel-client.key"
+    subprocess.run(
+        [
+            "openssl",
+            "req",
+            "-x509",
+            "-newkey",
+            "rsa:2048",
+            "-nodes",
+            "-keyout",
+            str(key),
+            "-out",
+            str(cert),
+            "-subj",
+            "/CN=Marzban Node Test",
+            "-days",
+            "1",
+        ],
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    return cert
+
+
+def test_node_interactive_certificate_prompt_accepts_pasted_pem(tmp_path):
+    cert = _make_test_certificate(tmp_path)
+    script = (
+        "source scripts/marzban.sh\n"
+        'NODE_INTERACTIVE_CERT_FILE=""\n'
+        f"node_prompt_client_cert < {shlex.quote(str(cert))}\n"
+        'test -f "$NODE_INTERACTIVE_CERT_FILE"\n'
+        'openssl x509 -in "$NODE_INTERACTIVE_CERT_FILE" -noout >/dev/null\n'
+        'rm -f "$NODE_INTERACTIVE_CERT_FILE"\n'
+    )
+    subprocess.run(["bash", "-c", script], check=True)
+
+
+def test_node_interactive_certificate_prompt_rejects_incomplete_paste():
+    script = (
+        "source scripts/marzban.sh\n"
+        'NODE_INTERACTIVE_CERT_FILE=""\n'
+        "node_prompt_client_cert\n"
+    )
+    result = subprocess.run(
+        ["bash", "-c", script],
+        input="-----BEGIN CERTIFICATE-----\nnot-a-complete-certificate\n",
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    assert result.returncode != 0
+    assert "Certificate paste was incomplete" in result.stdout
