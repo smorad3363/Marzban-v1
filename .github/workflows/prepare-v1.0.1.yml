@@ -57,8 +57,59 @@ jobs:
           text = workflow.read_text(encoding="utf-8")
           marker = "  tag-v1-0-1:\n"
           if marker not in text:
-              text += '''\n  tag-v1-0-1:\n    name: Create v1.0.1 release tag\n    needs:\n      - test-mysql\n      - test-mysql-upgrade\n    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}\n    runs-on: ubuntu-latest\n    steps:\n      - name: Checkout tested commit\n        uses: actions/checkout@v4\n        with:\n          fetch-depth: 0\n\n      - name: Setup nodejs\n        uses: actions/setup-node@v4\n        with:\n          node-version: 20\n          cache: npm\n          cache-dependency-path: app/dashboard/package-lock.json\n\n      - name: Install dashboard dependencies\n        working-directory: ./app/dashboard\n        run: npm ci\n\n      - name: Verify dashboard production build\n        working-directory: ./app/dashboard\n        run: VITE_BASE_API=/api/ npm run build --if-present -- --outDir /tmp/marzban-dashboard-v101 --assetsDir statics\n\n      - name: Verify release metadata and create tag\n        shell: bash\n        run: |\n          set -Eeuo pipefail\n          version=\"$(tr -d '[:space:]' < VERSION)\"\n          test \"${version}\" = \"1.0.1\"\n          grep -Fx '__version__ = \"1.0.1\"' app/__init__.py\n          grep -Fx 'CLI_RELEASE_VERSION=\"v1.0.1\"' scripts/marzban.sh\n          grep -Fq 'ghcr.io/smorad3363/marzban-v1:v1.0.1' docker-compose.yml\n          test -s /tmp/marzban-dashboard-v101/index.html\n          test -s /tmp/marzban-dashboard-v101/404.html\n          tag=\"v1.0.1\"\n          if git ls-remote --exit-code --tags origin \"refs/tags/${tag}\" >/dev/null 2>&1; then\n            echo \"${tag} already exists; leaving immutable release tag unchanged.\"\n            exit 0\n          fi\n          git config user.name \"github-actions[bot]\"\n          git config user.email \"41898282+github-actions[bot]@users.noreply.github.com\"\n          git tag -a \"${tag}\" \"${GITHUB_SHA}\" -m \"Marzban ${tag}\"\n          git push origin \"refs/tags/${tag}\"\n'''
-              workflow.write_text(text, encoding="utf-8")
+              tag_job = "\n".join([
+                  "",
+                  "  tag-v1-0-1:",
+                  "    name: Create v1.0.1 release tag",
+                  "    needs:",
+                  "      - test-mysql",
+                  "      - test-mysql-upgrade",
+                  "    if: github.event_name == 'push' && github.ref == 'refs/heads/main'",
+                  "    runs-on: ubuntu-latest",
+                  "    steps:",
+                  "      - name: Checkout tested commit",
+                  "        uses: actions/checkout@v4",
+                  "        with:",
+                  "          fetch-depth: 0",
+                  "",
+                  "      - name: Setup nodejs",
+                  "        uses: actions/setup-node@v4",
+                  "        with:",
+                  "          node-version: 20",
+                  "          cache: npm",
+                  "          cache-dependency-path: app/dashboard/package-lock.json",
+                  "",
+                  "      - name: Install dashboard dependencies",
+                  "        working-directory: ./app/dashboard",
+                  "        run: npm ci",
+                  "",
+                  "      - name: Verify dashboard production build",
+                  "        working-directory: ./app/dashboard",
+                  "        run: VITE_BASE_API=/api/ npm run build --if-present -- --outDir /tmp/marzban-dashboard-v101 --assetsDir statics",
+                  "",
+                  "      - name: Verify release metadata and create tag",
+                  "        shell: bash",
+                  "        run: |",
+                  "          set -Eeuo pipefail",
+                  "          version=\"$(tr -d '[:space:]' < VERSION)\"",
+                  "          test \"${version}\" = \"1.0.1\"",
+                  "          grep -Fx '__version__ = \"1.0.1\"' app/__init__.py",
+                  "          grep -Fx 'CLI_RELEASE_VERSION=\"v1.0.1\"' scripts/marzban.sh",
+                  "          grep -Fq 'ghcr.io/smorad3363/marzban-v1:v1.0.1' docker-compose.yml",
+                  "          test -s /tmp/marzban-dashboard-v101/index.html",
+                  "          test -s /tmp/marzban-dashboard-v101/404.html",
+                  "          tag=\"v1.0.1\"",
+                  "          if git ls-remote --exit-code --tags origin \"refs/tags/${tag}\" >/dev/null 2>&1; then",
+                  "            echo \"${tag} already exists; leaving immutable release tag unchanged.\"",
+                  "            exit 0",
+                  "          fi",
+                  "          git config user.name \"github-actions[bot]\"",
+                  "          git config user.email \"41898282+github-actions[bot]@users.noreply.github.com\"",
+                  "          git tag -a \"${tag}\" \"${GITHUB_SHA}\" -m \"Marzban ${tag}\"",
+                  "          git push origin \"refs/tags/${tag}\"",
+                  "",
+              ])
+              workflow.write_text(text + tag_job, encoding="utf-8")
           PY
 
       - name: Verify shell and release contract
