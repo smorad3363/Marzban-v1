@@ -26,7 +26,7 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: python -m pip install -r requirements.txt pytest httpx
-      - name: Repair staged patcher quoting
+      - name: Repair staged patcher fixtures
         shell: bash
         run: |
           python - <<'PY'
@@ -44,7 +44,13 @@ jobs:
           if not line.endswith("'''"):
               raise SystemExit('nested raw fixture does not end with triple quote')
           lines[index] = line.replace("raw = '''", "raw = '", 1)[:-3] + "'"
-          path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          text = '\n'.join(lines) + '\n'
+          old = '    assert "parse_event_batch(data, self._last_event_id)" in source\n'
+          new = '    assert \'self._event_batch("panel-logs", self._last_event_id)\' in source\n    assert "parse_event_batch(data, after_id)" in source\n'
+          if text.count(old) != 1:
+              raise SystemExit(f'expected one stale protocol assertion, found {text.count(old)}')
+          text = text.replace(old, new, 1)
+          path.write_text(text, encoding='utf-8')
           PY
       - name: Apply context-checked runtime patch
         run: python .github/scripts/apply_v102_node_runtime.py
