@@ -16,6 +16,7 @@ from requests.packages.urllib3.poolmanager import PoolManager
 from websocket import WebSocketConnectionClosedException, WebSocketTimeoutException, create_connection
 
 from app.xray.config import XRayConfig
+from app.xray.node_protocol_v2 import RuntimeProtocolError, parse_event_batch, parse_runtime_handshake
 from xray_api import XRay as XRayAPI
 
 
@@ -153,11 +154,13 @@ class ReSTXRayNode:
 
         return self._api
 
-    def connect(self):
+    def _pin_server_certificate(self):
         self._node_cert = ssl.get_server_certificate((self.address, self.port))
         self._node_certfile = string_to_temp_file(self._node_cert)
         self.session.verify = self._node_certfile.name
 
+    def connect(self):
+        self._pin_server_certificate()
         res = self.make_request("/connect", timeout=3)
         self._session_id = res['session_id']
 
@@ -279,6 +282,74 @@ class ReSTXRayNode:
             except ValueError:
                 pass
             del buf
+
+
+class V2ReSTXRayNode(ReSTXRayNode):
+    """Explicit v2 runtime using acknowledged/replayable event batches."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.runtime_handshake = None
+        self._last_event_id = 0
+
+    def probe_runtime(self, timeout: int = 2) -> bool:
+        try:
+            self._pin_server_certificate()
+            res = self.session.post(
+                self._rest_api_url + "/v2/handshake",
+                timeout=timeout,
+                json={},
+            )
+            if res.status_code != 200:
+                return False
+            self.runtime_handshake = parse_runtime_handshake(res.json())
+            return True
+        except (RuntimeProtocolError, requests.RequestException, OSError, ssl.SSLError, ValueError):
+            return False
+
+    @property
+    def capabilities(self):
+        if self.runtime_handshake is None:
+            return frozenset()
+        return self.runtime_handshake.negotiated_capabilities
+
+    def connect(self):
+        if self.runtime_handshake is None and not self.probe_runtime():
+            raise ConnectionError("Node no longer satisfies the v2 runtime handshake")
+        return super().connect()
+
+    def _bg_fetch_logs(self):
+        while self._logs_queues:
+            if not self._session_id:
+                time.sleep(0.2)
+                continue
+            try:
+                data = self.make_request(
+                    "/v2/events",
+                    timeout=5,
+                    after_id=self._last_event_id,
+                    limit=100,
+                )
+                events, highest_seen = parse_event_batch(data, self._last_event_id)
+                for event in events:
+                    if event.event_type != "xray.log":
+                        continue
+                    line = event.payload.get("line")
+                    if not isinstance(line, str) or not line:
+                        continue
+                    for buf in list(self._logs_queues):
+                        buf.append(line)
+                if highest_seen > self._last_event_id:
+                    self.make_request(
+                        "/v2/events/ack",
+                        timeout=3,
+                        event_id=highest_seen,
+                    )
+                    self._last_event_id = highest_seen
+                if not events:
+                    time.sleep(0.2)
+            except (NodeAPIError, RuntimeProtocolError):
+                time.sleep(1)
 
 
 class RPyCXRayNode:
@@ -513,6 +584,19 @@ class XRayNode:
                 ssl_key: str,
                 ssl_cert: str,
                 usage_coefficient: float = 1):
+
+        # Prefer the explicit V2 contract. Legacy nodes retain the historical
+        # REST/RPyC detection path below for compatibility.
+        v2_candidate = V2ReSTXRayNode(
+            address=address,
+            port=port,
+            api_port=api_port,
+            ssl_key=ssl_key,
+            ssl_cert=ssl_cert,
+            usage_coefficient=usage_coefficient,
+        )
+        if v2_candidate.probe_runtime():
+            return v2_candidate
 
         # trying to detect what's the server of node
         try:
