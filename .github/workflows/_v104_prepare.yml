@@ -54,11 +54,25 @@ jobs:
 
           p = Path(".github/workflows/build.yml")
           text = p.read_text(encoding="utf-8")
-          old = '''          push: true\n          tags: ${{ steps.image-tags.outputs.tags }}\n'''
-          new = '''          push: true\n          tags: ${{ steps.image-tags.outputs.tags }}\n          labels: |\n            org.opencontainers.image.revision=${{ github.sha }}\n            org.opencontainers.image.source=https://github.com/${{ github.repository }}\n            org.opencontainers.image.version=${{ steps.release-version.outputs.version_tag || inputs.image_tag || github.ref_name }}\n'''
+          expr = lambda body: "$" + "{{ " + body + " }}"
+          tag_expr = expr("steps.image-tags.outputs.tags")
+          revision_expr = expr("github.sha")
+          repository_expr = expr("github.repository")
+          version_expr = expr("steps.release-version.outputs.version_tag || inputs.image_tag || github.ref_name")
+          old = "          push: true\n          tags: " + tag_expr + "\n"
+          new = (
+              old
+              + "          labels: |\n"
+              + "            org.opencontainers.image.revision=" + revision_expr + "\n"
+              + "            org.opencontainers.image.source=https://github.com/" + repository_expr + "\n"
+              + "            org.opencontainers.image.version=" + version_expr + "\n"
+          )
           if old not in text:
               raise SystemExit("docker build-push block not found")
-          p.write_text(text.replace(old, new), encoding="utf-8")
+          updated = text.replace(old, new)
+          if "org.opencontainers.image.revision=" + revision_expr not in updated:
+              raise SystemExit("revision label was not added")
+          p.write_text(updated, encoding="utf-8")
 
           Path("docs/RELEASE_NOTES_v1.0.4.md").write_text('''# Marzban v1.0.4\n\n## Dashboard and administration UX\n\n- Ports the approved enterprise/minimal admin management redesign onto the current v1 baseline.\n- Adds a denser RTL user-management table so users become visible much earlier on the dashboard.\n- Keeps real user/admin actions directly available, including plan renewal, enable/disable, reset usage, revoke subscription, delete, QR/subscription access, and audit navigation where the backend capability exists.\n- Preserves multi-page bulk selection by username while refreshing selected users from visible page data.\n- Keeps admin quick-credit actions visible and separate from destructive/freeze actions.\n\n## Release integrity\n\n- Preserves the v1.0.3 interactive Node certificate installer and all historical V1 lineage constraints.\n- Adds the required Docker OCI source metadata, including `org.opencontainers.image.revision`, to the release image build.\n- Published v1.0.0 through v1.0.3 remain unchanged.\n''', encoding="utf-8")
           PY
@@ -70,7 +84,6 @@ jobs:
           grep -Fq 'V1_LINEAGE_SOURCE_VERSION="5.2.0"' scripts/marzban.sh
           grep -Fq 'V1_LINEAGE_SOURCE_IMAGE="ghcr.io/smorad3363/marzban-vnext:v5.2.0"' scripts/marzban.sh
           grep -Fq 'V1_LINEAGE_TARGET_VERSION="v1.0.0"' scripts/marzban.sh
-          grep -Fq 'org.opencontainers.image.revision=${{ github.sha }}' .github/workflows/build.yml
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
