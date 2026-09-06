@@ -1,0 +1,28 @@
+name: Validate v1.0.5 installer contract fix
+
+on:
+  push:
+    branches:
+      - fix/v1.0.5-installer-contract
+
+permissions:
+  contents: read
+
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/v1.0.5-installer-contract
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install test dependencies
+        run: python -m pip install -r requirements.txt pytest httpx >/dev/null
+      - name: Run exact failed contract and release contract
+        run: |
+          set -Eeuo pipefail
+          bash tests/test_installer_v1_contract.sh
+          python -m pytest -q tests/test_marzhelp_migration_backup.py::test_installer_v1_shell_contract_executes tests/test_release_contract.py
