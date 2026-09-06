@@ -747,19 +747,16 @@ const NodeForm: NodeFormType = ({
                       rows={3}
                       dir="ltr"
                       textAlign="left"
-                      value={(field.value || []).join("
-")}
+                      value={(field.value || []).join("\n")}
                       onChange={(event) =>
                         field.onChange(
                           event.target.value
-                            .split(/[
-,]+/)
+                            .split(/[\n,]+/)
                             .map((value) => value.trim())
                             .filter(Boolean)
                         )
                       }
-                      placeholder={"173.245.48.0/20
-2400:cb00::/32"}
+                      placeholder={"173.245.48.0/20\n2400:cb00::/32"}
                     />
                   )}
                 />
