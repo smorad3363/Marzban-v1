@@ -17,6 +17,7 @@ NODE_ENV_FILE="$NODE_APP_DIR/.env"
 NODE_CLIENT_CERT_FILE="$NODE_DATA_DIR/panel-client.crt"
 NODE_RELEASE_REVISION_FILE="$NODE_APP_DIR/.release-revision"
 NODE_CLI_VERSION_FILE="$NODE_APP_DIR/.cli-version"
+NODE_SCRIPT_PATH="/usr/local/bin/marzban-node"
 LAST_XRAY_CORES=10
 # =============================================================================
 # Fork configuration
@@ -2195,6 +2196,41 @@ node_source_ref_path() {
     fi
 }
 
+install_node_script_from_repo() {
+    local requested_version="$1"
+    local ref_path script_url temp_script
+    ref_path=$(node_source_ref_path "$requested_version")
+    script_url="https://raw.githubusercontent.com/${MARZBAN_GITHUB_REPO}/${ref_path}/${MARZBAN_SCRIPTS_PATH}"
+    temp_script=$(mktemp)
+    if ! github_download -fsSL "$script_url" -o "$temp_script"; then
+        rm -f "$temp_script"
+        colorized_echo red "Could not download Node CLI from ${requested_version}."
+        return 1
+    fi
+    if ! bash -n "$temp_script"; then
+        rm -f "$temp_script"
+        colorized_echo red "Downloaded Node CLI failed syntax validation."
+        return 1
+    fi
+    if ! install -m 755 "$temp_script" "$NODE_SCRIPT_PATH"; then
+        rm -f "$temp_script"
+        return 1
+    fi
+    # A co-located panel owns /usr/local/bin/marzban and its CLI metadata.
+    # Never replace either from a Node install/update. Node-only hosts keep the
+    # familiar `marzban node ...` command in addition to `marzban-node node ...`.
+    if ! is_marzban_installed; then
+        if ! install -m 755 "$temp_script" /usr/local/bin/marzban; then
+            rm -f "$temp_script"
+            return 1
+        fi
+    fi
+    rm -f "$temp_script"
+    printf '%s\n' "$requested_version" > "$NODE_CLI_VERSION_FILE"
+    chmod 644 "$NODE_CLI_VERSION_FILE"
+    colorized_echo green "Node CLI installed at $NODE_SCRIPT_PATH"
+}
+
 node_source_supports_runtime() {
     local requested_version="$1"
     local ref_path
@@ -2364,7 +2400,7 @@ node_install_command() {
     node_compose up -d --remove-orphans || return 1
     node_wait_for_health || return 1
     verify_node_version_integrity "$requested_version" || return 1
-    install_marzban_script_from_repo "$requested_version" || return 1
+    install_node_script_from_repo "$requested_version" || return 1
     colorized_echo green "Marzban Node ${requested_version} is installed and healthy."
     colorized_echo blue "Node data: $NODE_DATA_DIR"
     colorized_echo blue "Panel certificate: $NODE_CLIENT_CERT_FILE"
@@ -2421,7 +2457,7 @@ node_update_command() {
         colorized_echo red "Node update failed. Previous configuration is preserved at $backup_dir."
         return 1
     fi
-    install_marzban_script_from_repo "$requested_version" || return 1
+    install_node_script_from_repo "$requested_version" || return 1
     colorized_echo green "Marzban Node updated successfully to ${requested_version}."
 }
 

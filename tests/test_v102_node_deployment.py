@@ -38,6 +38,12 @@ def test_node_installer_is_release_verified_and_keeps_panel_private_key_off_node
     assert 'Built-in Node deployment accepts published release versions only.' in installer
     assert 'marzban node <install|update|status|logs>' in installer
     assert 'shift; node_command "$@";;' in installer
+    assert 'NODE_SCRIPT_PATH="/usr/local/bin/marzban-node"' in installer
+    node_section = installer.split("node_is_installed()", 1)[1].split("rollback_command()", 1)[0]
+    assert 'install_node_script_from_repo "$requested_version"' in node_section
+    assert 'install_marzban_script_from_repo' not in node_section
+    assert 'if ! is_marzban_installed; then' in node_section
+    assert 'install -m 755 "$temp_script" /usr/local/bin/marzban' in node_section
     assert "panel-client.key" not in installer
     assert "NODE_CLIENT_KEY" not in installer
 
