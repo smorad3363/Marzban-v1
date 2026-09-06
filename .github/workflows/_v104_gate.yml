@@ -134,7 +134,7 @@ jobs:
           run_isolated_test() {
             local stage="$1"
             local test_file="$2"
-            local database="v104_stage${stage}_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
+            local database="stage${stage}_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}_test"
             local database_url="mysql+pymysql://root:root-test-password@127.0.0.1:3306/${database}"
             docker exec -e MYSQL_PWD=root-test-password "${mysql_container}" mysql --user=root --execute \
               "CREATE DATABASE \`${database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
