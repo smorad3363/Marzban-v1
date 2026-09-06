@@ -56,7 +56,7 @@ jobs:
           )
           replace_once(
               '<Table size="sm" minW="1680px" sx={{ "th, td": { borderColor: "rgba(148,163,184,.10)" } }}>',
-              '<Table size="sm" w="full" tableLayout="fixed" sx={{ "th, td": { borderColor: "rgba(148,163,184,.10)", px: 2, py: 2, overflow: "hidden" }, "th": { whiteSpace: "normal", lineHeight: 1.3 } }}>',
+              '<Table size="sm" w="full" sx={{ tableLayout: "fixed", "th, td": { borderColor: "rgba(148,163,184,.10)", px: 2, py: 2, overflow: "hidden" }, "th": { whiteSpace: "normal", lineHeight: 1.3 } }}>',
           )
           replace_once('<Th w="40px"><Checkbox', '<Th w="36px"><Checkbox')
           replace_once('<Th w="48px" textAlign="center">#</Th>', '<Th w="34px" textAlign="center">#</Th>')
@@ -93,7 +93,7 @@ jobs:
           if anchor not in contract:
               raise SystemExit('users table assertion anchor missing')
           extra = (
-              'assert.ok(usersTablePro.includes(\'tableLayout="fixed"\') && !usersTablePro.includes(\'minW="1680px"\'), "dense user table must fit the available desktop width without a forced minimum width");\n'
+              'assert.ok(usersTablePro.includes(\'tableLayout: "fixed"\') && !usersTablePro.includes(\'minW="1680px"\'), "dense user table must fit the available desktop width without a forced minimum width");\n'
               'assert.ok(usersTablePro.includes(\'overflowX="hidden"\'), "dense user table container must not render a desktop horizontal scrollbar");\n'
               'assert.ok(usersTablePro.includes(\'flexWrap="wrap"\'), "direct user actions must wrap inside their cell instead of widening the table");\n'
           )
