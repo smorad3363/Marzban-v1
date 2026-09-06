@@ -16,6 +16,7 @@ const overview = read("src/components/DashboardOverview.tsx");
 const userDialog = read("src/components/UserDialog.tsx");
 const filters = read("src/components/Filters.tsx");
 const usersTable = read("src/components/UsersTable.tsx");
+const usersTablePro = read("src/components/UsersTablePro.tsx");
 const deviceLimits = read("src/pages/DeviceLimits.tsx");
 const auditLogs = read("src/pages/AuditLogs.tsx");
 const header = read("src/components/Header.tsx");
@@ -120,6 +121,9 @@ assert.ok(filters.includes("CreateUserFromPlan") && !filters.includes('to="/plan
 assert.ok(!usersTable.includes('user_creation_mode !== "PLAN_ONLY"'), "empty user state must not fail open while account policy is loading");
 assert.ok(usersTable.includes("CreateUserFromPlan") && !usersTable.includes('to="/plans/"'), "empty state must offer scoped Plan creation");
 assert.ok(usersTable.includes('account.data?.account_status !== "ACTIVE"'), "suspended Admin user table must be read-only");
+assert.ok(usersTablePro.includes('tableLayout: "fixed"') && !usersTablePro.includes('minW="1680px"'), "dense user table must fit the available desktop width without a forced minimum width");
+assert.ok(usersTablePro.includes('overflowX="hidden"'), "dense user table container must not render a desktop horizontal scrollbar");
+assert.ok(usersTablePro.includes('flexWrap="wrap"'), "direct user actions must wrap inside their cell instead of widening the table");
 assert.ok(overview.includes('accountData?.account_status === "ACTIVE"'), "suspended Admin dashboard actions must be hidden");
 assert.ok(userDialog.includes('insetInlineStart={3}'), "RTL modal close button must stay opposite the title");
 assert.ok(userDialog.includes('my="3"'), "user modal must reserve top and bottom viewport margins");
