@@ -35,6 +35,7 @@ jobs:
               'app/dashboard/src/components/UsersTablePro.tsx',
               'app/dashboard/scripts/test-admin-ux.cjs',
               'app/dashboard/build/index.html',
+              'app/dashboard/build/404.html',
           }
           unexpected = sorted(
               p for p in changed
@@ -43,14 +44,18 @@ jobs:
           if unexpected:
               raise SystemExit(f'unexpected hotfix scope: {unexpected}')
 
-          forbidden_prefixes = ('app/', '.github/workflows/build.yml', 'VERSION', 'docker-compose.yml', 'scripts/')
+          allowed_ui = {
+              'app/dashboard/src/components/UsersTablePro.tsx',
+              'app/dashboard/scripts/test-admin-ux.cjs',
+              'app/dashboard/build/index.html',
+              'app/dashboard/build/404.html',
+          }
           for p in changed:
-              if p in {'app/dashboard/src/components/UsersTablePro.tsx', 'app/dashboard/scripts/test-admin-ux.cjs', 'app/dashboard/build/index.html'}:
+              if p in allowed_ui:
                   continue
               if p.startswith('app/dashboard/build/statics/') or p == '.github/workflows/_hotfix_users_table_review.yml':
                   continue
-              if p.startswith(forbidden_prefixes):
-                  raise SystemExit(f'forbidden non-UI change: {p}')
+              raise SystemExit(f'forbidden non-UI change: {p}')
 
           source = Path('app/dashboard/src/components/UsersTablePro.tsx').read_text()
           required_layout = [
