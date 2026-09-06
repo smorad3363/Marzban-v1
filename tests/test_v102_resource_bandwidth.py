@@ -43,7 +43,8 @@ def test_bandwidth_first_sample_warms_then_uses_elapsed_time():
     assert store.observe(7, 1_000_000, 2_000_000, sampled_at=100.0) is None
     warm = store.snapshot(7, now=100.0)
     assert warm["state"] == "warming_up"
-    assert warm["total_bps"] if "total_bps" in warm else 0 == 0
+    assert warm["uplink_bps"] == 0
+    assert warm["downlink_bps"] == 0
 
     point = store.observe(7, 1_000_000, 2_000_000, sampled_at=110.0)
     assert point is not None
@@ -81,6 +82,15 @@ def test_bandwidth_history_is_bounded():
     for index in range(1, MAX_HISTORY_SAMPLES + 50):
         store.observe(1, 100, 100, sampled_at=1.0 + index)
     assert len(store._history[1]) <= MAX_HISTORY_SAMPLES
+
+
+def test_bandwidth_forget_removes_deleted_node_state():
+    store = BandwidthStore()
+    store.observe(9, 100, 100, sampled_at=1.0)
+    store.observe(9, 100, 100, sampled_at=2.0)
+    assert store.snapshot(9, now=2.0)["state"] == "online"
+    store.forget(9)
+    assert store.snapshot(9, now=2.0)["state"] == "offline"
 
 
 def test_device_limit_hit_buffer_remains_bounded_alongside_telemetry():
