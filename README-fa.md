@@ -106,9 +106,9 @@
 
 # راهنمای نصب
 
-این نسخه فقط از دیتابیس MySQL پشتیبانی می‌کند. برای نصب نسخه دقیق V1.0.2 از دستور زیر استفاده کنید:
+این نسخه فقط از دیتابیس MySQL پشتیبانی می‌کند. برای نصب نسخه دقیق V1.0.3 از دستور زیر استفاده کنید:
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.0.2/scripts/marzban.sh)" @ install --version v1.0.2 --database mysql
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.0.3/scripts/marzban.sh)" @ install --version v1.0.3 --database mysql
 ```
 
 وقتی نصب تمام شد:
@@ -346,20 +346,22 @@ $ sudo docker-compose exec -it marzban bash
 
 # نود داخلی مرزبان
 
-در V1.0.2، **Node Runtime V2** داخل خود مرزبان قرار دارد و دیگر به پکیج یا ایمیج جداگانه Marzban-node نیاز نیست. نود از همان ایمیج نسخه‌بندی‌شده پنل استفاده می‌کند، دیتابیس MySQL ندارد و اطلاعاتش به‌صورت جداگانه در `/opt/marzban-node` و `/var/lib/marzban-node` نگهداری می‌شود.
+در V1.0.3، **Node Runtime V2** داخل خود مرزبان قرار دارد و دیگر به پکیج یا ایمیج جداگانه Marzban-node نیاز نیست. نود از همان ایمیج نسخه‌بندی‌شده پنل استفاده می‌کند، دیتابیس MySQL ندارد و اطلاعاتش به‌صورت جداگانه در `/opt/marzban-node` و `/var/lib/marzban-node` نگهداری می‌شود.
 
-روی سرور نود فقط **گواهی عمومی کلاینت پنل** را به‌صورت PEM کپی کنید؛ کلید خصوصی پنل نباید روی نود قرار بگیرد. سپس نسخه دقیق را نصب کنید:
+از بخش **Nodes** در Master، Certificate نود را کپی کنید؛ کلید خصوصی پنل نباید روی نود قرار بگیرد. سپس دستور زیر را روی سرور نود اجرا کنید. نصب‌کننده خودش از شما می‌خواهد کل PEM را از `BEGIN CERTIFICATE` تا `END CERTIFICATE` paste کنید:
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.0.2/scripts/marzban.sh)" @ node install --version v1.0.2 --client-cert-file /path/to/panel-client.crt
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.0.3/scripts/marzban.sh)" @ node install --version v1.0.3
 ```
+
+برای نصب غیرتعاملی/اتوماتیک، گزینه `--client-cert-file /path/to/panel-client.crt` همچنان پشتیبانی می‌شود.
 
 دستورهای کاربردی:
 
 ```bash
 marzban node status
 marzban node logs
-marzban node update --version v1.0.2
+marzban node update --version v1.0.3
 ```
 
 Node Runtime V2 از اعتبارسنجی سخت‌گیرانه گواهی، تحویل پایدار رویدادها و تشخیص IP بر اساس capability تأییدشده استفاده می‌کند. اگر پنل و نود روی یک سرور باشند، CLI نود در `/usr/local/bin/marzban-node` جدا نگه داشته می‌شود و آپدیت نود، CLI یا metadata نسخه پنل را بازنویسی نمی‌کند.

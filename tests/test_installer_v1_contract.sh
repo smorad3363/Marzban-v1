@@ -29,30 +29,30 @@ detect_compose() { COMPOSE=mock_compose; }
 is_marzban_up() { return 0; }
 configured_service_image() {
   case "$1" in
-    marzban) printf '%s\n' "ghcr.io/smorad3363/marzban-v1:v1.0.2" ;;
+    marzban) printf '%s\n' "ghcr.io/smorad3363/marzban-v1:v1.0.3" ;;
     mysql) printf '%s\n' "mysql:26.7.0" ;;
   esac
 }
 running_service_container() { printf '%s-id\n' "$1"; }
-runtime_app_version() { printf '%s\n' "1.0.2"; }
+runtime_app_version() { printf '%s\n' "1.0.3"; }
 marzban_image_revision() { printf '%040d\n' 1; }
 mysql_upgrade_server_version() { printf '%s\n' "26.7.0"; }
 verify_version_integrity() {
-  test "$1" = "v1.0.2"
+  test "$1" = "v1.0.3"
   printf '%s\n' "INTEGRITY_OK"
 }
 docker() {
   if [[ "$*" == *".Config.Image"* ]]; then
-    printf '%s\n' "ghcr.io/smorad3363/marzban-v1:v1.0.2"
+    printf '%s\n' "ghcr.io/smorad3363/marzban-v1:v1.0.3"
   elif [[ "$*" == *".RepoDigests"* ]]; then
     printf '%s\n' "ghcr.io/smorad3363/marzban-v1@sha256:$(printf '%064d' 2)"
   fi
 }
 
 version_output="$(version_command)"
-grep -Fxq "CLI version: v1.0.2" <<< "$version_output"
-grep -Fxq "Runtime app version: 1.0.2" <<< "$version_output"
-grep -Fxq "Configured Docker image: ghcr.io/smorad3363/marzban-v1:v1.0.2" <<< "$version_output"
+grep -Fxq "CLI version: v1.0.3" <<< "$version_output"
+grep -Fxq "Runtime app version: 1.0.3" <<< "$version_output"
+grep -Fxq "Configured Docker image: ghcr.io/smorad3363/marzban-v1:v1.0.3" <<< "$version_output"
 grep -Fxq "Configured MySQL image: mysql:26.7.0" <<< "$version_output"
 grep -Fxq "Runtime MySQL version: 26.7.0" <<< "$version_output"
 grep -Fxq "INTEGRITY_OK" <<< "$version_output"

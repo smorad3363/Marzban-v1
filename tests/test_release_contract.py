@@ -13,7 +13,7 @@ def test_release_version_and_install_rollback_contract():
     installer_lab = Path("tests/release_installer_lab.sh").read_text()
     upgrade_lab = Path("tests/release_upgrade_lab.sh").read_text()
 
-    assert version == "1.0.2"
+    assert version == "1.0.3"
     assert f'__version__ = "{version}"' in app
     assert f'CLI_RELEASE_VERSION="{release_tag}"' in installer
     assert f"ghcr.io/smorad3363/marzban-v1:{release_tag}" in Path("docker-compose.yml").read_text()
@@ -92,9 +92,14 @@ def test_release_version_and_install_rollback_contract():
     assert "Access Groups exclusively own user network access" in historical_notes
     assert "Existing mature" in historical_notes
 
-    current_notes = Path("docs/RELEASE_NOTES_v1.0.2.md").read_text(encoding="utf-8")
-    assert "Built-in Node Runtime V2" in current_notes
-    assert "durable" in current_notes.lower()
-    assert "Access Group" in current_notes
-    assert "v1.0.0" in current_notes
+    v102_notes = Path("docs/RELEASE_NOTES_v1.0.2.md").read_text(encoding="utf-8")
+    assert "Built-in Node Runtime V2" in v102_notes
+    assert "durable" in v102_notes.lower()
+    assert "Access Group" in v102_notes
+    assert "v1.0.0" in v102_notes
+
+    current_notes = Path("docs/RELEASE_NOTES_v1.0.3.md").read_text(encoding="utf-8")
+    assert "interactive" in current_notes.lower()
+    assert "--client-cert-file" in current_notes
+    assert "v1.0.2" in current_notes
     assert 'readFileSync("../../VERSION", "utf8").trim()' in Path("app/dashboard/vite.config.ts").read_text()
