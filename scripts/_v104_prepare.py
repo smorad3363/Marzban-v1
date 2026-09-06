@@ -31,14 +31,13 @@ replace_required(
 )
 
 # The Admin page was intentionally refactored into a wrapper, page and table.
-# Keep the existing behavioral assertions, but point them at the real sources.
+# Keep security/authorization assertions, and update only assertions tied to the approved UX.
 ux_path = Path("app/dashboard/scripts/test-admin-ux.cjs")
 ux = ux_path.read_text(encoding="utf-8")
 ux = ux.replace(
     'const admins = read("src/pages/Admins.tsx");',
     'const admins = [\n  read("src/pages/Admins.tsx"),\n  read("src/pages/admins/AdminsPage.tsx"),\n  read("src/pages/admins/AdminTable.tsx"),\n].join("\\n");',
 )
-# Update only assertions that intentionally changed under the user-approved UX.
 replacements = {
     'assert.ok(admins.includes("colSpan={4}"), "Admin desktop list must stay limited to four purposeful data groups");':
         'assert.ok(admins.includes("colSpan={7}") && admins.includes("عملیات سریع"), "Admin desktop list must keep the approved dense operational columns");',
@@ -58,6 +57,8 @@ replacements = {
         'assert.ok(admins.includes(\'onCredit(item, "reclaim")\'), "Admin rows must expose direct quick credit reclaim beside the amount field");',
     'assert.ok(admins.includes("filtersDisclosure.onToggle"), "Admin filters must be collapsed by default");':
         'assert.ok(admins.includes("<FilterButton") && !admins.includes("filtersDisclosure"), "approved Admin status and billing filters must stay directly visible");',
+    'assert.ok(!settings.includes(\'fetch("/owner/backups/restore"\') && settings.includes("Online restore is disabled"), "UI must honor offline-only recovery");':
+        'assert.ok(!settings.includes(\'fetch("/owner/backups/restore"\') && settings.includes("بازیابی آنلاین برای حفاظت از داده فعال غیرفعال است"), "UI must honor offline-only recovery");',
 }
 for old, new in replacements.items():
     if old not in ux:
