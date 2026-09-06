@@ -106,9 +106,9 @@
 
 # راهنمای نصب
 
-این نسخه فقط از دیتابیس MySQL 8 پشتیبانی می‌کند. برای نصب از دستور زیر استفاده کنید:
+این نسخه فقط از دیتابیس MySQL پشتیبانی می‌کند. برای نصب نسخه دقیق V1.0.2 از دستور زیر استفاده کنید:
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.0.1/scripts/marzban.sh)" @ install --version v1.0.1 --database mysql
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.0.2/scripts/marzban.sh)" @ install --version v1.0.2 --database mysql
 ```
 
 وقتی نصب تمام شد:
@@ -116,7 +116,7 @@ sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-
 - شما لاگ های مرزبان رو مشاهده میکنید که می‌توانید با بستن ترمینال یا فشار دادن `Ctrl+C` از آن خارج شوید
 - فایل های مرزبان در پوشه `/opt/marzban` قرار می‌گیرند
 - فایل تنظیمات در مسیر `/opt/marzban/.env` قرار می‌گیرد ([تنظیمات](#تنظیمات) را مشاهده کنید)
-- فایل های مهم (اطلاعات) مرزبان در مسیر `/usr/lib/marzban` قرار می‌گیرند
+- فایل های مهم (اطلاعات) مرزبان در مسیر `/var/lib/marzban` قرار می‌گیرند
 به دلایل امنیتی، داشبورد مرزبان از طریق آیپی قابل دسترسی نیست. بنابراین، باید برای دامنه خود [گواهی SSL](https://gozargah.github.io/marzban/fa/examples/issue-ssl-certificate) بگیرید و از طریق آدرس https://YOUR_DOMAIN:8000/dashboard/ وارد داشبورد مرزبان شوید (نام دامنه خود را جایگزین YOUR_DOMAIN کنید)
 - همچنین می‌توانید از فوروارد کردن پورت SSH برای دسترسی لوکال به داشبورد مرزبان بدون دامنه استفاده کنید. نام کاربری و آیپی سرور خود را جایگزین `user@serverip` کنید و دستور زیر را اجرا کنید:
 
@@ -343,6 +343,26 @@ $ sudo docker-compose exec -it marzban bash
 
 برای کسب اطلاعات بیشتر می توانید [مستندات CLI مرزبان](./cli/README.md) را مطالعه کنید.
 
+
+# نود داخلی مرزبان
+
+در V1.0.2، **Node Runtime V2** داخل خود مرزبان قرار دارد و دیگر به پکیج یا ایمیج جداگانه Marzban-node نیاز نیست. نود از همان ایمیج نسخه‌بندی‌شده پنل استفاده می‌کند، دیتابیس MySQL ندارد و اطلاعاتش به‌صورت جداگانه در `/opt/marzban-node` و `/var/lib/marzban-node` نگهداری می‌شود.
+
+روی سرور نود فقط **گواهی عمومی کلاینت پنل** را به‌صورت PEM کپی کنید؛ کلید خصوصی پنل نباید روی نود قرار بگیرد. سپس نسخه دقیق را نصب کنید:
+
+```bash
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.0.2/scripts/marzban.sh)" @ node install --version v1.0.2 --client-cert-file /path/to/panel-client.crt
+```
+
+دستورهای کاربردی:
+
+```bash
+marzban node status
+marzban node logs
+marzban node update --version v1.0.2
+```
+
+Node Runtime V2 از اعتبارسنجی سخت‌گیرانه گواهی، تحویل پایدار رویدادها و تشخیص IP بر اساس capability تأییدشده استفاده می‌کند. اگر پنل و نود روی یک سرور باشند، CLI نود در `/usr/local/bin/marzban-node` جدا نگه داشته می‌شود و آپدیت نود، CLI یا metadata نسخه پنل را بازنویسی نمی‌کند.
 
 # ارسال اعلان‌ها به آدرس وبهوک
 شما می‌توانید آدرسی را برای مرزبان فراهم کنید تا تغییرات کاربران را به صورت اعلان برای شما ارسال کند.

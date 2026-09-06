@@ -584,5 +584,16 @@
   "errors.codes.plan_scope_required": "محدوده شبکه پلن باید صریح و غیرخالی باشد.",
   "errors.codes.activation_forbidden": "فقط مالک یا والد مجاز می‌تواند این ادمین را فعال کند.",
   "errors.codes.account_not_disabled": "این ادمین در وضعیت غیرفعال نیست.",
-  "errors.codes.suspension_condition_active": "تا وقتی محدودیت اعتبار یا تاریخ پایان برطرف نشده، فعال‌سازی ممکن نیست."
+  "errors.codes.suspension_condition_active": "تا وقتی محدودیت اعتبار یا تاریخ پایان برطرف نشده، فعال‌سازی ممکن نیست.",
+  "nodes.ipSourceMode": "منبع تشخیص IP کاربر",
+  "nodes.ipSourceModeHint": "مشخص کنید این نود IP واقعی کاربر را مستقیم می‌بیند یا پشت CDN / پراکسی مورد اعتماد قرار دارد.",
+  "nodes.ipSourceDirect": "اتصال مستقیم",
+  "nodes.ipSourceTrustedXff": "CDN / هدر X-Forwarded-For مورد اعتماد",
+  "nodes.ipSourceProxyProtocol": "Reverse Proxy با PROXY Protocol",
+  "nodes.cdnProvider": "ارائه‌دهنده CDN / پراکسی",
+  "nodes.selectCdnProvider": "انتخاب ارائه‌دهنده",
+  "nodes.customProxy": "پراکسی سفارشی",
+  "nodes.trustedProxyCidrs": "شبکه‌های پراکسی مورد اعتماد (CIDR)",
+  "nodes.trustedProxyCidrsHint": "فقط IPهای واسطی که واقعاً تحت کنترل شما یا ارائه‌دهنده معتبر هستند وارد کنید؛ هر خط یک CIDR.",
+  "nodes.ipSourceRuntimePending": "این سیاست اکنون ذخیره می‌شود، اما تا فعال‌شدن Node Runtime امن V1.0.2 به هدرهای واسط برای اعمال محدودیت دستگاه اعتماد نمی‌شود."
 }

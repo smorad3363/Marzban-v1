@@ -111,7 +111,7 @@ Marzban is user-friendly, feature-rich and reliable. It lets you to create diffe
 MySQL is the only supported database. This command installs the immutable V1 release without a GitHub token:
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.0.1/scripts/marzban.sh)" @ install --version v1.0.1 --database mysql
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.0.2/scripts/marzban.sh)" @ install --version v1.0.2 --database mysql
 ```
 
 The installer verifies the image's exact release-commit label. It rejects stale cached images that reuse the same version tag. If GHCR denies anonymous access, it automatically builds the same tagged release from public source. No PAT is required.
@@ -385,8 +385,23 @@ For more information, You can read [Marzban CLI's documentation](./cli/README.md
 
 # Marzban Node
 
-The Marzban project introduces the [Marzban-node](https://github.com/gozargah/marzban-node), which revolutionizes infrastructure distribution. With Marzban-node, you can distribute your infrastructure across multiple locations, unlocking benefits such as redundancy, high availability, scalability, flexibility. Marzban-node empowers users to connect to different servers, offering them the flexibility to choose and connect to multiple servers instead of being limited to only one server.
-For more detailed information and installation instructions, please refer to the [Marzban-node official documentation](https://github.com/gozargah/marzban-node)
+Marzban V1.0.2 includes **Built-in Node Runtime V2**. A Node uses the same versioned Marzban image as the panel, has no MySQL service, and keeps its state separately under `/opt/marzban-node` and `/var/lib/marzban-node`.
+
+On the Node server, copy only the panel client **certificate** (public PEM). Never copy the panel private key. Then install the exact release:
+
+```bash
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.0.2/scripts/marzban.sh)" @ node install --version v1.0.2 --client-cert-file /path/to/panel-client.crt
+```
+
+Useful commands:
+
+```bash
+marzban node status
+marzban node logs
+marzban node update --version v1.0.2
+```
+
+Node Runtime V2 uses strict certificate verification, durable event delivery, and capability-aware client-IP reporting. On a server that also hosts the panel, Node CLI updates are isolated in `/usr/local/bin/marzban-node` and do not overwrite the panel CLI or panel release metadata.
 
 # Webhook notifications
 
