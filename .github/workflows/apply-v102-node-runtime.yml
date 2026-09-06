@@ -10,6 +10,10 @@ on:
 permissions:
   contents: write
 
+env:
+  SQLALCHEMY_DATABASE_URL: mysql+pymysql://marzban:test@127.0.0.1:3306/marzban_test
+  DEBUG: "false"
+
 jobs:
   patch:
     runs-on: ubuntu-latest
