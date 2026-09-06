@@ -227,8 +227,10 @@ export const AdminsPage: FC = () => {
     return <Navigate to="/" replace />;
   }
 
-  const admins = query.data?.admins || [];
-  const total = query.data?.total || 0;
+  const rawAdmins = query.data?.admins || [];
+  const admins = rawAdmins.filter((item) => item.username !== userData.username);
+  const selfVisibleInResponse = rawAdmins.some((item) => item.username === userData.username);
+  const total = Math.max(0, (query.data?.total || 0) - (selfVisibleInResponse ? 1 : 0));
   const activeOnPage = admins.filter((item) => item.account_status === "ACTIVE").length;
   const frozenOnPage = admins.filter((item) => item.account_status === "SUSPENDED").length;
   const walletOnPage = admins.reduce(
@@ -498,5 +500,3 @@ export const AdminsPage: FC = () => {
     </AppShell>
   );
 };
-
-export default AdminsPage;
