@@ -48,7 +48,7 @@ fi
 
 test -s app/dashboard/build/index.html
 test -s app/dashboard/build/404.html
-grep -Fq '1.0.2' app/dashboard/build/index.html
+grep -RFq '1.0.2' app/dashboard/build
 git diff --check
 
 git config user.name "Eliot"
