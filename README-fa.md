@@ -108,7 +108,7 @@
 
 این نسخه فقط از دیتابیس MySQL 8 پشتیبانی می‌کند. برای نصب از دستور زیر استفاده کنید:
 ```bash
-sudo bash -c "$(curl -sL https://raw.githubusercontent.com/smorad3363/Marzban/master/scripts/marzban.sh)" @ install --database mysql
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.0.1/scripts/marzban.sh)" @ install --version v1.0.1 --database mysql
 ```
 
 وقتی نصب تمام شد:
