@@ -10,7 +10,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useDashboard } from "contexts/DashboardContext";
 import useGetUser from "hooks/useGetUser";
-import { FC } from "react";
+import { FC, ReactElement } from "react";
 import { useQuery } from "react-query";
 import { fetch } from "service/http";
 import { DashboardOverview } from "types/Dashboard";
@@ -39,7 +39,7 @@ const Kpi: FC<{
   label: string;
   value: string;
   hint: string;
-  icon: React.ReactElement;
+  icon: ReactElement;
   tone?: string;
 }> = ({ label, value, hint, icon, tone = "gray.100" }) => (
   <Card
