@@ -160,6 +160,31 @@ def test_v2_client_ack_happens_only_after_callback_success():
     assert all(path != "/v2/events/ack" for path, _params in requests2)
 
 
+def test_device_limit_missing_runtime_handshake_is_ip_untrusted(monkeypatch):
+    from app import xray
+
+    class Source:
+        _session_id = "legacy-session"
+        process = None
+        runtime_handshake = None
+
+        def consume_events(self, consumer_id, callback, should_stop):
+            assert consumer_id == "device-limit"
+            callback("2026/09/06 12:00:00 8.8.8.8:51000 accepted tcp:example.com:443 [vless >> direct] email: 42.demo.slot1")
+
+    source = Source()
+    monkeypatch.setattr(xray, "nodes", {8: source})
+    tracker = DeviceLimitEngine()
+    tracker.configure(True, "hybrid", True)
+    tracker._limited_user_ids = {42}
+    tracker._collect(source, "node:8")
+    addresses, sources, slots = tracker.live_snapshot(42, 300, 1)
+    assert addresses == set()
+    assert sources == set()
+    assert slots == {}
+    assert "node:8" in tracker.diagnostics()["untrusted_ip_sources"]
+
+
 def test_device_limit_collector_prefers_durable_v2_consumer(monkeypatch):
     from app import xray
 

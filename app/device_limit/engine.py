@@ -221,7 +221,7 @@ class DeviceLimitEngine:
         runtime_handshake = getattr(source, "runtime_handshake", None)
         if source_name.startswith("node:"):
             if runtime_handshake is None:
-                self.forget_runtime_source_ip_trust(source_name)
+                self.set_runtime_source_ip_trust(source_name, False)
             else:
                 self.set_runtime_source_ip_trust(
                     source_name,
