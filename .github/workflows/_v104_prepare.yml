@@ -33,6 +33,20 @@ jobs:
                   raise SystemExit(f"expected text not found in {path}: {old!r}")
               p.write_text(text.replace(old, new), encoding="utf-8")
 
+          # Focused UI build fixes discovered by the first TypeScript gate.
+          replace_exact(
+              "app/dashboard/src/pages/Admins.tsx",
+              'export { AdminsPage as Admins } from "./admins/AdminsPage";\nexport { default } from "./admins/AdminsPage";\n',
+              'export { AdminsPage as Admins } from "./admins/AdminsPage";\n',
+          )
+          replace_exact("app/dashboard/src/components/UsersTablePro.tsx", "  LinkSlashIcon,\n", "  LinkIcon,\n")
+          replace_exact("app/dashboard/src/components/UsersTablePro.tsx", "chakra(LinkSlashIcon,", "chakra(LinkIcon,")
+          replace_exact(
+              "app/dashboard/src/components/UsersTablePro.tsx",
+              '      onError: (error) => toast({ title: "تمدید انجام نشد", description: localizedApiError(error), status: "error", duration: 5000 }),\n',
+              '      onError: (error) => {\n        toast({ title: "تمدید انجام نشد", description: localizedApiError(error), status: "error", duration: 5000 });\n      },\n',
+          )
+
           Path("VERSION").write_text("1.0.4\n", encoding="utf-8")
           replace_exact("app/__init__.py", '__version__ = "1.0.3"', '__version__ = "1.0.4"')
           replace_exact("docker-compose.yml", 'ghcr.io/smorad3363/marzban-v1:v1.0.3', 'ghcr.io/smorad3363/marzban-v1:v1.0.4')
@@ -126,7 +140,8 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add VERSION app/__init__.py docker-compose.yml scripts/marzban.sh \
             tests/test_release_contract.py tests/test_installer_v1_contract.sh \
-            docs/RELEASE_NOTES_v1.0.4.md app/dashboard/build .github/workflows/build.yml
+            docs/RELEASE_NOTES_v1.0.4.md app/dashboard/build .github/workflows/build.yml \
+            app/dashboard/src/pages/Admins.tsx app/dashboard/src/components/UsersTablePro.tsx
           git diff --cached --check
           git commit -m "release: prepare Marzban v1.0.4"
           git push origin HEAD:release/v1.0.4
