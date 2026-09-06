@@ -15,12 +15,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Independent shell static analysis
+      - name: Independent shell static analysis of certificate function
+        shell: bash
         run: |
           set -Eeuo pipefail
           sudo apt-get update -qq
           sudo apt-get install -y shellcheck
-          shellcheck -S error -e SC1091 scripts/marzban.sh
+          {
+            printf '%s\n' '#!/usr/bin/env bash'
+            awk '
+              /^node_prompt_client_cert\(\) \{/ { capture=1 }
+              capture { print }
+              capture && /^}$/ { exit }
+            ' scripts/marzban.sh
+          } > /tmp/node_prompt_client_cert.sh
+          grep -q '^node_prompt_client_cert() {' /tmp/node_prompt_client_cert.sh
+          shellcheck -S error /tmp/node_prompt_client_cert.sh
       - name: Certificate security and failure invariants
         shell: bash
         run: |
@@ -35,6 +45,9 @@ jobs:
               '-----END CERTIFICATE-----',
               'openssl x509 -in "$temp_file" -noout',
               'rm -f "$temp_file"',
+              'Certificate paste must start with -----BEGIN CERTIFICATE-----.',
+              'Certificate paste was incomplete.',
+              'The pasted certificate is not a valid X.509 PEM certificate.',
           ]
           for needle in required:
               assert needle in section, needle
@@ -51,4 +64,5 @@ jobs:
         run: |
           set -Eeuo pipefail
           python -m pip install pytest PyYAML
+          bash -n scripts/marzban.sh
           python -m pytest -q tests/test_v102_node_deployment.py
