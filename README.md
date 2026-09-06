@@ -111,7 +111,7 @@ Marzban is user-friendly, feature-rich and reliable. It lets you to create diffe
 MySQL is the only supported database. This command installs the immutable V1 release without a GitHub token:
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.0.0/scripts/marzban.sh)" @ install --version v1.0.0 --database mysql
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.0.1/scripts/marzban.sh)" @ install --version v1.0.1 --database mysql
 ```
 
 The installer verifies the image's exact release-commit label. It rejects stale cached images that reuse the same version tag. If GHCR denies anonymous access, it automatically builds the same tagged release from public source. No PAT is required.

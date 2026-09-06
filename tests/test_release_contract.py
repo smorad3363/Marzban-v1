@@ -10,7 +10,7 @@ def test_release_version_and_install_rollback_contract():
     verify_workflow = Path(".github/workflows/verify-v1-image.yml").read_text()
     installer_workflow = Path(".github/workflows/validate-v1-installer.yml").read_text()
     build_workflow = Path(".github/workflows/build.yml").read_text()
-    assert version == "1.0.0"
+    assert version == "1.0.1"
     assert f'__version__ = "{version}"' in app
     assert f'CLI_RELEASE_VERSION="v{version}"' in installer
     assert f"ghcr.io/smorad3363/marzban-v1:v{version}" in Path("docker-compose.yml").read_text()
