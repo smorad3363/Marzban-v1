@@ -210,10 +210,11 @@ jobs:
           assert "PRIVATE KEY" not in cert_func
 
           release_workflow = Path(".github/workflows/build.yml").read_text()
+          expr = lambda body: "$" + "{{ " + body + " }}"
           for label in [
-              "org.opencontainers.image.revision=${{ github.sha }}",
-              "org.opencontainers.image.source=https://github.com/${{ github.repository }}",
-              "org.opencontainers.image.version=${{ steps.release-version.outputs.version_tag || inputs.image_tag || github.ref_name }}",
+              "org.opencontainers.image.revision=" + expr("github.sha"),
+              "org.opencontainers.image.source=https://github.com/" + expr("github.repository"),
+              "org.opencontainers.image.version=" + expr("steps.release-version.outputs.version_tag || inputs.image_tag || github.ref_name"),
           ]:
               assert label in release_workflow, label
 
