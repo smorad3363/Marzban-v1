@@ -33,6 +33,19 @@ router = APIRouter(
 )
 
 
+def _sync_device_limit_ip_policy(dbnode) -> None:
+    from app.device_limit.engine import engine as device_limit_engine
+
+    mode = getattr(dbnode, "ip_source_mode", "direct") or "direct"
+    device_limit_engine.set_source_ip_trust(f"node:{dbnode.id}", mode == "direct")
+
+
+def _forget_device_limit_ip_policy(node_id: int) -> None:
+    from app.device_limit.engine import engine as device_limit_engine
+
+    device_limit_engine.forget_source_ip_trust(f"node:{node_id}")
+
+
 def add_host_if_needed(new_node: NodeCreate, db: Session):
     """Add a host if specified in the new node settings."""
     if new_node.add_as_new_host:
@@ -144,6 +157,7 @@ def add_node(
             status_code=409, detail=f'Node "{new_node.name}" already exists'
         )
 
+    _sync_device_limit_ip_policy(dbnode)
     bg.add_task(xray.operations.connect_node, node_id=dbnode.id)
     bg.add_task(add_host_if_needed, new_node, db)
 
@@ -309,6 +323,7 @@ def modify_node(
     """Update a node's details. Only accessible to sudo admins."""
     previous_value = sanitize_audit_value(dbnode)
     updated_node = crud.update_node(db, dbnode, modified_node)
+    _sync_device_limit_ip_policy(updated_node)
     bandwidth_store.forget(updated_node.id)
     xray.operations.remove_node(updated_node.id)
     if updated_node.status != NodeStatus.disabled:
@@ -366,6 +381,7 @@ def remove_node(
     target_name = dbnode.name
     previous_value = sanitize_audit_value(dbnode)
     crud.remove_node(db, dbnode)
+    _forget_device_limit_ip_policy(target_id)
     bandwidth_store.forget(target_id)
     xray.operations.remove_node(target_id)
 

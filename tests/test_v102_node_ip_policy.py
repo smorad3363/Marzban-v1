@@ -7,6 +7,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.db import crud
 from app.db.models import Node as DBNode
+from app.device_limit.engine import DeviceLimitEngine
 from app.models.node import NodeCreate, NodeModify
 
 
@@ -112,3 +113,72 @@ def test_frontend_exposes_safe_node_ip_source_controls():
     assert 'name="ip_source_mode"' in modal
     assert 'name="trusted_proxy_cidrs"' in modal
     assert 'nodes.ipSourceRuntimePending' in modal
+
+
+_XRAY_ACCEPTED = (
+    "2026/09/06 12:00:00 8.8.8.8:51000 accepted tcp:example.com:443 "
+    "[vless >> direct] email: 42.demo.slot1"
+)
+
+
+def _limited_tracker() -> DeviceLimitEngine:
+    tracker = DeviceLimitEngine()
+    tracker.configure(True, "hybrid", True)
+    tracker._limited_user_ids = {42}
+    return tracker
+
+
+def test_non_direct_node_is_fail_closed_until_secure_runtime_is_available():
+    tracker = _limited_tracker()
+    tracker.set_source_ip_trust("node:9", False)
+    assert tracker.record_log(_XRAY_ACCEPTED, "node:9") == 0
+    diagnostics = tracker.diagnostics()
+    assert diagnostics["rejected_untrusted_ip_source"] == 1
+    assert diagnostics["untrusted_ip_sources"] == ["node:9"]
+    addresses, sources, per_slot = tracker.live_snapshot(42, 300, 1)
+    assert addresses == set()
+    assert sources == set()
+    assert per_slot == {}
+
+
+def test_source_trust_toggle_is_immediate_and_master_is_never_blocked_by_node_policy():
+    tracker = _limited_tracker()
+    tracker.set_source_ip_trust("node:9", False)
+    assert tracker.record_log(_XRAY_ACCEPTED, "node:9") == 0
+    assert tracker.record_log(_XRAY_ACCEPTED, "master") == 1
+    tracker.set_source_ip_trust("node:9", True)
+    assert tracker.record_log(_XRAY_ACCEPTED, "node:9") == 1
+    addresses, sources, _ = tracker.live_snapshot(42, 300, 1)
+    assert addresses == {"8.8.8.8"}
+    assert sources == {"master", "node:9"}
+
+
+def test_db_policy_refresh_is_one_query_boundary_not_a_log_path_lookup():
+    engine = create_engine("sqlite:///:memory:")
+    DBNode.__table__.create(engine)
+    Session = sessionmaker(bind=engine)
+    db = Session()
+    try:
+        node = crud.create_node(db, NodeCreate(**_base(
+            ip_source_mode="trusted_xff",
+            cdn_provider="custom",
+            trusted_proxy_cidrs=["192.0.2.0/24"],
+        )))
+        tracker = _limited_tracker()
+        tracker._refresh_node_ip_source_policies(db)
+        assert tracker.record_log(_XRAY_ACCEPTED, f"node:{node.id}") == 0
+        node.ip_source_mode = "direct"
+        node.cdn_provider = None
+        node.trusted_proxy_cidrs = None
+        db.commit()
+        tracker._refresh_node_ip_source_policies(db)
+        assert tracker.record_log(_XRAY_ACCEPTED, f"node:{node.id}") == 1
+    finally:
+        db.close()
+
+
+def test_node_router_synchronizes_enforcement_cache_after_mutations():
+    source = Path("app/routers/node.py").read_text(encoding="utf-8")
+    assert "_sync_device_limit_ip_policy(dbnode)" in source
+    assert "_sync_device_limit_ip_policy(updated_node)" in source
+    assert "_forget_device_limit_ip_policy(target_id)" in source
