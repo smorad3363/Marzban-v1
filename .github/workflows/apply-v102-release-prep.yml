@@ -6,6 +6,7 @@ on:
       - release/v1.0.2
     paths:
       - .github/workflows/apply-v102-release-prep.yml
+      - .github/scripts/run_v102_release_prep.sh
 
 permissions:
   contents: write
