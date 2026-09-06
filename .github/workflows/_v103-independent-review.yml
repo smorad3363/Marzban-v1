@@ -1,0 +1,54 @@
+name: Temporary v1.0.3 Independent Review
+
+on:
+  push:
+    branches:
+      - hotfix/v1.0.3-interactive-node-cert
+    paths:
+      - .github/workflows/_v103-independent-review.yml
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Independent shell static analysis
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y shellcheck
+          shellcheck -S error -e SC1091 scripts/marzban.sh
+      - name: Certificate security and failure invariants
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          text = Path('scripts/marzban.sh').read_text(encoding='utf-8')
+          section = text.split('node_prompt_client_cert() {', 1)[1].split('node_source_ref_path() {', 1)[0]
+          required = [
+              'chmod 600 "$temp_file"',
+              '-----BEGIN CERTIFICATE-----',
+              '-----END CERTIFICATE-----',
+              'openssl x509 -in "$temp_file" -noout',
+              'rm -f "$temp_file"',
+          ]
+          for needle in required:
+              assert needle in section, needle
+          assert 'PRIVATE KEY' not in section
+          assert 'client.key' not in section.lower()
+          assert 'V1_LINEAGE_SOURCE_VERSION="5.2.0"' in text
+          assert 'V1_LINEAGE_SOURCE_IMAGE="ghcr.io/smorad3363/marzban-vnext:v5.2.0"' in text
+          assert 'V1_LINEAGE_TARGET_VERSION="v1.0.0"' in text
+          PY
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Independent behavioral replay
+        run: |
+          set -Eeuo pipefail
+          python -m pip install pytest PyYAML
+          python -m pytest -q tests/test_v102_node_deployment.py
