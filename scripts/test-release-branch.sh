@@ -39,8 +39,15 @@ fi
 OLD_IMAGE="$(yq -r '.services.marzban.image // ""' "$COMPOSE")"
 [ -n "$OLD_IMAGE" ] || { echo "ERROR: current Marzban image not found in $COMPOSE" >&2; exit 1; }
 
-BACKUP="${COMPOSE}.before-${EXPECTED_VERSION}-test.$(date +%Y%m%d-%H%M%S)"
+STAMP="$(date +%Y%m%d-%H%M%S)"
+BACKUP="${COMPOSE}.before-${EXPECTED_VERSION}-test.${STAMP}"
+ROLLBACK_TAG="marzban-v1:pretest-${STAMP}"
 cp -a "$COMPOSE" "$BACKUP"
+if docker image inspect "$OLD_IMAGE" >/dev/null 2>&1; then
+  docker tag "$OLD_IMAGE" "$ROLLBACK_TAG"
+else
+  ROLLBACK_TAG=""
+fi
 WORKDIR="$(mktemp -d /tmp/marzban-v103.XXXXXX)"
 SWITCHED=0
 
@@ -57,6 +64,9 @@ rollback() {
   if [ "$SWITCHED" -eq 1 ]; then
     echo "Rolling back to: $OLD_IMAGE"
     cp -a "$BACKUP" "$COMPOSE"
+    if [ -n "$ROLLBACK_TAG" ] && docker image inspect "$ROLLBACK_TAG" >/dev/null 2>&1; then
+      docker tag "$ROLLBACK_TAG" "$OLD_IMAGE" || true
+    fi
     docker compose -f "$COMPOSE" -p "$PROJECT" up -d --no-deps --force-recreate marzban || true
   else
     echo "Runtime was not switched; nothing to roll back."
@@ -139,5 +149,6 @@ echo "Commit:  $COMMIT"
 echo "Runtime: $RUNTIME"
 echo "Image:   $IMAGE"
 echo "Backup:  $BACKUP"
+[ -n "$ROLLBACK_TAG" ] && echo "Rollback image: $ROLLBACK_TAG"
 echo "============================================"
 docker compose -f "$COMPOSE" -p "$PROJECT" ps
