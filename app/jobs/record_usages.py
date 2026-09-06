@@ -13,6 +13,7 @@ from app import scheduler, xray
 from app.db import GetDB
 from app.db.models import Admin, NodeUsage, NodeUserUsage, System, User
 from app.utils import money_billing
+from app.utils.bandwidth import bandwidth_store
 from config import (
     DISABLE_RECORDING_NODE_USAGE,
     JOB_RECORD_NODE_USAGES_INTERVAL,
@@ -140,6 +141,15 @@ def aggregate_user_usages(api_params, usage_coefficient):
     return [{"uid": uid, "value": value} for uid, value in users_usage.items()]
 
 
+def _aggregate_link_bytes(params: list[dict]) -> tuple[int, int]:
+    uplink = 0
+    downlink = 0
+    for param in params:
+        uplink += int(param.get('up') or 0)
+        downlink += int(param.get('down') or 0)
+    return uplink, downlink
+
+
 def record_user_usages():
     api_instances = {None: xray.api}
     usage_coefficient = {None: 1}
@@ -220,10 +230,14 @@ def record_node_usages():
 
     total_up = 0
     total_down = 0
+    per_node_totals: dict[int | None, tuple[int, int]] = {}
     for node_id, params in api_params.items():
-        for param in params:
-            total_up += param['up']
-            total_down += param['down']
+        uplink, downlink = _aggregate_link_bytes(params)
+        per_node_totals[node_id] = (uplink, downlink)
+        total_up += uplink
+        total_down += downlink
+        bandwidth_store.observe(node_id, uplink, downlink)
+
     if not (total_up or total_down):
         return
 
