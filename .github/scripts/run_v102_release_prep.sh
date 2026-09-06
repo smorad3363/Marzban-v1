@@ -40,7 +40,7 @@ for path in (
 PY
 
 git grep -n -E 'v1\.0\.1|1\.0\.1' -- VERSION app/__init__.py scripts/marzban.sh docker-compose.yml README.md README-fa.md tests .github/workflows > /tmp/v102-stale || true
-grep -v -F 'tests/test_installer_v1_contract.sh:! is_allowed_v1_lineage_transition "5.2.0" "v1.0.1"' /tmp/v102-stale > /tmp/v102-unexpected-stale || true
+grep -v -F '! is_allowed_v1_lineage_transition "5.2.0" "v1.0.1"' /tmp/v102-stale > /tmp/v102-unexpected-stale || true
 if [ -s /tmp/v102-unexpected-stale ]; then
   cat /tmp/v102-unexpected-stale >&2
   exit 1
