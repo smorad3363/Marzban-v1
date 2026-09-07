@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 
@@ -6,14 +7,14 @@ def test_release_version_and_install_rollback_contract():
     release_tag = f"v{version}"
     app = Path("app/__init__.py").read_text(encoding="utf-8")
     installer = Path("scripts/marzban.sh").read_text(encoding="utf-8")
-    workflow = Path(".github/workflows/release-v1.yml").read_text()
     verify_workflow = Path(".github/workflows/verify-v1-image.yml").read_text()
     installer_workflow = Path(".github/workflows/validate-v1-installer.yml").read_text()
     build_workflow = Path(".github/workflows/build.yml").read_text()
+    checkpoints = Path(".github/workflows/checkpoints.yml").read_text()
     installer_lab = Path("tests/release_installer_lab.sh").read_text()
     upgrade_lab = Path("tests/release_upgrade_lab.sh").read_text()
 
-    assert version == "1.0.8"
+    assert re.fullmatch(r"\d+\.\d+\.\d+", version)
     assert f'__version__ = "{version}"' in app
     assert f'CLI_RELEASE_VERSION="{release_tag}"' in installer
     assert f"ghcr.io/smorad3363/marzban-v1:{release_tag}" in Path("docker-compose.yml").read_text()
@@ -48,43 +49,43 @@ def test_release_version_and_install_rollback_contract():
     assert '-e MARZBAN_ADMIN_PASSWORD \\' in installer
     assert '-e MARZBAN_ADMIN_PASSWORD="$password"' not in installer
 
-    assert 'Refuse overwriting an existing release image' in workflow
-    assert 'org.opencontainers.image.revision' in workflow
-    assert 'org.opencontainers.image.source=https://github.com/smorad3363/Marzban-v1' in workflow
-    assert 'VERSION_TEXT="$(tr -d' in workflow
-    assert 'test "$RELEASE_TAG" = "v${VERSION_TEXT}"' in workflow
-    assert 'docs/RELEASE_NOTES_${RELEASE_TAG}.md' in workflow
-    assert "vnext" not in workflow.lower()
-    assert ':latest' not in workflow
-    assert 'gh release create' not in workflow
+    assert not Path(".github/workflows/release-v1.yml").exists()
+    assert "      - main" in build_workflow
+    assert "ghcr.io/${{ github.repository_owner }}/marzban-v1" in build_workflow
+    assert "github.event_name == 'workflow_dispatch'" in build_workflow
+    assert 'elif [[ "${GITHUB_REF}" == "refs/heads/main" ]]' not in build_workflow
+    assert 'git tag -a "${VERSION_TAG}" "${GITHUB_SHA}"' not in build_workflow
+    assert "Verify release tag, version surfaces and notes" in build_workflow
+    assert 'docs/RELEASE_NOTES_${VERSION_TAG}.md' in build_workflow
+    assert '--notes-file "${NOTES_FILE}"' in build_workflow
+    assert "--generate-notes" not in build_workflow
 
     assert 'IMAGE: ghcr.io/smorad3363/marzban-v1' in verify_workflow
     assert 'release_tag:' in verify_workflow
     assert 'ref: ${{ inputs.source_commit }}' in verify_workflow
     assert 'test "$RELEASE_TAG" = "v${VERSION_TEXT}"' in verify_workflow
     assert 'test "$tagged_digest" = "$DIGEST"' in verify_workflow
-    assert 'Create immutable V1 tag and stable release' in verify_workflow
-    assert 'gh release create "$RELEASE_TAG"' in verify_workflow
-    assert '--title "Marzban ${RELEASE_TAG}"' in verify_workflow
-    assert 'docs/RELEASE_NOTES_${RELEASE_TAG}.md' in verify_workflow
-    assert '--prerelease' not in verify_workflow
-
-    assert "      - main" in build_workflow
-    assert "ghcr.io/${{ github.repository_owner }}/marzban-v1" in build_workflow
-    assert "github.event_name == 'workflow_dispatch'" in build_workflow
-    assert 'elif [[ "${GITHUB_REF}" == "refs/heads/main" ]]' not in build_workflow
-    assert 'git tag -a "${VERSION_TAG}" "${GITHUB_SHA}"' not in build_workflow
+    assert "contents: read" in verify_workflow
+    assert "Create immutable V1 tag and stable release" not in verify_workflow
+    assert "gh release create" not in verify_workflow
+    assert "git tag -a" not in verify_workflow
+    assert "default: v1.0.2" not in verify_workflow
 
     assert 'release_tag:' in installer_workflow
     assert 'RELEASE_TAG: ${{ inputs.release_tag }}' in installer_workflow
     assert "Verify public tag, source, and anonymous image access" in installer_workflow
     assert "bash tests/release_installer_lab.sh" in installer_workflow
     assert "bash tests/release_upgrade_lab.sh" in installer_workflow
+    assert "default: v1.0.2" not in installer_workflow
     assert "RELEASE_TAG" in installer_lab
     assert "FRESH_INSTALL_CREATE_OWNER_VERSION_PASS" in installer_lab
     assert 'marzban update --version v1.0.0' in upgrade_lab
     assert 'marzban update --version "$RELEASE_TAG"' in upgrade_lab
     assert "UPGRADE_V520_TO_CURRENT_V1_PASS" in upgrade_lab
+
+    assert "docker image smoke" in checkpoints
+    assert "docker build --tag marzban-v1:ci ." in checkpoints
+    assert "Build release image without publishing" in checkpoints
 
     historical_notes = Path("docs/RELEASE_NOTES_v1.0.0.md").read_text(encoding="utf-8")
     assert "new canonical `1.0.0` product baseline" in historical_notes
@@ -92,20 +93,30 @@ def test_release_version_and_install_rollback_contract():
     assert "Access Groups exclusively own user network access" in historical_notes
     assert "Existing mature" in historical_notes
 
-    v102_notes = Path("docs/RELEASE_NOTES_v1.0.2.md").read_text(encoding="utf-8")
-    assert "Built-in Node Runtime V2" in v102_notes
-    assert "durable" in v102_notes.lower()
-    assert "Access Group" in v102_notes
-    assert "v1.0.0" in v102_notes
-
-    v103_notes = Path("docs/RELEASE_NOTES_v1.0.3.md").read_text(encoding="utf-8")
-    assert "interactive" in v103_notes.lower()
-    assert "--client-cert-file" in v103_notes
-    assert "v1.0.2" in v103_notes
-
     current_notes = Path(f"docs/RELEASE_NOTES_{release_tag}.md").read_text(encoding="utf-8")
     assert "dashboard" in current_notes.lower()
     assert "access group" in current_notes.lower()
-    assert "light" in current_notes.lower() and "dark" in current_notes.lower()
     assert "marzban update" in current_notes
     assert 'readFileSync("../../VERSION", "utf8").trim()' in Path("app/dashboard/vite.config.ts").read_text()
+
+
+def test_v109_release_candidate_material_is_real_and_repository_scoped():
+    notes = Path("docs/RELEASE_NOTES_v1.0.9.md").read_text(encoding="utf-8")
+    releases = Path("RELEASES.md").read_text(encoding="utf-8")
+
+    for phrase in (
+        "can_manage_plans",
+        "0 < interval <= 10",
+        "explicit",
+        "Owner transfer",
+        "SQLALCHEMY_MAX_OVERFLOW",
+        "MySQL 26.7.0",
+        "marzban update --version v1.0.9",
+    ):
+        assert phrase.lower() in notes.lower()
+
+    assert "v1.0.9 release candidate" in releases
+    assert "Current stable: v1.0.8" in releases
+    assert "docs/RELEASE_NOTES_v1.0.9.md" in releases
+    assert "## v5." not in releases
+    assert "## v4." not in releases

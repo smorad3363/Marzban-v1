@@ -180,3 +180,27 @@ jobs:
             echo 'Node compose unexpectedly contains database configuration' >&2
             exit 1
           fi
+
+  docker-smoke:
+    name: docker image smoke
+    if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build release image without publishing
+        run: docker build --tag marzban-v1:ci .
+      - name: Verify release image runtime contract
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          version="$(tr -d '[:space:]' < VERSION)"
+          runtime_version="$(docker run --rm --entrypoint python \
+            -e SQLALCHEMY_DATABASE_URL=mysql+pymysql://probe:probe@127.0.0.1/probe \
+            marzban-v1:ci -c 'from app import __version__; print(__version__)')"
+          test "${runtime_version}" = "${version}"
+          docker run --rm --entrypoint mysqldump marzban-v1:ci --version | grep -q 'Ver 26.7.0'
+          docker run --rm --entrypoint sh marzban-v1:ci -c \
+            'test -s /code/app/dashboard/build/index.html && \
+             test -s /code/app/dashboard/build/404.html && \
+             test -x /usr/bin/marzban-cli && \
+             test -f /code/node_runtime/main.py'
