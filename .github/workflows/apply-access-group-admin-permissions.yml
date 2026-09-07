@@ -37,6 +37,9 @@ jobs:
       - name: Compile Python sources
         run: python -m compileall -q app
 
+      - name: Install focused test runner
+        run: python -m pip install --disable-pip-version-check pytest
+
       - name: Run backend permission contract tests
         run: python -m pytest -q tests/test_access_group_admin_permissions_contract.py
 
