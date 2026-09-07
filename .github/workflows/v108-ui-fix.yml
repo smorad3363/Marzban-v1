@@ -27,7 +27,9 @@ jobs:
           cache-dependency-path: app/dashboard/package-lock.json
 
       - name: Apply requested v1.0.8 fixes
-        run: python .github/scripts/apply_v108_ui_fix.py
+        run: |
+          python .github/scripts/apply_v108_ui_fix.py
+          python .github/scripts/update_v108_contracts.py
 
       - name: Verify source diff
         run: |
@@ -37,6 +39,7 @@ jobs:
           ! grep -Fq 'Operations workspace' app/dashboard/src/components/Header.tsx
           ! grep -Fq 'onResetAllUsage' app/dashboard/src/components/Header.tsx
           ! grep -Fq 'ResetAllUsageModal' app/dashboard/src/pages/Dashboard.tsx
+          grep -Fq '<CoreSettingsModal />' app/dashboard/src/components/AppShell.tsx
 
       - name: Install dashboard dependencies
         working-directory: app/dashboard
@@ -67,7 +70,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add VERSION docker-compose.yml RELEASES.md app/dashboard/chakra.config.ts app/dashboard/src app/dashboard/scripts/test-v108-ui.cjs app/dashboard/build
+          git add VERSION docker-compose.yml RELEASES.md app/dashboard/chakra.config.ts app/dashboard/src app/dashboard/scripts/test-v108-ui.cjs app/dashboard/scripts/test-v107-ui.cjs app/dashboard/scripts/test-admin-ux.cjs app/dashboard/build
           git diff --cached --check
           git commit -m "fix(ui): repair navigation and modal UX for v1.0.8"
           git push origin HEAD:release/v1.0.8-integration
