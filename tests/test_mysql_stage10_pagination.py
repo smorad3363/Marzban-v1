@@ -55,7 +55,9 @@ def test_mysql_stage10_migration_indexes_explain_and_deep_offset_timing(monkeypa
     _migrate("6d4f2a9c8e10")
     _migrate("head")
     with engine.begin() as connection:
-        assert connection.execute(sa.text("SELECT VERSION()" )).scalar().startswith("8.0.")
+        assert connection.execute(sa.text("SELECT VERSION()" )).scalar().startswith(
+            os.getenv("TEST_MYSQL_VERSION_PREFIX", "8.0.")
+        )
         assert connection.execute(sa.text("SHOW TABLE STATUS LIKE 'users'" )).mappings().one()["Engine"] == "InnoDB"
         indexes = {row["name"] for row in sa.inspect(connection).get_indexes("users")}
         assert {"ix_users_status_created_id", "ix_users_admin_created_id"} <= indexes
