@@ -15,7 +15,7 @@ import { AppShell } from "components/AppShell";
 import { CoreSettingsModal } from "components/CoreSettingsModal";
 import { DashboardOverviewCompact } from "components/DashboardOverviewCompact";
 import { DeleteUserModal } from "components/DeleteUserModal";
-import { FiltersCompact } from "components/FiltersCompact";
+import { FiltersCompact, UserManagementControls } from "components/FiltersCompact";
 import { HostsDialog } from "components/HostsDialog";
 import { NodesDialog } from "components/NodesModal";
 import { NodeBandwidthPanel } from "components/NodeBandwidthPanel";
@@ -163,10 +163,13 @@ export const Dashboard: FC = () => {
             boxShadow="var(--shadow-panel)"
             overflow="hidden"
           >
-            <HStack px={{ base: 3, md: 4 }} pt={3.5} justify="space-between" align="end" gap={3}>
-              <Box>
+            <HStack px={{ base: 3, md: 4 }} pt={3.5} justify="space-between" align="start" gap={3} flexWrap="wrap">
+              <Box flex="1" minW={0}>
                 <Text color="primary.300" fontSize="10px" fontWeight="800">کاربران</Text>
-                <Text id="user-operations-title" as="h2" mt={0.5} fontSize="lg" fontWeight="850">مدیریت کاربران</Text>
+                <HStack mt={0.5} spacing={2.5} align="center" flexWrap="wrap">
+                  <Text id="user-operations-title" as="h2" fontSize="lg" fontWeight="850" flexShrink={0}>مدیریت کاربران</Text>
+                  <UserManagementControls />
+                </HStack>
                 <Text mt={1} color="gray.500" fontSize="11px">اطلاعات مهم، وضعیت، مصرف و عملیات هر کاربر بدون باز کردن پنجره اضافی.</Text>
               </Box>
               <Button
