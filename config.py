@@ -10,7 +10,19 @@ if not SQLALCHEMY_DATABASE_URL.lower().startswith("mysql+pymysql://"):
         "SQLALCHEMY_DATABASE_URL must use MySQL with the mysql+pymysql:// driver"
     )
 SQLALCHEMY_POOL_SIZE = config("SQLALCHEMY_POOL_SIZE", cast=int, default=5)
-SQLIALCHEMY_MAX_OVERFLOW = config("SQLIALCHEMY_MAX_OVERFLOW", cast=int, default=5)
+
+
+def _resolve_sqlalchemy_max_overflow() -> int:
+    """Prefer the correctly-spelled setting while preserving the legacy typo."""
+    current = config("SQLALCHEMY_MAX_OVERFLOW", default=None)
+    if current is not None:
+        return int(current)
+    return config("SQLIALCHEMY_MAX_OVERFLOW", cast=int, default=5)
+
+
+SQLALCHEMY_MAX_OVERFLOW = _resolve_sqlalchemy_max_overflow()
+# Backward-compatible Python symbol for integrations that imported the typo.
+SQLIALCHEMY_MAX_OVERFLOW = SQLALCHEMY_MAX_OVERFLOW
 XRAY_STATS_MAX_WORKERS = max(1, config("XRAY_STATS_MAX_WORKERS", cast=int, default=2))
 
 UVICORN_HOST = config("UVICORN_HOST", default="0.0.0.0")
