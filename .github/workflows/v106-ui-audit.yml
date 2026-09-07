@@ -1,0 +1,28 @@
+name: Audit v1.0.6 dashboard palette
+
+on:
+  push:
+    branches:
+      - release/v1.0.6-integration
+    paths:
+      - .github/workflows/v106-ui-audit.yml
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: release/v1.0.6-integration
+      - name: Find legacy theme and hard-coded dark UI colors
+        shell: bash
+        run: |
+          set -uo pipefail
+          echo '=== legacy theme identifiers ==='
+          grep -RInE 'black_gold|heisenberg|طلایی|>آبی<' app/dashboard/src app/dashboard/chakra.config.ts || true
+          echo '=== old green/dark palette literals ==='
+          grep -RInE '#111d17|#0c1524|#16251c|#33483b|#07130e|#f1f5f2' app/dashboard/src app/dashboard/chakra.config.ts || true
+          echo '=== fixed gray foregrounds likely to fail one color mode ==='
+          grep -RInE 'color=\{?"gray\.(100|200|300|400|500|600|700|800|900)"' app/dashboard/src || true
+          echo '=== decorative fixed primary backgrounds ==='
+          grep -RInE 'background(-image)?:.*(37, 99, 235|59, 130, 246|96, 165, 250)' app/dashboard/src/index.scss || true
