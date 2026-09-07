@@ -1,7 +1,9 @@
 import { Navigate, createHashRouter, useRouteError } from "react-router-dom";
 import { Alert, AlertIcon, Button, Center, Stack, Text } from "@chakra-ui/react";
 import { ReactNode } from "react";
+import { useQuery } from "react-query";
 import useGetUser from "hooks/useGetUser";
+import { AccountSummary } from "types/Admin";
 import { fetch } from "../service/http";
 import { getAuthToken } from "../utils/authStorage";
 import { Dashboard } from "./Dashboard";
@@ -22,6 +24,20 @@ const OwnerOnly = ({ children }: { children: ReactNode }) => {
     const { userData, getUserIsPending } = useGetUser();
     if (getUserIsPending) return null;
     return userData.is_sudo || userData.role === "OWNER" ? <>{children}</> : <Navigate to="/" replace />;
+};
+const PlanManagerOnly = ({ children }: { children: ReactNode }) => {
+    const { userData, getUserIsPending, getUserIsSuccess } = useGetUser();
+    const account = useQuery<AccountSummary, Error>(
+        "account-summary",
+        () => fetch("/account/summary"),
+        { enabled: getUserIsSuccess }
+    );
+    if (getUserIsPending || (getUserIsSuccess && account.isLoading)) return null;
+    const isOwner = userData.is_sudo || userData.role === "OWNER";
+    const canManagePlans = Boolean(
+        account.data?.account_status === "ACTIVE" && account.data?.can_manage_plans
+    );
+    return isOwner || canManagePlans ? <>{children}</> : <Navigate to="/" replace />;
 };
 const RouteError = () => {
     const error = useRouteError() as { status?: number; statusCode?: number; response?: { status?: number } };
@@ -58,7 +74,7 @@ export const router = createHashRouter([
     },
     {
         path: "/plans/",
-        element: <OwnerOnly><Plans /></OwnerOnly>,
+        element: <PlanManagerOnly><Plans /></PlanManagerOnly>,
         errorElement: <RouteError />,
         loader: fetchAdminLoader,
     },
