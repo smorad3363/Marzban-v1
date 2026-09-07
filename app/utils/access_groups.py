@@ -124,18 +124,16 @@ def _scope(db: Session, group_id: int) -> tuple[set[str], dict[str, set[int]], s
     return inbounds, hosts, nodes
 
 
-def validated_scope(
+def _validated_network_scope(
     db: Session,
     group_id: int,
-    admin_id: int,
 ) -> tuple[set[str], dict[str, set[int]], set[int]]:
-    """Resolve one active Access Group and fail closed on invalid network scope."""
+    """Validate persisted network scope without re-authorizing an existing binding."""
     group = db.get(AccessGroup, group_id)
     if group is None or group.archived_at is not None:
         raise admin_hierarchy.HierarchyError(
             "access_group_unavailable", "Access Group is unavailable"
         )
-    _require_group_access(db, group, admin_id)
     inbounds, hosts, nodes = _scope(db, group_id)
     if not inbounds or set(hosts) != inbounds or any(not hosts[tag] for tag in inbounds):
         raise admin_hierarchy.HierarchyError(
@@ -147,16 +145,6 @@ def validated_scope(
             "access_group_inbound_unavailable",
             f"Access Group contains unavailable inbounds: {sorted(unknown)}",
         )
-    settings = db.get(MarzhelpAdminSettings, admin_id)
-    if settings is None:
-        raise admin_hierarchy.HierarchyError("policy_missing", "Administrator policy is missing")
-    if not settings.all_inbounds:
-        forbidden = inbounds - set(settings.allowed_inbounds or [])
-        if forbidden:
-            raise admin_hierarchy.HierarchyError(
-                "access_group_scope_forbidden",
-                f"Access Group exceeds Admin scope: {sorted(forbidden)}",
-            )
     selected_ids = {host_id for ids in hosts.values() for host_id in ids}
     active_hosts = {
         row.id: row.inbound_tag
@@ -182,6 +170,31 @@ def validated_scope(
         )
     return inbounds, hosts, nodes
 
+
+def validated_scope(
+    db: Session,
+    group_id: int,
+    admin_id: int,
+) -> tuple[set[str], dict[str, set[int]], set[int]]:
+    """Resolve one active Access Group and fail closed on permission or network scope."""
+    group = db.get(AccessGroup, group_id)
+    if group is None or group.archived_at is not None:
+        raise admin_hierarchy.HierarchyError(
+            "access_group_unavailable", "Access Group is unavailable"
+        )
+    _require_group_access(db, group, admin_id)
+    inbounds, hosts, nodes = _validated_network_scope(db, group_id)
+    settings = db.get(MarzhelpAdminSettings, admin_id)
+    if settings is None:
+        raise admin_hierarchy.HierarchyError("policy_missing", "Administrator policy is missing")
+    if not settings.all_inbounds:
+        forbidden = inbounds - set(settings.allowed_inbounds or [])
+        if forbidden:
+            raise admin_hierarchy.HierarchyError(
+                "access_group_scope_forbidden",
+                f"Access Group exceeds Admin scope: {sorted(forbidden)}",
+            )
+    return inbounds, hosts, nodes
 
 def network_options(db: Session, actor: Admin) -> list[dict]:
     """Return active Inbound/Host choices for Owner-managed Access Groups."""
@@ -568,7 +581,14 @@ def propagate_host_changes(
             .order_by(User.id)
             .all()
         )
+        inbounds, _, _ = _validated_network_scope(db, group_id)
+        from app.utils.admin_plans import _apply_network_to_user
+
         for user in users:
-            apply_to_user(db, user, group_id)
+            # Host maintenance resyncs an existing binding; it is not a new
+            # Access Group selection, so Admin authorization is intentionally
+            # not re-evaluated here. Network validity is still fail-closed.
+            _apply_network_to_user(db, user, inbounds)
+            user.access_group_id = group_id
             synced.append(user.id)
     return synced
