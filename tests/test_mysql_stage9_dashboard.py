@@ -105,10 +105,10 @@ def test_mysql_stage9_migration_aggregate_and_query_plans(monkeypatch):
 
     with engine.connect() as connection:
         created_plan = connection.execute(sa.text(
-            "EXPLAIN SELECT id FROM users WHERE created_at >= UTC_TIMESTAMP() - INTERVAL 7 DAY ORDER BY created_at, id LIMIT 100"
+            "EXPLAIN FORMAT=TRADITIONAL SELECT id FROM users WHERE created_at >= UTC_TIMESTAMP() - INTERVAL 7 DAY ORDER BY created_at, id LIMIT 100"
         )).mappings().one()
         scoped_plan = connection.execute(sa.text(
-            "EXPLAIN SELECT id FROM users WHERE admin_id = 1 AND status = 'active' LIMIT 100"
+            "EXPLAIN FORMAT=TRADITIONAL SELECT id FROM users WHERE admin_id = 1 AND status = 'active' LIMIT 100"
         )).mappings().one()
         assert created_plan["key"] == "ix_users_created_at_id"
         assert scoped_plan["key"] == "ix_users_admin_status"
