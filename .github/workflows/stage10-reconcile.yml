@@ -6,7 +6,7 @@ on:
       - stage10-release-candidate-audit
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   reconcile:
@@ -22,8 +22,11 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Apply audited release-candidate cleanup
-        run: python scripts/stage10_reconcile.py
+      - name: Recover audited reconcile script from reviewed history
+        run: git show 3791646354fd480f83c5a3c49c7c9176f9dd3385:scripts/stage10_reconcile.py > /tmp/stage10_reconcile.py
+
+      - name: Apply audited release-candidate cleanup in runner workspace
+        run: python /tmp/stage10_reconcile.py
 
       - name: Verify targeted release contracts
         run: |
@@ -33,25 +36,13 @@ jobs:
 
       - name: Export workflow patches
         run: |
-          mkdir -p /tmp/stage10-workflows/.github/workflows
-          cp .github/workflows/build.yml /tmp/stage10-workflows/.github/workflows/build.yml
-          cp .github/workflows/checkpoints.yml /tmp/stage10-workflows/.github/workflows/checkpoints.yml
-          cp .github/workflows/validate-v1-installer.yml /tmp/stage10-workflows/.github/workflows/validate-v1-installer.yml
-          cp .github/workflows/verify-v1-image.yml /tmp/stage10-workflows/.github/workflows/verify-v1-image.yml
+          mkdir -p /tmp/stage10-workflows
+          cp .github/workflows/build.yml /tmp/stage10-workflows/build.yml
+          cp .github/workflows/checkpoints.yml /tmp/stage10-workflows/checkpoints.yml
+          cp .github/workflows/validate-v1-installer.yml /tmp/stage10-workflows/validate-v1-installer.yml
+          cp .github/workflows/verify-v1-image.yml /tmp/stage10-workflows/verify-v1-image.yml
 
       - uses: actions/upload-artifact@v4
         with:
           name: stage10-workflow-patches
           path: /tmp/stage10-workflows
-
-      - name: Commit non-workflow release-candidate material
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          rm -f scripts/stage10_reconcile.py
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add RELEASES.md docs/RELEASE_NOTES_v1.0.9.md tests/test_release_contract.py scripts/stage10_reconcile.py
-          git diff --cached --check
-          git commit -m "docs(release): prepare v1.0.9 release candidate material"
-          git push origin HEAD:stage10-release-candidate-audit
