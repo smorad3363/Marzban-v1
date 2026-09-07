@@ -1,6 +1,9 @@
 name: Create v1.0.8 tag once
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -20,9 +23,8 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          target="$(git rev-parse HEAD^)"
+          target="26c71e6b08aa5cdeee3128e1e88b510fd7b494a6"
           test "$(git show "${target}:VERSION")" = "1.0.8"
-          test "${target}" = "26c71e6b08aa5cdeee3128e1e88b510fd7b494a6"
           if git rev-parse -q --verify refs/tags/v1.0.8 >/dev/null; then
             echo "v1.0.8 already exists" >&2
             exit 1
