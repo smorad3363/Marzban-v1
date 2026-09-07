@@ -60,7 +60,7 @@ const emptyAdmin = (): ManagedAdminPayload => ({
 const Section: FC<{ title: string; description?: string; children: ReactNode }> = ({ title, description, children }) => (
   <Box p={{ base: 3, md: 4 }} bg="var(--panel-nested)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px">
     <Text as="h3" fontWeight="800" fontSize="sm">{title}</Text>
-    {description && <Text color="gray.400" fontSize="xs" mt={1}>{description}</Text>}
+    {description && <Text color="var(--panel-text-muted)" fontSize="xs" mt={1}>{description}</Text>}
     <Box mt={4}>{children}</Box>
   </Box>
 );
@@ -240,10 +240,10 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="5xl" scrollBehavior="inside" initialFocusRef={usernameRef} isCentered>
       <ModalOverlay bg="rgba(0,0,0,.72)" backdropFilter="blur(4px)" />
-      <ModalContent as="form" onSubmit={submit} dir={i18n.dir()} mx={3} my={3} maxH="calc(100dvh - 24px)" overflow="hidden" bg="var(--panel-surface)" color="gray.100" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px" boxShadow="elevated">
+      <ModalContent as="form" onSubmit={submit} dir={i18n.dir()} mx={3} my={3} maxH="calc(100dvh - 24px)" overflow="hidden" bg="var(--panel-surface)" color="var(--panel-text)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px" boxShadow="elevated">
         <ModalHeader px={{ base: 4, md: 5 }} py={4} borderBottomWidth="1px" borderColor="var(--panel-border)">
           <ModalCloseButton top={4} insetInlineStart={4} insetInlineEnd="auto" />
-          <Box pe={12}><Text fontSize="lg" fontWeight="800">{t(isEditing ? "admins.editTitle" : "admins.createTitle")}</Text><Text mt={1} color="gray.400" fontSize="xs">فرم فشرده؛ همه تنظیمات اصلی و محدودیت‌های دسترسی یکجا.</Text></Box>
+          <Box pe={12}><Text fontSize="lg" fontWeight="800">{t(isEditing ? "admins.editTitle" : "admins.createTitle")}</Text><Text mt={1} color="var(--panel-text-muted)" fontSize="xs">فرم فشرده؛ همه تنظیمات اصلی و محدودیت‌های دسترسی یکجا.</Text></Box>
         </ModalHeader>
 
         <ModalBody px={{ base: 4, md: 5 }} py={4} overflowY="auto">
@@ -268,7 +268,7 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
 
                 <Box mt={4} pt={4} borderTopWidth="1px" borderColor="var(--panel-border)">
                   <Text fontSize="sm" fontWeight="800">نوع حساب</Text>
-                  {isEditing ? <Box><HStack mt={2}><Badge colorScheme="primary">{billingLabels[mode].title}</Badge><Text color="gray.400" fontSize="xs">{billingLabels[mode].help}</Text></HStack>{mode === "USED_TRAFFIC" && <FormControl mt={3} isRequired maxW="360px"><FormLabel>قیمت خرید هر گیگ (تومان)</FormLabel><Input type="number" min={0} step={1000} dir="ltr" value={form.policy.used_traffic_price_per_gib_toman ?? ""} onChange={(e) => setPolicy("used_traffic_price_per_gib_toman", nullableNumber(e))} /></FormControl>}</Box> : (
+                  {isEditing ? <Box><HStack mt={2}><Badge colorScheme="primary">{billingLabels[mode].title}</Badge><Text color="var(--panel-text-muted)" fontSize="xs">{billingLabels[mode].help}</Text></HStack>{mode === "USED_TRAFFIC" && <FormControl mt={3} isRequired maxW="360px"><FormLabel>قیمت خرید هر گیگ (تومان)</FormLabel><Input type="number" min={0} step={1000} dir="ltr" value={form.policy.used_traffic_price_per_gib_toman ?? ""} onChange={(e) => setPolicy("used_traffic_price_per_gib_toman", nullableNumber(e))} /></FormControl>}</Box> : (
                     <SimpleGrid mt={2} columns={{ base: 1, md: Math.min(Math.max(allowedModes.length, 1), 3) }} gap={2}>
                       {allowedModes.filter((item) => item !== "LEGACY_COMPAT" && item !== "SEAT_CREDIT").map((item) => (
                         <Button key={item} type="button" minH="68px" h="auto" py={2.5} px={3} whiteSpace="normal" textAlign="start" justifyContent="flex-start" variant={billingMode === item ? "solid" : "outline"} colorScheme={billingMode === item ? "green" : "gray"} onClick={() => selectBillingMode(item)}>
@@ -284,9 +284,9 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
                 </Box>
 
                 <SimpleGrid mt={4} pt={4} borderTopWidth="1px" borderColor="var(--panel-border)" columns={{ base: 1, lg: 2 }} gap={3}>
-                  {mode !== "USED_TRAFFIC" && <HStack justify="space-between" p={3} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="10px"><Box><Text fontSize="sm" fontWeight="700">اجازه مدیریت پلن</Text><Text color="gray.400" fontSize="xs">ساخت و ویرایش پلن با مجوز والد.</Text></Box><Switch isChecked={form.can_manage_plans} isDisabled={!capabilitiesQuery.data?.can_delegate_plan_management} onChange={(e) => setField("can_manage_plans", e.target.checked)} /></HStack>}
+                  {mode !== "USED_TRAFFIC" && <HStack justify="space-between" p={3} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="10px"><Box><Text fontSize="sm" fontWeight="700">اجازه مدیریت پلن</Text><Text color="var(--panel-text-muted)" fontSize="xs">ساخت و ویرایش پلن با مجوز والد.</Text></Box><Switch isChecked={form.can_manage_plans} isDisabled={!capabilitiesQuery.data?.can_delegate_plan_management} onChange={(e) => setField("can_manage_plans", e.target.checked)} /></HStack>}
                   <Box>
-                    <HStack justify="space-between" minH="44px" p={3} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="10px"><Box><Text fontSize="sm" fontWeight="800">اجازه ساخت زیرمدیر</Text><Text color="gray.400" fontSize="xs">سهم باقی‌مانده: {capabilitiesQuery.data?.admin_creation_remaining ?? "نامحدود"}</Text></Box><Switch colorScheme="primary" isChecked={form.can_create_admins} isDisabled={!capabilitiesQuery.data?.can_delegate_admin_creation} onChange={(e) => setForm((current) => ({ ...current, can_create_admins: e.target.checked, can_delegate_admin_creation: e.target.checked ? current.can_delegate_admin_creation : false, admin_creation_limit: e.target.checked ? current.admin_creation_limit : 0 }))} /></HStack>
+                    <HStack justify="space-between" minH="44px" p={3} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="10px"><Box><Text fontSize="sm" fontWeight="800">اجازه ساخت زیرمدیر</Text><Text color="var(--panel-text-muted)" fontSize="xs">سهم باقی‌مانده: {capabilitiesQuery.data?.admin_creation_remaining ?? "نامحدود"}</Text></Box><Switch colorScheme="primary" isChecked={form.can_create_admins} isDisabled={!capabilitiesQuery.data?.can_delegate_admin_creation} onChange={(e) => setForm((current) => ({ ...current, can_create_admins: e.target.checked, can_delegate_admin_creation: e.target.checked ? current.can_delegate_admin_creation : false, admin_creation_limit: e.target.checked ? current.admin_creation_limit : 0 }))} /></HStack>
                     {form.can_create_admins && <Stack mt={2} spacing={2}><FormControl><FormLabel>تعداد مدیر قابل ساخت</FormLabel><Input type="number" min={0} dir="ltr" value={form.admin_creation_limit ?? ""} onChange={(e) => setField("admin_creation_limit", nullableNumber(e))} /></FormControl><HStack justify="space-between" p={3} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="10px"><Text fontSize="sm">اجازه واگذاری ساخت زیرمدیر</Text><Switch isChecked={form.can_delegate_admin_creation} isDisabled={!capabilitiesQuery.data?.can_delegate_admin_creation} onChange={(e) => setField("can_delegate_admin_creation", e.target.checked)} /></HStack>{mode === "USED_TRAFFIC" && capabilitiesQuery.data?.can_create_allocated_children && <HStack justify="space-between" p={3} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="10px"><Text fontSize="sm">اجازه ساخت فرزند «حجم ساخته‌شده»</Text><Switch isChecked={form.can_create_allocated_children} onChange={(e) => setField("can_create_allocated_children", e.target.checked)} /></HStack>}</Stack>}
                   </Box>
                 </SimpleGrid>
@@ -314,14 +314,14 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
 
               <Box p={{ base: 3, md: 4 }} bg="var(--panel-nested)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px">
                 <Text as="h3" fontWeight="800" fontSize="sm">پلن‌ها و محدودیت دسترسی</Text>
-                <Text color="gray.400" fontSize="xs" mt={1}>این بخش همیشه باز است؛ ورودی، دستگاه و عملیات مجاز را تعیین می‌کند. قیمت هر پلن فقط داخل همان پلن تنظیم می‌شود.</Text>
+                <Text color="var(--panel-text-muted)" fontSize="xs" mt={1}>این بخش همیشه باز است؛ ورودی، دستگاه و عملیات مجاز را تعیین می‌کند. قیمت هر پلن فقط داخل همان پلن تنظیم می‌شود.</Text>
                 <Stack mt={4} spacing={3}>
                   <SimpleGrid columns={{ base: 1, lg: 2 }} gap={3}>
                     <Section title="ورودی‌های مجاز"><Checkbox isChecked={form.policy.all_inbounds} onChange={(e) => setPolicy("all_inbounds", e.target.checked)}>همه ورودی‌ها</Checkbox>{!form.policy.all_inbounds && <Stack mt={3}><Input value={inboundSearch} onChange={(e) => setInboundSearch(e.target.value)} placeholder="جست‌وجوی ورودی" /><Stack maxH="180px" overflowY="auto">{availableInbounds.map((item) => <Checkbox key={item.tag} minH="40px" isChecked={form.policy.allowed_inbounds.includes(item.tag)} onChange={(e) => toggleInbound(item.tag, e.target.checked)}><Text dir="ltr">{item.tag}</Text></Checkbox>)}</Stack></Stack>}</Section>
                     <Section title="تعداد دستگاه قابل انتخاب"><Checkbox isChecked={form.policy.all_user_limits} onChange={(e) => setPolicy("all_user_limits", e.target.checked)}>بدون محدودیت انتخاب</Checkbox>{!form.policy.all_user_limits && <Stack mt={3}><HStack><Input type="number" min={1} dir="ltr" value={newUserLimit} onChange={(e) => setNewUserLimit(e.target.value)} /><Button type="button" onClick={addUserLimit}>افزودن</Button></HStack><Flex gap={2} wrap="wrap">{form.policy.allowed_user_limits.map((limit) => <Tag key={limit}><TagLabel>{limit}</TagLabel><TagCloseButton onClick={() => setPolicy("allowed_user_limits", form.policy.allowed_user_limits.filter((value) => value !== limit))} /></Tag>)}</Flex></Stack>}</Section>
                   </SimpleGrid>
                   <Section title="نوع اشتراک‌های مجاز"><SimpleGrid columns={{ base: 1, md: 2 }} gap={2}>{subscriptionModes.map((item) => <Checkbox key={item} minH="42px" isChecked={form.policy.allowed_subscription_modes.includes(item)} onChange={(e) => toggleSubscriptionMode(item, e.target.checked)}>{t(`admins.subscriptionMode.${item}`)}</Checkbox>)}</SimpleGrid></Section>
-                  <SimpleGrid columns={{ base: 1, md: 3 }} gap={2}>{accessPolicyOptions.map((item) => <HStack key={item.key} justify="space-between" align="start" p={3} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="10px"><Box pe={2}><Text fontSize="sm">{t(item.label)}</Text><Text mt={1} fontSize="xs" color="gray.400">{t(item.help)}</Text></Box><Switch flexShrink={0} isChecked={Boolean(form.policy[item.key])} onChange={(e) => setPolicy(item.key, e.target.checked as never)} /></HStack>)}</SimpleGrid>
+                  <SimpleGrid columns={{ base: 1, md: 3 }} gap={2}>{accessPolicyOptions.map((item) => <HStack key={item.key} justify="space-between" align="start" p={3} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="10px"><Box pe={2}><Text fontSize="sm">{t(item.label)}</Text><Text mt={1} fontSize="xs" color="var(--panel-text-muted)">{t(item.help)}</Text></Box><Switch flexShrink={0} isChecked={Boolean(form.policy[item.key])} onChange={(e) => setPolicy(item.key, e.target.checked as never)} /></HStack>)}</SimpleGrid>
                 </Stack>
               </Box>
             </Stack>

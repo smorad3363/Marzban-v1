@@ -85,7 +85,7 @@ export const AdminHierarchyPanel: FC = () => {
   return (
     <Card mb={4} bg="var(--panel-surface)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="14px" overflow="hidden">
       <HStack p={3} justify="space-between" align={{ base: "start", md: "center" }} flexWrap="wrap" borderBottomWidth="1px" borderColor="var(--panel-border)">
-        <Box><Text fontWeight="800">زیرمجموعه‌ها</Text><Text mt={0.5} color="gray.400" fontSize="xs">انتخاب، اعتبار، فریز و ریست تست؛ بدون بازکردن فرم‌های بزرگ.</Text></Box>
+        <Box><Text fontWeight="800">زیرمجموعه‌ها</Text><Text mt={0.5} color="var(--panel-text-muted)" fontSize="xs">انتخاب، اعتبار، فریز و ریست تست؛ بدون بازکردن فرم‌های بزرگ.</Text></Box>
         <Select aria-label="دسته‌بندی نوع اعتبار" value={modeFilter} maxW={{ base: "full", md: "230px" }} size="sm" onChange={(event) => { setModeFilter(event.target.value); setSelectedIds([]); }}>
           <option value="">همه نوع‌های اعتبار</option><option value="USED_TRAFFIC">مصرف واقعی</option><option value="ALLOCATED_TRAFFIC">حجم ساخته‌شده</option><option value="USER_CREDIT">نامحدود با سقف اکانت</option>
         </Select>
@@ -117,14 +117,14 @@ export const AdminHierarchyPanel: FC = () => {
                 {frozen && <Badge colorScheme="orange">فریز</Badge>}
               </HStack>
               <HStack justify={{ lg: "end" }} flexWrap="wrap" spacing={2}>
-                <Text color="gray.400" fontSize="xs">اعتبار: {creditText(node)} · تست قابل ساخت: {node.trial_quota}</Text>
+                <Text color="var(--panel-text-muted)" fontSize="xs">اعتبار: {creditText(node)} · تست قابل ساخت: {node.trial_quota}</Text>
                 {canAct && <Button size="xs" variant="ghost" colorScheme="orange" isLoading={singleAction.isLoading} onClick={() => window.confirm(frozen ? `فریز ${node.username} باز شود؟` : `${node.username} و زیرشاخه‌اش فریز شوند؟`) && singleAction.mutate({ node, operation: frozen ? "unfreeze" : "freeze" })}>{frozen ? "رفع فریز" : "فریز"}</Button>}
                 {canAct && <Button size="xs" variant="ghost" isLoading={singleAction.isLoading} onClick={() => window.confirm(`تعداد تست قابل ساخت ${node.username} به سقفش برگردد؟`) && singleAction.mutate({ node, operation: "trial-reset" })}>ریست تست</Button>}
               </HStack>
             </SimpleGrid>
           </Box>;
         })}
-        {nodes.length === 0 && <Text py={6} textAlign="center" color="gray.400">زیرمجموعه‌ای در این دسته نیست.</Text>}
+        {nodes.length === 0 && <Text py={6} textAlign="center" color="var(--panel-text-muted)">زیرمجموعه‌ای در این دسته نیست.</Text>}
       </Stack>
     </Card>
   );

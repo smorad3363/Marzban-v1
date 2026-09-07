@@ -38,7 +38,7 @@ const SignalTile: FC<{ number: string; symbol: string; label: string }> = ({ num
   <Box border="1px solid" borderColor="rgba(96, 165, 250, 0.3)" bg="rgba(11, 16, 32, 0.78)" p={4} minH="116px">
     <Text fontFamily="mono" fontSize="xs" color="primary.300">{number}</Text>
     <Text fontFamily="mono" fontSize="4xl" fontWeight="700" lineHeight="1" mt={2}>{symbol}</Text>
-    <Text fontSize="xs" color="gray.400" mt={3} textTransform="uppercase" letterSpacing="0.12em">{label}</Text>
+    <Text fontSize="xs" color="var(--panel-text-muted)" mt={3} textTransform="uppercase" letterSpacing="0.12em">{label}</Text>
   </Box>
 );
 
@@ -85,7 +85,7 @@ export const Login: FC = () => {
             {branding.logo_url ? <Box as="img" src={branding.logo_url} alt={`${branding.panel_name} logo`} boxSize="44px" objectFit="contain" /> : <BrandMark aria-hidden="true" boxSize="44px" filter="drop-shadow(0 9px 22px rgba(37,99,235,.24))" />}
             <Box>
               <Text fontSize="sm" fontWeight="800" color="primary.600" _dark={{ color: "primary.300" }}>{branding.panel_name}</Text>
-              <Text fontSize="xs" color="gray.500">Secure operations workspace</Text>
+              <Text fontSize="xs" color="var(--panel-text-muted)">Secure operations workspace</Text>
             </Box>
           </HStack>
         </HStack>
@@ -95,7 +95,7 @@ export const Login: FC = () => {
             <Badge colorScheme="green" variant="subtle" px={2.5} py={1} borderRadius="4px" fontFamily="mono" letterSpacing=".08em">AUTHORIZED PERSONNEL</Badge>
             <VStack alignItems="flex-start" w="full" spacing={2} mt={5}>
               <Text as="h1" fontSize={{ base: "3xl", md: "4xl" }} lineHeight="1.08" letterSpacing="-0.035em" fontWeight="700">{branding.login_title}</Text>
-              <Text color="gray.600" _dark={{ color: "gray.400" }} maxW="42ch">{branding.description || t("login.welcomeBack")}</Text>
+              <Text color="var(--panel-text-muted)" _dark={{ color: "gray.400" }} maxW="42ch">{branding.description || t("login.welcomeBack")}</Text>
             </VStack>
 
             <Box w="full" pt="7">
@@ -145,10 +145,10 @@ export const Login: FC = () => {
               <SignalTile number="03" symbol="C" label="Control" />
             </SimpleGrid>
             <Text as="h2" fontFamily="mono" fontSize={{ lg: "4xl", xl: "5xl" }} fontWeight="700" lineHeight="1.08" letterSpacing="-.045em">Signals stay clear.<br /><Text as="span" color="primary.300">Control stays close.</Text></Text>
-            <Text color="gray.400" mt={5} maxW="48ch">A private operations surface built for exact decisions, clear signals and controlled access.</Text>
+            <Text color="var(--panel-text-muted)" mt={5} maxW="48ch">A private operations surface built for exact decisions, clear signals and controlled access.</Text>
           </Box>
 
-          <HStack spacing={6} color="gray.400" fontSize="xs">
+          <HStack spacing={6} color="var(--panel-text-muted)" fontSize="xs">
             <HStack><ShieldCheckIcon width="17px" aria-hidden="true" /><Text>Protected access</Text></HStack>
             <HStack><ServerStackIcon width="17px" aria-hidden="true" /><Text>Controlled environment</Text></HStack>
           </HStack>

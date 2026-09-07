@@ -104,7 +104,7 @@ const SectionHeader: FC<{ title: string; description: string }> = ({
     >
       {title}
     </Text>
-    <Text mt={1} color="gray.400" fontSize="xs" lineHeight="1.8" maxW="72ch">
+    <Text mt={1} color="var(--panel-text-muted)" fontSize="xs" lineHeight="1.8" maxW="72ch">
       {description}
     </Text>
   </Box>
@@ -687,7 +687,7 @@ export const UserDialog: FC<UserDialogProps> = () => {
               pe={{ base: 4, md: 6 }}
               lineHeight="1.7"
               borderBottomWidth="1px"
-              borderColor="#33483b"
+              borderColor="var(--panel-border)"
               bgGradient="linear(to-r, rgba(202,165,61,.08), transparent 48%)"
             >
               <HStack gap={3} align="start">
@@ -709,7 +709,7 @@ export const UserDialog: FC<UserDialogProps> = () => {
                       {isEditing ? t("edit") : t("createUser")}
                     </Badge>
                   </HStack>
-                  <Text mt={1} color="gray.400" fontSize="sm" fontWeight="400" lineHeight="1.8">
+                  <Text mt={1} color="var(--panel-text-muted)" fontSize="sm" fontWeight="400" lineHeight="1.8">
                     {isEditing ? t("userDialog.editSubtitle") : t("userDialog.createSubtitle")}
                   </Text>
                 </Box>
@@ -725,13 +725,13 @@ export const UserDialog: FC<UserDialogProps> = () => {
                 gap={{ base: 4, md: 5 }}
                 alignItems="start"
               >
-                <GridItem minW={0} p={{ base: 4, md: 5 }} bg="#0d1812" borderWidth="1px" borderColor="#33483b" borderRadius="14px" boxShadow="0 10px 28px rgba(0,0,0,.16)">
+                <GridItem minW={0} p={{ base: 4, md: 5 }} bg="var(--panel-nested)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="14px" boxShadow="0 10px 28px rgba(0,0,0,.16)">
                   <VStack justifyContent="space-between" align="stretch" w="full" spacing={5}>
                     <SectionHeader
                       title={t("userDialog.identitySection")}
                       description={t("userDialog.identitySectionHelp")}
                     />
-                    <Divider borderColor="#33483b" />
+                    <Divider borderColor="var(--panel-border)" />
                     <Flex
                       flexDirection="column"
                       gridAutoRows="min-content"
@@ -803,7 +803,7 @@ export const UserDialog: FC<UserDialogProps> = () => {
                                   borderRadius="8px"
                                   bg="whiteAlpha.50"
                                 >
-                                  <Text fontSize="sm" color="gray.300" noOfLines={1}>{statusLabel}</Text>
+                                  <Text fontSize="sm" color="var(--panel-text-body)" noOfLines={1}>{statusLabel}</Text>
                                   <Switch
                                     aria-label={isEditing ? t("usersTable.status") : t("userDialog.onHold")}
                                     colorScheme="primary"
@@ -880,7 +880,7 @@ export const UserDialog: FC<UserDialogProps> = () => {
                           <FormErrorMessage>{form.formState.errors.access_group_id?.message}</FormErrorMessage>
                         </FormControl>
                       )}
-                      <Divider my={2} borderColor="#33483b" />
+                      <Divider my={2} borderColor="var(--panel-border)" />
                       <SectionHeader
                         title={t("userDialog.limitsSection")}
                         description={t("userDialog.limitsSectionHelp")}
@@ -1003,8 +1003,8 @@ export const UserDialog: FC<UserDialogProps> = () => {
                                   }}
                                   sx={{
                                     option: {
-                                      backgroundColor: "#111d17",
-                                      color: "#f1f5f2",
+                                      backgroundColor: "var(--panel-surface)",
+                                      color: "var(--panel-text)",
                                     }
                                   }}
                                 >
@@ -1164,13 +1164,13 @@ export const UserDialog: FC<UserDialogProps> = () => {
                     )}
                   </VStack>
                 </GridItem>
-                {!restrictedCreate && <GridItem minW={0} p={{ base: 4, md: 5 }} bg="#0d1812" borderWidth="1px" borderColor="#33483b" borderRadius="14px" boxShadow="0 10px 28px rgba(0,0,0,.16)">
+                {!restrictedCreate && <GridItem minW={0} p={{ base: 4, md: 5 }} bg="var(--panel-nested)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="14px" boxShadow="0 10px 28px rgba(0,0,0,.16)">
                   <Stack spacing={4} minW={0}>
                     <SectionHeader
                       title={t("userDialog.protocols")}
                       description={t("userDialog.protocolsSectionHelp")}
                     />
-                    <Divider borderColor="#33483b" />
+                    <Divider borderColor="var(--panel-border)" />
                     <FormControl
                       isInvalid={
                         !!form.formState.errors.selected_proxies?.message
@@ -1251,7 +1251,7 @@ export const UserDialog: FC<UserDialogProps> = () => {
                 </Alert>
               )}
             </ModalBody>
-            <ModalFooter flexShrink={0} mt={0} px={{ base: 3, sm: 4, md: 6 }} py={{ base: 3, md: 4 }} borderTopWidth="1px" borderColor="#33483b" bg="#0b1710">
+            <ModalFooter flexShrink={0} mt={0} px={{ base: 3, sm: 4, md: 6 }} py={{ base: 3, md: 4 }} borderTopWidth="1px" borderColor="var(--panel-border)" bg="var(--panel-surface)">
               <Stack
                 justify="space-between"
                 align={{ base: "stretch", md: "center" }}

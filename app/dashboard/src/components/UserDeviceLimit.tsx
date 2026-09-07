@@ -54,12 +54,12 @@ const ClientDetails: FC<{ observation: DeviceClientObservation; locale: string }
   const formatDate = (value: string) => new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "short" }).format(new Date(`${value}Z`));
   return (
     <SimpleGrid columns={{ base: 1, sm: 2, lg: 4 }} gap={2} mt={2} p={2.5} bg="rgba(2,6,23,.28)" borderRadius="9px">
-      <Box><Text color="gray.400" fontSize="xs">{t("deviceLimit.client")}</Text><Text dir="ltr" fontFamily="mono" fontSize="xs">{observation.client_name} {observation.client_version || ""}</Text></Box>
-      <Box><Text color="gray.400" fontSize="xs">{t("deviceLimit.platform")}</Text><Text dir="ltr" fontFamily="mono" fontSize="xs">{observation.platform || observation.os_token || "—"}</Text></Box>
-      <Box><Text color="gray.400" fontSize="xs">{t("deviceLimit.lastSeen")}</Text><Text dir="ltr" fontFamily="mono" fontSize="xs">{formatDate(observation.last_seen_at)}</Text></Box>
-      <Box><Text color="gray.400" fontSize="xs">{t("deviceLimit.subscriptionSeen")}</Text><Text dir="ltr" fontFamily="mono" fontSize="xs">{observation.seen_count}</Text></Box>
-      {observation.network_stack && <Box gridColumn={{ sm: "span 2" }}><Text color="gray.400" fontSize="xs">{t("deviceLimit.networkStack")}</Text><Text dir="ltr" fontFamily="mono" fontSize="xs">{observation.network_stack}</Text></Box>}
-      {observation.raw_user_agent && <Box gridColumn={{ sm: "span 2" }} minW={0}><Text color="gray.400" fontSize="xs">User-Agent</Text><Text dir="ltr" fontFamily="mono" fontSize="xs" overflowWrap="anywhere">{observation.raw_user_agent}</Text></Box>}
+      <Box><Text color="var(--panel-text-muted)" fontSize="xs">{t("deviceLimit.client")}</Text><Text dir="ltr" fontFamily="mono" fontSize="xs">{observation.client_name} {observation.client_version || ""}</Text></Box>
+      <Box><Text color="var(--panel-text-muted)" fontSize="xs">{t("deviceLimit.platform")}</Text><Text dir="ltr" fontFamily="mono" fontSize="xs">{observation.platform || observation.os_token || "—"}</Text></Box>
+      <Box><Text color="var(--panel-text-muted)" fontSize="xs">{t("deviceLimit.lastSeen")}</Text><Text dir="ltr" fontFamily="mono" fontSize="xs">{formatDate(observation.last_seen_at)}</Text></Box>
+      <Box><Text color="var(--panel-text-muted)" fontSize="xs">{t("deviceLimit.subscriptionSeen")}</Text><Text dir="ltr" fontFamily="mono" fontSize="xs">{observation.seen_count}</Text></Box>
+      {observation.network_stack && <Box gridColumn={{ sm: "span 2" }}><Text color="var(--panel-text-muted)" fontSize="xs">{t("deviceLimit.networkStack")}</Text><Text dir="ltr" fontFamily="mono" fontSize="xs">{observation.network_stack}</Text></Box>}
+      {observation.raw_user_agent && <Box gridColumn={{ sm: "span 2" }} minW={0}><Text color="var(--panel-text-muted)" fontSize="xs">User-Agent</Text><Text dir="ltr" fontFamily="mono" fontSize="xs" overflowWrap="anywhere">{observation.raw_user_agent}</Text></Box>}
     </SimpleGrid>
   );
 };
@@ -132,13 +132,13 @@ export const UserDeviceLimit: FC<{ user: User }> = ({ user }) => {
 
       <Modal isOpen={disclosure.isOpen} onClose={disclosure.onClose} size="4xl" scrollBehavior="inside">
         <ModalOverlay bg="rgba(0,0,0,.76)" backdropFilter="blur(5px)" />
-        <ModalContent mx={3} my={3} maxH="calc(100dvh - 24px)" dir={i18n.dir()} bg="#0c1712" color="gray.100" borderWidth="1px" borderColor="#345346" borderRadius={{ base: "14px", md: "18px" }} boxShadow="0 24px 70px rgba(0,0,0,.58)">
+        <ModalContent mx={3} my={3} maxH="calc(100dvh - 24px)" dir={i18n.dir()} bg="var(--panel-surface)" color="var(--panel-text)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius={{ base: "14px", md: "18px" }} boxShadow="0 24px 70px rgba(0,0,0,.58)">
           <ModalHeader pe={14}>
             <HStack align="start">
               <Box p={2.5} borderRadius="11px" bg={hasPenalty ? "rgba(234,179,8,.12)" : "rgba(34,197,94,.1)"} color={hasPenalty ? "yellow.200" : "green.200"}>{hasPenalty ? <WarningIcon /> : <SafeIcon />}</Box>
               <Box minW={0}>
                 <Text>{t("deviceLimit.userTitle")}</Text>
-                <Text dir="ltr" fontFamily="mono" color="gray.400" fontSize="sm" mt={1} sx={{ unicodeBidi: "isolate" }}>{user.username}</Text>
+                <Text dir="ltr" fontFamily="mono" color="var(--panel-text-muted)" fontSize="sm" mt={1} sx={{ unicodeBidi: "isolate" }}>{user.username}</Text>
               </Box>
             </HStack>
           </ModalHeader>
@@ -150,25 +150,25 @@ export const UserDeviceLimit: FC<{ user: User }> = ({ user }) => {
             ) : (
               <Stack spacing={4}>
                 <SimpleGrid columns={{ base: 1, sm: 2, lg: 4 }} gap={3}>
-                  <Box p={3} bg="rgba(2,6,23,.34)" borderWidth="1px" borderColor="rgba(148,163,184,.15)" borderRadius="10px"><Text color="gray.400" fontSize="xs">{t("deviceLimit.configuredLimit")}</Text><Text mt={1} dir="ltr" fontFamily="mono" fontWeight="900">{summary.configured_limit ?? "∞"}</Text></Box>
-                  <Box p={3} bg="rgba(2,6,23,.34)" borderWidth="1px" borderColor="rgba(148,163,184,.15)" borderRadius="10px"><Text color="gray.400" fontSize="xs">{t("deviceLimit.liveConnections")}</Text><Text mt={1} dir="ltr" fontFamily="mono" fontWeight="900">{summary.live_active_ip_count}</Text></Box>
-                  <Box p={3} bg="rgba(2,6,23,.34)" borderWidth="1px" borderColor="rgba(148,163,184,.15)" borderRadius="10px"><Text color="gray.400" fontSize="xs">{t("deviceLimit.strikes")}</Text><Text mt={1} dir="ltr" fontFamily="mono" fontWeight="900">{summary.state.violation_count}</Text></Box>
-                  <Box p={3} bg="rgba(2,6,23,.34)" borderWidth="1px" borderColor="rgba(148,163,184,.15)" borderRadius="10px"><Text color="gray.400" fontSize="xs">{t("deviceLimit.penaltyStatus")}</Text><Badge mt={1} colorScheme={summary.state.penalty_status === "clear" ? "green" : "yellow"} textTransform="none">{t(`deviceLimit.status.${summary.state.penalty_status}`)}</Badge></Box>
+                  <Box p={3} bg="var(--panel-nested)" borderWidth="1px" borderColor="rgba(148,163,184,.15)" borderRadius="10px"><Text color="var(--panel-text-muted)" fontSize="xs">{t("deviceLimit.configuredLimit")}</Text><Text mt={1} dir="ltr" fontFamily="mono" fontWeight="900">{summary.configured_limit ?? "∞"}</Text></Box>
+                  <Box p={3} bg="var(--panel-nested)" borderWidth="1px" borderColor="rgba(148,163,184,.15)" borderRadius="10px"><Text color="var(--panel-text-muted)" fontSize="xs">{t("deviceLimit.liveConnections")}</Text><Text mt={1} dir="ltr" fontFamily="mono" fontWeight="900">{summary.live_active_ip_count}</Text></Box>
+                  <Box p={3} bg="var(--panel-nested)" borderWidth="1px" borderColor="rgba(148,163,184,.15)" borderRadius="10px"><Text color="var(--panel-text-muted)" fontSize="xs">{t("deviceLimit.strikes")}</Text><Text mt={1} dir="ltr" fontFamily="mono" fontWeight="900">{summary.state.violation_count}</Text></Box>
+                  <Box p={3} bg="var(--panel-nested)" borderWidth="1px" borderColor="rgba(148,163,184,.15)" borderRadius="10px"><Text color="var(--panel-text-muted)" fontSize="xs">{t("deviceLimit.penaltyStatus")}</Text><Badge mt={1} colorScheme={summary.state.penalty_status === "clear" ? "green" : "yellow"} textTransform="none">{t(`deviceLimit.status.${summary.state.penalty_status}`)}</Badge></Box>
                 </SimpleGrid>
 
                 {summary.state.last_reason && (
                   <Alert status="warning" borderRadius="10px" alignItems="start"><AlertIcon mt={0.5} /><Box><Text fontWeight="750">{t("deviceLimit.lastWarning")}</Text><Text fontSize="sm" mt={1}>{summary.state.last_reason}</Text></Box></Alert>
                 )}
 
-                <Box p={4} bg="#101e17" borderWidth="1px" borderColor="#33483b" borderRadius="12px">
+                <Box p={4} bg="var(--panel-nested)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px">
                   <Text fontWeight="800">{t("deviceLimit.liveActivity")}</Text>
                   <SimpleGrid columns={{ base: 1, md: 2 }} gap={3} mt={3}>
-                    <Box minW={0}><Text color="gray.400" fontSize="xs">{t("deviceLimit.ipAddresses")}</Text><Text dir="ltr" mt={1} fontFamily="mono" fontSize="xs" overflowWrap="anywhere">{summary.live_ip_addresses.join(" · ") || "—"}</Text></Box>
-                    <Box minW={0}><Text color="gray.400" fontSize="xs">{t("deviceLimit.sources")}</Text><Text dir="ltr" mt={1} fontFamily="mono" fontSize="xs" overflowWrap="anywhere">{summary.live_source_nodes.join(" · ") || "—"}</Text></Box>
+                    <Box minW={0}><Text color="var(--panel-text-muted)" fontSize="xs">{t("deviceLimit.ipAddresses")}</Text><Text dir="ltr" mt={1} fontFamily="mono" fontSize="xs" overflowWrap="anywhere">{summary.live_ip_addresses.join(" · ") || "—"}</Text></Box>
+                    <Box minW={0}><Text color="var(--panel-text-muted)" fontSize="xs">{t("deviceLimit.sources")}</Text><Text dir="ltr" mt={1} fontFamily="mono" fontSize="xs" overflowWrap="anywhere">{summary.live_source_nodes.join(" · ") || "—"}</Text></Box>
                   </SimpleGrid>
                 </Box>
 
-                <Box p={4} bg="#101e17" borderWidth="1px" borderColor="#33483b" borderRadius="12px">
+                <Box p={4} bg="var(--panel-nested)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px">
                   <HStack><DeviceIcon color="green.200" /><Text fontWeight="800">{t("deviceLimit.deviceSlots")}</Text><Badge ms="auto" colorScheme="green">{summary.slots.length}</Badge></HStack>
                   <Stack mt={3} divider={<Divider borderColor="rgba(148,163,184,.12)" />}>
                     {summary.slots.map((slot) => {
@@ -178,10 +178,10 @@ export const UserDeviceLimit: FC<{ user: User }> = ({ user }) => {
                           <HStack justify="space-between" align="center" gap={3} minW={0}>
                             <Box minW={0}>
                               <Text fontWeight="700">{slot.label || t("deviceLimit.deviceNumber", { count: slot.slot_index })}</Text>
-                              <Text dir="ltr" color="gray.400" fontFamily="mono" fontSize="xs" mt={1} noOfLines={1} sx={{ unicodeBidi: "isolate" }}>{slot.last_ip || t("deviceLimit.neverSeen")}</Text>
+                              <Text dir="ltr" color="var(--panel-text-muted)" fontFamily="mono" fontSize="xs" mt={1} noOfLines={1} sx={{ unicodeBidi: "isolate" }}>{slot.last_ip || t("deviceLimit.neverSeen")}</Text>
                             </Box>
                             <CopyToClipboard text={link} onCopy={() => setCopiedSlot(slot.slot_index)}>
-                              <Button minH="44px" variant="outline" borderColor="#476858" leftIcon={copiedSlot === slot.slot_index ? <CopiedIcon /> : <CopyIcon />}>{t(copiedSlot === slot.slot_index ? "usersTable.copied" : "deviceLimit.copySlotLink")}</Button>
+                              <Button minH="44px" variant="outline" borderColor="var(--panel-border-strong)" leftIcon={copiedSlot === slot.slot_index ? <CopiedIcon /> : <CopyIcon />}>{t(copiedSlot === slot.slot_index ? "usersTable.copied" : "deviceLimit.copySlotLink")}</Button>
                             </CopyToClipboard>
                           </HStack>
                           {slot.client_observations[0] && <ClientDetails observation={slot.client_observations[0]} locale={i18n.language} />}
@@ -200,8 +200,8 @@ export const UserDeviceLimit: FC<{ user: User }> = ({ user }) => {
             )}
           </ModalBody>
           <ModalFooter borderTopWidth="1px" borderColor="#2b4437" gap={3} flexWrap="wrap">
-            <Button minH="44px" variant="outline" borderColor="#476858" onClick={() => stateMutation.mutate("reset-strikes")} isLoading={stateMutation.isLoading}>{t("deviceLimit.resetStrikes")}</Button>
-            {state && state.penalty_status !== "clear" && <Button minH="44px" colorScheme="primary" color="#07130e" onClick={() => stateMutation.mutate("unblock")} isLoading={stateMutation.isLoading}>{t("deviceLimit.unblock")}</Button>}
+            <Button minH="44px" variant="outline" borderColor="var(--panel-border-strong)" onClick={() => stateMutation.mutate("reset-strikes")} isLoading={stateMutation.isLoading}>{t("deviceLimit.resetStrikes")}</Button>
+            {state && state.penalty_status !== "clear" && <Button minH="44px" colorScheme="primary" color="var(--panel-accent-contrast)" onClick={() => stateMutation.mutate("unblock")} isLoading={stateMutation.isLoading}>{t("deviceLimit.unblock")}</Button>}
             <Button minH="44px" variant="ghost" onClick={disclosure.onClose}>{t("cancel")}</Button>
           </ModalFooter>
         </ModalContent>

@@ -136,11 +136,11 @@ export const Dashboard: FC = () => {
                 </Button>
               )}
               <Badge colorScheme="green" px={2.5} py={1.5} borderRadius="full" fontSize="10px">سیستم در حال اجرا</Badge>
-              <Text color="gray.400" fontSize="11px">{messageForToday()}</Text>
+              <Text color="var(--panel-text-muted)" fontSize="11px">{messageForToday()}</Text>
               <Badge colorScheme={holiday ? "orange" : "green"} px={2} py={1} borderRadius="full" fontSize="9px">
                 {holiday || "روز کاری"}
               </Badge>
-              <Text color="gray.300" fontSize="11px" fontWeight="700">
+              <Text color="var(--panel-text-body)" fontSize="11px" fontWeight="700">
                 {today.toLocaleDateString("fa-IR-u-ca-persian", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
               </Text>
               <Text dir="ltr" color="var(--panel-accent)" fontSize="11px" fontWeight="800">
@@ -167,7 +167,7 @@ export const Dashboard: FC = () => {
               <Box>
                 <Text color="primary.300" fontSize="10px" fontWeight="800">کاربران</Text>
                 <Text id="user-operations-title" as="h2" mt={0.5} fontSize="lg" fontWeight="850">مدیریت کاربران</Text>
-                <Text mt={1} color="gray.500" fontSize="11px">اطلاعات مهم، وضعیت، مصرف و عملیات هر کاربر بدون باز کردن پنجره اضافی.</Text>
+                <Text mt={1} color="var(--panel-text-muted)" fontSize="11px">اطلاعات مهم، وضعیت، مصرف و عملیات هر کاربر بدون باز کردن پنجره اضافی.</Text>
               </Box>
               <Button
                 display={{ base: "inline-flex", md: "none" }}

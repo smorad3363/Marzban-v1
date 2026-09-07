@@ -33,7 +33,7 @@ export const OnlineStatus: FC<UserStatusProps> = ({lastOnline}) => {
             fontWeight="medium"
             ms="0"
             mt="1"
-            color="gray.600"
+            color="var(--panel-text-muted)"
             _dark={{
                 color: "gray.400",
             }}

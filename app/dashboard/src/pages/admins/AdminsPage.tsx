@@ -302,7 +302,7 @@ export const AdminsPage: FC = () => {
             <Text as="h1" fontSize={{ base: "2xl", md: "3xl" }} fontWeight="800" letterSpacing="-0.035em">
               {t("admins.title")}
             </Text>
-            <Text mt={1} color="gray.400" fontSize="sm" maxW="680px">
+            <Text mt={1} color="var(--panel-text-muted)" fontSize="sm" maxW="680px">
               مدیریت ادمین‌ها، اعتبار، وضعیت و دسترسی‌ها در یک نمای سریع و عملیاتی.
             </Text>
           </Box>
@@ -361,7 +361,7 @@ export const AdminsPage: FC = () => {
           >
             <Stack direction={{ base: "column", md: "row" }} spacing={3} align={{ md: "center" }} flex="1" minW={0}>
               <HStack spacing={1.5} flexWrap="wrap">
-                <Text color="gray.400" fontSize="11px" fontWeight="800">وضعیت:</Text>
+                <Text color="var(--panel-text-muted)" fontSize="11px" fontWeight="800">وضعیت:</Text>
                 <FilterButton active={statusFilter === ""} onClick={() => { setStatusFilter(""); setPage(0); }}>همه</FilterButton>
                 <FilterButton active={statusFilter === "ACTIVE"} onClick={() => { setStatusFilter("ACTIVE"); setPage(0); }}>فعال</FilterButton>
                 <FilterButton active={statusFilter === "SUSPENDED"} onClick={() => { setStatusFilter("SUSPENDED"); setPage(0); }}>فریز</FilterButton>
@@ -371,7 +371,7 @@ export const AdminsPage: FC = () => {
               <Divider display={{ base: "none", md: "block" }} orientation="vertical" h="28px" borderColor="whiteAlpha.200" />
 
               <HStack spacing={1.5} flexWrap="wrap">
-                <Text color="gray.400" fontSize="11px" fontWeight="800">نوع اعتبار:</Text>
+                <Text color="var(--panel-text-muted)" fontSize="11px" fontWeight="800">نوع اعتبار:</Text>
                 <FilterButton active={billingFilter === ""} onClick={() => { setBillingFilter(""); setPage(0); }}>همه</FilterButton>
                 <FilterButton active={billingFilter === "ALLOCATED_TRAFFIC"} onClick={() => { setBillingFilter("ALLOCATED_TRAFFIC"); setPage(0); }}>حجم ساخته‌شده</FilterButton>
                 <FilterButton active={billingFilter === "USED_TRAFFIC"} onClick={() => { setBillingFilter("USED_TRAFFIC"); setPage(0); }}>مصرف واقعی</FilterButton>
@@ -380,7 +380,7 @@ export const AdminsPage: FC = () => {
             </Stack>
 
             <InputGroup w={{ base: "full", xl: "300px" }} flexShrink={0}>
-              <InputLeftElement pointerEvents="none" color="gray.500" h="36px"><SearchIcon /></InputLeftElement>
+              <InputLeftElement pointerEvents="none" color="var(--panel-text-muted)" h="36px"><SearchIcon /></InputLeftElement>
               <Input
                 value={searchInput}
                 onChange={(event) => setSearchInput(event.target.value)}
@@ -407,9 +407,9 @@ export const AdminsPage: FC = () => {
             </Stack>
           ) : admins.length === 0 ? (
             <VStack py={16} px={5} spacing={3}>
-              <Box p={3} color="gray.400" borderRadius="12px" borderWidth="1px" borderColor="whiteAlpha.100"><AdminsIcon /></Box>
+              <Box p={3} color="var(--panel-text-muted)" borderRadius="12px" borderWidth="1px" borderColor="whiteAlpha.100"><AdminsIcon /></Box>
               <Text fontWeight="700">{t("admins.empty")}</Text>
-              <Text color="gray.500" fontSize="sm" textAlign="center">{t(search ? "admins.emptySearch" : "admins.emptyHelp")}</Text>
+              <Text color="var(--panel-text-muted)" fontSize="sm" textAlign="center">{t(search ? "admins.emptySearch" : "admins.emptyHelp")}</Text>
             </VStack>
           ) : (
             <AdminTable
@@ -429,7 +429,7 @@ export const AdminsPage: FC = () => {
 
           {total > PAGE_SIZE && (
             <HStack justify="space-between" px={4} py={3} borderTopWidth="1px" borderColor="rgba(148,163,184,.12)">
-              <Text color="gray.500" fontSize="xs">{t("admins.page", { current: page + 1, total: Math.ceil(total / PAGE_SIZE) })}</Text>
+              <Text color="var(--panel-text-muted)" fontSize="xs">{t("admins.page", { current: page + 1, total: Math.ceil(total / PAGE_SIZE) })}</Text>
               <HStack>
                 <Button size="sm" variant="ghost" minW="40px" isDisabled={page === 0} onClick={() => setPage((value) => value - 1)}>{t("previous")}</Button>
                 <Box minW="34px" h="34px" display="grid" placeItems="center" borderRadius="9px" bg="rgba(37,99,235,.18)" borderWidth="1px" borderColor="rgba(96,165,250,.25)" color="blue.100" fontSize="sm" fontWeight="800">{(page + 1).toLocaleString("fa-IR")}</Box>
@@ -444,7 +444,7 @@ export const AdminsPage: FC = () => {
 
       <AlertDialog isOpen={deleteDisclosure.isOpen} leastDestructiveRef={cancelRef} onClose={deleteDisclosure.onClose}>
         <AlertDialogOverlay bg="rgba(0,0,0,.72)">
-          <AlertDialogContent bg="#0c1524" color="gray.100" borderWidth="1px" borderColor="rgba(148,163,184,.16)" borderRadius="14px">
+          <AlertDialogContent bg="var(--panel-surface)" color="var(--panel-text)" borderWidth="1px" borderColor="rgba(148,163,184,.16)" borderRadius="14px">
             <AlertDialogHeader>{t("admins.deleteTitle")}</AlertDialogHeader>
             <AlertDialogBody>
               <Text mb={3}>{t("admins.deleteConfirm", { username: selected?.username })}</Text>
@@ -468,7 +468,7 @@ export const AdminsPage: FC = () => {
 
       <AlertDialog isOpen={freezeDisclosure.isOpen} leastDestructiveRef={cancelRef} onClose={freezeDisclosure.onClose}>
         <AlertDialogOverlay bg="rgba(0,0,0,.76)">
-          <AlertDialogContent bg="#0c1524" color="gray.100" borderWidth="1px" borderColor="rgba(148,163,184,.16)" borderRadius="14px">
+          <AlertDialogContent bg="var(--panel-surface)" color="var(--panel-text)" borderWidth="1px" borderColor="rgba(148,163,184,.16)" borderRadius="14px">
             <AlertDialogHeader>فریز {freezeTarget?.username}</AlertDialogHeader>
             <AlertDialogBody>
               <FormControl isRequired>

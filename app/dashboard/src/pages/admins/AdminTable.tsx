@@ -66,7 +66,7 @@ const limitText = (value: number | null | undefined, suffix = "") =>
 
 const InlineDetails: FC<{ item: ManagedAdmin }> = ({ item }) => (
   <HStack spacing={1.5} flexWrap="wrap" rowGap={1.5}>
-    <Text color="gray.400" fontSize="11px" fontWeight="800" me={1}>اطلاعات:</Text>
+    <Text color="var(--panel-text-muted)" fontSize="11px" fontWeight="800" me={1}>اطلاعات:</Text>
     <DetailChip label="والد" value={item.parent_username || "ریشه"} />
     <DetailChip label="ساخت کاربر" value={creationModeLabel(item)} />
     <DetailChip label="مصرف کل" value={String(formatBytes(item.quota.lifetime_consumed_traffic))} />
@@ -76,7 +76,7 @@ const InlineDetails: FC<{ item: ManagedAdmin }> = ({ item }) => (
     <DetailChip label="انقضا" value={item.policy.expiry_date || "نامحدود"} />
     <DetailChip label="تلگرام" value={item.telegram_id?.toString() || "ثبت نشده"} />
     <Box w={{ base: "full", xl: "1px" }} h={{ base: "1px", xl: "24px" }} bg="whiteAlpha.100" mx={1} />
-    <Text color="gray.400" fontSize="11px" fontWeight="800" me={1}>دسترسی:</Text>
+    <Text color="var(--panel-text-muted)" fontSize="11px" fontWeight="800" me={1}>دسترسی:</Text>
     <DetailChip label="ایجاد" value={item.policy.prevent_user_creation ? "مسدود" : "مجاز"} tone={item.policy.prevent_user_creation ? "red.300" : "green.300"} />
     <DetailChip label="حذف" value={item.policy.prevent_user_deletion ? "مسدود" : "مجاز"} tone={item.policy.prevent_user_deletion ? "red.300" : "green.300"} />
     <DetailChip label="ریست" value={item.policy.prevent_user_reset ? "مسدود" : "مجاز"} tone={item.policy.prevent_user_reset ? "red.300" : "green.300"} />
@@ -302,7 +302,7 @@ export const AdminTable: FC<Props> = ({
                         <AdminAvatar username={item.username} owner={isItemOwner} />
                         <Box minW={0}>
                           <Text dir="ltr" textAlign="start" fontSize="13px" fontWeight="800" noOfLines={1}>{item.username}</Text>
-                          <Text mt={1} color="gray.500" fontSize="11px" noOfLines={1}>
+                          <Text mt={1} color="var(--panel-text-muted)" fontSize="11px" noOfLines={1}>
                             {item.user_creation_mode === "PLAN_ONLY" ? "ساخت کاربر فقط از پلن" : "ساخت کاربر سفارشی"}
                           </Text>
                         </Box>
@@ -314,7 +314,7 @@ export const AdminTable: FC<Props> = ({
                         <Badge variant="subtle" colorScheme={isItemOwner ? "purple" : "blue"} fontSize="11px" textTransform="none">
                           {t(`admins.role.${item.role}`)}
                         </Badge>
-                        <Badge variant="outline" color="gray.300" borderColor="rgba(148,163,184,.25)" fontSize="11px" textTransform="none">
+                        <Badge variant="outline" color="var(--panel-text-body)" borderColor="rgba(148,163,184,.25)" fontSize="11px" textTransform="none">
                           {billingModeLabels[item.policy.billing_mode] || item.policy.billing_mode}
                         </Badge>
                       </HStack>
@@ -323,16 +323,16 @@ export const AdminTable: FC<Props> = ({
                       <Text fontSize="13px" fontWeight="800" sx={{ fontVariantNumeric: "tabular-nums" }}>
                         {isItemOwner ? "بدون سقف" : item.policy.money_balance_toman.toLocaleString("fa-IR")}
                       </Text>
-                      {!isItemOwner && <Text mt={1} color="gray.500" fontSize="10px">تومان</Text>}
+                      {!isItemOwner && <Text mt={1} color="var(--panel-text-muted)" fontSize="10px">تومان</Text>}
                     </Td>
                     <Td>
                       <Text fontSize="13px" fontWeight="800">
                         {item.quota.current_users.toLocaleString("fa-IR")}
-                        <Text as="span" color="gray.500" fontSize="11px" fontWeight="600">
+                        <Text as="span" color="var(--panel-text-muted)" fontSize="11px" fontWeight="600">
                           {item.quota.max_users == null ? " / ∞" : ` / ${item.quota.max_users.toLocaleString("fa-IR")}`}
                         </Text>
                       </Text>
-                      <Text mt={1} color="gray.500" fontSize="10px">
+                      <Text mt={1} color="var(--panel-text-muted)" fontSize="10px">
                         {item.quota.remaining_user_slots == null ? "بدون سقف" : `${item.quota.remaining_user_slots.toLocaleString("fa-IR")} باقی‌مانده`}
                       </Text>
                     </Td>
@@ -371,7 +371,7 @@ export const AdminTable: FC<Props> = ({
                       <Text dir="ltr" fontSize="14px" fontWeight="800">{item.username}</Text>
                       <StatusPill status={item.account_status} />
                     </HStack>
-                    <Text mt={1} color="gray.500" fontSize="11px" dir="ltr">{item.parent_username ? `↳ ${item.parent_username}` : "ادمین ریشه"}</Text>
+                    <Text mt={1} color="var(--panel-text-muted)" fontSize="11px" dir="ltr">{item.parent_username ? `↳ ${item.parent_username}` : "ادمین ریشه"}</Text>
                   </Box>
                 </HStack>
                 <HStack spacing={1}>
@@ -387,14 +387,14 @@ export const AdminTable: FC<Props> = ({
 
               <SimpleGrid columns={2} gap={3} mt={3}>
                 <Box>
-                  <Text color="gray.500" fontSize="10px">نقش / اعتبار</Text>
+                  <Text color="var(--panel-text-muted)" fontSize="10px">نقش / اعتبار</Text>
                   <HStack mt={1.5} spacing={1} flexWrap="wrap">
                     <Badge colorScheme={isItemOwner ? "purple" : "blue"} fontSize="9px">{t(`admins.role.${item.role}`)}</Badge>
-                    <Badge variant="outline" borderColor="whiteAlpha.200" color="gray.300" fontSize="9px">{billingModeLabels[item.policy.billing_mode] || item.policy.billing_mode}</Badge>
+                    <Badge variant="outline" borderColor="whiteAlpha.200" color="var(--panel-text-body)" fontSize="9px">{billingModeLabels[item.policy.billing_mode] || item.policy.billing_mode}</Badge>
                   </HStack>
                 </Box>
                 <Box>
-                  <Text color="gray.500" fontSize="10px">کیف پول</Text>
+                  <Text color="var(--panel-text-muted)" fontSize="10px">کیف پول</Text>
                   <Text mt={1.5} fontWeight="800">{isItemOwner ? "بدون سقف" : `${item.policy.money_balance_toman.toLocaleString("fa-IR")} تومان`}</Text>
                 </Box>
               </SimpleGrid>

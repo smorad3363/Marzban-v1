@@ -72,10 +72,10 @@ const ActionButton: FC<ActionButtonProps> = ({ icon, label, onClick, danger }) =
     justifyContent="flex-start"
     minW={0}
     w="full"
-    color={danger ? "red.200" : "gray.200"}
+    color={danger ? "var(--panel-danger)" : "var(--panel-text-body)"}
     fontWeight="500"
-    _hover={{ bg: danger ? "rgba(239, 68, 68, .14)" : "whiteAlpha.100", color: danger ? "red.100" : "white" }}
-    _active={{ bg: danger ? "rgba(239, 68, 68, .2)" : "whiteAlpha.200" }}
+    _hover={{ bg: danger ? "var(--panel-danger-soft)" : "var(--panel-row-hover)", color: danger ? "var(--panel-danger)" : "var(--panel-text)" }}
+    _active={{ bg: danger ? "var(--panel-danger-soft)" : "var(--panel-nested)" }}
     onClick={onClick}
   >
     <Text as="span" noOfLines={1}>{label}</Text>
@@ -160,7 +160,7 @@ export const Header: FC = () => {
           size="md"
           variant={isUsersPage ? "solid" : "ghost"}
           colorScheme={isUsersPage ? "primary" : "gray"}
-          color={isUsersPage ? "var(--panel-accent-contrast)" : "gray.200"}
+          color={isUsersPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"}
           _hover={isUsersPage ? undefined : { bg: "var(--panel-row-hover)", color: "var(--panel-text)" }}
           leftIcon={<UsersNavIcon />}
           justifyContent="flex-start"
@@ -173,7 +173,7 @@ export const Header: FC = () => {
           size="md"
           variant={isPlansPage ? "solid" : "ghost"}
           colorScheme={isPlansPage ? "primary" : "gray"}
-          color={isPlansPage ? "var(--panel-accent-contrast)" : "gray.200"}
+          color={isPlansPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"}
           _hover={isPlansPage ? undefined : { bg: "var(--panel-row-hover)", color: "var(--panel-text)" }}
           leftIcon={<PlansNavIcon />}
           justifyContent="flex-start"
@@ -186,7 +186,7 @@ export const Header: FC = () => {
             size="md"
             variant={isAdminsPage ? "solid" : "ghost"}
             colorScheme={isAdminsPage ? "primary" : "gray"}
-            color={isAdminsPage ? "var(--panel-accent-contrast)" : "gray.200"}
+            color={isAdminsPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"}
             _hover={isAdminsPage ? undefined : { bg: "var(--panel-row-hover)", color: "var(--panel-text)" }}
             leftIcon={<AdminsNavIcon />}
             justifyContent="flex-start"
@@ -200,14 +200,14 @@ export const Header: FC = () => {
             size="md"
             variant={isDeviceLimitPage ? "solid" : "ghost"}
             colorScheme={isDeviceLimitPage ? "primary" : "gray"}
-            color={isDeviceLimitPage ? "var(--panel-accent-contrast)" : "gray.200"}
+            color={isDeviceLimitPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"}
             _hover={isDeviceLimitPage ? undefined : { bg: "var(--panel-row-hover)", color: "var(--panel-text)" }}
             leftIcon={<DeviceLimitNavIcon />}
             justifyContent="flex-start"
             aria-current={isDeviceLimitPage ? "page" : undefined}
           >{t("deviceLimit.nav")}</Button>
         )}
-        {isOwner && <Button as={Link} to="/settings/" size="md" variant={isSettingsPage ? "solid" : "ghost"} colorScheme={isSettingsPage ? "primary" : "gray"} color={isSettingsPage ? "var(--panel-accent-contrast)" : "gray.200"} leftIcon={<CoreSettingsIcon />} justifyContent="flex-start" aria-current={isSettingsPage ? "page" : undefined}>پیکربندی</Button>}
+        {isOwner && <Button as={Link} to="/settings/" size="md" variant={isSettingsPage ? "solid" : "ghost"} colorScheme={isSettingsPage ? "primary" : "gray"} color={isSettingsPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<CoreSettingsIcon />} justifyContent="flex-start" aria-current={isSettingsPage ? "page" : undefined}>پیکربندی</Button>}
         {(
           <Button
             as={Link}
@@ -215,7 +215,7 @@ export const Header: FC = () => {
             size="md"
             variant={isAuditPage ? "solid" : "ghost"}
             colorScheme={isAuditPage ? "primary" : "gray"}
-            color={isAuditPage ? "var(--panel-accent-contrast)" : "gray.200"}
+            color={isAuditPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"}
             _hover={isAuditPage ? undefined : { bg: "var(--panel-row-hover)", color: "var(--panel-text)" }}
             leftIcon={<AuditNavIcon />}
             justifyContent="flex-start"
@@ -226,12 +226,12 @@ export const Header: FC = () => {
       </Collapse>
 
       <SimpleGrid as="nav" aria-label="ناوبری اصلی دسکتاپ" display={{ base: "none", lg: "grid" }} columns={1} spacing={2}>
-        <Button as={Link} to="/" size="md" variant={isUsersPage ? "solid" : "ghost"} colorScheme={isUsersPage ? "primary" : "gray"} color={isUsersPage ? "var(--panel-accent-contrast)" : "gray.200"} leftIcon={<UsersNavIcon />} justifyContent="flex-start" aria-current={isUsersPage ? "page" : undefined}>{t("users")}</Button>
-        <Button hidden={!isOwner} as={Link} to="/plans/" size="md" variant={isPlansPage ? "solid" : "ghost"} colorScheme={isPlansPage ? "primary" : "gray"} color={isPlansPage ? "var(--panel-accent-contrast)" : "gray.200"} leftIcon={<PlansNavIcon />} justifyContent="flex-start" aria-current={isPlansPage ? "page" : undefined}>Plans</Button>
-        {canManage && <Button as={Link} to="/admins/" size="md" variant={isAdminsPage ? "solid" : "ghost"} colorScheme={isAdminsPage ? "primary" : "gray"} color={isAdminsPage ? "var(--panel-accent-contrast)" : "gray.200"} leftIcon={<AdminsNavIcon />} justifyContent="flex-start" aria-current={isAdminsPage ? "page" : undefined}>{t("admins.nav")}</Button>}
-        {isOwner && <Button as={Link} to="/device-limits/" size="md" variant={isDeviceLimitPage ? "solid" : "ghost"} colorScheme={isDeviceLimitPage ? "primary" : "gray"} color={isDeviceLimitPage ? "var(--panel-accent-contrast)" : "gray.200"} leftIcon={<DeviceLimitNavIcon />} justifyContent="flex-start" aria-current={isDeviceLimitPage ? "page" : undefined}>{t("deviceLimit.nav")}</Button>}
-        <Button as={Link} to="/audit-logs/" size="md" variant={isAuditPage ? "solid" : "ghost"} colorScheme={isAuditPage ? "primary" : "gray"} color={isAuditPage ? "var(--panel-accent-contrast)" : "gray.200"} leftIcon={<AuditNavIcon />} justifyContent="flex-start" aria-current={isAuditPage ? "page" : undefined}>{t("audit.nav")}</Button>
-        {isOwner && <Button as={Link} to="/settings/" size="md" variant={isSettingsPage ? "solid" : "ghost"} colorScheme={isSettingsPage ? "primary" : "gray"} color={isSettingsPage ? "var(--panel-accent-contrast)" : "gray.200"} leftIcon={<CoreSettingsIcon />} justifyContent="flex-start" aria-current={isSettingsPage ? "page" : undefined}>پیکربندی</Button>}
+        <Button as={Link} to="/" size="md" variant={isUsersPage ? "solid" : "ghost"} colorScheme={isUsersPage ? "primary" : "gray"} color={isUsersPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<UsersNavIcon />} justifyContent="flex-start" aria-current={isUsersPage ? "page" : undefined}>{t("users")}</Button>
+        <Button hidden={!isOwner} as={Link} to="/plans/" size="md" variant={isPlansPage ? "solid" : "ghost"} colorScheme={isPlansPage ? "primary" : "gray"} color={isPlansPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<PlansNavIcon />} justifyContent="flex-start" aria-current={isPlansPage ? "page" : undefined}>Plans</Button>
+        {canManage && <Button as={Link} to="/admins/" size="md" variant={isAdminsPage ? "solid" : "ghost"} colorScheme={isAdminsPage ? "primary" : "gray"} color={isAdminsPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<AdminsNavIcon />} justifyContent="flex-start" aria-current={isAdminsPage ? "page" : undefined}>{t("admins.nav")}</Button>}
+        {isOwner && <Button as={Link} to="/device-limits/" size="md" variant={isDeviceLimitPage ? "solid" : "ghost"} colorScheme={isDeviceLimitPage ? "primary" : "gray"} color={isDeviceLimitPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<DeviceLimitNavIcon />} justifyContent="flex-start" aria-current={isDeviceLimitPage ? "page" : undefined}>{t("deviceLimit.nav")}</Button>}
+        <Button as={Link} to="/audit-logs/" size="md" variant={isAuditPage ? "solid" : "ghost"} colorScheme={isAuditPage ? "primary" : "gray"} color={isAuditPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<AuditNavIcon />} justifyContent="flex-start" aria-current={isAuditPage ? "page" : undefined}>{t("audit.nav")}</Button>
+        {isOwner && <Button as={Link} to="/settings/" size="md" variant={isSettingsPage ? "solid" : "ghost"} colorScheme={isSettingsPage ? "primary" : "gray"} color={isSettingsPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<CoreSettingsIcon />} justifyContent="flex-start" aria-current={isSettingsPage ? "page" : undefined}>پیکربندی</Button>}
       </SimpleGrid>
 
       {isOwner && (

@@ -106,7 +106,7 @@ const Section: FC<{
   >
     <Stack spacing={1}>
       <Heading size="md">{title}</Heading>
-      <Text color="gray.600" _dark={{ color: "gray.400" }} fontSize="sm" lineHeight="1.9">
+      <Text color="var(--panel-text-muted)" _dark={{ color: "gray.400" }} fontSize="sm" lineHeight="1.9">
         {description}
       </Text>
     </Stack>
@@ -270,7 +270,7 @@ export const Settings: FC = () => {
               پیکربندی مالک پنل
             </Text>
             <Heading size="lg">پیکربندی</Heading>
-            <Text color="gray.600" _dark={{ color: "gray.400" }} maxW="820px" lineHeight="1.9">
+            <Text color="var(--panel-text-muted)" _dark={{ color: "gray.400" }} maxW="820px" lineHeight="1.9">
               این صفحه فقط تنظیمات سراسری و واقعی سیستم را نگه می‌دارد. سیاست هر ادمین هنگام ساخت یا ویرایش همان ادمین
               تعیین می‌شود و پلن‌های تجاری نیز در صفحه پلن‌ها مدیریت می‌شوند.
             </Text>
@@ -296,7 +296,7 @@ export const Settings: FC = () => {
             borderRadius="var(--radius-panel)"
             bg="var(--panel-surface)"
           >
-            <Text px={2} pb={2} fontSize="xs" color="gray.500" fontWeight="700">
+            <Text px={2} pb={2} fontSize="xs" color="var(--panel-text-muted)" fontWeight="700">
               دسترسی سریع
             </Text>
             <Stack spacing={1}>
@@ -312,7 +312,7 @@ export const Settings: FC = () => {
                 >
                   <Stack spacing={0} align="start" textAlign="start">
                     <Text fontSize="sm" fontWeight="700">{section.title}</Text>
-                    <Text fontSize="xs" color="gray.500" fontWeight="400">{section.caption}</Text>
+                    <Text fontSize="xs" color="var(--panel-text-muted)" fontWeight="400">{section.caption}</Text>
                   </Stack>
                 </Button>
               ))}
@@ -371,7 +371,7 @@ export const Settings: FC = () => {
                     <HStack mb={3} justify="space-between" wrap="wrap">
                       <Box>
                         <Text fontWeight="800">مدت‌های آماده</Text>
-                        <Text color="gray.500" fontSize="sm">ضریب هر مدت روی قیمت پایه اعمال می‌شود.</Text>
+                        <Text color="var(--panel-text-muted)" fontSize="sm">ضریب هر مدت روی قیمت پایه اعمال می‌شود.</Text>
                       </Box>
                       <Badge colorScheme="cyan">{pricing.duration_presets.filter((item) => item.enabled).length.toLocaleString("fa-IR")} فعال</Badge>
                     </HStack>
@@ -388,7 +388,7 @@ export const Settings: FC = () => {
                           <HStack align="center" gap={3}>
                             <Box flex="1">
                               <Text fontWeight="700">{preset.duration_days.toLocaleString("fa-IR")} روز</Text>
-                              <Text color="gray.500" fontSize="xs">ضریب قیمت</Text>
+                              <Text color="var(--panel-text-muted)" fontSize="xs">ضریب قیمت</Text>
                             </Box>
                             <Input
                               aria-label={`ضریب ${preset.duration_days} روز`}
@@ -420,7 +420,7 @@ export const Settings: FC = () => {
                   </Box>
 
                   <HStack justify="space-between" wrap="wrap" gap={3}>
-                    <Text color="gray.500" fontSize="sm">
+                    <Text color="var(--panel-text-muted)" fontSize="sm">
                       سیاست ساخت ادمین از این صفحه حذف شده و در صفحه ادمین‌ها مدیریت می‌شود.
                     </Text>
                     <Button type="submit" colorScheme="primary" isLoading={savePricing.isLoading}>
@@ -443,7 +443,7 @@ export const Settings: FC = () => {
                     <HStack justify="space-between" align="start" gap={4}>
                       <Box>
                         <Text fontWeight="800">پشتیبان‌گیری خودکار</Text>
-                        <Text color="gray.500" fontSize="sm" mt={1}>
+                        <Text color="var(--panel-text-muted)" fontSize="sm" mt={1}>
                           حتی در صورت خطای ارسال، نسخه محلی قابل بازیابی نگه داشته می‌شود.
                         </Text>
                       </Box>
@@ -618,7 +618,7 @@ export const Settings: FC = () => {
                       />
                     </FormControl>
                     {restoreFiles.length > 0 && (
-                      <Text mt={2} role="status" color="gray.500" fontSize="sm">
+                      <Text mt={2} role="status" color="var(--panel-text-muted)" fontSize="sm">
                         {restoreFiles.length > 1
                           ? `بکاپ چندبخشی · ${restoreFiles.length.toLocaleString("fa-IR")} فایل`
                           : "بکاپ کامل"}

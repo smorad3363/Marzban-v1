@@ -164,7 +164,7 @@ export const Filters: FC<FilterProps> = ({ ...props }) => {
             variant="outline"
             minW="44px"
             h="44px"
-            color="gray.300"
+            color="var(--panel-text-body)"
             bg="rgba(2, 6, 23, .5)"
             borderColor="rgba(148, 163, 184, .2)"
             _hover={{ color: "green.200", borderColor: "green.500" }}
@@ -207,7 +207,7 @@ export const Filters: FC<FilterProps> = ({ ...props }) => {
       >
         <HStack spacing={3} justify="flex-end" flexWrap="wrap" fontSize="sm">
           <Text
-            color="gray.600"
+            color="var(--panel-text-muted)"
             _dark={{ color: "gray.300" }}
             fontWeight="medium"
             whiteSpace="nowrap"

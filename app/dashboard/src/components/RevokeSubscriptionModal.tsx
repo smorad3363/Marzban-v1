@@ -80,7 +80,7 @@ export const RevokeSubscriptionModal: FC<RevokeSubscriptionModalProps> = () => {
               mt={1}
               fontSize="sm"
               _dark={{ color: "gray.400" }}
-              color="gray.600"
+              color="var(--panel-text-muted)"
             >
               <Trans components={{ b: <b /> }}>
                 {t("revokeUserSub.prompt", { username: user.username })}

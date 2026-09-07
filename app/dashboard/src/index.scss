@@ -12,6 +12,8 @@
   --panel-text-muted: #64748B;
   --panel-accent: #2563EB;
   --panel-accent-hover: #1D4ED8;
+  --chakra-colors-primary-500: #2563EB;
+  --chakra-colors-primary-600: #1D4ED8;
   --panel-accent-contrast: #FFFFFF;
   --panel-accent-soft: rgba(37, 99, 235, .08);
   --panel-accent-soft-strong: rgba(37, 99, 235, .13);
@@ -50,6 +52,8 @@
   --panel-text-muted: #7C8AA0;
   --panel-accent: #3B82F6;
   --panel-accent-hover: #60A5FA;
+  --chakra-colors-primary-500: #3B82F6;
+  --chakra-colors-primary-600: #60A5FA;
   --panel-accent-contrast: #FFFFFF;
   --panel-accent-soft: rgba(59, 130, 246, .10);
   --panel-accent-soft-strong: rgba(59, 130, 246, .16);
@@ -136,8 +140,8 @@ html[lang^="fa"] .chakra-form__label {
 }
 
 .chakra-ui-dark .chakra-select option {
-  color: #f1f5f2;
-  background: #111d17;
+  color: var(--panel-text);
+  background: var(--panel-surface);
 }
 
 // Follow the element's actual direction, including local LTR controls in RTL pages.
@@ -168,15 +172,12 @@ a,
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(120deg, transparent 0 72%, rgba(37, 99, 235, 0.035) 72% 73%, transparent 73%);
+  background: none;
   z-index: -1;
 }
 
 .operations-grid {
-  background-image:
-    linear-gradient(rgba(96, 165, 250, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(96, 165, 250, 0.08) 1px, transparent 1px);
-  background-size: 32px 32px;
+  background-image: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

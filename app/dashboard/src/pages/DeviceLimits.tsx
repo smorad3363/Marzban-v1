@@ -136,9 +136,9 @@ const SettingsSection: FC<{
         as="form"
         onSubmit={submitSettings}
         bg="linear-gradient(145deg, rgba(14,25,20,.98), rgba(7,19,23,.98))"
-        color="gray.100"
+        color="var(--panel-text)"
         borderWidth="1px"
-        borderColor="#345346"
+        borderColor="var(--panel-border)"
         borderRadius={{ base: "16px", md: "20px" }}
         boxShadow="panel"
         overflow="hidden"
@@ -147,7 +147,7 @@ const SettingsSection: FC<{
           <Box p={2.5} borderRadius="11px" bg="rgba(34,197,94,.1)" color="green.200"><TuneIcon /></Box>
           <Box minW={0}>
             <Text fontWeight="800">{t("deviceLimit.runtimeSettings")}</Text>
-            <Text color="gray.400" fontSize="sm" mt={1}>{t("deviceLimit.runtimeSettingsHelp")}</Text>
+            <Text color="var(--panel-text-muted)" fontSize="sm" mt={1}>{t("deviceLimit.runtimeSettingsHelp")}</Text>
           </Box>
           <Switch
             ms="auto"
@@ -168,11 +168,11 @@ const SettingsSection: FC<{
               ["ip_detection_enabled", "deviceLimit.capabilityIp", "deviceLimit.capabilityIpHelp"],
               ["client_fingerprint_enabled", "deviceLimit.capabilityClient", "deviceLimit.capabilityClientHelp"],
             ] as const).map(([key, label, help]) => (
-              <FormControl key={key} p={3} borderWidth="1px" borderColor={form[key] ? "rgba(34,197,94,.48)" : "#33483b"} borderRadius="10px" bg={form[key] ? "rgba(34,197,94,.06)" : "transparent"}>
+              <FormControl key={key} p={3} borderWidth="1px" borderColor={form[key] ? "rgba(34,197,94,.48)" : "var(--panel-border)"} borderRadius="10px" bg={form[key] ? "rgba(34,197,94,.06)" : "transparent"}>
                 <Checkbox colorScheme="primary" isChecked={form[key]} onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.checked }))}>
                   {t(label)}
                 </Checkbox>
-                <FormHelperText color="gray.400">{t(help)}</FormHelperText>
+                <FormHelperText color="var(--panel-text-muted)">{t(help)}</FormHelperText>
               </FormControl>
             ))}
           </SimpleGrid>
@@ -189,7 +189,7 @@ const SettingsSection: FC<{
             <FormControl isDisabled={!form.ip_detection_enabled}>
               <FormLabel>{t("deviceLimit.hitThreshold")}</FormLabel>
               <Input dir="ltr" type="number" min={1} max={100} value={form.min_successful_connections} onChange={(event) => numberField("min_successful_connections", event.target.value)} />
-              <FormHelperText color="gray.400">{t("deviceLimit.hitThresholdHelp")}</FormHelperText>
+              <FormHelperText color="var(--panel-text-muted)">{t("deviceLimit.hitThresholdHelp")}</FormHelperText>
             </FormControl>
             <FormControl isDisabled={!form.ip_detection_enabled}>
               <FormLabel>{t("deviceLimit.handoffGrace")}</FormLabel>
@@ -214,27 +214,27 @@ const SettingsSection: FC<{
             <FormControl>
               <FormLabel>{t("deviceLimit.warningCleanupHours")}</FormLabel>
               <Input dir="ltr" type="number" min={0} max={8760} value={Math.round(form.warning_auto_delete_seconds / 3600)} onChange={(event) => setForm((current) => ({ ...current, warning_auto_delete_seconds: Number(event.target.value) * 3600 }))} />
-              <FormHelperText color="gray.400">{t("deviceLimit.zeroDisabled")}</FormHelperText>
+              <FormHelperText color="var(--panel-text-muted)">{t("deviceLimit.zeroDisabled")}</FormHelperText>
             </FormControl>
-            <FormControl p={3} borderWidth="1px" borderColor={form.auto_delete_enabled ? "rgba(239,68,68,.48)" : "#33483b"} borderRadius="10px">
+            <FormControl p={3} borderWidth="1px" borderColor={form.auto_delete_enabled ? "rgba(239,68,68,.48)" : "var(--panel-border)"} borderRadius="10px">
               <Checkbox colorScheme="red" isChecked={form.auto_delete_enabled} onChange={(event) => setForm((current) => ({ ...current, auto_delete_enabled: event.target.checked }))}>
                 {t("deviceLimit.autoDelete")}
               </Checkbox>
-              <FormHelperText color="gray.400">{t("deviceLimit.autoDeleteHelp")}</FormHelperText>
+              <FormHelperText color="var(--panel-text-muted)">{t("deviceLimit.autoDeleteHelp")}</FormHelperText>
             </FormControl>
           </SimpleGrid>
           <HStack mt={5} justify="end">
-            <Button type="submit" minH="44px" colorScheme="primary" color="#07130e" isLoading={saveSettings.isLoading}>{t("save")}</Button>
+            <Button type="submit" minH="44px" colorScheme="primary" color="var(--panel-accent-contrast)" isLoading={saveSettings.isLoading}>{t("save")}</Button>
           </HStack>
         </Box>
       </Card>
 
-      <Card bg="#0e1914" color="gray.100" borderWidth="1px" borderColor="#345346" borderRadius={{ base: "16px", md: "20px" }} boxShadow="panel" overflow="hidden">
+      <Card bg="var(--panel-surface)" color="var(--panel-text)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius={{ base: "16px", md: "20px" }} boxShadow="panel" overflow="hidden">
         <HStack p={{ base: 4, md: 5 }} borderBottomWidth="1px" borderColor="#2b4437">
           <Box p={2.5} borderRadius="11px" bg="rgba(234,179,8,.1)" color="yellow.200"><WarningIcon /></Box>
           <Box>
             <Text fontWeight="800">{t("deviceLimit.penaltyStages")}</Text>
-            <Text color="gray.400" fontSize="sm" mt={1}>{t("deviceLimit.penaltyStagesHelp")}</Text>
+            <Text color="var(--panel-text-muted)" fontSize="sm" mt={1}>{t("deviceLimit.penaltyStagesHelp")}</Text>
           </Box>
         </HStack>
         <Stack p={{ base: 3, md: 4 }} spacing={2}>
@@ -262,8 +262,8 @@ const SettingsSection: FC<{
             </SimpleGrid>
           ))}
           <HStack justify="space-between" flexWrap="wrap" gap={3}>
-            <Button variant="outline" borderColor="#476858" onClick={() => setStageForm((current) => [...current, { violation_count: Math.max(0, ...current.map((stage) => stage.violation_count)) + 1, action: "warn", duration_seconds: null, enabled: true }])}>{t("deviceLimit.addStage")}</Button>
-            <Button colorScheme="primary" color="#07130e" onClick={() => saveStages.mutate()} isLoading={saveStages.isLoading}>{t("save")}</Button>
+            <Button variant="outline" borderColor="var(--panel-border-strong)" onClick={() => setStageForm((current) => [...current, { violation_count: Math.max(0, ...current.map((stage) => stage.violation_count)) + 1, action: "warn", duration_seconds: null, enabled: true }])}>{t("deviceLimit.addStage")}</Button>
+            <Button colorScheme="primary" color="var(--panel-accent-contrast)" onClick={() => saveStages.mutate()} isLoading={saveStages.isLoading}>{t("save")}</Button>
           </HStack>
         </Stack>
       </Card>
@@ -296,16 +296,16 @@ const IncidentSection: FC = () => {
   );
 
   return (
-    <Card mt={5} bg="#0e1914" color="gray.100" borderWidth="1px" borderColor="#345346" borderRadius={{ base: "16px", md: "20px" }} boxShadow="panel" overflow="hidden">
+    <Card mt={5} bg="var(--panel-surface)" color="var(--panel-text)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius={{ base: "16px", md: "20px" }} boxShadow="panel" overflow="hidden">
       <HStack p={{ base: 4, md: 5 }} borderBottomWidth="1px" borderColor="#2b4437" align="start" flexWrap="wrap">
         <Box p={2.5} borderRadius="11px" bg="rgba(239,68,68,.1)" color="red.200"><WarningIcon /></Box>
         <Box minW={0}>
           <Text fontWeight="800">{t("deviceLimit.incidents")}</Text>
-          <Text color="gray.400" fontSize="sm" mt={1}>{t("deviceLimit.incidentsHelp", { count: total })}</Text>
+          <Text color="var(--panel-text-muted)" fontSize="sm" mt={1}>{t("deviceLimit.incidentsHelp", { count: total })}</Text>
         </Box>
         <HStack ms="auto">
           <Checkbox colorScheme="red" isChecked={unresolved} onChange={(event) => { setUnresolved(event.target.checked); setPage(0); }}>{t("deviceLimit.unresolvedOnly")}</Checkbox>
-          <Button aria-label={t("refresh")} size="sm" minW="40px" variant="outline" borderColor="#476858" onClick={() => query.refetch()} isLoading={query.isFetching}><RefreshIcon /></Button>
+          <Button aria-label={t("refresh")} size="sm" minW="40px" variant="outline" borderColor="var(--panel-border-strong)" onClick={() => query.refetch()} isLoading={query.isFetching}><RefreshIcon /></Button>
         </HStack>
       </HStack>
       {query.isError && <Alert status="error" m={4} w="auto"><AlertIcon />{t("deviceLimit.loadFailed")}</Alert>}
@@ -324,7 +324,7 @@ const IncidentSection: FC = () => {
                     <Badge colorScheme={incident.resolved_at ? "gray" : "red"} variant="subtle">{t(`deviceLimit.action.${incident.action}`)}</Badge>
                     <Badge colorScheme="yellow" variant="outline">{t("deviceLimit.stage", { count: incident.stage })}</Badge>
                   </HStack>
-                  <Text color="gray.300" fontSize="sm" mt={2} lineHeight="1.7">{incident.reason}</Text>
+                  <Text color="var(--panel-text-body)" fontSize="sm" mt={2} lineHeight="1.7">{incident.reason}</Text>
                   <HStack mt={2} spacing={2}>
                     <Badge variant="outline" colorScheme="cyan">{t(`deviceLimit.eventState.${incident.event_state}`)}</Badge>
                     {incident.risk_score !== null && <Badge variant="outline" colorScheme="orange">{t(`deviceLimit.riskLevel.${riskKey(incident.risk_score)}`)}</Badge>}
@@ -333,22 +333,22 @@ const IncidentSection: FC = () => {
                     )}
                   </HStack>
                 </Box>
-                <Text dir="ltr" color="gray.400" fontSize="xs">{new Intl.DateTimeFormat(i18n.language, { dateStyle: "medium", timeStyle: "short" }).format(new Date(`${incident.created_at}Z`))}</Text>
+                <Text dir="ltr" color="var(--panel-text-muted)" fontSize="xs">{new Intl.DateTimeFormat(i18n.language, { dateStyle: "medium", timeStyle: "short" }).format(new Date(`${incident.created_at}Z`))}</Text>
               </HStack>
               <SimpleGrid columns={{ base: 1, sm: 3 }} gap={2} mt={3}>
-                <Box p={2.5} bg="rgba(2,6,23,.32)" borderRadius="9px"><Text fontSize="xs" color="gray.400">{t("deviceLimit.observed")}</Text><Text mt={1} fontFamily="mono" fontWeight="800" dir="ltr">{incident.observed_count} / {incident.configured_limit}</Text></Box>
-                <Box p={2.5} bg="rgba(2,6,23,.32)" borderRadius="9px" minW={0}><Text fontSize="xs" color="gray.400">{t("deviceLimit.ipAddresses")}</Text><Text mt={1} fontFamily="mono" fontSize="xs" dir="ltr" overflowWrap="anywhere">{incident.ip_addresses?.join(" · ") || "—"}</Text></Box>
-                <Box p={2.5} bg="rgba(2,6,23,.32)" borderRadius="9px" minW={0}><Text fontSize="xs" color="gray.400">{t("deviceLimit.sources")}</Text><Text mt={1} fontFamily="mono" fontSize="xs" dir="ltr" overflowWrap="anywhere">{incident.source_nodes?.join(" · ") || "—"}</Text></Box>
+                <Box p={2.5} bg="var(--panel-nested)" borderRadius="9px"><Text fontSize="xs" color="var(--panel-text-muted)">{t("deviceLimit.observed")}</Text><Text mt={1} fontFamily="mono" fontWeight="800" dir="ltr">{incident.observed_count} / {incident.configured_limit}</Text></Box>
+                <Box p={2.5} bg="var(--panel-nested)" borderRadius="9px" minW={0}><Text fontSize="xs" color="var(--panel-text-muted)">{t("deviceLimit.ipAddresses")}</Text><Text mt={1} fontFamily="mono" fontSize="xs" dir="ltr" overflowWrap="anywhere">{incident.ip_addresses?.join(" · ") || "—"}</Text></Box>
+                <Box p={2.5} bg="var(--panel-nested)" borderRadius="9px" minW={0}><Text fontSize="xs" color="var(--panel-text-muted)">{t("deviceLimit.sources")}</Text><Text mt={1} fontFamily="mono" fontSize="xs" dir="ltr" overflowWrap="anywhere">{incident.source_nodes?.join(" · ") || "—"}</Text></Box>
               </SimpleGrid>
             </Box>
           ))}
         </Stack>
       )}
       <HStack justify="space-between" p={4} borderTopWidth="1px" borderColor="#2b4437">
-        <Text color="gray.400" fontSize="sm">{t("deviceLimit.page", { current: page + 1, total: pages })}</Text>
+        <Text color="var(--panel-text-muted)" fontSize="sm">{t("deviceLimit.page", { current: page + 1, total: pages })}</Text>
         <HStack>
-          <Button aria-label={t("previous")} size="sm" minW="40px" variant="outline" borderColor="#476858" isDisabled={page === 0} onClick={() => setPage((value) => value - 1)}><ChevronRightIcon width={16} /></Button>
-          <Button aria-label={t("next")} size="sm" minW="40px" variant="outline" borderColor="#476858" isDisabled={(page + 1) * PAGE_SIZE >= total} onClick={() => setPage((value) => value + 1)}><ChevronLeftIcon width={16} /></Button>
+          <Button aria-label={t("previous")} size="sm" minW="40px" variant="outline" borderColor="var(--panel-border-strong)" isDisabled={page === 0} onClick={() => setPage((value) => value - 1)}><ChevronRightIcon width={16} /></Button>
+          <Button aria-label={t("next")} size="sm" minW="40px" variant="outline" borderColor="var(--panel-border-strong)" isDisabled={(page + 1) * PAGE_SIZE >= total} onClick={() => setPage((value) => value + 1)}><ChevronLeftIcon width={16} /></Button>
         </HStack>
       </HStack>
     </Card>
@@ -370,7 +370,7 @@ export const DeviceLimits: FC = () => {
         <Box>
           <HStack color="green.200" spacing={2}><LimitIcon /><Text fontSize="xs" fontWeight="800" letterSpacing=".13em" textTransform="uppercase">{t("deviceLimit.eyebrow")}</Text></HStack>
           <Text as="h1" fontSize={{ base: "2xl", md: "3xl" }} fontWeight="800" letterSpacing="-.035em" mt={2}>{t("deviceLimit.title")}</Text>
-          <Text color="gray.300" mt={1} maxW="720px">{t("deviceLimit.subtitle")}</Text>
+          <Text color="var(--panel-text-body)" mt={1} maxW="720px">{t("deviceLimit.subtitle")}</Text>
         </Box>
         {isOwner && <Badge px={3} py={2} borderRadius="full" colorScheme={settings.data?.enabled ? "green" : "gray"} textTransform="none">{t(settings.data?.enabled ? "deviceLimit.active" : "deviceLimit.inactive")}</Badge>}
       </Stack>

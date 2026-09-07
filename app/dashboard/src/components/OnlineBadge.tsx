@@ -24,7 +24,7 @@ export const OnlineBadge: FC<UserStatusProps> = ({ lastOnline }) => {
     return (
       <HStack spacing={1.5} flexShrink={0}>
         <Box border="1px solid" borderColor="gray.400" _dark={{ borderColor: "gray.600" }} className="circle" />
-        <Text fontSize="2xs" color="gray.400">بدون فعالیت</Text>
+        <Text fontSize="2xs" color="var(--panel-text-muted)">بدون فعالیت</Text>
       </HStack>
     );
   }
@@ -55,7 +55,7 @@ export const OnlineBadge: FC<UserStatusProps> = ({ lastOnline }) => {
     <Tooltip label={`آخرین فعالیت: ${exactTimestamp}`} hasArrow>
       <HStack spacing={1.5} flexShrink={0}>
         <Box bg="gray.400" _dark={{ bg: "gray.600" }} className="circle" />
-        <Text fontSize="2xs" color="gray.400">آخرین فعالیت: {relative}</Text>
+        <Text fontSize="2xs" color="var(--panel-text-muted)">آخرین فعالیت: {relative}</Text>
       </HStack>
     </Tooltip>
   );

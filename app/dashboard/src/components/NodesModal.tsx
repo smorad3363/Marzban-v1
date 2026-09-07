@@ -168,7 +168,7 @@ const WatchdogSettings: FC<{ toggleAccordion: () => void }> = ({
             <Text fontWeight="semibold" fontSize="sm">
               {t("nodes.watchdog")}
             </Text>
-            <Text fontSize="xs" color="gray.500">
+            <Text fontSize="xs" color="var(--panel-text-muted)">
               {t("nodes.watchdogDescription")}
             </Text>
           </Box>
@@ -188,7 +188,7 @@ const WatchdogSettings: FC<{ toggleAccordion: () => void }> = ({
                 <Text fontSize="sm" fontWeight="medium">
                   {t("nodes.watchdogEnabled")}
                 </Text>
-                <Text fontSize="xs" color="gray.500">
+                <Text fontSize="xs" color="var(--panel-text-muted)">
                   {t("nodes.watchdogEnabledHint")}
                 </Text>
               </Box>
@@ -324,7 +324,7 @@ const NodeAccordion: FC<AccordionInboundType> = ({ toggleAccordion, node }) => {
             fontSize="sm"
             flex="1"
             textAlign="left"
-            color="gray.700"
+            color="var(--panel-text-body)"
             _dark={{ color: "gray.300" }}
           >
             {node.name}
@@ -453,7 +453,7 @@ const AddNodeForm: FC<AddNodeFormType> = ({
           fontSize="sm"
           flex="1"
           textAlign="left"
-          color="gray.700"
+          color="var(--panel-text-body)"
           _dark={{ color: "gray.300" }}
           display="flex"
           gap={1}
@@ -708,7 +708,7 @@ const NodeForm: NodeFormType = ({
                   </Select>
                 )}
               />
-              <Text mt={1} fontSize="xs" color="gray.500">
+              <Text mt={1} fontSize="xs" color="var(--panel-text-muted)">
                 {t("nodes.ipSourceModeHint")}
               </Text>
             </FormControl>
@@ -760,7 +760,7 @@ const NodeForm: NodeFormType = ({
                     />
                   )}
                 />
-                <Text mt={1} fontSize="xs" color="gray.500">
+                <Text mt={1} fontSize="xs" color="var(--panel-text-muted)">
                   {t("nodes.trustedProxyCidrsHint")}
                 </Text>
               </FormControl>
@@ -789,7 +789,7 @@ const NodeForm: NodeFormType = ({
               <HStack justify="space-between" w="full">
                 <Box>
                   <FormLabel m={0}>{t("nodes.monitorThisNode")}</FormLabel>
-                  <Text fontSize="xs" color="gray.500">
+                  <Text fontSize="xs" color="var(--panel-text-muted)">
                     {t("nodes.monitorThisNodeHint")}
                   </Text>
                 </Box>

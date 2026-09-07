@@ -254,7 +254,7 @@ const AccordionInbound: FC<AccordionInboundType> = ({
           fontSize="sm"
           flex="1"
           textAlign="left"
-          color="gray.700"
+          color="var(--panel-text-body)"
           _dark={{ color: "gray.300" }}
         >
           {hostKey}
@@ -554,7 +554,7 @@ const AccordionInbound: FC<AccordionInboundType> = ({
                             flex="3"
                             align="start"
                             fontSize="xs"
-                            color="gray.600"
+                            color="var(--panel-text-muted)"
                             _dark={{ color: "gray.500" }}
                             ps={1}
                           >
@@ -1381,11 +1381,11 @@ export const HostsDialog: FC = () => {
             <Button h="auto" py={3} whiteSpace="normal" onClick={() => confirmImpact("apply_current")} isLoading={isPostLoading}>
               اعمال و همگام‌سازی کاربران فعلی
             </Button>
-            <Text fontSize="sm" color="gray.400">همان Host به‌روزرسانی می‌شود و عضویت Access Group ثابت می‌ماند.</Text>
+            <Text fontSize="sm" color="var(--panel-text-muted)">همان Host به‌روزرسانی می‌شود و عضویت Access Group ثابت می‌ماند.</Text>
             <Button h="auto" py={3} whiteSpace="normal" variant="outline" onClick={() => confirmImpact("future_only")} isLoading={isPostLoading}>
               ساخت Host جدید و جایگزینی در Access Group
             </Button>
-            <Text fontSize="sm" color="gray.400">Host قبلی legacy می‌شود و کاربران فعلی گروه همگام می‌شوند.</Text>
+            <Text fontSize="sm" color="var(--panel-text-muted)">Host قبلی legacy می‌شود و کاربران فعلی گروه همگام می‌شوند.</Text>
             {Boolean(impact?.removed_host_ids.length) && (
               <Button h="auto" py={3} whiteSpace="normal" colorScheme="orange" variant="outline" onClick={() => confirmImpact("detach")} isLoading={isPostLoading}>
                 حذف Host از Access Groupهای مرتبط و همگام‌سازی کاربران

@@ -389,7 +389,7 @@ const BulkActionDialog: FC<BulkActionDialogProps> = ({
               </AlertDescription>
             </Alert>
 
-            <Text fontSize="sm" color="gray.300" aria-live="polite">
+            <Text fontSize="sm" color="var(--panel-text-body)" aria-live="polite">
               {isPreviewing
                 ? "در حال محاسبه هدف‌ها…"
                 : preview
@@ -634,7 +634,7 @@ const ExpiredCleanupDialog: FC<ExpiredCleanupDialogProps> = ({
                   : t("usersTable.cleanupMatches", { count: matchCount })}
               </AlertDescription>
             </Alert>
-            <Text color="gray.400" fontSize="xs" lineHeight="1.8">
+            <Text color="var(--panel-text-muted)" fontSize="xs" lineHeight="1.8">
               {t("usersTable.cleanupPermanent")}
             </Text>
           </Stack>

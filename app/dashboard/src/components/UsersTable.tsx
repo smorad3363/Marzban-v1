@@ -290,7 +290,7 @@ const InfoCell: FC<InfoCellProps> = ({ label, icon, children }) => (
       </Box>
       <MetaLabel>{label}</MetaLabel>
     </HStack>
-    <Box mt={1.5} minW={0} color="gray.100">
+    <Box mt={1.5} minW={0} color="var(--panel-text)">
       {children}
     </Box>
   </Box>
@@ -302,7 +302,7 @@ const NextPlanSummary: FC<{ user: User }> = ({ user }) => {
 
   if (!plan) {
     return (
-      <Text color="gray.500" fontSize="xs" lineHeight="1.55" noOfLines={2}>
+      <Text color="var(--panel-text-muted)" fontSize="xs" lineHeight="1.55" noOfLines={2}>
         {t("usersTable.noNextPlan")}
       </Text>
     );
@@ -316,7 +316,7 @@ const NextPlanSummary: FC<{ user: User }> = ({ user }) => {
         fontFamily="mono"
         fontSize="xs"
         fontWeight="800"
-        color="gray.100"
+        color="var(--panel-text)"
         noOfLines={1}
         sx={{ unicodeBidi: "isolate" }}
       >
@@ -325,7 +325,7 @@ const NextPlanSummary: FC<{ user: User }> = ({ user }) => {
       <Text
         dir="ltr"
         textAlign="start"
-        color="gray.400"
+        color="var(--panel-text-muted)"
         fontSize="10px"
         noOfLines={1}
         sx={{ unicodeBidi: "isolate" }}
@@ -344,7 +344,7 @@ const ResetHistory: FC<{ user: User }> = ({ user }) => {
 
   if (history.length === 0) {
     return (
-      <Text color="gray.500" fontSize="xs" lineHeight="1.55" noOfLines={2}>
+      <Text color="var(--panel-text-muted)" fontSize="xs" lineHeight="1.55" noOfLines={2}>
         {t("usersTable.noResetHistory")}
       </Text>
     );
@@ -372,7 +372,7 @@ const ResetHistory: FC<{ user: User }> = ({ user }) => {
         <PopoverContent
           dir={i18n.dir()}
           bg="#080f19"
-          color="gray.100"
+          color="var(--panel-text)"
           borderColor="rgba(34, 197, 94, .38)"
           boxShadow="0 18px 46px rgba(0,0,0,.52)"
           maxW={{ base: "calc(100vw - 24px)", sm: "360px" }}
@@ -395,7 +395,7 @@ const ResetHistory: FC<{ user: User }> = ({ user }) => {
                   >
                     {formatBytes(item.used_traffic)}
                   </Text>
-                  <Text fontSize="xs" color="gray.400" textAlign="end">
+                  <Text fontSize="xs" color="var(--panel-text-muted)" textAlign="end">
                     {formatDateTime(item.reset_at, i18n.language)}
                   </Text>
                 </HStack>
@@ -650,7 +650,7 @@ const UserCard: FC<UserCardProps> = ({
                 fontFamily="mono"
                 fontSize="xs"
                 fontWeight="800"
-                color="gray.100"
+                color="var(--panel-text)"
                 noOfLines={1}
                 sx={{ unicodeBidi: "isolate" }}
               >
@@ -691,7 +691,7 @@ const UserCard: FC<UserCardProps> = ({
         >
           <HStack spacing={1.5} minW={0}>
             <ExpirationIcon color={visual.text} aria-hidden="true" />
-            <Text color="gray.400" fontSize="10px" fontWeight="700" whiteSpace="nowrap">
+            <Text color="var(--panel-text-muted)" fontSize="10px" fontWeight="700" whiteSpace="nowrap">
               {t("usersTable.expiration")}
             </Text>
             <Text
@@ -700,7 +700,7 @@ const UserCard: FC<UserCardProps> = ({
               fontFamily={user.expire ? "mono" : "body"}
               fontSize="xs"
               fontWeight="800"
-              color="gray.100"
+              color="var(--panel-text)"
               noOfLines={1}
               sx={{ unicodeBidi: "isolate" }}
             >
@@ -713,7 +713,7 @@ const UserCard: FC<UserCardProps> = ({
             py={0.5}
             borderRadius="full"
             bg="whiteAlpha.50"
-            color="gray.300"
+            color="var(--panel-text-body)"
             textTransform="none"
             fontSize="10px"
             whiteSpace="nowrap"
@@ -824,7 +824,7 @@ const EmptySection: FC<{ isFiltered: boolean; readOnly: boolean }> = ({ isFilter
           'circle[fill="#3182CE"]': { fill: "primary.300" },
         }}
       />
-      <Text color="gray.300" maxW="52ch">
+      <Text color="var(--panel-text-body)" maxW="52ch">
         {isFiltered ? t("usersTable.noUserMatched") : t("usersTable.noUser")}
       </Text>
       {!readOnly && !isFiltered && account.data?.billing_mode !== "USER_CREDIT" && ["FREE_FORM", "FORM_ONLY", "BOTH"].includes(account.data?.user_creation_mode || "") && (
@@ -1006,7 +1006,7 @@ export const UsersTable: FC<UsersTableProps> = (props) => {
         isCentered
       >
         <ModalOverlay bg="rgba(0,0,0,.72)" />
-        <ModalContent mx={3} bg="#111d17" color="gray.100" borderWidth="1px" borderColor="#33483b">
+        <ModalContent mx={3} bg="var(--panel-surface)" color="var(--panel-text)" borderWidth="1px" borderColor="var(--panel-border)">
           <ModalHeader>تمدید «{renewalUser?.username}» با پلن</ModalHeader>
           <ModalCloseButton isDisabled={renew.isLoading} />
           <ModalBody>
@@ -1028,7 +1028,7 @@ export const UsersTable: FC<UsersTableProps> = (props) => {
               {renewalPlanId && <Text mt={2} fontSize="sm" role="status">قیمت پلن: {(plans.data?.find((plan) => plan.id === Number(renewalPlanId))?.effective_price_toman || 0).toLocaleString()} تومان؛ کسر اعتبار مطابق سیاست حساب است.</Text>}
               {plans.isError && <Text mt={2} color="red.300" fontSize="sm">دریافت پلن‌ها انجام نشد.</Text>}
               {!plans.isLoading && !plans.isError && (plans.data || []).length === 0 && (
-                <Text mt={2} color="gray.400" fontSize="sm">پلن فعالی برای این حساب در دسترس نیست.</Text>
+                <Text mt={2} color="var(--panel-text-muted)" fontSize="sm">پلن فعالی برای این حساب در دسترس نیست.</Text>
               )}
             </FormControl>
           </ModalBody>
@@ -1037,7 +1037,7 @@ export const UsersTable: FC<UsersTableProps> = (props) => {
             <Button
               minH="44px"
               colorScheme="primary"
-              color="#07130e"
+              color="var(--panel-accent-contrast)"
               isDisabled={!renewalUser || !renewalPlanId}
               isLoading={renew.isLoading}
               onClick={() => renewalUser && renewalPlanId && renew.mutate({ user: renewalUser, planId: Number(renewalPlanId) })}

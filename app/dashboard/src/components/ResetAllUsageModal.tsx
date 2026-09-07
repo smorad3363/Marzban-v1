@@ -78,7 +78,7 @@ export const ResetAllUsageModal: FC<DeleteUserModalProps> = () => {
               mt={1}
               fontSize="sm"
               _dark={{ color: "gray.400" }}
-              color="gray.600"
+              color="var(--panel-text-muted)"
             >
               {t("resetAllUsage.prompt")}
             </Text>

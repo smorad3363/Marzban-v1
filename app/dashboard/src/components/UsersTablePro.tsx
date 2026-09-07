@@ -324,7 +324,7 @@ export const UsersTablePro: FC = () => {
     return (
       <Stack py={12} align="center" spacing={2}>
         <Text fontWeight="800">کاربری برای نمایش نیست</Text>
-        <Text color="gray.500" fontSize="sm">فیلترها را تغییر دهید یا کاربر جدید بسازید.</Text>
+        <Text color="var(--panel-text-muted)" fontSize="sm">فیلترها را تغییر دهید یا کاربر جدید بسازید.</Text>
         <Pagination />
       </Stack>
     );
@@ -389,7 +389,7 @@ export const UsersTablePro: FC = () => {
                       </Box>
                       <Box minW={0}>
                         <Text dir="ltr" textAlign="start" color="var(--panel-accent)" fontSize="12px" fontWeight="850" noOfLines={1} sx={{ unicodeBidi: "isolate" }}>{user.username}</Text>
-                        <Text mt={1} color="gray.500" fontSize="9px">سقف اتصال: {user.concurrent_user_limit ?? "∞"}</Text>
+                        <Text mt={1} color="var(--panel-text-muted)" fontSize="9px">سقف اتصال: {user.concurrent_user_limit ?? "∞"}</Text>
                       </Box>
                     </HStack>
                   </Td>
@@ -399,9 +399,9 @@ export const UsersTablePro: FC = () => {
                     {nextPlan ? (
                       <Stack spacing={0.5}>
                         <Badge w="fit-content" colorScheme="primary" variant="outline" textTransform="none" fontSize="9px">{nextPlan.data_limit ? String(formatBytes(nextPlan.data_limit)) : "نامحدود"}</Badge>
-                        <Text color="gray.500" fontSize="9px">{nextPlan.expire ? fmtExpire(nextPlan.expire) : "بدون انقضا"}</Text>
+                        <Text color="var(--panel-text-muted)" fontSize="9px">{nextPlan.expire ? fmtExpire(nextPlan.expire) : "بدون انقضا"}</Text>
                       </Stack>
-                    ) : <Text color="gray.600" fontSize="10px">تنظیم نشده</Text>}
+                    ) : <Text color="var(--panel-text-muted)" fontSize="10px">تنظیم نشده</Text>}
                   </Td>
                   <Td><Text fontSize="11px" fontWeight="700">{fmtExpire(user.expire)}</Text></Td>
                   <Td><Text fontSize="10px" lineHeight="1.6">{fmtDateTime(user.created_at)}</Text></Td>
@@ -417,7 +417,7 @@ export const UsersTablePro: FC = () => {
                   </Td>
                   <Td>
                     <Text fontSize="12px" fontWeight="850">{(user.reset_history?.length || 0).toLocaleString("fa-IR")}</Text>
-                    <Text color="gray.500" fontSize="9px">مرتبه</Text>
+                    <Text color="var(--panel-text-muted)" fontSize="9px">مرتبه</Text>
                   </Td>
                   <Td>
                     <Tooltip label={user.note || "—"} hasArrow>
@@ -493,7 +493,7 @@ export const UsersTablePro: FC = () => {
               ))}
             </Select>
             {renewalPlanId && (
-              <Text mt={2} color="gray.400" fontSize="sm">قیمت: {(plans.data?.find((plan) => plan.id === Number(renewalPlanId))?.effective_price_toman || 0).toLocaleString("fa-IR")} تومان</Text>
+              <Text mt={2} color="var(--panel-text-muted)" fontSize="sm">قیمت: {(plans.data?.find((plan) => plan.id === Number(renewalPlanId))?.effective_price_toman || 0).toLocaleString("fa-IR")} تومان</Text>
             )}
           </ModalBody>
           <ModalFooter gap={3}>

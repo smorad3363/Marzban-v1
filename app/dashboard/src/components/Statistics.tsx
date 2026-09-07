@@ -71,7 +71,7 @@ const StatisticCard: FC<PropsWithChildren<StatisticCardProps>> = ({
           {icon}
         </Box>
         <Text
-          color="gray.600"
+          color="var(--panel-text-muted)"
           _dark={{
             color: "gray.300",
           }}

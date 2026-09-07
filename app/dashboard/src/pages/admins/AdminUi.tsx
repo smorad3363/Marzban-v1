@@ -45,11 +45,11 @@ export const SummaryStat: FC<{ label: string; value: string; hint: string; tone?
     borderRadius="16px"
     boxShadow="none"
   >
-    <Text color="gray.400" fontSize="xs" fontWeight="700">{label}</Text>
+    <Text color="var(--panel-text-muted)" fontSize="xs" fontWeight="700">{label}</Text>
     <Text mt={2} color={tone} fontSize={{ base: "xl", md: "2xl" }} fontWeight="800" sx={{ fontVariantNumeric: "tabular-nums" }}>
       {value}
     </Text>
-    <Text mt={1.5} color="gray.500" fontSize="11px">{hint}</Text>
+    <Text mt={1.5} color="var(--panel-text-muted)" fontSize="11px">{hint}</Text>
   </Card>
 );
 
@@ -120,7 +120,7 @@ export const DetailChip: FC<{ label: string; value: string; tone?: string }> = (
     borderRadius="12px"
     whiteSpace="nowrap"
   >
-    <Text color="gray.500" fontSize="10px" fontWeight="700">{label}</Text>
+    <Text color="var(--panel-text-muted)" fontSize="10px" fontWeight="700">{label}</Text>
     <Text color={tone} fontSize="11px" fontWeight="700">{value}</Text>
   </HStack>
 );

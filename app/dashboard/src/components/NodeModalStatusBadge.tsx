@@ -54,7 +54,7 @@ export const NodeModalStatusBadge: FC<UserStatusProps> = ({
           fontSize="xs"
           fontWeight="medium"
           ms="2"
-          color="gray.600"
+          color="var(--panel-text-muted)"
           _dark={{
             color: "gray.400",
           }}

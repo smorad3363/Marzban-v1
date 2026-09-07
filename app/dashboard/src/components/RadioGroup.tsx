@@ -96,7 +96,7 @@ const InboundCard: FC<
           size="sm"
           w="full"
           maxW="full"
-          color="gray.700"
+          color="var(--panel-text-body)"
           _dark={{ color: "gray.300" }}
           textTransform="uppercase"
           colorScheme="primary"

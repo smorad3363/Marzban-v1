@@ -105,7 +105,7 @@ export const PlanCreateModal: FC<Props> = ({ isOpen, isOwner, onClose }) => {
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="2xl" scrollBehavior="inside">
       <ModalOverlay bg="rgba(0,0,0,.72)" />
-      <ModalContent as="form" onSubmit={submit} mx={3} my={3} maxH="calc(100dvh - 24px)" overflow="hidden" bg="var(--panel-surface)" color="gray.100" borderWidth="1px" borderColor="var(--panel-border-strong)">
+      <ModalContent as="form" onSubmit={submit} mx={3} my={3} maxH="calc(100dvh - 24px)" overflow="hidden" bg="var(--panel-surface)" color="var(--panel-text)" borderWidth="1px" borderColor="var(--panel-border-strong)">
         <ModalHeader ps={14}>ساخت پلن</ModalHeader>
         <ModalCloseButton top={3} insetInlineStart={3} insetInlineEnd="auto" />
         <ModalBody overflowY="auto">
@@ -126,7 +126,7 @@ export const PlanCreateModal: FC<Props> = ({ isOpen, isOwner, onClose }) => {
             </SimpleGrid>
           </Stack>
         </ModalBody>
-        <ModalFooter flexShrink={0} gap={2} px={{ base: 3, md: 6 }} py={3} borderTopWidth="1px" borderColor="var(--panel-border)"><Button minH="44px" variant="ghost" onClick={onClose}>انصراف</Button><Button minH="44px" type="submit" colorScheme="primary" color="#07130e" isLoading={save.isLoading} isDisabled={(categories.data || []).length === 0}>ذخیره</Button></ModalFooter>
+        <ModalFooter flexShrink={0} gap={2} px={{ base: 3, md: 6 }} py={3} borderTopWidth="1px" borderColor="var(--panel-border)"><Button minH="44px" variant="ghost" onClick={onClose}>انصراف</Button><Button minH="44px" type="submit" colorScheme="primary" color="var(--panel-accent-contrast)" isLoading={save.isLoading} isDisabled={(categories.data || []).length === 0}>ذخیره</Button></ModalFooter>
       </ModalContent>
     </Modal>
   );
