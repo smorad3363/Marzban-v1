@@ -33,7 +33,9 @@ jobs:
           cache-dependency-path: app/dashboard/package-lock.json
 
       - name: Apply integration patch
-        run: python .github/scripts/v106_ui_patch.py
+        run: |
+          python .github/scripts/v106_ui_patch.py
+          python .github/scripts/v106_ui_contract_patch.py
 
       - name: Compile backend sources
         run: python -m compileall -q app
@@ -67,7 +69,7 @@ jobs:
       - name: Commit verified integration
         run: |
           set -euo pipefail
-          git rm .github/workflows/v106-ui-integration.yml .github/scripts/v106_ui_patch.py
+          git rm .github/workflows/v106-ui-integration.yml .github/scripts/v106_ui_patch.py .github/scripts/v106_ui_contract_patch.py
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
