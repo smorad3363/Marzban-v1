@@ -103,6 +103,7 @@ fi
 docker run --rm --interactive \
     --network host \
     --volume "${workdir}:/e2e:ro" \
+    --env SQLALCHEMY_DATABASE_URL=mysql+pymysql://probe:probe@127.0.0.1/probe \
     --env NODE_E2E_RUNTIME_PORT="${runtime_port}" \
     --env NODE_E2E_API_PORT="${api_port}" \
     --entrypoint python \
