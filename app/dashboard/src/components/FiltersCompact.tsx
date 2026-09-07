@@ -1,5 +1,4 @@
 import {
-  Box,
   Button,
   HStack,
   IconButton,
@@ -9,7 +8,6 @@ import {
   Select,
   Spinner,
   Stack,
-  Text,
   chakra,
 } from "@chakra-ui/react";
 import {
@@ -67,25 +65,96 @@ const StatusButton: FC<{
   </Button>
 );
 
-export const FiltersCompact: FC = () => {
-  const { loading, filters, onFilterChange, refetchUsers, onCreateUser } = useDashboard();
-  const { i18n } = useTranslation();
-  const { userData } = useGetUser();
-  const [search, setSearch] = useState(filters.search || "");
-  const [planCreateOpen, setPlanCreateOpen] = useState(false);
+const sortOptions = [
+  { value: "-created_at", label: "جدیدترین‌ها" },
+  { value: "created_at", label: "قدیمی‌ترین‌ها" },
+  { value: "username", label: "نام کاربری A-Z" },
+  { value: "-username", label: "نام کاربری Z-A" },
+  { value: "-used_traffic", label: "مصرف بیشتر" },
+  { value: "used_traffic", label: "مصرف کمتر" },
+  { value: "expire", label: "انقضای نزدیک" },
+  { value: "-expire", label: "انقضای دور" },
+] as const;
 
-  const account = useQuery<AccountSummary, Error>("account-summary", () => fetch("/account/summary"));
+const SortButton: FC<{ active: boolean; label: string; onClick: () => void }> = ({ active, label, onClick }) => (
+  <Button
+    size="xs"
+    h="32px"
+    px={3}
+    borderRadius="8px"
+    variant="outline"
+    aria-pressed={active}
+    borderColor={active ? "var(--panel-accent-border)" : "var(--panel-border)"}
+    bg={active ? "var(--panel-accent-soft)" : "var(--panel-nested)"}
+    color={active ? "var(--panel-accent)" : "gray.400"}
+    fontSize="10px"
+    fontWeight="800"
+    onClick={onClick}
+    transition="transform .14s ease, border-color .14s ease, background .14s ease"
+    _hover={{ transform: "translateY(-1px)", borderColor: "var(--panel-accent-border)", color: "var(--panel-accent)" }}
+    _active={{ transform: "translateY(0)" }}
+  >
+    {label}
+  </Button>
+);
+
+export const UserManagementControls: FC = () => {
+  const { filters, onFilterChange } = useDashboard();
+  const { userData } = useGetUser();
   const capabilities = useQuery<AdminCapabilities, Error>(
     ["admin-capabilities", userData.username],
     () => fetch("/admin/capabilities")
   );
   const canManageAdmins = Boolean(capabilities.data?.can_manage_admins);
-  const accountActive = account.data?.account_status === "ACTIVE";
   const adminOptions = useQuery<AdminOption[], Error>(
     "user-filter-admins",
     () => fetch("/admins", { query: { limit: 1000 } }),
     { enabled: canManageAdmins, staleTime: 30000 }
   );
+
+  const changeAdmin = (event: ChangeEvent<HTMLSelectElement>) =>
+    onFilterChange({ admin: event.target.value || undefined, offset: 0 });
+
+  return (
+    <HStack spacing={2} flexWrap="wrap" align="center" minW={0} maxW="full">
+      {canManageAdmins && (
+        <Select
+          aria-label="فیلتر ادمین"
+          value={filters.admin || ""}
+          onChange={changeAdmin}
+          size="sm"
+          h="32px"
+          w={{ base: "150px", md: "170px" }}
+          borderRadius="8px"
+          {...control}
+          sx={{ option: { background: "var(--panel-surface)", color: "var(--panel-text)" } }}
+        >
+          <option value="">همه ادمین‌ها</option>
+          {adminOptions.data?.map((admin) => <option key={admin.username} value={admin.username}>{admin.username}</option>)}
+        </Select>
+      )}
+      <HStack spacing={1.5} flexWrap="wrap" minW={0}>
+        {sortOptions.map((option) => (
+          <SortButton
+            key={option.value}
+            active={filters.sort === option.value}
+            label={option.label}
+            onClick={() => onFilterChange({ sort: option.value, offset: 0 })}
+          />
+        ))}
+      </HStack>
+    </HStack>
+  );
+};
+
+export const FiltersCompact: FC = () => {
+  const { loading, filters, onFilterChange, refetchUsers, onCreateUser } = useDashboard();
+  const { i18n } = useTranslation();
+  const [search, setSearch] = useState(filters.search || "");
+  const [planCreateOpen, setPlanCreateOpen] = useState(false);
+
+  const account = useQuery<AccountSummary, Error>("account-summary", () => fetch("/account/summary"));
+  const accountActive = account.data?.account_status === "ACTIVE";
 
   const updateSearch = useMemo(
     () => debounce((value: string) => onFilterChange({ search: value, offset: 0 }), 280),
@@ -94,12 +163,6 @@ export const FiltersCompact: FC = () => {
 
   const setStatus = (value?: typeof filters.status) =>
     onFilterChange({ status: value, offset: 0 });
-
-  const changeSort = (event: ChangeEvent<HTMLSelectElement>) =>
-    onFilterChange({ sort: event.target.value, offset: 0 });
-
-  const changeAdmin = (event: ChangeEvent<HTMLSelectElement>) =>
-    onFilterChange({ admin: event.target.value || undefined, offset: 0 });
 
   return (
     <Stack dir={i18n.dir()} spacing={3} px={{ base: 3, md: 4 }} pt={3.5} pb={3}>
@@ -176,56 +239,6 @@ export const FiltersCompact: FC = () => {
             {...control}
           />
         </InputGroup>
-      </HStack>
-
-      <HStack
-        justify="space-between"
-        align="center"
-        gap={3}
-        flexWrap="wrap"
-        pt={2.5}
-        borderTopWidth="1px"
-        borderColor="var(--panel-border)"
-      >
-        <Text color="gray.500" fontSize="11px">فیلترهای تکمیلی</Text>
-        <HStack spacing={2} flexWrap="wrap">
-          {canManageAdmins && (
-            <Select
-              aria-label="فیلتر ادمین"
-              value={filters.admin || ""}
-              onChange={changeAdmin}
-              size="sm"
-              h="34px"
-              w={{ base: "160px", md: "180px" }}
-              borderRadius="8px"
-              {...control}
-              sx={{ option: { background: "var(--panel-surface)", color: "var(--panel-text)" } }}
-            >
-              <option value="">همه ادمین‌ها</option>
-              {adminOptions.data?.map((admin) => <option key={admin.username} value={admin.username}>{admin.username}</option>)}
-            </Select>
-          )}
-          <Select
-            aria-label="مرتب‌سازی کاربران"
-            value={filters.sort}
-            onChange={changeSort}
-            size="sm"
-            h="34px"
-            w={{ base: "170px", md: "200px" }}
-            borderRadius="8px"
-            {...control}
-            sx={{ option: { background: "var(--panel-surface)", color: "var(--panel-text)" } }}
-          >
-            <option value="-created_at">جدیدترین‌ها</option>
-            <option value="created_at">قدیمی‌ترین‌ها</option>
-            <option value="username">نام کاربری A-Z</option>
-            <option value="-username">نام کاربری Z-A</option>
-            <option value="-used_traffic">مصرف بیشتر</option>
-            <option value="used_traffic">مصرف کمتر</option>
-            <option value="expire">انقضای نزدیک</option>
-            <option value="-expire">انقضای دور</option>
-          </Select>
-        </HStack>
       </HStack>
 
       <CreateUserFromPlan isOpen={planCreateOpen} onClose={() => setPlanCreateOpen(false)} />
