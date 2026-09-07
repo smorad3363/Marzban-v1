@@ -79,6 +79,12 @@ jobs:
           mysql_container="$(docker ps --filter publish=3306 --format '{{.ID}}' | head -1)"
           test -n "${mysql_container}"
 
+          case "${{ matrix.mysql-image }}" in
+            mysql:8.0) expected_mysql_version_prefix="8.0." ;;
+            mysql:26.7.0) expected_mysql_version_prefix="26.7." ;;
+            *) echo "Unsupported MySQL matrix image: ${{ matrix.mysql-image }}" >&2; exit 1 ;;
+          esac
+
           run_isolated_test() {
             local stage="$1"
             local test_file="$2"
@@ -89,6 +95,7 @@ jobs:
               "CREATE DATABASE \`${database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
             SQLALCHEMY_DATABASE_URL="${database_url}" \
               TEST_MYSQL_DATABASE_URL="${database_url}" \
+              TEST_MYSQL_VERSION_PREFIX="${expected_mysql_version_prefix}" \
               python -m pytest -q "${test_file}"
           }
 
