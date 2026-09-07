@@ -82,6 +82,17 @@ export const theme = extendTheme({
         },
         header: { borderColor: "var(--panel-border)" },
         footer: { borderColor: "var(--panel-border)" },
+        closeButton: {
+          top: 3,
+          right: 3,
+          zIndex: 30,
+          pointerEvents: "auto",
+          color: "var(--panel-text-body)",
+          bg: "var(--panel-nested)",
+          border: "1px solid",
+          borderColor: "var(--panel-border)",
+          _hover: { bg: "var(--panel-row-hover)", color: "var(--panel-text)" },
+        },
       },
     },
     Drawer: {

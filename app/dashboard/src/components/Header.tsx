@@ -18,7 +18,6 @@ import {
   ChartPieIcon,
   ClipboardDocumentListIcon,
   Cog6ToothIcon,
-  DocumentMinusIcon,
   LinkIcon,
   SquaresPlusIcon,
   UserGroupIcon,
@@ -40,7 +39,6 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { fetch } from "service/http";
 import { removeAuthToken } from "utils/authStorage";
 import { updateThemeColor } from "utils/themeColor";
-import { BrandMark } from "./BrandMark";
 import { BrandingControls } from "./BrandingControls";
 import { AdminCapabilities } from "types/Admin";
 
@@ -50,7 +48,6 @@ const LogoutIcon = chakra(ArrowLeftOnRectangleIcon, iconProps);
 const HostsIcon = chakra(LinkIcon, iconProps);
 const NodesIcon = chakra(SquaresPlusIcon, iconProps);
 const NodesUsageIcon = chakra(ChartPieIcon, iconProps);
-const ResetUsageIcon = chakra(DocumentMinusIcon, iconProps);
 const UsersNavIcon = chakra(UsersIcon, iconProps);
 const AdminsNavIcon = chakra(UserGroupIcon, iconProps);
 const AuditNavIcon = chakra(ClipboardDocumentListIcon, iconProps);
@@ -93,11 +90,15 @@ export const Header: FC = () => {
     { enabled: getUserIsSuccess }
   );
   const canManage = Boolean(capabilities.data?.can_manage_admins);
-  const { onEditingHosts, onResetAllUsage, onEditingNodes, onShowingNodesUsage } = useDashboard();
+  const { onEditingHosts, onEditingNodes, onShowingNodesUsage } = useDashboard();
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const sidebarLogo = branding.logo_url || userData.logo_url || null;
+  const sidebarName = (branding.panel_name || "").trim();
+  const showSidebarName = Boolean(sidebarName && sidebarName !== "Operations Console");
+  const showSidebarBrand = Boolean(sidebarLogo || showSidebarName);
   useEffect(() => updateThemeColor(colorMode), [colorMode]);
   useEffect(() => { setMobileMenuOpen(false); }, [location.pathname]);
   const isAdminsPage = location.pathname.startsWith("/admins");
@@ -118,6 +119,8 @@ export const Header: FC = () => {
   return (
     <Flex
       as="aside"
+      className="operations-sidebar"
+      data-color-mode={colorMode}
       w={{ base: "full", lg: "272px" }}
       minW={{ lg: "272px" }}
       minH={{ lg: "100vh" }}
@@ -135,16 +138,25 @@ export const Header: FC = () => {
       px={{ base: 4, lg: 4 }}
       py={{ base: 3, lg: 5 }}
     >
-      <HStack justify="space-between" align="center" gap={3}>
-        <HStack spacing={3} minW={0}>
-          {branding.logo_url || userData.logo_url
-            ? <Image src={branding.logo_url || userData.logo_url || undefined} alt={`${branding.panel_name} logo`} boxSize={{ base: "38px", lg: "46px" }} objectFit="contain" borderRadius="10px" />
-            : <BrandMark aria-hidden="true" boxSize={{ base: "38px", lg: "46px" }} filter="none" />}
-          <Box minW={0}>
-            <Text fontSize="sm" fontWeight="800" letterSpacing="-0.01em" color="var(--panel-text)" noOfLines={1}>{branding.panel_name}</Text>
-            <Text fontSize="xs" color="var(--panel-text-muted)" mt="1px" noOfLines={1}>Operations workspace</Text>
-          </Box>
-        </HStack>
+      <HStack justify={showSidebarBrand ? "space-between" : "flex-end"} align="center" gap={3}>
+        {showSidebarBrand && (
+          <HStack spacing={3} minW={0}>
+            {sidebarLogo && (
+              <Image
+                src={sidebarLogo}
+                alt={showSidebarName ? `${sidebarName} logo` : "لوگوی پنل"}
+                boxSize={{ base: "38px", lg: "46px" }}
+                objectFit="contain"
+                borderRadius="10px"
+              />
+            )}
+            {showSidebarName && (
+              <Text fontSize="sm" fontWeight="800" letterSpacing="-0.01em" color="var(--panel-text)" noOfLines={1}>
+                {sidebarName}
+              </Text>
+            )}
+          </HStack>
+        )}
         <HStack display={{ base: "flex", lg: "none" }} spacing={1} flexShrink={0}>
           <IconButton color="var(--panel-text-body)" onClick={toggleColorMode} size="sm" variant="ghost" aria-label={colorMode === "dark" ? "Use light theme" : "Use dark theme"} icon={colorMode === "dark" ? <SunIcon width={19} /> : <MoonIcon width={19} />} />
           <IconButton color="var(--panel-text)" minW="44px" minH="44px" onClick={() => setMobileMenuOpen((value) => !value)} size="sm" variant="outline" aria-label={mobileMenuOpen ? "بستن منو" : "بازکردن منو"} aria-expanded={mobileMenuOpen} icon={mobileMenuOpen ? <XMarkIcon width={20} /> : <Bars3Icon width={20} />} />
@@ -242,7 +254,6 @@ export const Header: FC = () => {
             <ActionButton icon={<HostsIcon />} label={t("header.hostSettings")} onClick={() => onEditingHosts(true)} />
             <ActionButton icon={<NodesIcon />} label={t("header.nodeSettings")} onClick={() => onEditingNodes(true)} />
             <ActionButton icon={<NodesUsageIcon />} label={t("header.nodesUsage")} onClick={() => onShowingNodesUsage(true)} />
-            <ActionButton icon={<ResetUsageIcon />} label={t("resetAllUsage")} onClick={() => onResetAllUsage(true)} danger />
           </SimpleGrid>
         </Box>
       )}

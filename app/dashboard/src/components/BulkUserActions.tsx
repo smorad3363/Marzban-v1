@@ -19,6 +19,10 @@ import {
   ModalFooter,
   ModalHeader,
   ModalOverlay,
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuList,
   Select,
   Stack,
   Text,
@@ -28,6 +32,7 @@ import {
 import {
   BoltIcon,
   CalendarDaysIcon,
+  ChevronDownIcon,
   CircleStackIcon,
   NoSymbolIcon,
   TrashIcon,
@@ -722,50 +727,95 @@ export const BulkUserActions: FC<BulkUserActionsProps> = ({
         </HStack>
 
         <HStack spacing={2} flexWrap="wrap" justify="flex-end">
-          <Button
-            size="sm"
-            variant="outline"
-            color="var(--panel-warning)"
-            borderColor="var(--panel-warning-border)"
-            leftIcon={<TrashIcon width="17px" aria-hidden="true" />}
-            onClick={trialCleanupDialog.onOpen}
-          >
-            پاک‌سازی اکانت تست
-          </Button>
-          {userData.is_sudo && (
-            <Button
+          <Menu placement="bottom-end">
+            <MenuButton
+              as={Button}
               size="sm"
               variant="outline"
-              color="var(--panel-danger)"
-              borderColor="var(--panel-danger-border)"
-              leftIcon={<TrashIcon width="17px" aria-hidden="true" />}
-              onClick={cleanupDialog.onOpen}
-              _hover={{ bg: "rgba(239, 68, 68, .1)", borderColor: "red.600" }}
+              color="var(--panel-text-body)"
+              borderColor="var(--panel-border)"
+              rightIcon={<ChevronDownIcon width="15px" aria-hidden="true" />}
             >
-              {t("usersTable.cleanupExpired")}
-            </Button>
-          )}
-          {users.length > 0 && (
-            <>
-              <Button size="sm" variant="outline" color="var(--panel-success)" borderColor="var(--panel-success-border)" bg="var(--panel-success-soft)" leftIcon={<BoltIcon width="17px" aria-hidden="true" />} onClick={() => openAction(actionDefinitions[0])}>{t(actionDefinitions[0].labelKey)}</Button>
-              <Button size="sm" variant="outline" color="var(--panel-warning)" borderColor="var(--panel-warning-border)" bg="var(--panel-warning-soft)" leftIcon={<NoSymbolIcon width="17px" aria-hidden="true" />} onClick={() => openAction(actionDefinitions[1])}>{t(actionDefinitions[1].labelKey)}</Button>
-              <Button size="sm" variant="outline" color="var(--panel-accent)" borderColor="var(--panel-accent-border)" bg="var(--panel-accent-soft)" leftIcon={<CircleStackIcon width="17px" aria-hidden="true" />} onClick={() => openAction(actionDefinitions[2])}>{t(actionDefinitions[2].labelKey)}</Button>
-              <Button size="sm" variant="outline" color="var(--panel-text-body)" borderColor="var(--panel-border)" bg="var(--panel-muted-soft)" leftIcon={<CircleStackIcon width="17px" aria-hidden="true" />} onClick={() => openAction(actionDefinitions[3])}>{t(actionDefinitions[3].labelKey)}</Button>
-              <Button size="sm" variant="outline" color="var(--panel-accent)" borderColor="var(--panel-accent-border)" bg="var(--panel-accent-soft)" leftIcon={<CalendarDaysIcon width="17px" aria-hidden="true" />} onClick={() => openAction(actionDefinitions[4])}>{t(actionDefinitions[4].labelKey)}</Button>
-              <Button size="sm" variant="outline" color="var(--panel-text-body)" borderColor="var(--panel-border)" bg="var(--panel-muted-soft)" leftIcon={<CalendarDaysIcon width="17px" aria-hidden="true" />} onClick={() => openAction(actionDefinitions[5])}>{t(actionDefinitions[5].labelKey)}</Button>
-              <Button size="sm" variant="outline" color="var(--panel-accent)" borderColor="var(--panel-accent-border)" bg="var(--panel-accent-soft)" leftIcon={<CalendarDaysIcon width="17px" aria-hidden="true" />} onClick={() => openAction(actionDefinitions[6])}>{t(actionDefinitions[6].labelKey)}</Button>
-              <Button size="sm" variant="outline" color="var(--panel-danger)" borderColor="var(--panel-danger-border)" bg="var(--panel-danger-soft)" leftIcon={<TrashIcon width="17px" aria-hidden="true" />} onClick={() => openAction(actionDefinitions[7])}>{t(actionDefinitions[7].labelKey)}</Button>
-            </>
-          )}
+              پاک‌سازی
+            </MenuButton>
+            <MenuList minW="220px" bg="var(--panel-surface)" borderColor="var(--panel-border)" boxShadow="var(--shadow-elevated)">
+              <MenuItem bg="transparent" _hover={{ bg: "var(--panel-row-hover)" }} icon={<TrashIcon width="16px" />} onClick={trialCleanupDialog.onOpen}>
+                پاک‌سازی اکانت تست
+              </MenuItem>
+              {userData.is_sudo && (
+                <MenuItem bg="transparent" color="var(--panel-danger)" _hover={{ bg: "var(--panel-danger-soft)" }} icon={<TrashIcon width="16px" />} onClick={cleanupDialog.onOpen}>
+                  {t("usersTable.cleanupExpired")}
+                </MenuItem>
+              )}
+            </MenuList>
+          </Menu>
 
           {users.length > 0 && (
-            <IconButton
-              size="sm"
-              variant="ghost"
-              aria-label={t("usersTable.deselectAll")}
-              icon={<XMarkIcon width="18px" aria-hidden="true" />}
-              onClick={onClear}
-            />
+            <>
+              <Menu placement="bottom-end">
+                <MenuButton
+                  as={Button}
+                  size="sm"
+                  variant="outline"
+                  color="var(--panel-success)"
+                  borderColor="var(--panel-success-border)"
+                  bg="var(--panel-success-soft)"
+                  rightIcon={<ChevronDownIcon width="15px" aria-hidden="true" />}
+                >
+                  وضعیت
+                </MenuButton>
+                <MenuList minW="210px" bg="var(--panel-surface)" borderColor="var(--panel-border)" boxShadow="var(--shadow-elevated)">
+                  <MenuItem bg="transparent" _hover={{ bg: "var(--panel-success-soft)" }} icon={<BoltIcon width="16px" />} onClick={() => openAction(actionDefinitions[0])}>
+                    {t(actionDefinitions[0].labelKey)}
+                  </MenuItem>
+                  <MenuItem bg="transparent" _hover={{ bg: "var(--panel-warning-soft)" }} icon={<NoSymbolIcon width="16px" />} onClick={() => openAction(actionDefinitions[1])}>
+                    {t(actionDefinitions[1].labelKey)}
+                  </MenuItem>
+                </MenuList>
+              </Menu>
+
+              <Menu placement="bottom-end">
+                <MenuButton
+                  as={Button}
+                  size="sm"
+                  variant="outline"
+                  color="var(--panel-accent)"
+                  borderColor="var(--panel-accent-border)"
+                  bg="var(--panel-accent-soft)"
+                  rightIcon={<ChevronDownIcon width="15px" aria-hidden="true" />}
+                >
+                  اعتبار
+                </MenuButton>
+                <MenuList minW="230px" bg="var(--panel-surface)" borderColor="var(--panel-border)" boxShadow="var(--shadow-elevated)">
+                  <MenuItem bg="transparent" _hover={{ bg: "var(--panel-row-hover)" }} icon={<CircleStackIcon width="16px" />} onClick={() => openAction(actionDefinitions[2])}>{t(actionDefinitions[2].labelKey)}</MenuItem>
+                  <MenuItem bg="transparent" _hover={{ bg: "var(--panel-row-hover)" }} icon={<CircleStackIcon width="16px" />} onClick={() => openAction(actionDefinitions[3])}>{t(actionDefinitions[3].labelKey)}</MenuItem>
+                  <Divider />
+                  <MenuItem bg="transparent" _hover={{ bg: "var(--panel-row-hover)" }} icon={<CalendarDaysIcon width="16px" />} onClick={() => openAction(actionDefinitions[4])}>{t(actionDefinitions[4].labelKey)}</MenuItem>
+                  <MenuItem bg="transparent" _hover={{ bg: "var(--panel-row-hover)" }} icon={<CalendarDaysIcon width="16px" />} onClick={() => openAction(actionDefinitions[5])}>{t(actionDefinitions[5].labelKey)}</MenuItem>
+                  <MenuItem bg="transparent" _hover={{ bg: "var(--panel-row-hover)" }} icon={<CalendarDaysIcon width="16px" />} onClick={() => openAction(actionDefinitions[6])}>{t(actionDefinitions[6].labelKey)}</MenuItem>
+                </MenuList>
+              </Menu>
+
+              <Button
+                size="sm"
+                variant="outline"
+                color="var(--panel-danger)"
+                borderColor="var(--panel-danger-border)"
+                bg="var(--panel-danger-soft)"
+                leftIcon={<TrashIcon width="17px" aria-hidden="true" />}
+                onClick={() => openAction(actionDefinitions[7])}
+              >
+                {t(actionDefinitions[7].labelKey)}
+              </Button>
+
+              <IconButton
+                size="sm"
+                variant="ghost"
+                aria-label={t("usersTable.deselectAll")}
+                icon={<XMarkIcon width="18px" aria-hidden="true" />}
+                onClick={onClear}
+              />
+            </>
           )}
         </HStack>
       </Flex>

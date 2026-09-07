@@ -10,6 +10,30 @@ The `latest` tag is only a moving pointer to the newest stable tagged release.
 Prereleases never move `latest`. Older version and SHA tags remain available and
 are not replaced by a later release.
 
+## v1.0.8 UI reliability and navigation cleanup
+
+This release fixes the dashboard UI regressions reported after v1.0.7. Bulk User
+actions are grouped into compact Status, Credit, and Cleanup menus without
+removing any operation. The Light theme now forces the navigation rail to the
+light palette, configuration dialogs are mounted globally so Core/Host/Node
+controls work from every dashboard page, and the reset-all-usage shortcut is
+removed from configuration navigation. Modal close buttons are placed above
+editor controls and remain directly clickable. The rotating dashboard slogan and
+default Operations Console / Operations workspace branding are no longer shown
+in the sidebar when no custom branding is configured.
+
+Update to this release:
+
+```bash
+marzban update --version v1.0.8
+```
+
+Fresh-install this release with MySQL:
+
+```bash
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.0.8/scripts/marzban.sh)" @ install --version v1.0.8 --database mysql
+```
+
 ## v5.1.0 Admin hierarchy, billing, network scope, and reliability
 
 This stable release completes the Owner/Admin hierarchy workflow, reseller Plans

@@ -12,16 +12,11 @@ import {
 } from "@chakra-ui/react";
 import { AdminFormDrawer } from "components/AdminFormDrawer";
 import { AppShell } from "components/AppShell";
-import { CoreSettingsModal } from "components/CoreSettingsModal";
 import { DashboardOverviewCompact } from "components/DashboardOverviewCompact";
 import { DeleteUserModal } from "components/DeleteUserModal";
 import { FiltersCompact, UserManagementControls } from "components/FiltersCompact";
-import { HostsDialog } from "components/HostsDialog";
-import { NodesDialog } from "components/NodesModal";
-import { NodesUsage } from "components/NodesUsage";
 import { PlanCreateModal } from "components/PlanCreateModal";
 import { QRCodeDialog } from "components/QRCodeDialog";
-import { ResetAllUsageModal } from "components/ResetAllUsageModal";
 import { ResetUserUsageModal } from "components/ResetUserUsageModal";
 import { RevokeSubscriptionModal } from "components/RevokeSubscriptionModal";
 import { UserDialog } from "components/UserDialog";
@@ -32,19 +27,6 @@ import { FC, useEffect, useState } from "react";
 import { useQuery } from "react-query";
 import { fetch } from "service/http";
 import { AccountSummary, AdminCapabilities } from "types/Admin";
-
-const shortMessages = [
-  "همه‌چیز تحت کنترل است؛ پایدار ادامه بده.",
-  "مدیریت خوب یعنی تصمیم سریع با داده درست.",
-  "وضعیت روشن، تصمیم بهتر، سرویس پایدارتر.",
-  "هر تغییر کوچک، کیفیت سرویس را بهتر می‌کند.",
-];
-
-const messageForToday = () => {
-  const now = new Date();
-  const key = now.getFullYear() * 372 + (now.getMonth() + 1) * 31 + now.getDate();
-  return shortMessages[key % shortMessages.length];
-};
 
 const calendarParts = (date: Date, calendar: "persian" | "islamic") => {
   const parts = new Intl.DateTimeFormat(`en-US-u-ca-${calendar}`, { month: "numeric", day: "numeric" }).formatToParts(date);
@@ -135,7 +117,6 @@ export const Dashboard: FC = () => {
                 </Button>
               )}
               <Badge colorScheme="green" px={2.5} py={1.5} borderRadius="full" fontSize="10px">سیستم در حال اجرا</Badge>
-              <Text color="var(--panel-text-muted)" fontSize="11px">{messageForToday()}</Text>
               <Badge colorScheme={holiday ? "orange" : "green"} px={2} py={1} borderRadius="full" fontSize="9px">
                 {holiday || "روز کاری"}
               </Badge>
@@ -205,15 +186,6 @@ export const Dashboard: FC = () => {
       <QRCodeDialog />
       <ResetUserUsageModal />
       <RevokeSubscriptionModal />
-      {isOwner && (
-        <>
-          <HostsDialog />
-          <NodesDialog />
-          <NodesUsage />
-          <ResetAllUsageModal />
-          <CoreSettingsModal />
-        </>
-      )}
     </AppShell>
   );
 };

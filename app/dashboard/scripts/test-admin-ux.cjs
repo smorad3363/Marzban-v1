@@ -12,6 +12,7 @@ const admins = [
   read("src/pages/admins/AdminTable.tsx"),
 ].join("\n");
 const dashboard = read("src/pages/Dashboard.tsx");
+const appShell = read("src/components/AppShell.tsx");
 const compactOverview = read("src/components/DashboardOverviewCompact.tsx");
 const nodesWorkspace = read("src/components/NodesManagementWorkspace.tsx");
 const dashboardStyles = read("src/index.scss");
@@ -146,7 +147,7 @@ assert.ok(dashboard.includes('holiday || "روز کاری"'), "dashboard must sh
 assert.ok(overview.includes("منابع سرور"), "dashboard Owner resource group missing");
 assert.ok(dashboard.includes("mobileUsersOpen") && dashboard.includes("نمایش کاربران"), "mobile user list must be collapsed behind an explicit toggle");
 assert.ok(http.includes('import.meta.env.VITE_BASE_API || "/api/"'), "production login must retain the /api/ fallback");
-assert.ok(dashboard.includes("{isOwner && ("), "Owner-only infrastructure dialogs must not query restricted APIs for children");
+assert.ok(appShell.includes("{isOwner && (") && appShell.includes("<CoreSettingsModal />") && appShell.includes("<HostsDialog />") && appShell.includes("<NodesDialog />") && appShell.includes("<NodesUsage />"), "Owner-only infrastructure dialogs must be globally mounted without querying restricted APIs for children");
 assert.ok(hostsContext.includes('fetch<HostUpdateImpact>("/hosts/impact"'), "Host save must preview Access Group/User impact");
 assert.ok(hostsContext.includes("impact_action=${encodeURIComponent(action)}"), "confirmed Host action must be sent explicitly");
 assert.ok(hostsDialog.includes("اثر تغییر Host روی Access Groupها"), "Host impact confirmation must be Persian and explicit");

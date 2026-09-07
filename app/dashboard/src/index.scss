@@ -79,6 +79,38 @@
 }
 
 
+.operations-sidebar[data-color-mode="light"] {
+  --panel-sidebar: #F1F5F9;
+  --panel-nested: #F1F5F9;
+  --panel-border: #E2E8F0;
+  --panel-border-strong: #CBD5E1;
+  --panel-text: #0F172A;
+  --panel-text-body: #334155;
+  --panel-text-muted: #64748B;
+  --panel-row-hover: rgba(37, 99, 235, .055);
+  background: #F1F5F9 !important;
+  color: #0F172A !important;
+}
+
+.operations-sidebar[data-color-mode="dark"] {
+  --panel-sidebar: #0F1420;
+  --panel-nested: #0F1420;
+  --panel-border: #1F2937;
+  --panel-border-strong: #334155;
+  --panel-text: #F1F5F9;
+  --panel-text-body: #CBD5E1;
+  --panel-text-muted: #7C8AA0;
+  --panel-row-hover: rgba(59, 130, 246, .075);
+  background: #0F1420 !important;
+  color: #F1F5F9 !important;
+}
+
+.chakra-modal__close-btn {
+  z-index: 30 !important;
+  pointer-events: auto !important;
+}
+
+
 body {
   background-color: var(--panel-bg) !important;
   color: var(--panel-text) !important;
