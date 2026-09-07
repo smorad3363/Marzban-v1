@@ -17,6 +17,7 @@ from app.db.models import (
     MarzhelpAdminSettings,
     SystemOwner,
 )
+from app.models.admin_hierarchy import AccessGroupInput
 from app.utils import access_groups, admin_hierarchy
 
 
@@ -93,6 +94,15 @@ def _grant(db, group, admin_id: int) -> None:
     db.flush()
 
 
+def _values(group, allowed_admin_ids: list[int]) -> AccessGroupInput:
+    return AccessGroupInput(
+        name=group.name,
+        inbounds=[INBOUND],
+        hosts={INBOUND: [1]},
+        allowed_admin_ids=allowed_admin_ids,
+    )
+
+
 def _assert_grant_error(db, group, admin_id: int, code: str) -> None:
     with pytest.raises(admin_hierarchy.HierarchyError) as raised:
         _grant(db, group, admin_id)
@@ -105,6 +115,38 @@ def test_access_group_management_remains_owner_only(db):
     with pytest.raises(admin_hierarchy.HierarchyError) as raised:
         access_groups._require_owner(session, target)
     assert raised.value.code == "access_group_management_forbidden"
+
+
+def test_legacy_group_without_permission_rows_remains_public_compatible(db):
+    session, _, target, group = db
+    assert access_groups._permission_admin_ids(session, group.id) == []
+    assert access_groups._allowed_admin_ids(session, group.id) == []
+    access_groups._require_group_access(session, group, target.id)
+
+
+def test_explicit_empty_allowlist_persists_owner_sentinel_and_denies_admins(db):
+    session, owner, target, group = db
+    access_groups._replace_admin_access(session, group, _values(group, []))
+    session.flush()
+
+    assert access_groups._permission_admin_ids(session, group.id) == [owner.id]
+    assert access_groups._allowed_admin_ids(session, group.id) == []
+    assert access_groups.response(session, group).allowed_admin_ids == []
+    access_groups._require_group_access(session, group, owner.id)
+    with pytest.raises(admin_hierarchy.HierarchyError) as raised:
+        access_groups._require_group_access(session, group, target.id)
+    assert raised.value.code == "access_group_forbidden"
+
+
+def test_explicit_allowlist_persists_sentinel_but_exposes_only_admin_grants(db):
+    session, owner, target, group = db
+    access_groups._replace_admin_access(session, group, _values(group, [target.id]))
+    session.flush()
+
+    assert access_groups._permission_admin_ids(session, group.id) == sorted([owner.id, target.id])
+    assert access_groups._allowed_admin_ids(session, group.id) == [target.id]
+    assert access_groups.response(session, group).allowed_admin_ids == [target.id]
+    access_groups._require_group_access(session, group, target.id)
 
 
 def test_unknown_admin_id_fails_closed(db):

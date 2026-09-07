@@ -33,7 +33,8 @@ def _require_owner(db: Session, actor: Admin) -> None:
         )
 
 
-def _allowed_admin_ids(db: Session, group_id: int) -> list[int]:
+def _permission_admin_ids(db: Session, group_id: int) -> list[int]:
+    """Return persisted permission rows, including the internal Owner sentinel."""
     return [
         row[0]
         for row in db.query(AccessGroupAdminAccess.admin_id)
@@ -43,16 +44,29 @@ def _allowed_admin_ids(db: Session, group_id: int) -> list[int]:
     ]
 
 
+def _allowed_admin_ids(db: Session, group_id: int) -> list[int]:
+    """Return API-visible Admin grants without exposing the Owner sentinel."""
+    group = db.get(AccessGroup, group_id)
+    if group is None:
+        return []
+    return [
+        admin_id
+        for admin_id in _permission_admin_ids(db, group_id)
+        if admin_id != group.owner_admin_id
+    ]
+
+
 def _require_group_access(db: Session, group: AccessGroup, admin_id: int) -> None:
     actor = db.get(Admin, admin_id)
     if actor is None:
         raise admin_hierarchy.HierarchyError("policy_missing", "Administrator is unavailable")
     if admin_hierarchy.is_owner(db, actor):
         return
-    allowed = _allowed_admin_ids(db, group.id)
-    # Backward compatibility: groups created before this permission layer have
-    # no rows and remain public until Owner explicitly restricts them.
-    if allowed and admin_id not in allowed:
+    persisted = _permission_admin_ids(db, group.id)
+    # Backward compatibility: legacy groups with zero persisted permission rows
+    # remain public. Once Owner saves policy, the Owner sentinel makes even an
+    # explicit empty allowlist durable and therefore deny-all for Admins.
+    if persisted and admin_id not in persisted:
         raise admin_hierarchy.HierarchyError(
             "access_group_forbidden", "Administrator is not allowed to use this Access Group"
         )
@@ -80,32 +94,33 @@ def _replace_admin_access(
     values: AccessGroupInput,
 ) -> None:
     allowed = _validate_allowed_admin_ids(db, values)
+    disallowed_query = db.query(User.admin_id).filter(
+        User.access_group_id == group.id,
+        User.admin_id.is_not(None),
+        User.admin_id != group.owner_admin_id,
+    )
     if allowed:
-        disallowed_user_admins = {
-            row[0]
-            for row in db.query(User.admin_id)
-            .filter(
-                User.access_group_id == group.id,
-                User.admin_id.is_not(None),
-                User.admin_id != group.owner_admin_id,
-                ~User.admin_id.in_(allowed),
-            )
-            .distinct()
-            .all()
-        }
-        if disallowed_user_admins:
-            raise admin_hierarchy.HierarchyError(
-                "access_group_permission_in_use",
-                "Cannot remove Access Group permission while users owned by these administrators still reference it: "
-                + ", ".join(str(value) for value in sorted(disallowed_user_admins)),
-            )
+        disallowed_query = disallowed_query.filter(~User.admin_id.in_(allowed))
+    disallowed_user_admins = {
+        row[0]
+        for row in disallowed_query.distinct().all()
+    }
+    if disallowed_user_admins:
+        raise admin_hierarchy.HierarchyError(
+            "access_group_permission_in_use",
+            "Cannot remove Access Group permission while users owned by these administrators still reference it: "
+            + ", ".join(str(value) for value in sorted(disallowed_user_admins)),
+        )
     db.query(AccessGroupAdminAccess).filter(
         AccessGroupAdminAccess.access_group_id == group.id
     ).delete(synchronize_session=False)
+    # Always persist the exact group Owner as an internal restriction sentinel.
+    # This preserves a durable distinction between explicit [] (restricted,
+    # deny-all for Admins) and a legacy group with no permission rows (public).
+    persisted_ids = allowed | {group.owner_admin_id}
     db.add_all(
         AccessGroupAdminAccess(access_group_id=group.id, admin_id=admin_id)
-        for admin_id in sorted(allowed)
-        if admin_id != group.owner_admin_id
+        for admin_id in sorted(persisted_ids)
     )
 
 

@@ -7,7 +7,12 @@ from app.db.base import Base
 
 
 class AccessGroupAdminAccess(Base):
-    """Restrict an Access Group to explicit Admin IDs when rows exist."""
+    """Persist Access Group restriction state and explicit Admin grants.
+
+    The Access Group Owner row is an internal restriction sentinel. Other rows
+    are explicit Admin grants. Legacy groups with zero rows remain public for
+    backward compatibility until Owner explicitly saves their permission set.
+    """
 
     __tablename__ = "access_group_admin_access"
     __table_args__ = (
@@ -53,8 +58,15 @@ def _group_inbounds(session: OrmSession, group_id: int) -> set[str]:
 
 def _validate_admin_assignment(session: OrmSession, row: AccessGroupAdminAccess) -> None:
     """Fail closed before an Access Group permission row can be persisted."""
-    from app.db.models import Admin, AdminHierarchy, MarzhelpAdminSettings
+    from app.db.models import AccessGroup, Admin, AdminHierarchy, MarzhelpAdminSettings
     from app.utils import admin_hierarchy
+
+    group = _pending_or_persisted(session, AccessGroup, int(row.access_group_id))
+    if group is None:
+        raise admin_hierarchy.HierarchyError(
+            "access_group_unavailable",
+            "Access Group is unavailable",
+        )
 
     target = _pending_or_persisted(session, Admin, int(row.admin_id))
     if target is None:
@@ -62,6 +74,12 @@ def _validate_admin_assignment(session: OrmSession, row: AccessGroupAdminAccess)
             "access_group_admin_invalid",
             f"Unknown administrator: {row.admin_id}",
         )
+
+    # The exact group Owner row is not an Admin grant. It is the durable marker
+    # that distinguishes an explicitly restricted empty allowlist from a legacy
+    # group that has never had permission policy persisted.
+    if int(target.id) == int(group.owner_admin_id):
+        return
 
     if admin_hierarchy.role_code(target) != admin_hierarchy.ADMIN:
         raise admin_hierarchy.HierarchyError(
