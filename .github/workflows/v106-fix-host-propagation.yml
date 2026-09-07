@@ -13,6 +13,25 @@ permissions:
 jobs:
   fix-and-verify:
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root-test-password
+          MYSQL_DATABASE: marzban_test
+          MYSQL_USER: marzban
+          MYSQL_PASSWORD: marzban-test-password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u marzban --password=marzban-test-password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+    env:
+      SQLALCHEMY_DATABASE_URL: mysql+pymysql://marzban:marzban-test-password@127.0.0.1:3306/marzban_test
+      TEST_MYSQL_DATABASE_URL: mysql+pymysql://marzban:marzban-test-password@127.0.0.1:3306/marzban_test
+      XRAY_JSON: ./xray_config.json
     steps:
       - uses: actions/checkout@v4
         with:
@@ -31,7 +50,6 @@ jobs:
 
           p = Path("app/utils/access_groups.py")
           s = p.read_text(encoding="utf-8")
-
           start = s.index("def validated_scope(")
           end = s.index("\ndef network_options", start)
           replacement = dedent('''\
@@ -108,7 +126,6 @@ jobs:
               return inbounds, hosts, nodes
           ''')
           s = s[:start] + replacement + s[end:]
-
           old = (
               "        for user in users:\n"
               "            apply_to_user(db, user, group_id)\n"
@@ -135,9 +152,7 @@ jobs:
       - name: Verify targeted regressions
         run: |
           python -m compileall -q app tests
-          python -m pytest -q \
-            tests/test_stage2_network_sync.py \
-            tests/test_access_group_admin_permissions_contract.py
+          python -m pytest -q tests/test_stage2_network_sync.py tests/test_access_group_admin_permissions_contract.py
       - name: Commit verified fix
         run: |
           set -euo pipefail
