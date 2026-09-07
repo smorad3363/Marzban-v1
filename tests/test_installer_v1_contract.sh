@@ -4,6 +4,9 @@ set -eo pipefail
 source scripts/marzban.sh
 set -u
 
+expected_release="$CLI_RELEASE_VERSION"
+expected_runtime="${expected_release#v}"
+
 # Preserve the one-time historical migration contract from v5.2.0 to v1.0.0.
 is_allowed_v1_lineage_transition \
   "5.2.0" \
@@ -29,30 +32,30 @@ detect_compose() { COMPOSE=mock_compose; }
 is_marzban_up() { return 0; }
 configured_service_image() {
   case "$1" in
-    marzban) printf '%s\n' "ghcr.io/smorad3363/marzban-v1:v1.0.7" ;;
+    marzban) printf '%s\n' "ghcr.io/smorad3363/marzban-v1:${expected_release}" ;;
     mysql) printf '%s\n' "mysql:26.7.0" ;;
   esac
 }
 running_service_container() { printf '%s-id\n' "$1"; }
-runtime_app_version() { printf '%s\n' "1.0.7"; }
+runtime_app_version() { printf '%s\n' "$expected_runtime"; }
 marzban_image_revision() { printf '%040d\n' 1; }
 mysql_upgrade_server_version() { printf '%s\n' "26.7.0"; }
 verify_version_integrity() {
-  test "$1" = "v1.0.7"
+  test "$1" = "$expected_release"
   printf '%s\n' "INTEGRITY_OK"
 }
 docker() {
   if [[ "$*" == *".Config.Image"* ]]; then
-    printf '%s\n' "ghcr.io/smorad3363/marzban-v1:v1.0.7"
+    printf '%s\n' "ghcr.io/smorad3363/marzban-v1:${expected_release}"
   elif [[ "$*" == *".RepoDigests"* ]]; then
     printf '%s\n' "ghcr.io/smorad3363/marzban-v1@sha256:$(printf '%064d' 2)"
   fi
 }
 
 version_output="$(version_command)"
-grep -Fxq "CLI version: v1.0.7" <<< "$version_output"
-grep -Fxq "Runtime app version: 1.0.7" <<< "$version_output"
-grep -Fxq "Configured Docker image: ghcr.io/smorad3363/marzban-v1:v1.0.7" <<< "$version_output"
+grep -Fxq "CLI version: ${expected_release}" <<< "$version_output"
+grep -Fxq "Runtime app version: ${expected_runtime}" <<< "$version_output"
+grep -Fxq "Configured Docker image: ghcr.io/smorad3363/marzban-v1:${expected_release}" <<< "$version_output"
 grep -Fxq "Configured MySQL image: mysql:26.7.0" <<< "$version_output"
 grep -Fxq "Runtime MySQL version: 26.7.0" <<< "$version_output"
 grep -Fxq "INTEGRITY_OK" <<< "$version_output"
