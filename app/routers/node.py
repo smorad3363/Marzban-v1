@@ -27,6 +27,7 @@ from app.models.proxy import ProxyHost
 from app.utils import admin_hierarchy, responses
 from app.utils.audit import AuditLogService, sanitize_audit_value
 from app.utils.bandwidth import bandwidth_store
+from app.utils.node_logs import parse_node_log_interval
 
 router = APIRouter(
     tags=["Node"], prefix="/api", responses={401: responses._401, 403: responses._403}
@@ -204,16 +205,10 @@ async def node_logs(node_id: int, websocket: WebSocket, db: Session = Depends(ge
     if not xray.nodes[node_id].connected:
         return await websocket.close(reason="Node is not connected", code=4400)
 
-    interval = websocket.query_params.get("interval")
-    if interval:
-        try:
-            interval = float(interval)
-        except ValueError:
-            return await websocket.close(reason="Invalid interval value", code=4400)
-        if interval > 10:
-            return await websocket.close(
-                reason="Interval must be more than 0 and at most 10 seconds", code=4400
-            )
+    try:
+        interval = parse_node_log_interval(websocket.query_params.get("interval"))
+    except ValueError as exc:
+        return await websocket.close(reason=str(exc), code=4400)
 
     await websocket.accept()
 
