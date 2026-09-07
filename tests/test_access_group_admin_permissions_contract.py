@@ -7,6 +7,7 @@ def test_access_group_permission_contract_is_enforced_server_side():
     assert '"access_group_forbidden"' in source
     assert "_require_group_access(db, group, admin_id)" in source
     assert "_replace_admin_access(db, group, values)" in source
+    assert "validated_scope(db, group.id, actor.id)" in source
 
 
 def test_free_form_and_owner_transfer_revalidate_access_group():

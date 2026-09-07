@@ -406,7 +406,12 @@ export const UserDialog: FC<UserDialogProps> = () => {
   );
   const visibleAccessGroups = (accessGroupsQuery.data || []).filter((group) => {
     if (!userData.is_sudo || !selectedOwner) return true;
-    return group.allowed_admin_ids.length === 0 || group.allowed_admin_ids.includes(selectedOwner.id);
+    const groupPermissionAllowed =
+      group.allowed_admin_ids.length === 0 || group.allowed_admin_ids.includes(selectedOwner.id);
+    const inboundScopeAllowed =
+      selectedOwner.policy.all_inbounds ||
+      group.inbounds.every((tag) => selectedOwner.policy.allowed_inbounds.includes(tag));
+    return groupPermissionAllowed && inboundScopeAllowed;
   });
   const effectiveCapabilities: AdminCapabilities = selectedOwner
     ? {

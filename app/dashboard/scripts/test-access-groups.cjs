@@ -66,5 +66,6 @@ assert.equal(userModal.includes("Use Plan network"), false);
 assert.ok(freeFormModal.includes('fetch("/access-groups")'));
 assert.ok(freeFormModal.includes('name="access_group_id"'));
 assert.ok(freeFormModal.includes("group.allowed_admin_ids.length === 0"));
+assert.ok(freeFormModal.includes("group.inbounds.every"));
 
 console.log("Access Group UI contract: assertions passed");
