@@ -52,5 +52,13 @@ jobs:
       - name: Verify dashboard build output
         run: test -f app/dashboard/build/index.html && test -f app/dashboard/build/404.html
 
+      - name: Upload dashboard build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-build-${{ github.sha }}
+          path: app/dashboard/build
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Verify committed dashboard build parity
         run: git diff --exit-code -- app/dashboard/build
