@@ -135,7 +135,7 @@ const SettingsSection: FC<{
       <Card
         as="form"
         onSubmit={submitSettings}
-        bg="linear-gradient(145deg, rgba(14,25,20,.98), rgba(7,19,23,.98))"
+        bg="var(--panel-surface)"
         color="var(--panel-text)"
         borderWidth="1px"
         borderColor="var(--panel-border)"
@@ -143,7 +143,7 @@ const SettingsSection: FC<{
         boxShadow="panel"
         overflow="hidden"
       >
-        <HStack p={{ base: 4, md: 5 }} borderBottomWidth="1px" borderColor="#2b4437" align="start">
+        <HStack p={{ base: 4, md: 5 }} borderBottomWidth="1px" borderColor="var(--panel-border)" align="start">
           <Box p={2.5} borderRadius="11px" bg="rgba(34,197,94,.1)" color="green.200"><TuneIcon /></Box>
           <Box minW={0}>
             <Text fontWeight="800">{t("deviceLimit.runtimeSettings")}</Text>
@@ -230,7 +230,7 @@ const SettingsSection: FC<{
       </Card>
 
       <Card bg="var(--panel-surface)" color="var(--panel-text)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius={{ base: "16px", md: "20px" }} boxShadow="panel" overflow="hidden">
-        <HStack p={{ base: 4, md: 5 }} borderBottomWidth="1px" borderColor="#2b4437">
+        <HStack p={{ base: 4, md: 5 }} borderBottomWidth="1px" borderColor="var(--panel-border)">
           <Box p={2.5} borderRadius="11px" bg="rgba(234,179,8,.1)" color="yellow.200"><WarningIcon /></Box>
           <Box>
             <Text fontWeight="800">{t("deviceLimit.penaltyStages")}</Text>
@@ -297,7 +297,7 @@ const IncidentSection: FC = () => {
 
   return (
     <Card mt={5} bg="var(--panel-surface)" color="var(--panel-text)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius={{ base: "16px", md: "20px" }} boxShadow="panel" overflow="hidden">
-      <HStack p={{ base: 4, md: 5 }} borderBottomWidth="1px" borderColor="#2b4437" align="start" flexWrap="wrap">
+      <HStack p={{ base: 4, md: 5 }} borderBottomWidth="1px" borderColor="var(--panel-border)" align="start" flexWrap="wrap">
         <Box p={2.5} borderRadius="11px" bg="rgba(239,68,68,.1)" color="red.200"><WarningIcon /></Box>
         <Box minW={0}>
           <Text fontWeight="800">{t("deviceLimit.incidents")}</Text>
@@ -310,7 +310,7 @@ const IncidentSection: FC = () => {
       </HStack>
       {query.isError && <Alert status="error" m={4} w="auto"><AlertIcon />{t("deviceLimit.loadFailed")}</Alert>}
       {query.isLoading ? (
-        <Stack p={5}>{Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} h="112px" borderRadius="11px" startColor="#14231b" endColor="#243d31" />)}</Stack>
+        <Stack p={5}>{Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} h="112px" borderRadius="11px" />)}</Stack>
       ) : incidents.length === 0 ? (
         <VStack py={14} px={5}><LimitIcon color="green.200" /><Text fontWeight="700">{t("deviceLimit.noIncidents")}</Text></VStack>
       ) : (
@@ -344,7 +344,7 @@ const IncidentSection: FC = () => {
           ))}
         </Stack>
       )}
-      <HStack justify="space-between" p={4} borderTopWidth="1px" borderColor="#2b4437">
+      <HStack justify="space-between" p={4} borderTopWidth="1px" borderColor="var(--panel-border)">
         <Text color="var(--panel-text-muted)" fontSize="sm">{t("deviceLimit.page", { current: page + 1, total: pages })}</Text>
         <HStack>
           <Button aria-label={t("previous")} size="sm" minW="40px" variant="outline" borderColor="var(--panel-border-strong)" isDisabled={page === 0} onClick={() => setPage((value) => value - 1)}><ChevronRightIcon width={16} /></Button>
@@ -375,7 +375,7 @@ export const DeviceLimits: FC = () => {
         {isOwner && <Badge px={3} py={2} borderRadius="full" colorScheme={settings.data?.enabled ? "green" : "gray"} textTransform="none">{t(settings.data?.enabled ? "deviceLimit.active" : "deviceLimit.inactive")}</Badge>}
       </Stack>
       {isOwner && (settings.isError || stages.isError) && <Alert status="error" mb={4}><AlertIcon />{t("deviceLimit.loadFailed")}</Alert>}
-      {isOwner && (settings.data && stages.data ? <SettingsSection settings={settings.data} stages={stages.data} /> : <Stack>{Array.from({ length: 3 }).map((_, index) => <Skeleton key={index} h="180px" borderRadius="18px" startColor="#14231b" endColor="#243d31" />)}</Stack>)}
+      {isOwner && (settings.data && stages.data ? <SettingsSection settings={settings.data} stages={stages.data} /> : <Stack>{Array.from({ length: 3 }).map((_, index) => <Skeleton key={index} h="180px" borderRadius="18px" />)}</Stack>)}
       <IncidentSection />
     </AppShell>
   );
