@@ -202,7 +202,8 @@ jobs:
               --skip-log-bin >/dev/null
             for attempt in $(seq 1 120); do
               if docker exec -e MYSQL_PWD=root-test-password "${container_name}" \
-                mysqladmin --user=root --host=127.0.0.1 ping --silent >/dev/null 2>&1; then
+                mysql --user=root --host=127.0.0.1 --batch --skip-column-names \
+                --execute 'SELECT 1' 2>/dev/null | grep -qx '1'; then
                 return 0
               fi
               state="$(docker inspect --format '{{.State.Status}}' "${container_name}" 2>/dev/null || true)"
