@@ -6,7 +6,7 @@ import {
 import { FormEvent, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "react-query";
 import { fetch } from "service/http";
-import { AccessGroup, AccessGroupNetworkOption } from "types/Admin";
+import { AccessGroup, AccessGroupNetworkOption, ManagedAdmin, ManagedAdminList } from "types/Admin";
 import {
   missingAccessGroupHostIds,
   missingAccessGroupInboundTags,
@@ -25,6 +25,7 @@ type Draft = {
   nodeIds: number[];
   inbounds: string[];
   hosts: Record<string, number[]>;
+  allowedAdminIds: number[];
 };
 
 const emptyDraft = (): Draft => ({
@@ -34,7 +35,22 @@ const emptyDraft = (): Draft => ({
   nodeIds: [],
   inbounds: [],
   hosts: {},
+  allowedAdminIds: [],
 });
+
+const fetchAdmins = async (): Promise<ManagedAdmin[]> => {
+  const result: ManagedAdmin[] = [];
+  let offset = 0;
+  let total = 0;
+  do {
+    const page = await fetch<ManagedAdminList>(`/admin-management?offset=${offset}&limit=100`);
+    result.push(...page.admins);
+    total = page.total;
+    if (!page.admins.length) break;
+    offset += page.admins.length;
+  } while (offset < total);
+  return result;
+};
 
 export const AccessGroupManager = () => {
   const toast = useToast();
@@ -46,6 +62,7 @@ export const AccessGroupManager = () => {
     () => fetch("/access-group-network-options")
   );
   const nodes = useQuery<NodeOption[], Error>("access-group-node-options", () => fetch("/nodes"));
+  const admins = useQuery<ManagedAdmin[], Error>("access-group-admin-options", fetchAdmins);
   const options = network.data || [];
   const missingInbounds = network.isLoading
     ? []
@@ -63,6 +80,7 @@ export const AccessGroupManager = () => {
         node_ids: draft.nodeIds,
         inbounds: normalizeAccessGroupInboundTags(draft.inbounds),
         hosts: normalizeAccessGroupHostScope(draft.hosts),
+        allowed_admin_ids: draft.allowedAdminIds,
       },
     }),
     {
@@ -109,6 +127,7 @@ export const AccessGroupManager = () => {
     nodeIds: [...group.node_ids],
     inbounds: normalizeAccessGroupInboundTags(group.inbounds),
     hosts: normalizeAccessGroupHostScope(group.hosts),
+    allowedAdminIds: [...group.allowed_admin_ids],
   });
 
   const submit = (event: FormEvent) => {
@@ -141,11 +160,11 @@ export const AccessGroupManager = () => {
     save.mutate();
   };
 
-  if (groups.isLoading || network.isLoading || nodes.isLoading) {
+  if (groups.isLoading || network.isLoading || nodes.isLoading || admins.isLoading) {
     return <Stack spacing={3}><Skeleton h="64px" /><Skeleton h="180px" /><Skeleton h="96px" /></Stack>;
   }
-  if (groups.isError || network.isError || nodes.isError) {
-    return <Alert status="error"><AlertIcon />گزینه‌های Access Group دریافت نشدند.<Button ms={3} onClick={() => { groups.refetch(); network.refetch(); nodes.refetch(); }}>تلاش دوباره</Button></Alert>;
+  if (groups.isError || network.isError || nodes.isError || admins.isError) {
+    return <Alert status="error"><AlertIcon />گزینه‌های Access Group دریافت نشدند.<Button ms={3} onClick={() => { groups.refetch(); network.refetch(); nodes.refetch(); admins.refetch(); }}>تلاش دوباره</Button></Alert>;
   }
 
   return <Stack spacing={5}>
@@ -157,6 +176,32 @@ export const AccessGroupManager = () => {
           <FormControl isRequired><FormLabel>نام گروه</FormLabel><Input minH="44px" maxLength={128} value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} /></FormControl>
           <FormControl><FormLabel>توضیح</FormLabel><Textarea maxLength={512} value={draft.description} onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))} /></FormControl>
         </SimpleGrid>
+        <FormControl>
+          <FormLabel>ادمین‌های مجاز</FormLabel>
+          <SimpleGrid columns={{ base: 1, md: 2 }} gap={1} p={2} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="10px">
+            {(admins.data || []).filter((admin) => admin.role === "ADMIN").map((admin) => (
+              <Checkbox
+                key={admin.id}
+                minH="44px"
+                isChecked={draft.allowedAdminIds.includes(admin.id)}
+                onChange={(event) => setDraft((current) => ({
+                  ...current,
+                  allowedAdminIds: event.target.checked
+                    ? [...new Set([...current.allowedAdminIds, admin.id])].sort((a, b) => a - b)
+                    : current.allowedAdminIds.filter((id) => id !== admin.id),
+                }))}
+              >
+                <HStack><Text>{admin.username}</Text><Badge>{admin.account_status}</Badge></HStack>
+              </Checkbox>
+            ))}
+            {!(admins.data || []).some((admin) => admin.role === "ADMIN") && <Text p={2} color="gray.500">ادمینی برای واگذاری این گروه وجود ندارد.</Text>}
+          </SimpleGrid>
+          <FormHelperText>
+            {draft.allowedAdminIds.length
+              ? `فقط ${draft.allowedAdminIds.length} ادمین انتخاب‌شده می‌توانند از این گروه استفاده کنند.`
+              : "هیچ ادمینی انتخاب نشده: گروه برای همه ادمین‌ها قابل استفاده می‌ماند (سازگاری با گروه‌های قبلی)."}
+          </FormHelperText>
+        </FormControl>
         <FormControl>
           <FormLabel>Nodeها</FormLabel>
           <SimpleGrid columns={{ base: 1, md: 2 }} gap={1} p={2} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="10px">
@@ -188,7 +233,7 @@ export const AccessGroupManager = () => {
     </Card>
     <Stack spacing={2}>
       <Text fontWeight="800">گروه‌های فعال</Text>
-      {(groups.data || []).map((group) => <HStack key={group.id} p={3} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="10px" align="start" gap={3} wrap="wrap"><Box flex="1" minW="220px"><HStack wrap="wrap"><Text fontWeight="700">{group.name}</Text><Badge colorScheme="cyan">{group.active_user_count} کاربر فعال</Badge><Badge>{group.inbounds.length} Inbound</Badge><Badge>{group.node_ids.length ? `${group.node_ids.length} Node` : "همه Nodeها"}</Badge></HStack><Text mt={1} color="gray.600" _dark={{ color: "gray.400" }} fontSize="sm">{group.description || group.inbounds.join(", ")}</Text></Box><HStack><Button minH="44px" variant="outline" onClick={() => edit(group)}>ویرایش</Button><Button minH="44px" colorScheme="red" variant="ghost" isDisabled={group.active_user_count > 0} isLoading={archive.isLoading} onClick={() => { if (window.confirm(`Access Group «${group.name}» بایگانی شود؟`)) archive.mutate(group); }}>بایگانی</Button></HStack></HStack>)}
+      {(groups.data || []).map((group) => <HStack key={group.id} p={3} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="10px" align="start" gap={3} wrap="wrap"><Box flex="1" minW="220px"><HStack wrap="wrap"><Text fontWeight="700">{group.name}</Text><Badge colorScheme="cyan">{group.active_user_count} کاربر فعال</Badge><Badge>{group.inbounds.length} Inbound</Badge><Badge colorScheme="purple">{group.allowed_admin_ids.length ? `${group.allowed_admin_ids.length} ادمین مجاز` : "همه ادمین‌ها"}</Badge><Badge>{group.node_ids.length ? `${group.node_ids.length} Node` : "همه Nodeها"}</Badge></HStack><Text mt={1} color="gray.600" _dark={{ color: "gray.400" }} fontSize="sm">{group.description || group.inbounds.join(", ")}</Text></Box><HStack><Button minH="44px" variant="outline" onClick={() => edit(group)}>ویرایش</Button><Button minH="44px" colorScheme="red" variant="ghost" isDisabled={group.active_user_count > 0} isLoading={archive.isLoading} onClick={() => { if (window.confirm(`Access Group «${group.name}» بایگانی شود؟`)) archive.mutate(group); }}>بایگانی</Button></HStack></HStack>)}
       {!groups.data?.length && <Text role="status" color="gray.500">هنوز Access Group ساخته نشده است.</Text>}
     </Stack>
   </Stack>;

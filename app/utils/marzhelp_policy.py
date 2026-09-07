@@ -228,6 +228,7 @@ def restricted_create_payload(settings: MarzhelpAdminSettings, user: Any):
         inbounds=inbounds,
         concurrent_user_limit=concurrent_user_limit,
         data_limit_reset_strategy=UserDataLimitResetStrategy.no_reset,
+        access_group_id=getattr(user, "access_group_id", None),
     )
 
 

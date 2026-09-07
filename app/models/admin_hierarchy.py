@@ -433,8 +433,11 @@ class AccessGroupInput(BaseModel):
     node_ids: list[int] = Field(default_factory=list)
     inbounds: list[str] = Field(min_length=1)
     hosts: dict[str, list[int]]
+    # Empty preserves the legacy/public behavior. One or more IDs restrict the
+    # group to those administrators; Owner always retains management access.
+    allowed_admin_ids: list[int] = Field(default_factory=list)
 
-    @field_validator("node_ids", "inbounds")
+    @field_validator("node_ids", "inbounds", "allowed_admin_ids")
     @classmethod
     def unique_sorted_values(cls, value):
         return sorted(set(value))
@@ -455,6 +458,7 @@ class AccessGroupResponse(BaseModel):
     node_ids: list[int]
     inbounds: list[str]
     hosts: dict[str, list[int]]
+    allowed_admin_ids: list[int] = Field(default_factory=list)
     archived_at: Optional[datetime]
     active_user_count: int = 0
 

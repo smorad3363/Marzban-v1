@@ -87,7 +87,9 @@ export type UserCreate = Pick<
   | "username"
   | "status"
   | "note"
->;
+> & {
+  access_group_id?: number | null;
+};
 
 export type UserApi = {
   id?: number | null;

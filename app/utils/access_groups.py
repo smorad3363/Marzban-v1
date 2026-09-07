@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import object_session
 
 from app import xray
+from app.db.access_group_models import AccessGroupAdminAccess
 from app.db.models import (
     AccessGroup,
     AccessGroupHost,
@@ -30,6 +31,82 @@ def _require_owner(db: Session, actor: Admin) -> None:
         raise admin_hierarchy.HierarchyError(
             "access_group_management_forbidden", "Only Owner can manage Access Groups"
         )
+
+
+def _allowed_admin_ids(db: Session, group_id: int) -> list[int]:
+    return [
+        row[0]
+        for row in db.query(AccessGroupAdminAccess.admin_id)
+        .filter(AccessGroupAdminAccess.access_group_id == group_id)
+        .order_by(AccessGroupAdminAccess.admin_id)
+        .all()
+    ]
+
+
+def _require_group_access(db: Session, group: AccessGroup, admin_id: int) -> None:
+    actor = db.get(Admin, admin_id)
+    if actor is None:
+        raise admin_hierarchy.HierarchyError("policy_missing", "Administrator is unavailable")
+    if admin_hierarchy.is_owner(db, actor):
+        return
+    allowed = _allowed_admin_ids(db, group.id)
+    # Backward compatibility: groups created before this permission layer have
+    # no rows and remain public until Owner explicitly restricts them.
+    if allowed and admin_id not in allowed:
+        raise admin_hierarchy.HierarchyError(
+            "access_group_forbidden", "Administrator is not allowed to use this Access Group"
+        )
+
+
+def _validate_allowed_admin_ids(db: Session, values: AccessGroupInput) -> set[int]:
+    allowed = set(values.allowed_admin_ids)
+    if not allowed:
+        return allowed
+    existing = {
+        row[0]
+        for row in db.query(Admin.id).filter(Admin.id.in_(allowed)).all()
+    }
+    missing = sorted(allowed - existing)
+    if missing:
+        raise admin_hierarchy.HierarchyError(
+            "access_group_admin_invalid", f"Unknown administrators: {missing}"
+        )
+    return allowed
+
+
+def _replace_admin_access(
+    db: Session,
+    group: AccessGroup,
+    values: AccessGroupInput,
+) -> None:
+    allowed = _validate_allowed_admin_ids(db, values)
+    if allowed:
+        disallowed_user_admins = {
+            row[0]
+            for row in db.query(User.admin_id)
+            .filter(
+                User.access_group_id == group.id,
+                User.admin_id.is_not(None),
+                User.admin_id != group.owner_admin_id,
+                ~User.admin_id.in_(allowed),
+            )
+            .distinct()
+            .all()
+        }
+        if disallowed_user_admins:
+            raise admin_hierarchy.HierarchyError(
+                "access_group_permission_in_use",
+                "Cannot remove Access Group permission while users owned by these administrators still reference it: "
+                + ", ".join(str(value) for value in sorted(disallowed_user_admins)),
+            )
+    db.query(AccessGroupAdminAccess).filter(
+        AccessGroupAdminAccess.access_group_id == group.id
+    ).delete(synchronize_session=False)
+    db.add_all(
+        AccessGroupAdminAccess(access_group_id=group.id, admin_id=admin_id)
+        for admin_id in sorted(allowed)
+        if admin_id != group.owner_admin_id
+    )
 
 
 def _scope(db: Session, group_id: int) -> tuple[set[str], dict[str, set[int]], set[int]]:
@@ -58,6 +135,7 @@ def validated_scope(
         raise admin_hierarchy.HierarchyError(
             "access_group_unavailable", "Access Group is unavailable"
         )
+    _require_group_access(db, group, admin_id)
     inbounds, hosts, nodes = _scope(db, group_id)
     if not inbounds or set(hosts) != inbounds or any(not hosts[tag] for tag in inbounds):
         raise admin_hierarchy.HierarchyError(
@@ -213,19 +291,37 @@ def response(db: Session, group: AccessGroup) -> AccessGroupResponse:
         node_ids=sorted(nodes),
         inbounds=sorted(inbounds),
         hosts={tag: sorted(hosts[tag]) for tag in sorted(inbounds)},
+        allowed_admin_ids=_allowed_admin_ids(db, group.id),
         archived_at=group.archived_at,
         active_user_count=active_count,
     )
 
 
 def list_groups(db: Session, actor: Admin) -> list[AccessGroup]:
-    # Admins may select groups while creating users, but cannot manage them.
-    return (
-        db.query(AccessGroup)
-        .filter(AccessGroup.archived_at.is_(None))
-        .order_by(AccessGroup.name, AccessGroup.id)
-        .all()
-    )
+    query = db.query(AccessGroup).filter(AccessGroup.archived_at.is_(None))
+    if not admin_hierarchy.is_owner(db, actor):
+        group_ids = [row[0] for row in query.with_entities(AccessGroup.id).all()]
+        restricted = {
+            row[0]
+            for row in db.query(AccessGroupAdminAccess.access_group_id)
+            .filter(AccessGroupAdminAccess.access_group_id.in_(group_ids))
+            .distinct()
+            .all()
+        }
+        allowed = {
+            row[0]
+            for row in db.query(AccessGroupAdminAccess.access_group_id)
+            .filter(
+                AccessGroupAdminAccess.access_group_id.in_(group_ids),
+                AccessGroupAdminAccess.admin_id == actor.id,
+            )
+            .all()
+        }
+        visible = (set(group_ids) - restricted) | allowed
+        if not visible:
+            return []
+        query = query.filter(AccessGroup.id.in_(visible))
+    return query.order_by(AccessGroup.name, AccessGroup.id).all()
 
 
 def create(db: Session, actor: Admin, values: AccessGroupInput) -> AccessGroup:
@@ -239,12 +335,17 @@ def create(db: Session, actor: Admin, values: AccessGroupInput) -> AccessGroup:
     db.add(group)
     db.flush()
     _replace_scope(db, group, values)
+    _replace_admin_access(db, group, values)
     db.commit()
     db.refresh(group)
     return group
 
 
 def apply_to_user(db: Session, user: User, group_id: int) -> None:
+    if user.admin_id is None:
+        raise admin_hierarchy.HierarchyError(
+            "access_group_owner_missing", "Access Group users require an administrator owner"
+        )
     inbounds, _, _ = validated_scope(db, group_id, user.admin_id)
     from app.utils.admin_plans import _apply_network_to_user
 
@@ -258,6 +359,7 @@ def update(db: Session, actor: Admin, group: AccessGroup, values: AccessGroupInp
     group.name = values.name.strip()
     group.description = values.description
     _replace_scope(db, group, values)
+    _replace_admin_access(db, group, values)
     db.flush()
     users = (
         db.query(User)
@@ -308,12 +410,13 @@ def host_scopes(
     )
     if not group_ids:
         return result
-    active_groups = {
-        row[0]
-        for row in db.query(AccessGroup.id)
+    active_group_rows = (
+        db.query(AccessGroup.id, AccessGroup.owner_admin_id)
         .filter(AccessGroup.id.in_(group_ids), AccessGroup.archived_at.is_(None))
         .all()
-    }
+    )
+    active_groups = {row[0] for row in active_group_rows}
+    group_owners = {row[0]: row[1] for row in active_group_rows}
     group_inbounds = {group_id: set() for group_id in active_groups}
     for group_id, tag in (
         db.query(AccessGroupInbound.access_group_id, AccessGroupInbound.inbound_tag)
@@ -352,6 +455,15 @@ def host_scopes(
         .filter(MarzhelpAdminSettings.admin_id.in_(admin_ids))
         .all()
     }
+    permission_rows = (
+        db.query(AccessGroupAdminAccess.access_group_id, AccessGroupAdminAccess.admin_id)
+        .filter(AccessGroupAdminAccess.access_group_id.in_(active_groups))
+        .all()
+    )
+    restricted_groups = {row[0] for row in permission_rows}
+    allowed_admins_by_group: dict[int, set[int]] = {}
+    for group_id, admin_id in permission_rows:
+        allowed_admins_by_group.setdefault(group_id, set()).add(admin_id)
     configured = set(xray.config.inbounds_by_tag)
     for user in users:
         group_id = user.access_group_id
@@ -365,8 +477,14 @@ def host_scopes(
             if settings is not None and settings.all_inbounds
             else set(settings.allowed_inbounds or []) if settings is not None else set()
         )
+        permission_valid = (
+            group_id not in restricted_groups
+            or user.admin_id == group_owners.get(group_id)
+            or user.admin_id in allowed_admins_by_group.get(group_id, set())
+        )
         valid = (
-            bool(inbounds)
+            permission_valid
+            and bool(inbounds)
             and set(hosts) == inbounds
             and all(hosts.get(tag) for tag in inbounds)
             and inbounds <= configured
@@ -388,10 +506,10 @@ def user_node_scope(user: User) -> set[int] | None:
     db = object_session(user)
     if db is None:
         return set()
-    group = db.get(AccessGroup, user.access_group_id)
-    if group is None or group.archived_at is not None:
+    try:
+        _, _, nodes = validated_scope(db, user.access_group_id, user.admin_id)
+    except admin_hierarchy.HierarchyError:
         return set()
-    nodes = _scope(db, group.id)[2]
     return nodes or None
 
 

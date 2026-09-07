@@ -51,7 +51,7 @@ import { Controller, FormProvider, useForm, useWatch } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "react-query";
 import { fetch } from "service/http";
-import { AccountSummary, AdminCapabilities, ManagedAdmin, ManagedAdminList, SubscriptionMode } from "types/Admin";
+import { AccessGroup, AccountSummary, AdminCapabilities, ManagedAdmin, ManagedAdminList, SubscriptionMode } from "types/Admin";
 import {
   ProxyKeys,
   ProxyType,
@@ -149,6 +149,7 @@ const getDefaultValues = (): FormType => {
     note: "",
     concurrent_user_limit: null,
     owner_admin: "",
+    access_group_id: null,
     inbounds,
     proxies: {
       vless: { id: "", flow: "" },
@@ -213,6 +214,10 @@ const baseSchema = {
     z.number().int().min(1).nullable()
   ),
   owner_admin: z.string(),
+  access_group_id: z.preprocess(
+    (value) => value === "" || value === null || value === undefined ? null : Number(value),
+    z.number().int().positive().nullable()
+  ),
   inbounds: z.record(z.string(), z.array(z.string())).transform((ins) => {
     Object.keys(ins).forEach((protocol) => {
       if (Array.isArray(ins[protocol]) && !ins[protocol]?.length)
@@ -363,6 +368,11 @@ export const UserDialog: FC<UserDialogProps> = () => {
     () => fetch("/account/summary"),
     { enabled: isOpen, staleTime: 30000 }
   );
+  const accessGroupsQuery = useQuery<AccessGroup[], Error>(
+    ["access-groups", "free-form"],
+    () => fetch("/access-groups"),
+    { enabled: isOpen && !isEditing, staleTime: 30000 }
+  );
   const formModeAllowed = ["FREE_FORM", "FORM_ONLY", "BOTH"].includes(accountQuery.data?.user_creation_mode || "") && accountQuery.data?.billing_mode !== "USER_CREDIT";
   const customCreateAllowed = isEditing || formModeAllowed;
   const planOnlyEditLocked = Boolean(
@@ -394,6 +404,10 @@ export const UserDialog: FC<UserDialogProps> = () => {
   const selectedOwner = adminsQuery.data?.find(
     (admin) => admin.username === ownerAdmin
   );
+  const visibleAccessGroups = (accessGroupsQuery.data || []).filter((group) => {
+    if (!userData.is_sudo || !selectedOwner) return true;
+    return group.allowed_admin_ids.length === 0 || group.allowed_admin_ids.includes(selectedOwner.id);
+  });
   const effectiveCapabilities: AdminCapabilities = selectedOwner
     ? {
       ...unrestrictedCapabilities,
@@ -516,6 +530,7 @@ export const UserDialog: FC<UserDialogProps> = () => {
         data_limit: values.data_limit,
         expire: values.expire,
         note: values.note,
+        access_group_id: values.access_group_id,
       }
       : {
         ...rest,
@@ -831,6 +846,33 @@ export const UserDialog: FC<UserDialogProps> = () => {
                               })
                               : t("userDialog.ownerAdminHelp")}
                           </FormHelperText>
+                        </FormControl>
+                      )}
+                      {!isEditing && (
+                        <FormControl mb="10px" isInvalid={!!form.formState.errors.access_group_id}>
+                          <FormLabel>Access Group</FormLabel>
+                          <Controller
+                            control={form.control}
+                            name="access_group_id"
+                            render={({ field }) => (
+                              <Select
+                                size="sm"
+                                minH="44px"
+                                value={field.value ?? ""}
+                                onChange={(event) => field.onChange(event.target.value === "" ? null : Number(event.target.value))}
+                                isDisabled={disabled || accessGroupsQuery.isLoading}
+                              >
+                                <option value="">بدون Access Group</option>
+                                {visibleAccessGroups.map((group) => (
+                                  <option key={group.id} value={group.id}>{group.name}</option>
+                                ))}
+                              </Select>
+                            )}
+                          />
+                          <FormHelperText>
+                            فقط گروه‌های مجاز برای ادمین نهایی نمایش داده می‌شوند. با انتخاب گروه، Inbound/Host/Node آن در Backend مرجع نهایی شبکه است.
+                          </FormHelperText>
+                          <FormErrorMessage>{form.formState.errors.access_group_id?.message}</FormErrorMessage>
                         </FormControl>
                       )}
                       <Divider my={2} borderColor="#33483b" />

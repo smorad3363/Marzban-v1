@@ -141,6 +141,7 @@ class User(BaseModel):
 class UserCreate(User):
     username: str
     status: UserStatusCreate = None
+    access_group_id: Optional[int] = Field(default=None, gt=0)
     model_config = ConfigDict(json_schema_extra={
         "example": {
             "username": "user1234",

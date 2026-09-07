@@ -29,6 +29,7 @@ from app.models.user import (
     UserUsagesResponse,
 )
 from app.utils import (
+    access_groups,
     admin_billing,
     admin_hierarchy,
     admin_plans,
@@ -119,6 +120,8 @@ def add_user(
 
     try:
         dbuser = crud.create_user(db, new_user, admin=dbadmin, commit=False)
+        if new_user.access_group_id is not None:
+            access_groups.apply_to_user(db, dbuser, new_user.access_group_id)
         if dbadmin is not None:
             money_billing.charge_form_purchase(
                 db,
@@ -786,6 +789,8 @@ def set_owner(
     )
     try:
         dbuser = crud.set_owner(db, dbuser, new_admin, commit=False)
+        if dbuser.access_group_id is not None:
+            access_groups.apply_to_user(db, dbuser, dbuser.access_group_id)
         user = admin_plans.scoped_user_response(
             db, dbuser, actor=crud.get_admin(db, admin.username) or admin
         )

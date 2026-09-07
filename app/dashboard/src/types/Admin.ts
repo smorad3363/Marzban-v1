@@ -196,6 +196,7 @@ export type AccessGroup = {
   node_ids: number[];
   inbounds: string[];
   hosts: Record<string, number[]>;
+  allowed_admin_ids: number[];
   archived_at: string | null;
   active_user_count: number;
 };
