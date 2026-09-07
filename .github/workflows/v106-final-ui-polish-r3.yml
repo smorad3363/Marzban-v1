@@ -1,0 +1,143 @@
+name: Finalize v1.0.6 palette consistency r3
+on:
+  push:
+    branches: [release/v1.0.6-integration]
+    paths: [.github/workflows/v106-final-ui-polish-r3.yml]
+permissions:
+  contents: write
+jobs:
+  polish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: release/v1.0.6-integration
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: app/dashboard/package-lock.json
+      - name: Apply token-only palette cleanup
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace(path, pairs):
+              p = Path(path)
+              s = p.read_text(encoding='utf-8')
+              for old, new in pairs:
+                  s = s.replace(old, new)
+              # Keep touched source files git-clean; prior retry exposed whitespace
+              # left behind when an obsolete Chakra _dark block was removed.
+              s = "\n".join(line.rstrip() for line in s.splitlines()) + "\n"
+              p.write_text(s, encoding='utf-8')
+
+          replace('app/dashboard/src/components/UserDialog.tsx', [
+              ('color="gold.300"', 'color="var(--panel-accent)"'),
+              ('borderTopColor="gold.400"', 'borderTopColor="var(--panel-accent)"'),
+              ('bg="surface.dark"', 'bg="var(--panel-surface)"'),
+              ('bgGradient="linear(to-r, rgba(202,165,61,.08), transparent 48%)"', 'bg="var(--panel-surface)"'),
+              ('<Icon color="gold">', '<Icon color="var(--panel-accent)">'),
+              ('<EditUserIcon color="white" />', '<EditUserIcon />'),
+              ('<AddUserIcon color="white" />', '<AddUserIcon />'),
+              ('<Badge colorScheme="gold" variant="subtle" borderRadius="full" px={2.5} textTransform="none">', '<Badge variant="outline" color="var(--panel-accent)" borderColor="var(--panel-accent-border)" bg="var(--panel-accent-soft)" borderRadius="full" px={2.5} textTransform="none">'),
+          ])
+
+          replace('app/dashboard/src/components/RadioGroup.tsx', [
+              ('borderRadius="8px"', 'borderRadius="12px"'),
+              ('borderRadius="10px"', 'borderRadius="12px"'),
+              ('borderColor={"gray.200"}', 'borderColor="var(--panel-border)"'),
+              ('_dark={{\n          borderColor: "gray.600",\n        }}', ''),
+              ('bg: "gold.50"', 'bg: "var(--panel-accent-soft)"'),
+              ('outlineColor: "gold.400"', 'outlineColor: "var(--panel-accent)"'),
+              ('bg: "gold.900"', 'bg: "var(--panel-accent-soft)"'),
+              ('borderColor: "gold.600"', 'borderColor: "var(--panel-accent-border)"'),
+              ('borderColor: "gold.300"', 'borderColor: "var(--panel-accent-border)"'),
+              ('borderColor: "gold.700"', 'borderColor: "var(--panel-accent-border)"'),
+              ('color="gold.200"', 'color="var(--panel-accent)"'),
+              ('bg="yellow.500"', 'bg="var(--panel-warning)"'),
+              ('borderColor="gray.200"', 'borderColor="var(--panel-border)"'),
+              ('bg={shouldBeDisabled ? "gray.100" : "transparent"}', 'bg={shouldBeDisabled ? "var(--panel-muted-soft)" : "transparent"}'),
+              ('_dark={{\n        borderColor: "gray.600",\n        bg: shouldBeDisabled ? "#364154" : "transparent",\n      }}', ''),
+              ('color={shouldBeDisabled ? "gray.400" : "gray.700"}\n            _dark={{ color: shouldBeDisabled ? "gray.500" : "gray.300" }}', 'color={shouldBeDisabled ? "var(--panel-text-muted)" : "var(--panel-text)"}'),
+              ('color={shouldBeDisabled ? "gray.400" : "gray.600"}\n            _dark={{ color: shouldBeDisabled ? "gray.500" : "gray.400" }}', 'color={shouldBeDisabled ? "var(--panel-text-muted)" : "var(--panel-text-body)"}'),
+          ])
+
+          replace('app/dashboard/src/pages/Plans.tsx', [
+              ('<Badge colorScheme="purple" px={3} py={1.5}>', '<Badge variant="outline" color="var(--panel-accent)" borderColor="var(--panel-accent-border)" bg="var(--panel-accent-soft)" px={3} py={1.5}>'),
+              ('<Badge colorScheme="cyan">نسخه {plan.version_number}</Badge>', '<Badge variant="outline" color="var(--panel-accent)" borderColor="var(--panel-accent-border)" bg="var(--panel-accent-soft)">نسخه {plan.version_number}</Badge>'),
+              ('<Badge colorScheme="purple">{plan.category_name || "بدون دسته"}</Badge>', '<Badge variant="outline" color="var(--panel-text-body)" borderColor="var(--panel-border)" bg="var(--panel-muted-soft)">{plan.category_name || "بدون دسته"}</Badge>'),
+          ])
+
+          replace('app/dashboard/src/components/AccessGroupManager.tsx', [
+              ('<Badge colorScheme="cyan">{group.active_user_count} کاربر فعال</Badge>', '<Badge variant="outline" color="var(--panel-success)" borderColor="var(--panel-success-border)" bg="var(--panel-success-soft)">{group.active_user_count} کاربر فعال</Badge>'),
+              ('<Badge colorScheme="purple">{group.allowed_admin_ids.length ? `${group.allowed_admin_ids.length} ادمین مجاز` : "همه ادمین‌ها"}</Badge>', '<Badge variant="outline" color="var(--panel-accent)" borderColor="var(--panel-accent-border)" bg="var(--panel-accent-soft)">{group.allowed_admin_ids.length ? `${group.allowed_admin_ids.length} ادمین مجاز` : "همه ادمین‌ها"}</Badge>'),
+          ])
+
+          replace('app/dashboard/src/pages/admins/AdminUi.tsx', [
+              ('tone = "gray.100"', 'tone = "var(--panel-text)"'),
+              ('bg={owner ? "rgba(139,92,246,.14)" : "rgba(37,99,235,.14)"}', 'bg={owner ? "var(--panel-accent-soft)" : "var(--panel-muted-soft)"}'),
+              ('borderColor={owner ? "rgba(167,139,250,.28)" : "rgba(96,165,250,.28)"}', 'borderColor={owner ? "var(--panel-accent-border)" : "var(--panel-border)"}'),
+              ('color={owner ? "purple.200" : "blue.200"}', 'color={owner ? "var(--panel-accent)" : "var(--panel-text-body)"}'),
+              ('_groupHover={{ transform: "translateY(-1px)", borderColor: owner ? "purple.400" : "blue.400" }}', '_groupHover={{ transform: "translateY(-1px)", borderColor: "var(--panel-accent)" }}'),
+              ('borderColor: active ? "blue.400" : "rgba(148,163,184,.34)"', 'borderColor: active ? "var(--panel-accent)" : "var(--panel-border-strong)"'),
+              ('tone = "gray.200"', 'tone = "var(--panel-text-body)"'),
+              ('borderColor="rgba(148,163,184,.12)"', 'borderColor="var(--panel-border)"'),
+              ('bg="rgba(255,255,255,.025)"', 'bg="var(--panel-muted-soft)"'),
+          ])
+
+          p = Path('app/dashboard/src/pages/admins/AdminTable.tsx')
+          s = p.read_text(encoding='utf-8')
+          replacements = {
+              '<Badge variant="subtle" colorScheme={isItemOwner ? "purple" : "blue"} fontSize="11px" textTransform="none">': '<Badge variant="outline" color={isItemOwner ? "var(--panel-accent)" : "var(--panel-text-body)"} borderColor={isItemOwner ? "var(--panel-accent-border)" : "var(--panel-border)"} bg={isItemOwner ? "var(--panel-accent-soft)" : "var(--panel-muted-soft)"} fontSize="11px" textTransform="none">',
+              'borderColor="rgba(148,163,184,.25)"':'borderColor="var(--panel-border)"',
+              'color="red.100"':'color="var(--panel-danger)"', 'color="red.200"':'color="var(--panel-danger)"', 'color="red.300"':'color="var(--panel-danger)"',
+              'color="green.100"':'color="var(--panel-success)"', 'color="green.200"':'color="var(--panel-success)"', 'color="green.300"':'color="var(--panel-success)"',
+              'color="blue.100"':'color="var(--panel-accent)"', 'color="orange.200"':'color="var(--panel-warning)"', 'color="cyan.200"':'color="var(--panel-info)"',
+              '"red.300"':'"var(--panel-danger)"', '"green.300"':'"var(--panel-success)"', '"orange.300"':'"var(--panel-warning)"',
+              'rgba(239,68,68,.16)':'var(--panel-danger-soft)', 'rgba(239,68,68,.25)':'var(--panel-danger-soft)', 'rgba(239,68,68,.11)':'var(--panel-danger-soft)', 'rgba(239,68,68,.19)':'var(--panel-danger-soft)',
+              'rgba(248,113,113,.30)':'var(--panel-danger-border)', 'rgba(248,113,113,.48)':'var(--panel-danger-border)', 'rgba(248,113,113,.18)':'var(--panel-danger-border)',
+              'rgba(34,197,94,.16)':'var(--panel-success-soft)', 'rgba(34,197,94,.25)':'var(--panel-success-soft)', 'rgba(34,197,94,.10)':'var(--panel-success-soft)', 'rgba(34,197,94,.18)':'var(--panel-success-soft)',
+              'rgba(74,222,128,.30)':'var(--panel-success-border)', 'rgba(74,222,128,.18)':'var(--panel-success-border)',
+              'rgba(37,99,235,.18)':'var(--panel-accent-soft)', 'rgba(37,99,235,.28)':'var(--panel-accent-soft-strong)', 'rgba(96,165,250,.22)':'var(--panel-accent-border)',
+              'rgba(245,158,11,.12)':'var(--panel-warning-soft)', 'rgba(245,158,11,.20)':'var(--panel-warning-soft)',
+              'rgba(6,182,212,.10)':'var(--panel-info-soft)', 'rgba(6,182,212,.18)':'var(--panel-info-soft)', 'rgba(34,211,238,.18)':'var(--panel-info-border)',
+          }
+          for old, new in replacements.items(): s = s.replace(old, new)
+          s = "\n".join(line.rstrip() for line in s.splitlines()) + "\n"
+          p.write_text(s, encoding='utf-8')
+
+          replace('app/dashboard/src/pages/admins/AdminsPage.tsx', [
+              ('boxShadow: "0 8px 24px rgba(37,99,235,.20)"', 'boxShadow: "0 8px 24px var(--panel-accent-soft-strong)"'),
+              ('bg="rgba(37,99,235,.18)" borderWidth="1px" borderColor="rgba(96,165,250,.25)" color="blue.100"', 'bg="var(--panel-accent-soft)" borderWidth="1px" borderColor="var(--panel-accent-border)" color="var(--panel-accent)"'),
+          ])
+          PY
+      - name: Assert affected UI uses unified palette
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -RInE 'gold\.|colorScheme="gold"|colorScheme="purple"|purple\.' app/dashboard/src/components/UserDialog.tsx app/dashboard/src/components/RadioGroup.tsx app/dashboard/src/components/AccessGroupManager.tsx app/dashboard/src/pages/Plans.tsx app/dashboard/src/pages/admins --include='*.tsx'
+          ! grep -RIn 'surface.dark' app/dashboard/src/components/UserDialog.tsx
+      - name: Install and verify dashboard
+        working-directory: app/dashboard
+        run: |
+          npm ci
+          node scripts/test-access-groups.cjs
+          node scripts/test-admin-ux.cjs
+          node scripts/test-v106-ui.cjs
+          rm -rf build
+          VITE_BASE_API=/api/ npm run build --if-present -- --outDir build --assetsDir statics
+          test -s build/index.html
+          test -s build/404.html
+      - name: Commit verified palette cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/dashboard/src app/dashboard/build
+          git diff --cached --check
+          git commit -m "ui: unify dashboard palette tokens"
+          git push origin HEAD:release/v1.0.6-integration
