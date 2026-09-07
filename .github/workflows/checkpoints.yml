@@ -73,7 +73,6 @@ jobs:
           tests/test_mysql_device_limit_migration.py
           tests/test_mysql_admin_hierarchy_migration.py
       - name: Verify Stage 8-11 isolated MySQL evidence
-        if: ${{ matrix.mysql-image == 'mysql:8.0' }}
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -99,7 +98,7 @@ jobs:
           run_isolated_test 11 tests/test_mysql_stage11_operations.py
 
   dashboard:
-    name: dashboard build
+    name: dashboard build and parity
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -110,8 +109,13 @@ jobs:
           cache-dependency-path: app/dashboard/package-lock.json
       - working-directory: app/dashboard
         run: npm ci
-      - working-directory: app/dashboard
-        run: npm run build
+      - name: Build dashboard from source
+        working-directory: app/dashboard
+        run: VITE_BASE_API=/api/ npm run build
+      - name: Verify dashboard build output
+        run: test -f app/dashboard/build/index.html && test -f app/dashboard/build/404.html
+      - name: Verify committed dashboard build parity
+        run: git diff --exit-code -- app/dashboard/build
 
   packaging:
     name: installer, panel compose and node contracts
