@@ -71,7 +71,9 @@ def test_mysql_stage9_migration_aggregate_and_query_plans(monkeypatch):
         assert "phone" not in {item["name"] for item in sa.inspect(connection).get_columns("admins")}
         module.upgrade()
         inspector = sa.inspect(connection)
-        assert connection.execute(sa.text("SELECT VERSION()" )).scalar().startswith("8.0.")
+        assert connection.execute(sa.text("SELECT VERSION()" )).scalar().startswith(
+            os.getenv("TEST_MYSQL_VERSION_PREFIX", "8.0.")
+        )
         assert connection.execute(sa.text("SHOW TABLE STATUS LIKE 'users'" )).mappings().one()["Engine"] == "InnoDB"
         assert "phone" in {item["name"] for item in inspector.get_columns("admins")}
         indexes = {item["name"] for item in inspector.get_indexes("users")}
