@@ -1,0 +1,129 @@
+name: Prepare v1.0.7 integration
+
+on:
+  push:
+    branches: [release/v1.0.7-integration]
+    paths: [.github/workflows/v107-prepare.yml]
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout integration branch
+        uses: actions/checkout@v4
+        with:
+          ref: release/v1.0.7-integration
+          fetch-depth: 0
+
+      - name: Apply reviewed Node and Dashboard integration
+        run: python .github/scripts/prepare_v107.py
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: app/dashboard/package-lock.json
+
+      - name: Install dashboard dependencies
+        working-directory: app/dashboard
+        run: npm ci
+
+      - name: Verify dashboard contracts
+        working-directory: app/dashboard
+        run: |
+          set -Eeuo pipefail
+          node scripts/test-access-groups.cjs
+          node scripts/test-admin-ux.cjs
+          node scripts/test-v106-ui.cjs
+          node scripts/test-v107-ui.cjs
+
+      - name: Build dashboard
+        working-directory: app/dashboard
+        run: npm run build
+
+      - name: Verify source hygiene and intended scope
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git diff --check
+          python - <<'PY'
+          import subprocess
+          allowed = {
+              'VERSION', 'app/__init__.py', 'docker-compose.yml', 'scripts/marzban.sh',
+              'README.md', 'README-fa.md', 'tests/test_release_contract.py',
+              'tests/test_installer_v1_contract.sh', 'docs/RELEASE_NOTES_v1.0.7.md',
+              'app/dashboard/scripts/test-v106-ui.cjs', 'app/dashboard/scripts/test-v107-ui.cjs',
+              'app/dashboard/src/components/NodesManagementWorkspace.tsx',
+              'app/dashboard/src/components/NodesModal.tsx',
+              'app/dashboard/src/components/FiltersCompact.tsx',
+              'app/dashboard/src/components/BulkUserActions.tsx',
+              'app/dashboard/src/components/UsersTablePro.tsx',
+              'app/dashboard/src/components/UserDeviceLimit.tsx',
+              'app/dashboard/src/components/AccessGroupManager.tsx',
+              'app/dashboard/src/pages/Dashboard.tsx',
+              'app/dashboard/src/pages/Plans.tsx',
+          }
+          changed = subprocess.check_output(['git','diff','--name-only'], text=True).splitlines()
+          bad = [p for p in changed if p not in allowed and not p.startswith('app/dashboard/build/')]
+          if bad:
+              raise SystemExit('unexpected changed files: ' + ', '.join(bad))
+          print('\n'.join(changed))
+          PY
+
+      - name: Commit verified v1.0.7 product tree
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            VERSION app/__init__.py docker-compose.yml scripts/marzban.sh README.md README-fa.md \
+            tests/test_release_contract.py tests/test_installer_v1_contract.sh \
+            docs/RELEASE_NOTES_v1.0.7.md \
+            app/dashboard/scripts/test-v106-ui.cjs app/dashboard/scripts/test-v107-ui.cjs \
+            app/dashboard/src/components/NodesManagementWorkspace.tsx \
+            app/dashboard/src/components/NodesModal.tsx \
+            app/dashboard/src/components/FiltersCompact.tsx \
+            app/dashboard/src/components/BulkUserActions.tsx \
+            app/dashboard/src/components/UsersTablePro.tsx \
+            app/dashboard/src/components/UserDeviceLimit.tsx \
+            app/dashboard/src/components/AccessGroupManager.tsx \
+            app/dashboard/src/pages/Dashboard.tsx app/dashboard/src/pages/Plans.tsx \
+            app/dashboard/build
+          git diff --cached --quiet && { echo "No product changes staged"; exit 1; }
+          git commit -m "release: prepare v1.0.7 node and dashboard integration"
+          git push origin HEAD:release/v1.0.7-integration
+          echo "PRODUCT_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Dispatch official backend compatibility suite
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          gh workflow run build.yml \
+            --ref release/v1.0.7-integration \
+            -f git_ref=release/v1.0.7-integration \
+            -f image_tag=v1.0.7 \
+            -f tests_only=true
+          for attempt in $(seq 1 30); do
+            run_id="$(gh run list --workflow build.yml --branch release/v1.0.7-integration --event workflow_dispatch --limit 10 --json databaseId,headSha --jq '.[] | select(.headSha == env.PRODUCT_SHA) | .databaseId' | head -1)"
+            if [ -n "$run_id" ]; then
+              echo "OFFICIAL_RUN_ID=$run_id" >> "$GITHUB_ENV"
+              echo "Official compatibility run: $run_id"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Could not resolve official compatibility run" >&2
+          exit 1
+
+      - name: Wait for official compatibility suite
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run watch "$OFFICIAL_RUN_ID" --exit-status
