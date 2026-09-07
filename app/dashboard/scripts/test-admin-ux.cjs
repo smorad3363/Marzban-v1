@@ -113,7 +113,7 @@ assert.ok(!dashboard.includes("مرکز مدیریت کاربران و سروی�
 assert.ok(dashboard.includes("{isOwner && <NodeBandwidthPanel />}"), "Owner dashboard must render the real node bandwidth panel");
 assert.ok(nodeBandwidthPanel.includes('fetch("/nodes/bandwidth")'), "node bandwidth panel must use the real bounded node bandwidth endpoint");
 assert.ok(compactOverview.includes("var(--panel-accent)") && !compactOverview.includes('tone="blue.200"'), "compact dashboard accents must follow the selected panel palette");
-assert.ok(dashboardStyles.includes("dashboard palette normalization") && dashboardStyles.includes("--panel-accent-soft") && dashboardStyles.includes('html[data-panel-theme="black_gold"]'), "dashboard palette tokens must define coherent blue and black-gold themes");
+assert.ok(dashboardStyles.includes("v1.0.6 unified visual language") && dashboardStyles.includes("--panel-accent-soft") && dashboardStyles.includes("--panel-sidebar") && !dashboardStyles.includes('html[data-panel-theme="black_gold"]'), "dashboard palette tokens must define only coherent light and dark themes");
 assert.ok(overview.includes('<Chart type="bar"') && overview.includes('<Chart type="donut"'), "dashboard must include compact charts");
 assert.ok(overview.includes('/account/activity?limit=5'), "dashboard recent activity must use the bounded cursor endpoint");
 assert.ok(overview.includes('trafficModes.length > 1'), "billing-mode chart must stay hidden when it would add no comparison value");
@@ -131,7 +131,7 @@ assert.ok(usersTable.includes("CreateUserFromPlan") && !usersTable.includes('to=
 assert.ok(usersTable.includes('account.data?.account_status !== "ACTIVE"'), "suspended Admin user table must be read-only");
 assert.ok(usersTablePro.includes('tableLayout: "fixed"') && !usersTablePro.includes('minW="1680px"'), "dense user table must fit the available desktop width without a forced minimum width");
 assert.ok(usersTablePro.includes('overflowX="hidden"'), "dense user table container must not render a desktop horizontal scrollbar");
-assert.ok(usersTablePro.includes('flexWrap="wrap"'), "direct user actions must wrap inside their cell instead of widening the table");
+assert.ok(usersTablePro.includes("<MenuButton") && usersTablePro.includes("عملیات بیشتر") && usersTablePro.includes('label="کپی لینک اشتراک"') && usersTablePro.includes('label="حذف کاربر"'), "user row must keep primary actions direct and move secondary actions into a compact overflow menu");
 assert.ok(overview.includes('accountData?.account_status === "ACTIVE"'), "suspended Admin dashboard actions must be hidden");
 assert.ok(userDialog.includes('insetInlineStart={3}'), "RTL modal close button must stay opposite the title");
 assert.ok(userDialog.includes('my="3"'), "user modal must reserve top and bottom viewport margins");

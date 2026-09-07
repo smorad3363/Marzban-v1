@@ -22,7 +22,7 @@ dayjs.extend(utc);
 dayjs.extend(RelativeTime);
 dayjs.extend(Duration);
 
-document.documentElement.dataset.panelTheme = document.documentElement.dataset.panelTheme || "heisenberg";
+document.documentElement.dataset.panelTheme = "standard";
 updateThemeColor(document.documentElement.classList.contains("chakra-ui-dark") ? "dark" : "light");
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(

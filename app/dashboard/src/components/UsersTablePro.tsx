@@ -3,8 +3,12 @@ import {
   Box,
   Button,
   Checkbox,
-  CircularProgress,
-  CircularProgressLabel,
+  Menu,
+  MenuButton,
+  MenuDivider,
+  MenuItem,
+  MenuList,
+  Progress,
   HStack,
   IconButton,
   Modal,
@@ -33,6 +37,7 @@ import {
   ArrowPathIcon,
   ClipboardDocumentIcon,
   DocumentMagnifyingGlassIcon,
+  EllipsisVerticalIcon,
   LinkIcon,
   PauseIcon,
   PencilSquareIcon,
@@ -65,16 +70,17 @@ const ResetIcon = chakra(ArrowPathIcon, { baseStyle: { w: 4, h: 4 } });
 const RevokeIcon = chakra(LinkIcon, { baseStyle: { w: 4, h: 4 } });
 const DeleteIcon = chakra(TrashIcon, { baseStyle: { w: 4, h: 4 } });
 const AuditIcon = chakra(DocumentMagnifyingGlassIcon, { baseStyle: { w: 4, h: 4 } });
+const MoreIcon = chakra(EllipsisVerticalIcon, { baseStyle: { w: 4, h: 4 } });
 
-const statusMeta: Record<User["status"], { label: string; color: string; bg: string }> = {
-  active: { label: "فعال", color: "green.200", bg: "rgba(34,197,94,.12)" },
-  connected: { label: "فعال", color: "green.200", bg: "rgba(34,197,94,.12)" },
-  connecting: { label: "در اتصال", color: "var(--panel-accent)", bg: "var(--panel-accent-soft)" },
-  on_hold: { label: "در انتظار", color: "yellow.200", bg: "rgba(234,179,8,.12)" },
-  disabled: { label: "غیرفعال", color: "red.200", bg: "rgba(239,68,68,.12)" },
-  expired: { label: "منقضی", color: "red.200", bg: "rgba(239,68,68,.12)" },
-  limited: { label: "محدود", color: "orange.200", bg: "rgba(249,115,22,.12)" },
-  error: { label: "خطا", color: "red.200", bg: "rgba(239,68,68,.12)" },
+const statusMeta: Record<User["status"], { label: string; color: string; bg: string; border: string; dot: string }> = {
+  active: { label: "فعال", color: "var(--panel-success)", bg: "var(--panel-success-soft)", border: "var(--panel-success-border)", dot: "var(--panel-success)" },
+  connected: { label: "فعال", color: "var(--panel-success)", bg: "var(--panel-success-soft)", border: "var(--panel-success-border)", dot: "var(--panel-success)" },
+  connecting: { label: "در اتصال", color: "var(--panel-info)", bg: "var(--panel-info-soft)", border: "var(--panel-info-border)", dot: "var(--panel-info)" },
+  on_hold: { label: "در انتظار", color: "var(--panel-warning)", bg: "var(--panel-warning-soft)", border: "var(--panel-warning-border)", dot: "var(--panel-warning)" },
+  disabled: { label: "غیرفعال", color: "var(--panel-text-muted)", bg: "var(--panel-muted-soft)", border: "var(--panel-border-strong)", dot: "var(--panel-text-muted)" },
+  expired: { label: "منقضی", color: "var(--panel-danger)", bg: "var(--panel-danger-soft)", border: "var(--panel-danger-border)", dot: "var(--panel-danger)" },
+  limited: { label: "محدود", color: "var(--panel-warning)", bg: "var(--panel-warning-soft)", border: "var(--panel-warning-border)", dot: "var(--panel-warning)" },
+  error: { label: "خطا", color: "var(--panel-danger)", bg: "var(--panel-danger-soft)", border: "var(--panel-danger-border)", dot: "var(--panel-danger)" },
 };
 
 const fmtDateTime = (value: string | null | undefined) => {
@@ -109,26 +115,30 @@ const UsageCell: FC<{ user: User }> = ({ user }) => {
   const percent = unlimited ? 0 : Math.min(100, Math.max(0, (used / Math.max(user.data_limit || 1, 1)) * 100));
   const color = percent >= 90 ? "var(--panel-danger)" : percent >= 70 ? "var(--panel-warning)" : "var(--panel-success)";
   return (
-    <HStack spacing={1.5} minW={0} w="full" overflow="hidden">
-      <CircularProgress flexShrink={0} value={percent} size="36px" thickness="7px" color={unlimited ? "var(--panel-accent)" : color} trackColor="rgba(148,163,184,.13)" capIsRound>
-        <CircularProgressLabel dir="ltr" fontSize="10px" fontWeight="900">{unlimited ? "∞" : `${Math.round(percent)}%`}</CircularProgressLabel>
-      </CircularProgress>
-      <Box minW={0}>
+    <Stack spacing={1.5} minW={0} w="full">
+      <HStack justify="space-between" spacing={2} minW={0}>
         <Text dir="ltr" textAlign="start" fontSize="10px" fontWeight="800" noOfLines={1} sx={{ unicodeBidi: "isolate" }}>
           {String(formatBytes(used))} / {user.data_limit ? String(formatBytes(user.data_limit)) : "∞"}
         </Text>
-        <Text mt={1} color="gray.500" fontSize="9px">مصرف داده</Text>
-      </Box>
-    </HStack>
+        {unlimited ? (
+          <Box px={2} py={0.5} borderWidth="1px" borderColor="var(--panel-accent-border)" borderRadius="full" color="var(--panel-accent)" fontSize="11px" fontWeight="900">∞</Box>
+        ) : (
+          <Text color="var(--panel-text-muted)" fontSize="9px">{Math.round(percent)}٪</Text>
+        )}
+      </HStack>
+      {!unlimited && <Progress value={percent} h="4px" borderRadius="full" bg="var(--panel-nested)" sx={{ "& > div": { background: color } }} />}
+      <Text color="var(--panel-text-muted)" fontSize="9px">مصرف داده</Text>
+    </Stack>
   );
 };
 
 const StatusPill: FC<{ status: User["status"] }> = ({ status }) => {
   const meta = statusMeta[status];
   return (
-    <Badge px={2.5} py={1.5} borderRadius="full" bg={meta.bg} color={meta.color} textTransform="none" fontSize="10px" fontWeight="800">
-      {meta.label}
-    </Badge>
+    <HStack w="fit-content" spacing={1.5} px={2.5} py={1.25} borderRadius="full" bg={meta.bg} borderWidth="1px" borderColor={meta.border}>
+      <Box boxSize="6px" borderRadius="full" bg={meta.dot} />
+      <Text color={meta.color} fontSize="10px" fontWeight="750">{meta.label}</Text>
+    </HStack>
   );
 };
 
@@ -147,10 +157,10 @@ const Action: FC<{ label: string; icon: React.ReactElement; onClick: () => void;
         aria-label={label}
         icon={icon}
         size="xs"
-        minW="28px"
-        w="28px"
-        h="28px"
-        borderRadius="7px"
+        minW="32px"
+        w="32px"
+        h="32px"
+        borderRadius="12px"
         color={palette.color}
         bg={palette.bg}
         borderWidth="1px"
@@ -339,8 +349,8 @@ export const UsersTablePro: FC = () => {
         </Box>
       )}
 
-      <TableContainer overflowX="hidden" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="10px">
-        <Table size="sm" w="full" sx={{ tableLayout: "fixed", "th, td": { borderColor: "var(--panel-border)", px: 2, py: 2, overflow: "hidden" }, "th": { whiteSpace: "normal", lineHeight: 1.3 } }}>
+      <TableContainer overflowX="hidden" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="16px" bg="var(--panel-surface)" boxShadow="var(--shadow-panel)">
+        <Table size="sm" w="full" sx={{ tableLayout: "fixed", "th, td": { borderBottom: "0 !important", px: 3.5, py: 3, overflow: "hidden" }, "th": { whiteSpace: "normal", lineHeight: 1.45, fontWeight: 600, color: "var(--panel-text-muted)" } }}>
           <Thead bg="var(--panel-nested)">
             <Tr>
               {!readOnly && <Th w="36px"><Checkbox isChecked={allVisibleSelected} onChange={(event) => toggleAllVisible(event.target.checked)} colorScheme="primary" /></Th>}
@@ -366,9 +376,9 @@ export const UsersTablePro: FC = () => {
               return (
                 <Tr
                   key={user.username}
-                  bg={selectedMap.has(user.username) ? "var(--panel-accent-soft)" : "transparent"}
-                  transition="background .14s ease"
-                  _hover={{ bg: selectedMap.has(user.username) ? "var(--panel-accent-soft-strong)" : "var(--panel-row-hover)" }}
+                  data-selected={selectedMap.has(user.username) ? "true" : undefined}
+                  data-disabled={user.status === "disabled" ? "true" : undefined}
+                  transition="opacity .14s ease"
                 >
                   {!readOnly && <Td><Checkbox isChecked={selectedMap.has(user.username)} onChange={(event) => setSelected(user, event.target.checked)} colorScheme="primary" /></Td>}
                   <Td textAlign="center" fontWeight="800">{((filters.offset || 0) + index + 1).toLocaleString("fa-IR")}</Td>
@@ -415,16 +425,36 @@ export const UsersTablePro: FC = () => {
                     </Tooltip>
                   </Td>
                   <Td textAlign="end">
-                    <HStack justify="end" gap={1} rowGap={1} dir="ltr" flexWrap="wrap" maxW="full">
+                    <HStack justify="end" gap={1.5} dir="ltr" maxW="full">
                       <Action label="کپی لینک اشتراک" icon={<CopyIcon />} onClick={() => copySubscription(user)} tone="green" />
-                      <Action label="QR Code" icon={<QRIcon />} onClick={() => { setQRCode(user.links); setSubLink(user.subscription_url); }} tone="blue" />
-                      <Action label="گزارش فعالیت" icon={<AuditIcon />} onClick={() => navigate(`/audit-logs/?search=${encodeURIComponent(user.username)}`)} tone="gray" />
-                      {!readOnly && <Action label="تمدید با پلن" icon={<RenewIcon />} onClick={() => { renewalRequest.current = null; setRenewalUser(user); setRenewalPlanId(""); renewalModal.onOpen(); }} tone="blue" disabled={busy} />}
                       {!readOnly && <Action label="ویرایش" icon={<EditIcon />} onClick={() => onEditingUser(user)} tone="blue" disabled={busy} />}
-                      {!readOnly && <Action label={user.status === "disabled" ? "فعال‌سازی" : "غیرفعال‌سازی"} icon={user.status === "disabled" ? <PlayActionIcon /> : <PauseActionIcon />} onClick={() => toggleStatus(user)} tone={user.status === "disabled" ? "green" : "yellow"} disabled={busy} />}
-                      {!readOnly && <Action label="بازنشانی مصرف" icon={<ResetIcon />} onClick={() => resetUsage(user)} tone="gray" disabled={busy} />}
-                      {!readOnly && <Action label="ابطال لینک اشتراک" icon={<RevokeIcon />} onClick={() => revoke(user)} tone="yellow" disabled={busy} />}
                       {!readOnly && <Action label="حذف کاربر" icon={<DeleteIcon />} onClick={() => onDeletingUser(user)} tone="red" disabled={busy} />}
+                      <Menu placement="bottom-end" isLazy>
+                        <MenuButton
+                          as={IconButton}
+                          aria-label="عملیات بیشتر"
+                          icon={<MoreIcon />}
+                          size="xs"
+                          minW="32px"
+                          w="32px"
+                          h="32px"
+                          borderRadius="12px"
+                          color="var(--panel-text-body)"
+                          bg="var(--panel-nested)"
+                          borderWidth="1px"
+                          borderColor="var(--panel-border)"
+                          _hover={{ bg: "var(--panel-row-hover)" }}
+                        />
+                        <MenuList dir="rtl" minW="210px" bg="var(--panel-surface)" borderColor="var(--panel-border)" borderRadius="14px" boxShadow="var(--shadow-elevated)" py={1.5}>
+                          <MenuItem icon={<QRIcon />} onClick={() => { setQRCode(user.links); setSubLink(user.subscription_url); }}>QR Code</MenuItem>
+                          <MenuItem icon={<AuditIcon />} onClick={() => navigate(`/audit-logs/?search=${encodeURIComponent(user.username)}`)}>گزارش فعالیت</MenuItem>
+                          {!readOnly && <MenuDivider borderColor="var(--panel-border)" />}
+                          {!readOnly && <MenuItem icon={<RenewIcon />} isDisabled={busy} onClick={() => { renewalRequest.current = null; setRenewalUser(user); setRenewalPlanId(""); renewalModal.onOpen(); }}>تمدید با پلن</MenuItem>}
+                          {!readOnly && <MenuItem icon={user.status === "disabled" ? <PlayActionIcon /> : <PauseActionIcon />} isDisabled={busy} onClick={() => toggleStatus(user)}>{user.status === "disabled" ? "فعال‌سازی" : "غیرفعال‌سازی"}</MenuItem>}
+                          {!readOnly && <MenuItem icon={<ResetIcon />} isDisabled={busy} onClick={() => resetUsage(user)}>بازنشانی مصرف</MenuItem>}
+                          {!readOnly && <MenuItem icon={<RevokeIcon />} isDisabled={busy} onClick={() => revoke(user)}>ابطال لینک اشتراک</MenuItem>}
+                        </MenuList>
+                      </Menu>
                     </HStack>
                   </Td>
                 </Tr>
@@ -447,7 +477,7 @@ export const UsersTablePro: FC = () => {
         isCentered
       >
         <ModalOverlay bg="rgba(0,0,0,.72)" />
-        <ModalContent dir={i18n.dir()} mx={3} bg="#0c1524" color="gray.100" borderWidth="1px" borderColor="rgba(148,163,184,.16)" borderRadius="14px">
+        <ModalContent dir={i18n.dir()} mx={3} bg="var(--panel-surface)" color="var(--panel-text)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="16px">
           <ModalHeader>تمدید «{renewalUser?.username}» با پلن</ModalHeader>
           <ModalCloseButton isDisabled={renew.isLoading} />
           <ModalBody>
@@ -468,7 +498,7 @@ export const UsersTablePro: FC = () => {
           </ModalBody>
           <ModalFooter gap={3}>
             <Button variant="ghost" onClick={renewalModal.onClose} isDisabled={renew.isLoading}>انصراف</Button>
-            <Button colorScheme="primary" color="gray.900" isDisabled={!renewalUser || !renewalPlanId} isLoading={renew.isLoading} onClick={() => renewalUser && renewalPlanId && renew.mutate({ user: renewalUser, planId: Number(renewalPlanId) })}>تمدید</Button>
+            <Button colorScheme="primary" color="var(--panel-accent-contrast)" isDisabled={!renewalUser || !renewalPlanId} isLoading={renew.isLoading} onClick={() => renewalUser && renewalPlanId && renew.mutate({ user: renewalUser, planId: Number(renewalPlanId) })}>تمدید</Button>
           </ModalFooter>
         </ModalContent>
       </Modal>

@@ -13,24 +13,21 @@ export const billingModeLabels: Record<string, string> = {
 };
 
 export const panel = {
-  bg: "rgba(10,17,29,.84)",
-  borderColor: "rgba(148,163,184,.15)",
+  bg: "var(--panel-surface)",
+  borderColor: "var(--panel-border)",
 };
 
 export const control = {
-  bg: "rgba(2,8,23,.38)",
-  borderColor: "rgba(148,163,184,.20)",
-  _hover: { borderColor: "rgba(148,163,184,.34)" },
-  _focusVisible: {
-    borderColor: "blue.400",
-    boxShadow: "0 0 0 2px rgba(59,130,246,.14)",
-  },
+  bg: "var(--panel-surface)",
+  borderColor: "var(--panel-border)",
+  _hover: { borderColor: "var(--panel-border-strong)" },
+  _focusVisible: { borderColor: "var(--panel-accent)", boxShadow: "0 0 0 2px var(--panel-accent-soft)" },
 };
 
 const statusMeta = {
-  ACTIVE: { label: "فعال", dot: "#4ade80", text: "green.300", bg: "rgba(34,197,94,.10)" },
-  SUSPENDED: { label: "فریز", dot: "#f59e0b", text: "orange.300", bg: "rgba(245,158,11,.10)" },
-  DISABLED: { label: "غیرفعال", dot: "#94a3b8", text: "gray.300", bg: "rgba(148,163,184,.10)" },
+  ACTIVE: { label: "فعال", dot: "var(--panel-success)", text: "var(--panel-success)", bg: "var(--panel-success-soft)", border: "var(--panel-success-border)" },
+  SUSPENDED: { label: "فریز", dot: "var(--panel-warning)", text: "var(--panel-warning)", bg: "var(--panel-warning-soft)", border: "var(--panel-warning-border)" },
+  DISABLED: { label: "غیرفعال", dot: "var(--panel-text-muted)", text: "var(--panel-text-muted)", bg: "var(--panel-muted-soft)", border: "var(--panel-border-strong)" },
 } as const;
 
 export const SummaryStat: FC<{ label: string; value: string; hint: string; tone?: string }> = ({
@@ -45,7 +42,7 @@ export const SummaryStat: FC<{ label: string; value: string; hint: string; tone?
     bg={panel.bg}
     borderWidth="1px"
     borderColor={panel.borderColor}
-    borderRadius="14px"
+    borderRadius="16px"
     boxShadow="none"
   >
     <Text color="gray.400" fontSize="xs" fontWeight="700">{label}</Text>
@@ -63,7 +60,7 @@ export const AdminAvatar: FC<{ username: string; owner: boolean }> = ({ username
     h="38px"
     display="grid"
     placeItems="center"
-    borderRadius="11px"
+    borderRadius="12px"
     bg={owner ? "rgba(139,92,246,.14)" : "rgba(37,99,235,.14)"}
     borderWidth="1px"
     borderColor={owner ? "rgba(167,139,250,.28)" : "rgba(96,165,250,.28)"}
@@ -80,7 +77,7 @@ export const AdminAvatar: FC<{ username: string; owner: boolean }> = ({ username
 export const StatusPill: FC<{ status: keyof typeof statusMeta }> = ({ status }) => {
   const meta = statusMeta[status];
   return (
-    <HStack w="fit-content" spacing={1.5} px={2.5} py={1.5} bg={meta.bg} borderRadius="full">
+    <HStack w="fit-content" spacing={1.5} px={2.5} py={1.25} bg={meta.bg} borderWidth="1px" borderColor={meta.border} borderRadius="full">
       <Box boxSize="6px" borderRadius="full" bg={meta.dot} />
       <Text color={meta.text} fontSize="12px" fontWeight="800">{meta.label}</Text>
     </HStack>
@@ -92,16 +89,16 @@ export const FilterButton: FC<{ active: boolean; onClick: () => void; children: 
     size="sm"
     h="34px"
     px={3}
-    borderRadius="8px"
+    borderRadius="12px"
     variant="outline"
-    bg={active ? "rgba(37,99,235,.18)" : "transparent"}
-    borderColor={active ? "rgba(96,165,250,.55)" : "rgba(148,163,184,.18)"}
-    color={active ? "blue.100" : "gray.300"}
+    bg={active ? "var(--panel-accent-soft)" : "transparent"}
+    borderColor={active ? "var(--panel-accent-border)" : "var(--panel-border)"}
+    color={active ? "var(--panel-accent)" : "var(--panel-text-body)"}
     fontSize="12px"
     fontWeight={active ? "800" : "600"}
     transition="background .14s ease, border-color .14s ease, transform .14s ease"
     _hover={{
-      bg: active ? "rgba(37,99,235,.24)" : "whiteAlpha.100",
+      bg: active ? "var(--panel-accent-soft-strong)" : "var(--panel-row-hover)",
       borderColor: active ? "blue.400" : "rgba(148,163,184,.34)",
       transform: "translateY(-1px)",
     }}
@@ -120,7 +117,7 @@ export const DetailChip: FC<{ label: string; value: string; tone?: string }> = (
     borderWidth="1px"
     borderColor="rgba(148,163,184,.12)"
     bg="rgba(255,255,255,.025)"
-    borderRadius="7px"
+    borderRadius="12px"
     whiteSpace="nowrap"
   >
     <Text color="gray.500" fontSize="10px" fontWeight="700">{label}</Text>

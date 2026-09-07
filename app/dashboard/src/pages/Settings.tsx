@@ -21,7 +21,6 @@ import {
   Textarea,
   useToast,
 } from "@chakra-ui/react";
-import { AccessGroupManager } from "components/AccessGroupManager";
 import { AppShell } from "components/AppShell";
 import { ChangeEvent, FC, FormEvent, ReactNode, useEffect, useState } from "react";
 import { useMutation, useQuery } from "react-query";
@@ -67,7 +66,6 @@ type SectionItem = {
 
 const sections: SectionItem[] = [
   { id: "base-pricing", title: "قیمت‌گذاری پایه", caption: "فرم آزاد و مدت‌ها" },
-  { id: "access-groups", title: "گروه‌های دسترسی", caption: "شبکه و دسترسی کاربر" },
   { id: "backup", title: "پشتیبان‌گیری", caption: "بکاپ و بازیابی آفلاین" },
   { id: "branding", title: "هویت پنل", caption: "نام، لوگو و صفحه ورود" },
 ];
@@ -269,9 +267,9 @@ export const Settings: FC = () => {
         >
           <Stack spacing={2}>
             <Text color="primary.400" fontSize="xs" fontWeight="800" letterSpacing=".08em">
-              تنظیمات مالک پنل
+              پیکربندی مالک پنل
             </Text>
-            <Heading size="lg">تنظیمات</Heading>
+            <Heading size="lg">پیکربندی</Heading>
             <Text color="gray.600" _dark={{ color: "gray.400" }} maxW="820px" lineHeight="1.9">
               این صفحه فقط تنظیمات سراسری و واقعی سیستم را نگه می‌دارد. سیاست هر ادمین هنگام ساخت یا ویرایش همان ادمین
               تعیین می‌شود و پلن‌های تجاری نیز در صفحه پلن‌ها مدیریت می‌شوند.
@@ -433,13 +431,6 @@ export const Settings: FC = () => {
               )}
             </Section>
 
-            <Section
-              id="access-groups"
-              title="گروه‌های دسترسی"
-              description="مرجع مستقل دسترسی شبکه کاربران. Node، Inbound و Host فقط در این بخش به گروه دسترسی متصل می‌شوند و از شرایط تجاری پلن جدا هستند."
-            >
-              <AccessGroupManager />
-            </Section>
 
             <Section
               id="backup"

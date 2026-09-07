@@ -33,6 +33,7 @@ import {
   useDisclosure,
   useToast,
 } from "@chakra-ui/react";
+import { AccessGroupManager } from "components/AccessGroupManager";
 import { AppShell } from "components/AppShell";
 import useGetUser from "hooks/useGetUser";
 import { FC, FormEvent, useEffect, useRef, useState } from "react";
@@ -211,10 +212,10 @@ export const Plans: FC = () => {
     <AppShell>
       <Stack direction={{ base: "column", md: "row" }} justify="space-between" align={{ md: "end" }} gap={4} mb={6}>
         <Box><Text color="primary.300" fontSize="xs" fontWeight="800">اشتراک استاندارد</Text><Text as="h1" fontSize={{ base: "2xl", md: "3xl" }} fontWeight="800" mt={1}>پلن‌های کاربر</Text><Text color="gray.300" mt={1}>نسخه‌های تغییرناپذیر، دسترسی شاخه‌ای و ساخت کاربر بدون ورود دستی محدودیت‌ها.</Text></Box>
-        {canManage && <Button minH="44px" colorScheme="primary" color="#07130e" onClick={openCreate} isDisabled={(categories.data || []).length === 0}>پلن جدید</Button>}
+        {canManage && <Button minH="44px" colorScheme="primary" color="var(--panel-accent-contrast)" onClick={openCreate} isDisabled={(categories.data || []).length === 0}>پلن جدید</Button>}
       </Stack>
       {canManage && (
-        <Card p={5} mb={5} bg="#111d17" color="gray.100" borderWidth="1px" borderColor="#33483b" borderRadius="18px">
+        <Card p={5} mb={5} bg="var(--panel-surface)" color="var(--panel-text)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="16px">
           <Text fontWeight="800">دسته‌بندی پلن‌ها</Text>
           <Text color="gray.400" fontSize="sm" mt={1}>پلن و قیمت آن را همین‌جا تنظیم کنید؛ مدیرهای پلنی از فهرست فعال استفاده می‌کنند.</Text>
           <HStack mt={4} align="end" flexWrap="wrap">
@@ -271,7 +272,18 @@ export const Plans: FC = () => {
           ))}
         </SimpleGrid>
       )}
-      {!plans.isLoading && !plans.isError && (plans.data || []).length === 0 && <Card p={8} bg="#111d17" borderWidth="1px" borderColor="#33483b" textAlign="center"><Text fontWeight="700">پلنی در دسترس نیست.</Text><Text color="gray.400" mt={2}>Owner یا مدیر مجاز باید نخستین پلن را بسازد.</Text></Card>}
+      {account.data?.role === "OWNER" && (
+        <Card mt={6} p={{ base: 4, md: 5 }} bg="var(--panel-surface)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="16px">
+          <Stack spacing={1} mb={5}>
+            <Text color="var(--panel-accent)" fontSize="xs" fontWeight="800">دسترسی شبکه</Text>
+            <Text as="h2" fontSize="xl" fontWeight="800">Access Groups</Text>
+            <Text color="var(--panel-text-muted)" fontSize="sm">گروه دسترسی، Node / Inbound / Host و ادمین‌های مجاز را مشخص می‌کند و از شرایط تجاری پلن مستقل می‌ماند.</Text>
+          </Stack>
+          <AccessGroupManager />
+        </Card>
+      )}
+
+      {!plans.isLoading && !plans.isError && (plans.data || []).length === 0 && <Card p={8} bg="var(--panel-surface)" borderWidth="1px" borderColor="var(--panel-border)" textAlign="center"><Text fontWeight="700">پلنی در دسترس نیست.</Text><Text color="gray.400" mt={2}>Owner یا مدیر مجاز باید نخستین پلن را بسازد.</Text></Card>}
 
       <Modal isOpen={modal.isOpen} onClose={modal.onClose} size="2xl" scrollBehavior="inside"><ModalOverlay bg="rgba(0,0,0,.72)" /><ModalContent as="form" onSubmit={submit} mx={3} my={3} maxH="calc(100dvh - 24px)" overflow="hidden" bg="var(--panel-surface)" color="gray.100" borderWidth="1px" borderColor="var(--panel-border-strong)"><ModalHeader ps={14}>{editing ? "ساخت نسخه جدید" : "پلن جدید"}</ModalHeader><ModalCloseButton top={3} insetInlineStart={3} insetInlineEnd="auto" /><ModalBody overflowY="auto"><Stack spacing={4}>
         <FormControl isRequired><FormLabel>نام پلن</FormLabel><Input minH="44px" value={draft.name} isReadOnly={Boolean(editing)} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} /></FormControl>
@@ -280,7 +292,7 @@ export const Plans: FC = () => {
         {account.data?.role === "OWNER" && <FormControl><Checkbox minH="44px" alignItems="center" isChecked={draft.isTrial} isDisabled={Boolean(editing)} onChange={(event) => setDraft((current) => ({ ...current, isTrial: event.target.checked }))}>پلن آزمایشی</Checkbox><FormHelperText>مشخصات آزمایشی پس از ساخت تغییر نمی‌کند و هر ساخت موفق یک سهمیه تست مصرف می‌کند.</FormHelperText></FormControl>}
         <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}><FormControl isRequired><FormLabel>حجم (GiB)</FormLabel><Input minH="44px" type="number" min={0} step={0.01} dir="ltr" value={draft.dataGiB} onChange={(event) => setDraft((current) => ({ ...current, dataGiB: event.target.value }))} /></FormControl><FormControl isRequired={!draft.isTrial}><FormLabel>قیمت پلن (تومان)</FormLabel><Input minH="44px" type="number" min={0} step={1000} dir="ltr" value={draft.isTrial ? "0" : draft.priceToman} isDisabled={draft.isTrial} onChange={(event) => setDraft((current) => ({ ...current, priceToman: event.target.value }))} /></FormControl><FormControl isRequired><FormLabel>مدت (روز)</FormLabel><Input minH="44px" type="number" min={1} max={3650} dir="ltr" value={draft.durationDays} onChange={(event) => setDraft((current) => ({ ...current, durationDays: event.target.value }))} /></FormControl><FormControl><FormLabel>تعداد دستگاه</FormLabel><Input minH="44px" type="number" min={1} dir="ltr" value={draft.deviceLimit} onChange={(event) => setDraft((current) => ({ ...current, deviceLimit: event.target.value }))} /></FormControl><FormControl><FormLabel>ریست حجم</FormLabel><Select minH="44px" value={draft.resetStrategy} onChange={(event) => setDraft((current) => ({ ...current, resetStrategy: event.target.value as PlanDraft["resetStrategy"] }))}><option value="no_reset">بدون ریست</option><option value="day">روزانه</option><option value="week">هفتگی</option><option value="month">ماهانه</option><option value="year">سالانه</option></Select></FormControl></SimpleGrid>
         <Alert status="info" variant="left-accent"><AlertIcon />این پلن فقط حجم، مدت، قیمت و محدودیت دستگاه را نسخه‌بندی می‌کند. شبکه از Access Group کاربر می‌آید.</Alert>
-      </Stack></ModalBody><ModalFooter flexShrink={0} gap={2} px={{ base: 3, md: 6 }} py={3} borderTopWidth="1px" borderColor="var(--panel-border)"><Button minH="42px" variant="ghost" onClick={modal.onClose}>انصراف</Button><Button minH="42px" type="submit" colorScheme="primary" color="#07130e" isLoading={save.isLoading}>ذخیره</Button></ModalFooter></ModalContent></Modal>
+      </Stack></ModalBody><ModalFooter flexShrink={0} gap={2} px={{ base: 3, md: 6 }} py={3} borderTopWidth="1px" borderColor="var(--panel-border)"><Button minH="42px" variant="ghost" onClick={modal.onClose}>انصراف</Button><Button minH="42px" type="submit" colorScheme="primary" color="var(--panel-accent-contrast)" isLoading={save.isLoading}>ذخیره</Button></ModalFooter></ModalContent></Modal>
 
       <AlertDialog isOpen={archiveDialog.isOpen} leastDestructiveRef={cancelRef} onClose={archiveDialog.onClose}><AlertDialogOverlay><AlertDialogContent bg="#111d17" color="gray.100"><AlertDialogHeader>بایگانی پلن</AlertDialogHeader><AlertDialogBody>پلن «{archiveTarget?.name}» برای ساخت و تمدید جدید غیرفعال می‌شود.</AlertDialogBody><AlertDialogFooter gap={3}><Button ref={cancelRef} onClick={archiveDialog.onClose}>انصراف</Button><Button colorScheme="red" isLoading={archive.isLoading} onClick={() => archiveTarget && archive.mutate(archiveTarget)}>بایگانی</Button></AlertDialogFooter></AlertDialogContent></AlertDialogOverlay></AlertDialog>
     </AppShell>

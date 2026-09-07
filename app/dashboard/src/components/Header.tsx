@@ -98,9 +98,6 @@ export const Header: FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  useEffect(() => {
-    document.documentElement.dataset.panelTheme = userData.dashboard_theme || "heisenberg";
-  }, [userData.dashboard_theme]);
   useEffect(() => updateThemeColor(colorMode), [colorMode]);
   useEffect(() => { setMobileMenuOpen(false); }, [location.pathname]);
   const isAdminsPage = location.pathname.startsWith("/admins");
@@ -130,7 +127,7 @@ export const Header: FC = () => {
       zIndex="sticky"
       direction="column"
       bg="var(--panel-sidebar)"
-      color="white"
+      color="var(--panel-text)"
       borderEndWidth={{ lg: "1px" }}
       borderBottomWidth={{ base: "1px", lg: "0" }}
       borderColor="var(--panel-border)"
@@ -144,17 +141,17 @@ export const Header: FC = () => {
             ? <Image src={branding.logo_url || userData.logo_url || undefined} alt={`${branding.panel_name} logo`} boxSize={{ base: "38px", lg: "46px" }} objectFit="contain" borderRadius="10px" />
             : <BrandMark aria-hidden="true" boxSize={{ base: "38px", lg: "46px" }} filter="none" />}
           <Box minW={0}>
-            <Text fontSize="sm" fontWeight="800" letterSpacing="-0.01em" color="white" noOfLines={1}>{branding.panel_name}</Text>
-            <Text fontSize="xs" color="gray.400" mt="1px" noOfLines={1}>Operations workspace</Text>
+            <Text fontSize="sm" fontWeight="800" letterSpacing="-0.01em" color="var(--panel-text)" noOfLines={1}>{branding.panel_name}</Text>
+            <Text fontSize="xs" color="var(--panel-text-muted)" mt="1px" noOfLines={1}>Operations workspace</Text>
           </Box>
         </HStack>
         <HStack display={{ base: "flex", lg: "none" }} spacing={1} flexShrink={0}>
-          <IconButton color="gray.200" onClick={toggleColorMode} size="sm" variant="ghost" aria-label={colorMode === "dark" ? "Use light theme" : "Use dark theme"} icon={colorMode === "dark" ? <SunIcon width={19} /> : <MoonIcon width={19} />} />
-          <IconButton color="white" minW="44px" minH="44px" onClick={() => setMobileMenuOpen((value) => !value)} size="sm" variant="outline" aria-label={mobileMenuOpen ? "بستن منو" : "بازکردن منو"} aria-expanded={mobileMenuOpen} icon={mobileMenuOpen ? <XMarkIcon width={20} /> : <Bars3Icon width={20} />} />
+          <IconButton color="var(--panel-text-body)" onClick={toggleColorMode} size="sm" variant="ghost" aria-label={colorMode === "dark" ? "Use light theme" : "Use dark theme"} icon={colorMode === "dark" ? <SunIcon width={19} /> : <MoonIcon width={19} />} />
+          <IconButton color="var(--panel-text)" minW="44px" minH="44px" onClick={() => setMobileMenuOpen((value) => !value)} size="sm" variant="outline" aria-label={mobileMenuOpen ? "بستن منو" : "بازکردن منو"} aria-expanded={mobileMenuOpen} icon={mobileMenuOpen ? <XMarkIcon width={20} /> : <Bars3Icon width={20} />} />
         </HStack>
       </HStack>
 
-      <Text display={{ base: "none", lg: "block" }} mt={8} mb={2} px={2} fontSize="xs" color="gray.500">ناوبری</Text>
+      <Text display={{ base: "none", lg: "block" }} mt={8} mb={2} px={2} fontSize="xs" color="var(--panel-text-muted)">ناوبری</Text>
       <Collapse in={mobileMenuOpen} animateOpacity style={{ overflow: "visible" }}>
       <SimpleGrid as="nav" aria-label="ناوبری اصلی" display={{ base: "grid", lg: "none" }} columns={{ base: 2, sm: 4 }} spacing={2} mt={4}>
         <Button
@@ -164,7 +161,7 @@ export const Header: FC = () => {
           variant={isUsersPage ? "solid" : "ghost"}
           colorScheme={isUsersPage ? "primary" : "gray"}
           color={isUsersPage ? "var(--panel-accent-contrast)" : "gray.200"}
-          _hover={isUsersPage ? undefined : { bg: "whiteAlpha.100", color: "white" }}
+          _hover={isUsersPage ? undefined : { bg: "var(--panel-row-hover)", color: "var(--panel-text)" }}
           leftIcon={<UsersNavIcon />}
           justifyContent="flex-start"
           aria-current={isUsersPage ? "page" : undefined}
@@ -177,7 +174,7 @@ export const Header: FC = () => {
           variant={isPlansPage ? "solid" : "ghost"}
           colorScheme={isPlansPage ? "primary" : "gray"}
           color={isPlansPage ? "var(--panel-accent-contrast)" : "gray.200"}
-          _hover={isPlansPage ? undefined : { bg: "whiteAlpha.100", color: "white" }}
+          _hover={isPlansPage ? undefined : { bg: "var(--panel-row-hover)", color: "var(--panel-text)" }}
           leftIcon={<PlansNavIcon />}
           justifyContent="flex-start"
           aria-current={isPlansPage ? "page" : undefined}
@@ -190,7 +187,7 @@ export const Header: FC = () => {
             variant={isAdminsPage ? "solid" : "ghost"}
             colorScheme={isAdminsPage ? "primary" : "gray"}
             color={isAdminsPage ? "var(--panel-accent-contrast)" : "gray.200"}
-            _hover={isAdminsPage ? undefined : { bg: "whiteAlpha.100", color: "white" }}
+            _hover={isAdminsPage ? undefined : { bg: "var(--panel-row-hover)", color: "var(--panel-text)" }}
             leftIcon={<AdminsNavIcon />}
             justifyContent="flex-start"
             aria-current={isAdminsPage ? "page" : undefined}
@@ -204,13 +201,13 @@ export const Header: FC = () => {
             variant={isDeviceLimitPage ? "solid" : "ghost"}
             colorScheme={isDeviceLimitPage ? "primary" : "gray"}
             color={isDeviceLimitPage ? "var(--panel-accent-contrast)" : "gray.200"}
-            _hover={isDeviceLimitPage ? undefined : { bg: "whiteAlpha.100", color: "white" }}
+            _hover={isDeviceLimitPage ? undefined : { bg: "var(--panel-row-hover)", color: "var(--panel-text)" }}
             leftIcon={<DeviceLimitNavIcon />}
             justifyContent="flex-start"
             aria-current={isDeviceLimitPage ? "page" : undefined}
           >{t("deviceLimit.nav")}</Button>
         )}
-        {isOwner && <Button as={Link} to="/settings/" size="md" variant={isSettingsPage ? "solid" : "ghost"} colorScheme={isSettingsPage ? "primary" : "gray"} color={isSettingsPage ? "var(--panel-accent-contrast)" : "gray.200"} leftIcon={<CoreSettingsIcon />} justifyContent="flex-start" aria-current={isSettingsPage ? "page" : undefined}>تنظیمات</Button>}
+        {isOwner && <Button as={Link} to="/settings/" size="md" variant={isSettingsPage ? "solid" : "ghost"} colorScheme={isSettingsPage ? "primary" : "gray"} color={isSettingsPage ? "var(--panel-accent-contrast)" : "gray.200"} leftIcon={<CoreSettingsIcon />} justifyContent="flex-start" aria-current={isSettingsPage ? "page" : undefined}>پیکربندی</Button>}
         {(
           <Button
             as={Link}
@@ -219,7 +216,7 @@ export const Header: FC = () => {
             variant={isAuditPage ? "solid" : "ghost"}
             colorScheme={isAuditPage ? "primary" : "gray"}
             color={isAuditPage ? "var(--panel-accent-contrast)" : "gray.200"}
-            _hover={isAuditPage ? undefined : { bg: "whiteAlpha.100", color: "white" }}
+            _hover={isAuditPage ? undefined : { bg: "var(--panel-row-hover)", color: "var(--panel-text)" }}
             leftIcon={<AuditNavIcon />}
             justifyContent="flex-start"
             aria-current={isAuditPage ? "page" : undefined}
@@ -234,12 +231,12 @@ export const Header: FC = () => {
         {canManage && <Button as={Link} to="/admins/" size="md" variant={isAdminsPage ? "solid" : "ghost"} colorScheme={isAdminsPage ? "primary" : "gray"} color={isAdminsPage ? "var(--panel-accent-contrast)" : "gray.200"} leftIcon={<AdminsNavIcon />} justifyContent="flex-start" aria-current={isAdminsPage ? "page" : undefined}>{t("admins.nav")}</Button>}
         {isOwner && <Button as={Link} to="/device-limits/" size="md" variant={isDeviceLimitPage ? "solid" : "ghost"} colorScheme={isDeviceLimitPage ? "primary" : "gray"} color={isDeviceLimitPage ? "var(--panel-accent-contrast)" : "gray.200"} leftIcon={<DeviceLimitNavIcon />} justifyContent="flex-start" aria-current={isDeviceLimitPage ? "page" : undefined}>{t("deviceLimit.nav")}</Button>}
         <Button as={Link} to="/audit-logs/" size="md" variant={isAuditPage ? "solid" : "ghost"} colorScheme={isAuditPage ? "primary" : "gray"} color={isAuditPage ? "var(--panel-accent-contrast)" : "gray.200"} leftIcon={<AuditNavIcon />} justifyContent="flex-start" aria-current={isAuditPage ? "page" : undefined}>{t("audit.nav")}</Button>
-        {isOwner && <Button as={Link} to="/settings/" size="md" variant={isSettingsPage ? "solid" : "ghost"} colorScheme={isSettingsPage ? "primary" : "gray"} color={isSettingsPage ? "var(--panel-accent-contrast)" : "gray.200"} leftIcon={<CoreSettingsIcon />} justifyContent="flex-start" aria-current={isSettingsPage ? "page" : undefined}>تنظیمات</Button>}
+        {isOwner && <Button as={Link} to="/settings/" size="md" variant={isSettingsPage ? "solid" : "ghost"} colorScheme={isSettingsPage ? "primary" : "gray"} color={isSettingsPage ? "var(--panel-accent-contrast)" : "gray.200"} leftIcon={<CoreSettingsIcon />} justifyContent="flex-start" aria-current={isSettingsPage ? "page" : undefined}>پیکربندی</Button>}
       </SimpleGrid>
 
       {isOwner && (
-        <Box display={{ base: mobileMenuOpen ? "block" : "none", lg: "block" }} mt={{ base: 4, lg: 7 }} pt={{ base: 4, lg: 0 }} borderTopWidth={{ base: "1px", lg: "0" }} borderColor="whiteAlpha.200">
-          <Text mb={2} px={2} fontSize="xs" color="gray.500" fontFamily="mono" letterSpacing=".1em" textTransform="uppercase">{t("core.configuration")}</Text>
+        <Box display={{ base: mobileMenuOpen ? "block" : "none", lg: "block" }} mt={{ base: 4, lg: 7 }} pt={{ base: 4, lg: 0 }} borderTopWidth={{ base: "1px", lg: "0" }} borderColor="var(--panel-border)">
+          <Text mb={2} px={2} fontSize="xs" color="var(--panel-text-muted)" fontFamily="mono" letterSpacing=".1em" textTransform="uppercase">{t("core.configuration")}</Text>
           <SimpleGrid columns={{ base: 2, sm: 3, lg: 1 }} spacing={1}>
             <ActionButton icon={<CoreSettingsIcon />} label={t("core.title")} onClick={() => useDashboard.setState({ isEditingCore: true })} />
             <ActionButton icon={<HostsIcon />} label={t("header.hostSettings")} onClick={() => onEditingHosts(true)} />
@@ -250,14 +247,14 @@ export const Header: FC = () => {
         </Box>
       )}
 
-      <Button display={{ base: mobileMenuOpen ? "flex" : "none", lg: "none" }} mt={3} onClick={logout} size="sm" variant="ghost" color="red.200" leftIcon={<LogoutIcon />}>{t("header.logout")}</Button>
+      <Button display={{ base: mobileMenuOpen ? "flex" : "none", lg: "none" }} mt={3} onClick={logout} size="sm" variant="ghost" color="var(--panel-danger)" leftIcon={<LogoutIcon />}>{t("header.logout")}</Button>
 
       <Spacer display={{ base: "none", lg: "block" }} />
-      <Stack display={{ base: "none", lg: "flex" }} mt={6} pt={4} borderTopWidth="1px" borderColor="whiteAlpha.200" spacing={2}>
-        <Text fontSize="xs" color="gray.400" px={2} noOfLines={1}>{userData?.username || "Administrator"}</Text>
-        <BrandingControls theme={userData.dashboard_theme || "heisenberg"} hasLogo={Boolean(userData.logo_url)} />
-        <Button color="gray.200" onClick={toggleColorMode} size="sm" variant="ghost" leftIcon={colorMode === "dark" ? <SunIcon width={16} /> : <MoonIcon width={16} />} justifyContent="flex-start">{colorMode === "dark" ? "Light theme" : "Dark theme"}</Button>
-        <Button onClick={logout} size="sm" variant="ghost" color="red.200" leftIcon={<LogoutIcon />} justifyContent="flex-start" _hover={{ bg: "rgba(239, 68, 68, .14)", color: "red.100" }}>{t("header.logout")}</Button>
+      <Stack display={{ base: "none", lg: "flex" }} mt={6} pt={4} borderTopWidth="1px" borderColor="var(--panel-border)" spacing={2}>
+        <Text fontSize="xs" color="var(--panel-text-muted)" px={2} noOfLines={1}>{userData?.username || "Administrator"}</Text>
+        <BrandingControls hasLogo={Boolean(userData.logo_url)} />
+        <Button color="var(--panel-text-body)" onClick={toggleColorMode} size="sm" variant="ghost" leftIcon={colorMode === "dark" ? <SunIcon width={16} /> : <MoonIcon width={16} />} justifyContent="flex-start">{colorMode === "dark" ? "تم روشن" : "تم تیره"}</Button>
+        <Button onClick={logout} size="sm" variant="ghost" color="var(--panel-danger)" leftIcon={<LogoutIcon />} justifyContent="flex-start" _hover={{ bg: "rgba(239, 68, 68, .14)", color: "var(--panel-danger)" }}>{t("header.logout")}</Button>
       </Stack>
     </Flex>
   );
