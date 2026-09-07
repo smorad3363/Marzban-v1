@@ -56,25 +56,23 @@ const InboundCard: FC<
         position="relative"
         {...htmlProps}
         cursor="pointer"
-        borderRadius="8px"
+        borderRadius="12px"
         border="1px solid"
-        borderColor={"gray.200"}
-        _dark={{
-          borderColor: "gray.600",
-        }}
+        borderColor="var(--panel-border)"
+
         display="flex"
         alignItems="center"
         justifyContent="space-between"
         overflow="hidden"
         _checked={{
-          bg: "gold.50",
+          bg: "var(--panel-accent-soft)",
           outline: "2px",
           boxShadow: "outline",
-          outlineColor: "gold.400",
+          outlineColor: "var(--panel-accent)",
           borderColor: "transparent",
           fontWeight: "medium",
           _dark: {
-            bg: "gold.900",
+            bg: "var(--panel-accent-soft)",
             borderColor: "transparent",
           },
           "& p": {
@@ -193,18 +191,15 @@ const RadioCard: FC<
   return (
     <AccordionItem
       isDisabled={!protocolHasInbound}
-      borderRadius="10px"
+      borderRadius="12px"
       borderStyle="solid"
       border="1px"
-      borderColor="gray.200"
-      bg={shouldBeDisabled ? "gray.100" : "transparent"}
-      _dark={{
-        borderColor: "gray.600",
-        bg: shouldBeDisabled ? "#364154" : "transparent",
-      }}
+      borderColor="var(--panel-border)"
+      bg={shouldBeDisabled ? "var(--panel-muted-soft)" : "transparent"}
+
       _checked={{
-        bg: "gold.900",
-        borderColor: "gold.600",
+        bg: "var(--panel-accent-soft)",
+        borderColor: "var(--panel-accent-border)",
       }}
       {...getCheckboxProps()}
     >
@@ -214,7 +209,7 @@ const RadioCard: FC<
             position="absolute"
             w="2"
             h="2"
-            bg="yellow.500"
+            bg="var(--panel-warning)"
             top="-1"
             insetEnd="-1"
             rounded="full"
@@ -230,11 +225,11 @@ const RadioCard: FC<
           cursor={shouldBeDisabled ? "not-allowed" : "pointer"}
           _checked={{
             fontWeight: "medium",
-            bg: "gold.50",
-            borderColor: "gold.300",
+            bg: "var(--panel-accent-soft)",
+            borderColor: "var(--panel-accent-border)",
             _dark: {
-              bg: "gold.900",
-              borderColor: "gold.700",
+              bg: "var(--panel-accent-soft)",
+              borderColor: "var(--panel-accent-border)",
             },
             "& > svg": {
               opacity: 1,
@@ -276,7 +271,7 @@ const RadioCard: FC<
             }
             as="span"
             className="checked"
-            color="gold.200"
+            color="var(--panel-accent)"
             position="absolute"
             insetEnd="3"
             top="3"
@@ -284,7 +279,7 @@ const RadioCard: FC<
             p={0}
             onClick={toggleAccordion}
           >
-            <IconButton size="sm" variant="ghost" color="gold.200" aria-label="inbound settings">
+            <IconButton size="sm" variant="ghost" color="var(--panel-accent)" aria-label="inbound settings">
               <SettingsIcon />
             </IconButton>
           </AccordionButton>
@@ -294,16 +289,14 @@ const RadioCard: FC<
             dir="ltr"
             textAlign="start"
             lineHeight="1.7"
-            color={shouldBeDisabled ? "gray.400" : "gray.700"}
-            _dark={{ color: shouldBeDisabled ? "gray.500" : "gray.300" }}
+            color={shouldBeDisabled ? "var(--panel-text-muted)" : "var(--panel-text)"}
             {...getLabelProps()}
           >
             {title}
           </Text>
           <Text
             fontWeight="medium"
-            color={shouldBeDisabled ? "gray.400" : "gray.600"}
-            _dark={{ color: shouldBeDisabled ? "gray.500" : "gray.400" }}
+            color={shouldBeDisabled ? "var(--panel-text-muted)" : "var(--panel-text-body)"}
             fontSize="xs"
             lineHeight="1.8"
             overflowWrap="anywhere"

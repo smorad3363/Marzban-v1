@@ -77,10 +77,10 @@ const InlineDetails: FC<{ item: ManagedAdmin }> = ({ item }) => (
     <DetailChip label="تلگرام" value={item.telegram_id?.toString() || "ثبت نشده"} />
     <Box w={{ base: "full", xl: "1px" }} h={{ base: "1px", xl: "24px" }} bg="whiteAlpha.100" mx={1} />
     <Text color="var(--panel-text-muted)" fontSize="11px" fontWeight="800" me={1}>دسترسی:</Text>
-    <DetailChip label="ایجاد" value={item.policy.prevent_user_creation ? "مسدود" : "مجاز"} tone={item.policy.prevent_user_creation ? "red.300" : "green.300"} />
-    <DetailChip label="حذف" value={item.policy.prevent_user_deletion ? "مسدود" : "مجاز"} tone={item.policy.prevent_user_deletion ? "red.300" : "green.300"} />
-    <DetailChip label="ریست" value={item.policy.prevent_user_reset ? "مسدود" : "مجاز"} tone={item.policy.prevent_user_reset ? "red.300" : "green.300"} />
-    <DetailChip label="نامحدود" value={item.policy.prevent_unlimited_traffic ? "مسدود" : "مجاز"} tone={item.policy.prevent_unlimited_traffic ? "orange.300" : "green.300"} />
+    <DetailChip label="ایجاد" value={item.policy.prevent_user_creation ? "مسدود" : "مجاز"} tone={item.policy.prevent_user_creation ? "var(--panel-danger)" : "var(--panel-success)"} />
+    <DetailChip label="حذف" value={item.policy.prevent_user_deletion ? "مسدود" : "مجاز"} tone={item.policy.prevent_user_deletion ? "var(--panel-danger)" : "var(--panel-success)"} />
+    <DetailChip label="ریست" value={item.policy.prevent_user_reset ? "مسدود" : "مجاز"} tone={item.policy.prevent_user_reset ? "var(--panel-danger)" : "var(--panel-success)"} />
+    <DetailChip label="نامحدود" value={item.policy.prevent_unlimited_traffic ? "مسدود" : "مجاز"} tone={item.policy.prevent_unlimited_traffic ? "var(--panel-warning)" : "var(--panel-success)"} />
   </HStack>
 );
 
@@ -125,15 +125,15 @@ export const AdminTable: FC<Props> = ({
               minW="86px"
               px={3}
               gap={2}
-              color="red.100"
-              bg="rgba(239,68,68,.16)"
+              color="var(--panel-danger)"
+              bg="var(--panel-danger-soft)"
               borderWidth="1px"
-              borderColor="rgba(248,113,113,.30)"
+              borderColor="var(--panel-danger-border)"
               borderRadius="12px"
               isDisabled={!validAmount || busy}
               onClick={() => onCredit(item, "reclaim")}
               transition="background .16s ease, border-color .16s ease, transform .16s ease"
-              _hover={{ bg: "rgba(239,68,68,.25)", borderColor: "rgba(248,113,113,.48)", transform: "translateY(-1px)" }}
+              _hover={{ bg: "var(--panel-danger-soft)", borderColor: "var(--panel-danger-border)", transform: "translateY(-1px)" }}
               _active={{ transform: "translateY(0)" }}
             >
               <Text as="span" fontSize="19px" lineHeight="1" fontWeight="400">−</Text>
@@ -169,15 +169,15 @@ export const AdminTable: FC<Props> = ({
               minW="86px"
               px={3}
               gap={2}
-              color="green.100"
-              bg="rgba(34,197,94,.16)"
+              color="var(--panel-success)"
+              bg="var(--panel-success-soft)"
               borderWidth="1px"
-              borderColor="rgba(74,222,128,.30)"
+              borderColor="var(--panel-success-border)"
               borderRadius="12px"
               isDisabled={!validAmount || busy}
               onClick={() => onCredit(item, "grant")}
               transition="background .16s ease, border-color .16s ease, transform .16s ease"
-              _hover={{ bg: "rgba(34,197,94,.25)", borderColor: "rgba(74,222,128,.48)", transform: "translateY(-1px)" }}
+              _hover={{ bg: "var(--panel-success-soft)", borderColor: "rgba(74,222,128,.48)", transform: "translateY(-1px)" }}
               _active={{ transform: "translateY(0)" }}
             >
               <Text as="span" fontSize="19px" lineHeight="1" fontWeight="400">+</Text>
@@ -193,14 +193,14 @@ export const AdminTable: FC<Props> = ({
             size="sm"
             minW="36px"
             h="36px"
-            color="blue.100"
-            bg="rgba(37,99,235,.18)"
+            color="var(--panel-accent)"
+            bg="var(--panel-accent-soft)"
             borderWidth="1px"
-            borderColor="rgba(96,165,250,.22)"
+            borderColor="var(--panel-accent-border)"
             borderRadius="12px"
             isDisabled={!canEdit(item)}
             onClick={() => onEdit(item)}
-            _hover={{ bg: "rgba(37,99,235,.28)", transform: "translateY(-1px)" }}
+            _hover={{ bg: "var(--panel-accent-soft-strong)", transform: "translateY(-1px)" }}
             _active={{ transform: "translateY(0)" }}
           />
         </Tooltip>
@@ -215,13 +215,13 @@ export const AdminTable: FC<Props> = ({
                 minW="36px"
                 h="36px"
                 color={item.account_status === "ACTIVE" ? "orange.200" : "green.200"}
-                bg={item.account_status === "ACTIVE" ? "rgba(245,158,11,.12)" : "rgba(34,197,94,.10)"}
+                bg={item.account_status === "ACTIVE" ? "var(--panel-warning-soft)" : "var(--panel-success-soft)"}
                 borderWidth="1px"
-                borderColor={item.account_status === "ACTIVE" ? "rgba(245,158,11,.20)" : "rgba(74,222,128,.18)"}
+                borderColor={item.account_status === "ACTIVE" ? "var(--panel-warning-soft)" : "var(--panel-success-border)"}
                 borderRadius="12px"
                 isDisabled={busy}
                 onClick={() => onStatus(item)}
-                _hover={{ bg: item.account_status === "ACTIVE" ? "rgba(245,158,11,.20)" : "rgba(34,197,94,.18)", transform: "translateY(-1px)" }}
+                _hover={{ bg: item.account_status === "ACTIVE" ? "var(--panel-warning-soft)" : "var(--panel-success-soft)", transform: "translateY(-1px)" }}
                 _active={{ transform: "translateY(0)" }}
               />
             </Tooltip>
@@ -234,14 +234,14 @@ export const AdminTable: FC<Props> = ({
                   size="sm"
                   minW="36px"
                   h="36px"
-                  color="cyan.200"
-                  bg="rgba(6,182,212,.10)"
+                  color="var(--panel-info)"
+                  bg="var(--panel-info-soft)"
                   borderWidth="1px"
-                  borderColor="rgba(34,211,238,.18)"
+                  borderColor="var(--panel-info-border)"
                   borderRadius="12px"
                   isDisabled={busy}
                   onClick={() => onTrialReset(item)}
-                  _hover={{ bg: "rgba(6,182,212,.18)", transform: "translateY(-1px)" }}
+                  _hover={{ bg: "var(--panel-info-soft)", transform: "translateY(-1px)" }}
                   _active={{ transform: "translateY(0)" }}
                 />
               </Tooltip>
@@ -254,14 +254,14 @@ export const AdminTable: FC<Props> = ({
                 size="sm"
                 minW="36px"
                 h="36px"
-                color="red.200"
-                bg="rgba(239,68,68,.11)"
+                color="var(--panel-danger)"
+                bg="var(--panel-danger-soft)"
                 borderWidth="1px"
-                borderColor="rgba(248,113,113,.18)"
+                borderColor="var(--panel-danger-border)"
                 borderRadius="12px"
                 isDisabled={busy}
                 onClick={() => onDelete(item)}
-                _hover={{ bg: "rgba(239,68,68,.19)", transform: "translateY(-1px)" }}
+                _hover={{ bg: "var(--panel-danger-soft)", transform: "translateY(-1px)" }}
                 _active={{ transform: "translateY(0)" }}
               />
             </Tooltip>
@@ -311,10 +311,10 @@ export const AdminTable: FC<Props> = ({
                     <Td><StatusPill status={item.account_status} /></Td>
                     <Td>
                       <HStack spacing={1.5} flexWrap="wrap">
-                        <Badge variant="subtle" colorScheme={isItemOwner ? "purple" : "blue"} fontSize="11px" textTransform="none">
+                        <Badge variant="outline" color={isItemOwner ? "var(--panel-accent)" : "var(--panel-text-body)"} borderColor={isItemOwner ? "var(--panel-accent-border)" : "var(--panel-border)"} bg={isItemOwner ? "var(--panel-accent-soft)" : "var(--panel-muted-soft)"} fontSize="11px" textTransform="none">
                           {t(`admins.role.${item.role}`)}
                         </Badge>
-                        <Badge variant="outline" color="var(--panel-text-body)" borderColor="rgba(148,163,184,.25)" fontSize="11px" textTransform="none">
+                        <Badge variant="outline" color="var(--panel-text-body)" borderColor="var(--panel-border)" fontSize="11px" textTransform="none">
                           {billingModeLabels[item.policy.billing_mode] || item.policy.billing_mode}
                         </Badge>
                       </HStack>
@@ -420,14 +420,14 @@ export const AdminTable: FC<Props> = ({
                       flex="1"
                       size="sm"
                       h="38px"
-                      color="red.100"
-                      bg="rgba(239,68,68,.16)"
+                      color="var(--panel-danger)"
+                      bg="var(--panel-danger-soft)"
                       borderWidth="1px"
-                      borderColor="rgba(248,113,113,.30)"
+                      borderColor="var(--panel-danger-border)"
                       borderRadius="12px"
                       isDisabled={!validAmount || busy}
                       onClick={() => onCredit(item, "reclaim")}
-                      _hover={{ bg: "rgba(239,68,68,.25)" }}
+                      _hover={{ bg: "var(--panel-danger-soft)" }}
                     >
                       <Text as="span" me={2} fontSize="18px">−</Text>
                       کاهش
@@ -436,14 +436,14 @@ export const AdminTable: FC<Props> = ({
                       flex="1"
                       size="sm"
                       h="38px"
-                      color="green.100"
-                      bg="rgba(34,197,94,.16)"
+                      color="var(--panel-success)"
+                      bg="var(--panel-success-soft)"
                       borderWidth="1px"
-                      borderColor="rgba(74,222,128,.30)"
+                      borderColor="var(--panel-success-border)"
                       borderRadius="12px"
                       isDisabled={!validAmount || busy}
                       onClick={() => onCredit(item, "grant")}
-                      _hover={{ bg: "rgba(34,197,94,.25)" }}
+                      _hover={{ bg: "var(--panel-success-soft)" }}
                     >
                       <Text as="span" me={2} fontSize="18px">+</Text>
                       افزایش

@@ -34,7 +34,7 @@ export const SummaryStat: FC<{ label: string; value: string; hint: string; tone?
   label,
   value,
   hint,
-  tone = "gray.100",
+  tone = "var(--panel-text)",
 }) => (
   <Card
     p={{ base: 3, md: 4 }}
@@ -61,14 +61,14 @@ export const AdminAvatar: FC<{ username: string; owner: boolean }> = ({ username
     display="grid"
     placeItems="center"
     borderRadius="12px"
-    bg={owner ? "rgba(139,92,246,.14)" : "rgba(37,99,235,.14)"}
+    bg={owner ? "var(--panel-accent-soft)" : "var(--panel-muted-soft)"}
     borderWidth="1px"
-    borderColor={owner ? "rgba(167,139,250,.28)" : "rgba(96,165,250,.28)"}
-    color={owner ? "purple.200" : "blue.200"}
+    borderColor={owner ? "var(--panel-accent-border)" : "var(--panel-border)"}
+    color={owner ? "var(--panel-accent)" : "var(--panel-text-body)"}
     fontWeight="800"
     textTransform="uppercase"
     transition="transform .16s ease, border-color .16s ease"
-    _groupHover={{ transform: "translateY(-1px)", borderColor: owner ? "purple.400" : "blue.400" }}
+    _groupHover={{ transform: "translateY(-1px)", borderColor: "var(--panel-accent)" }}
   >
     {username.slice(0, 1)}
   </Box>
@@ -99,7 +99,7 @@ export const FilterButton: FC<{ active: boolean; onClick: () => void; children: 
     transition="background .14s ease, border-color .14s ease, transform .14s ease"
     _hover={{
       bg: active ? "var(--panel-accent-soft-strong)" : "var(--panel-row-hover)",
-      borderColor: active ? "blue.400" : "rgba(148,163,184,.34)",
+      borderColor: active ? "var(--panel-accent)" : "var(--panel-border-strong)",
       transform: "translateY(-1px)",
     }}
     _active={{ transform: "translateY(0)" }}
@@ -109,14 +109,14 @@ export const FilterButton: FC<{ active: boolean; onClick: () => void; children: 
   </Button>
 );
 
-export const DetailChip: FC<{ label: string; value: string; tone?: string }> = ({ label, value, tone = "gray.200" }) => (
+export const DetailChip: FC<{ label: string; value: string; tone?: string }> = ({ label, value, tone = "var(--panel-text-body)" }) => (
   <HStack
     spacing={1.5}
     px={2.5}
     h="28px"
     borderWidth="1px"
-    borderColor="rgba(148,163,184,.12)"
-    bg="rgba(255,255,255,.025)"
+    borderColor="var(--panel-border)"
+    bg="var(--panel-muted-soft)"
     borderRadius="12px"
     whiteSpace="nowrap"
   >

@@ -316,7 +316,7 @@ export const AdminsPage: FC = () => {
               onClick={openCreate}
               borderRadius="10px"
               transition="transform .16s ease, box-shadow .16s ease"
-              _hover={{ transform: "translateY(-1px)", boxShadow: "0 8px 24px rgba(37,99,235,.20)" }}
+              _hover={{ transform: "translateY(-1px)", boxShadow: "0 8px 24px var(--panel-accent-soft-strong)" }}
               _active={{ transform: "translateY(0)" }}
             >
               {t("admins.create")}
@@ -432,7 +432,7 @@ export const AdminsPage: FC = () => {
               <Text color="var(--panel-text-muted)" fontSize="xs">{t("admins.page", { current: page + 1, total: Math.ceil(total / PAGE_SIZE) })}</Text>
               <HStack>
                 <Button size="sm" variant="ghost" minW="40px" isDisabled={page === 0} onClick={() => setPage((value) => value - 1)}>{t("previous")}</Button>
-                <Box minW="34px" h="34px" display="grid" placeItems="center" borderRadius="9px" bg="rgba(37,99,235,.18)" borderWidth="1px" borderColor="rgba(96,165,250,.25)" color="blue.100" fontSize="sm" fontWeight="800">{(page + 1).toLocaleString("fa-IR")}</Box>
+                <Box minW="34px" h="34px" display="grid" placeItems="center" borderRadius="9px" bg="var(--panel-accent-soft)" borderWidth="1px" borderColor="var(--panel-accent-border)" color="var(--panel-accent)" fontSize="sm" fontWeight="800">{(page + 1).toLocaleString("fa-IR")}</Box>
                 <Button size="sm" variant="ghost" minW="40px" isDisabled={(page + 1) * PAGE_SIZE >= total} onClick={() => setPage((value) => value + 1)}>{t("next")}</Button>
               </HStack>
             </HStack>

@@ -96,7 +96,7 @@ const SectionHeader: FC<{ title: string; description: string }> = ({
 }) => (
   <Box minW={0}>
     <Text
-      color="gold.300"
+      color="var(--panel-accent)"
       fontSize="xs"
       fontWeight="800"
       letterSpacing="0.06em"
@@ -669,9 +669,9 @@ export const UserDialog: FC<UserDialogProps> = () => {
           maxW="1180px"
           borderRadius={{ base: "12px", md: "18px" }}
           borderTopWidth="2px"
-          borderTopColor="gold.400"
+          borderTopColor="var(--panel-accent)"
           boxShadow="elevated"
-          bg="surface.dark"
+          bg="var(--panel-surface)"
           sx={{
             "& .chakra-form__label": {
               lineHeight: "1.9",
@@ -688,14 +688,14 @@ export const UserDialog: FC<UserDialogProps> = () => {
               lineHeight="1.7"
               borderBottomWidth="1px"
               borderColor="var(--panel-border)"
-              bgGradient="linear(to-r, rgba(202,165,61,.08), transparent 48%)"
+              bg="var(--panel-surface)"
             >
               <HStack gap={3} align="start">
-                <Icon color="gold">
+                <Icon color="var(--panel-accent)">
                   {isEditing ? (
-                    <EditUserIcon color="white" />
+                    <EditUserIcon />
                   ) : (
-                    <AddUserIcon color="white" />
+                    <AddUserIcon />
                   )}
                 </Icon>
                 <Box minW={0} flex="1">
@@ -705,7 +705,7 @@ export const UserDialog: FC<UserDialogProps> = () => {
                         ? t("userDialog.editUserTitle")
                         : t("createNewUser")}
                     </Text>
-                    <Badge colorScheme="gold" variant="subtle" borderRadius="full" px={2.5} textTransform="none">
+                    <Badge variant="outline" color="var(--panel-accent)" borderColor="var(--panel-accent-border)" bg="var(--panel-accent-soft)" borderRadius="full" px={2.5} textTransform="none">
                       {isEditing ? t("edit") : t("createUser")}
                     </Badge>
                   </HStack>
