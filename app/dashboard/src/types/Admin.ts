@@ -197,6 +197,7 @@ export type AccessGroup = {
   inbounds: string[];
   hosts: Record<string, number[]>;
   allowed_admin_ids: number[];
+  admin_access_restricted: boolean;
   archived_at: string | null;
   active_user_count: number;
 };

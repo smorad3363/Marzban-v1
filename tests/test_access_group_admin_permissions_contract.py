@@ -22,3 +22,18 @@ def test_migration_extends_current_node_policy_head():
     ).read_text(encoding="utf-8")
     assert 'revision = "e1a7c4d9b302"' in source
     assert 'down_revision = "f6b2c9d4e701"' in source
+
+def test_access_group_response_exposes_legacy_vs_restricted_policy_state():
+    backend = Path("app/utils/access_groups.py").read_text(encoding="utf-8")
+    model = Path("app/models/admin_hierarchy.py").read_text(encoding="utf-8")
+    types = Path("app/dashboard/src/types/Admin.ts").read_text(encoding="utf-8")
+    dialog = Path("app/dashboard/src/components/UserDialog.tsx").read_text(encoding="utf-8")
+    manager = Path("app/dashboard/src/components/AccessGroupManager.tsx").read_text(encoding="utf-8")
+
+    assert "admin_access_restricted=bool(_permission_admin_ids(db, group.id))" in backend
+    assert "admin_access_restricted: bool = False" in model
+    assert "admin_access_restricted: boolean;" in types
+    assert "!group.admin_access_restricted || group.allowed_admin_ids.includes(selectedOwner.id)" in dialog
+    assert "گروه برای همه ادمین‌ها قابل استفاده می‌ماند" not in manager
+    assert "دسترسی همه ادمین‌های واگذارشده بسته می‌شود" in manager
+

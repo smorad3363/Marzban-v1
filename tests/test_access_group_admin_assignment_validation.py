@@ -129,6 +129,9 @@ def test_legacy_group_without_permission_rows_remains_public_compatible(db):
     session, _, target, group = db
     assert access_groups._permission_admin_ids(session, group.id) == []
     assert access_groups._allowed_admin_ids(session, group.id) == []
+    response = access_groups.response(session, group)
+    assert response.allowed_admin_ids == []
+    assert response.admin_access_restricted is False
     access_groups._require_group_access(session, group, target.id)
 
 
@@ -154,7 +157,9 @@ def test_explicit_empty_allowlist_persists_owner_sentinel_and_denies_admins(db):
 
     assert access_groups._permission_admin_ids(session, group.id) == [owner.id]
     assert access_groups._allowed_admin_ids(session, group.id) == []
-    assert access_groups.response(session, group).allowed_admin_ids == []
+    response = access_groups.response(session, group)
+    assert response.allowed_admin_ids == []
+    assert response.admin_access_restricted is True
     access_groups._require_group_access(session, group, owner.id)
     with pytest.raises(admin_hierarchy.HierarchyError) as raised:
         access_groups._require_group_access(session, group, target.id)
@@ -168,7 +173,9 @@ def test_explicit_allowlist_persists_sentinel_but_exposes_only_admin_grants(db):
 
     assert access_groups._permission_admin_ids(session, group.id) == sorted([owner.id, target.id])
     assert access_groups._allowed_admin_ids(session, group.id) == [target.id]
-    assert access_groups.response(session, group).allowed_admin_ids == [target.id]
+    response = access_groups.response(session, group)
+    assert response.allowed_admin_ids == [target.id]
+    assert response.admin_access_restricted is True
     access_groups._require_group_access(session, group, target.id)
 
 

@@ -322,6 +322,7 @@ def response(db: Session, group: AccessGroup) -> AccessGroupResponse:
         inbounds=sorted(inbounds),
         hosts={tag: sorted(hosts[tag]) for tag in sorted(inbounds)},
         allowed_admin_ids=_allowed_admin_ids(db, group.id),
+        admin_access_restricted=bool(_permission_admin_ids(db, group.id)),
         archived_at=group.archived_at,
         active_user_count=active_count,
     )

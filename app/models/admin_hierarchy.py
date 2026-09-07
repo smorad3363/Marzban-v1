@@ -433,8 +433,9 @@ class AccessGroupInput(BaseModel):
     node_ids: list[int] = Field(default_factory=list)
     inbounds: list[str] = Field(min_length=1)
     hosts: dict[str, list[int]]
-    # Empty preserves the legacy/public behavior. One or more IDs restrict the
-    # group to those administrators; Owner always retains management access.
+    # Omitting this field preserves legacy/public persistence. Sending it
+    # explicitly, including [], creates a restricted policy; [] is deny-all for
+    # delegated Admins while Owner always retains management access.
     allowed_admin_ids: list[int] = Field(default_factory=list)
 
     @field_validator("node_ids", "inbounds", "allowed_admin_ids")
@@ -459,6 +460,7 @@ class AccessGroupResponse(BaseModel):
     inbounds: list[str]
     hosts: dict[str, list[int]]
     allowed_admin_ids: list[int] = Field(default_factory=list)
+    admin_access_restricted: bool = False
     archived_at: Optional[datetime]
     active_user_count: int = 0
 

@@ -212,7 +212,7 @@ export const AccessGroupManager = () => {
           <FormHelperText>
             {draft.allowedAdminIds.length
               ? `فقط ${draft.allowedAdminIds.length} ادمین انتخاب‌شده می‌توانند از این گروه استفاده کنند.`
-              : "هیچ ادمینی انتخاب نشده: گروه برای همه ادمین‌ها قابل استفاده می‌ماند (سازگاری با گروه‌های قبلی)."}
+              : "هیچ ادمینی انتخاب نشده: با ذخیره این تنظیم، دسترسی همه ادمین‌های واگذارشده بسته می‌شود؛ Owner همچنان دسترسی مدیریتی دارد."}
           </FormHelperText>
         </FormControl>
         <FormControl>
