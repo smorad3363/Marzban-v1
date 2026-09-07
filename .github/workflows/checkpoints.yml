@@ -116,6 +116,9 @@ jobs:
           cache-dependency-path: app/dashboard/package-lock.json
       - working-directory: app/dashboard
         run: npm ci
+      - name: Verify Stage 1 UI contracts
+        working-directory: app/dashboard
+        run: node scripts/test-stage1-ui-contracts.cjs
       - name: Build dashboard from source
         working-directory: app/dashboard
         run: VITE_BASE_API=/api/ npm run build
@@ -180,16 +183,11 @@ jobs:
             echo 'Node compose unexpectedly contains database configuration' >&2
             exit 1
           fi
-
-  docker-smoke:
-    name: docker image smoke
-    if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
       - name: Build release image without publishing
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
         run: docker build --tag marzban-v1:ci .
       - name: Verify release image runtime contract
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
         shell: bash
         run: |
           set -Eeuo pipefail

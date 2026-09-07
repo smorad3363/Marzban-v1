@@ -55,7 +55,11 @@ def test_release_version_and_install_rollback_contract():
     assert "github.event_name == 'workflow_dispatch'" in build_workflow
     assert 'elif [[ "${GITHUB_REF}" == "refs/heads/main" ]]' not in build_workflow
     assert 'git tag -a "${VERSION_TAG}" "${GITHUB_SHA}"' not in build_workflow
-    assert "Verify release tag, version surfaces and notes" in build_workflow
+    assert "Verify release tag, protected-main ancestry, version surfaces and notes" in build_workflow
+    assert "fetch-depth: 0" in build_workflow
+    assert 'git fetch --no-tags origin main' in build_workflow
+    assert 'TAG_COMMIT="$(git rev-list -n 1 "${VERSION_TAG}")"' in build_workflow
+    assert 'git merge-base --is-ancestor "${TAG_COMMIT}" "origin/main"' in build_workflow
     assert 'docs/RELEASE_NOTES_${VERSION_TAG}.md' in build_workflow
     assert '--notes-file "${NOTES_FILE}"' in build_workflow
     assert "--generate-notes" not in build_workflow
@@ -83,9 +87,14 @@ def test_release_version_and_install_rollback_contract():
     assert 'marzban update --version "$RELEASE_TAG"' in upgrade_lab
     assert "UPGRADE_V520_TO_CURRENT_V1_PASS" in upgrade_lab
 
-    assert "docker image smoke" in checkpoints
+    assert "name: dashboard build and parity" in checkpoints
+    assert "Verify Stage 1 UI contracts" in checkpoints
+    assert "node scripts/test-stage1-ui-contracts.cjs" in checkpoints
+    assert "name: installer, panel compose and node contracts" in checkpoints
     assert "docker build --tag marzban-v1:ci ." in checkpoints
     assert "Build release image without publishing" in checkpoints
+    assert "Verify release image runtime contract" in checkpoints
+    assert "\n  docker-smoke:" not in checkpoints
 
     historical_notes = Path("docs/RELEASE_NOTES_v1.0.0.md").read_text(encoding="utf-8")
     assert "new canonical `1.0.0` product baseline" in historical_notes
