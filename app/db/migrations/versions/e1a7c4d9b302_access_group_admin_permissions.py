@@ -39,8 +39,8 @@ def upgrade():
 
 
 def downgrade():
-    op.drop_index(
-        "ix_access_group_admin_access_admin_group",
-        table_name="access_group_admin_access",
-    )
+    # MySQL may use the explicit composite index to satisfy the admin_id
+    # foreign-key requirement. Dropping that index before the table therefore
+    # fails with error 1553. Dropping the table removes its indexes and foreign
+    # keys atomically on all supported databases.
     op.drop_table("access_group_admin_access")
