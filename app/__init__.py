@@ -13,7 +13,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from config import ALLOWED_ORIGINS, DOCS, XRAY_SUBSCRIPTION_PATH
 
-__version__ = "1.0.7"
+__version__ = "1.0.8"
 
 app = FastAPI(
     title="Network Control API",
@@ -28,6 +28,70 @@ scheduler = BackgroundScheduler(
 )
 logger = logging.getLogger("uvicorn.error")
 
+
+@app.middleware("http")
+async def add_request_id(request: Request, call_next):
+    request_id = request.headers.get("X-Request-ID") or uuid4().hex
+    request.state.request_id = request_id
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    return response
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    detail = exc.detail
+    if isinstance(detail, dict):
+        body = dict(detail)
+        body.setdefault("request_id", getattr(request.state, "request_id", None))
+    else:
+        body = {"detail": detail, "request_id": getattr(request.state, "request_id", None)}
+    return JSONResponse(status_code=exc.status_code, content=jsonable_encoder(body), headers=getattr(exc, "headers", None))
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={
+            "detail": exc.errors(),
+            "request_id": getattr(request.state, "request_id", None),
+        },
+    )
+
+
+@app.exception_handler(IntegrityError)
+async def integrity_exception_handler(request: Request, exc: IntegrityError):
+    logger.exception("Database integrity error", exc_info=exc)
+    return JSONResponse(
+        status_code=status.HTTP_409_CONFLICT,
+        content={
+            "detail": {
+                "error_code": "database_integrity_error",
+                "message": "The requested change conflicts with existing data.",
+                "message_fa": "این تغییر با داده‌های موجود تداخل دارد.",
+                "request_id": getattr(request.state, "request_id", None),
+            }
+        },
+    )
+
+
+@app.exception_handler(Exception)
+async def unexpected_exception_handler(request: Request, exc: Exception):
+    logger.exception("Unhandled application error", exc_info=exc)
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={
+            "detail": {
+                "error_code": "internal_server_error",
+                "message": "An unexpected error occurred.",
+                "message_fa": "خطای غیرمنتظره‌ای رخ داد.",
+                "request_id": getattr(request.state, "request_id", None),
+            }
+        },
+    )
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
@@ -35,119 +99,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-from app import dashboard, jobs, routers, telegram  # noqa
-from app.routers import api_router  # noqa
-
-app.include_router(api_router)
-
-
-from app.utils.marzhelp_policy import (  # noqa: E402
-    MarzhelpPolicyError,
-    record_quota_rejection,
-)
-from app.utils.api_errors import (  # noqa: E402
-    http_error_detail,
-    internal_error_detail,
-    request_id,
-    safe_request_id,
-    validation_error_detail,
-)
-
-
-@app.middleware("http")
-async def request_id_middleware(request: Request, call_next):
-    request.state.request_id = safe_request_id(
-        request.headers.get("X-Request-ID"), uuid4().hex
-    )
-    response = await call_next(request)
-    response.headers["X-Request-ID"] = request.state.request_id
-    return response
-
-
-@app.exception_handler(MarzhelpPolicyError)
-def marzhelp_policy_exception_handler(request: Request, exc: MarzhelpPolicyError):
-    record_quota_rejection(exc)
-    return JSONResponse(
-        status_code=(
-            status.HTTP_403_FORBIDDEN
-            if exc.code == "device_limit_penalty_active"
-            else status.HTTP_409_CONFLICT
-        ),
-        content={
-            "detail": http_error_detail(
-                status.HTTP_403_FORBIDDEN
-                if exc.code == "device_limit_penalty_active"
-                else status.HTTP_409_CONFLICT,
-                {"code": exc.code, "message": str(exc)},
-                request_id(request),
-            )
-        },
-    )
-
-
-@app.exception_handler(StarletteHTTPException)
-def http_exception_handler(request: Request, exc: StarletteHTTPException):
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={"detail": http_error_detail(exc.status_code, exc.detail, request_id(request))},
-        headers=exc.headers,
-    )
-
-
-@app.exception_handler(IntegrityError)
-def database_conflict_handler(request: Request, exc: IntegrityError):
-    logger.warning("Database conflict request_id=%s", request_id(request))
-    return JSONResponse(
-        status_code=status.HTTP_409_CONFLICT,
-        content={
-            "detail": http_error_detail(
-                status.HTTP_409_CONFLICT,
-                {"code": "DATABASE_CONFLICT"},
-                request_id(request),
-            )
-        },
-    )
-
-
-def use_route_names_as_operation_ids(app: FastAPI) -> None:
-    for route in app.routes:
-        if isinstance(route, APIRoute):
-            route.operation_id = route.name
-
-
-use_route_names_as_operation_ids(app)
 
 
 @app.on_event("startup")
-def on_startup():
-    paths = [f"{r.path}/" for r in app.routes]
-    paths.append("/api/")
-    if f"/{XRAY_SUBSCRIPTION_PATH}/" in paths:
-        raise ValueError(
-            f"you can't use /{XRAY_SUBSCRIPTION_PATH}/ as subscription path it reserved for {app.title}"
-        )
-    scheduler.start()
+def startup_event():
+    from app.jobs import start_jobs
+
+    start_jobs()
 
 
 @app.on_event("shutdown")
-def on_shutdown():
+def shutdown_event():
     scheduler.shutdown()
 
 
-@app.exception_handler(RequestValidationError)
-def validation_exception_handler(request: Request, exc: RequestValidationError):
-    return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content=jsonable_encoder(
-            {"detail": validation_error_detail(exc.errors(), request_id(request))}
-        ),
-    )
-
-
-@app.exception_handler(Exception)
-def internal_exception_handler(request: Request, exc: Exception):
-    logger.exception("Unhandled API error request_id=%s", request_id(request), exc_info=exc)
-    return JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"detail": internal_error_detail(request_id(request))},
-    )
+@app.get("/api/health")
+def health_check():
+    return {"status": "ok", "version": __version__}
