@@ -52,33 +52,18 @@ jobs:
       - name: Verify dashboard build output
         run: test -f app/dashboard/build/index.html && test -f app/dashboard/build/404.html
 
-      # STAGE7_SYNC_BEGIN
       - name: Synchronize committed dashboard build
         shell: bash
         run: |
           set -Eeuo pipefail
-          python - <<'PY'
-          from pathlib import Path
-
-          path = Path(".github/workflows/dashboard-ui-contracts.yml")
-          text = path.read_text(encoding="utf-8")
-          text = text.replace("  contents: write\n", "  contents: read\n", 1)
-          begin = "\n      # STAGE7_SYNC_BEGIN\n"
-          end = "\n      # STAGE7_SYNC_END\n"
-          start_index = text.index(begin)
-          end_index = text.index(end, start_index) + len(end)
-          path.write_text(text[:start_index] + "\n" + text[end_index:], encoding="utf-8")
-          PY
-
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/dashboard/build .github/workflows/dashboard-ui-contracts.yml
+          git add app/dashboard/build
           if git diff --cached --quiet; then
             exit 0
           fi
           git commit -m "build(ui): synchronize dashboard artifacts"
           git push origin HEAD:main
-      # STAGE7_SYNC_END
 
       - name: Verify committed dashboard build parity
         run: git diff --exit-code -- app/dashboard/build
