@@ -54,6 +54,7 @@ import { localizedApiError } from "utils/apiError";
 import { formatBytes } from "utils/formatByte";
 import { BulkUserActions } from "./BulkUserActions";
 import { Pagination } from "./Pagination";
+import { UserDeviceLimit } from "./UserDeviceLimit";
 
 const CopyIcon = chakra(ClipboardDocumentIcon, { baseStyle: { w: 4, h: 4 } });
 const QRIcon = chakra(QrCodeIcon, { baseStyle: { w: 4, h: 4 } });
@@ -419,6 +420,7 @@ export const UsersTablePro: FC = () => {
                       <Action label="کپی لینک اشتراک" icon={<CopyIcon />} onClick={() => copySubscription(user)} tone="green" />
                       <Action label="QR Code" icon={<QRIcon />} onClick={() => { setQRCode(user.links); setSubLink(user.subscription_url); }} tone="blue" />
                       <Action label="گزارش فعالیت" icon={<AuditIcon />} onClick={() => navigate(`/audit-logs/?search=${encodeURIComponent(user.username)}`)} tone="gray" />
+                      {!readOnly && isOwner && <UserDeviceLimit user={user} compact />}
                       {!readOnly && <Action label="تمدید با پلن" icon={<RenewIcon />} onClick={() => { renewalRequest.current = null; setRenewalUser(user); setRenewalPlanId(""); renewalModal.onOpen(); }} tone="blue" disabled={busy} />}
                       {!readOnly && <Action label="ویرایش" icon={<EditIcon />} onClick={() => onEditingUser(user)} tone="blue" disabled={busy} />}
                       {!readOnly && <Action label={user.status === "disabled" ? "فعال‌سازی" : "غیرفعال‌سازی"} icon={user.status === "disabled" ? <PlayActionIcon /> : <PauseActionIcon />} onClick={() => toggleStatus(user)} tone={user.status === "disabled" ? "green" : "yellow"} disabled={busy} />}
