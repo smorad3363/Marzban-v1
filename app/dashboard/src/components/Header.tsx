@@ -40,7 +40,7 @@ import { fetch } from "service/http";
 import { removeAuthToken } from "utils/authStorage";
 import { updateThemeColor } from "utils/themeColor";
 import { BrandingControls } from "./BrandingControls";
-import { AdminCapabilities } from "types/Admin";
+import { AccountSummary, AdminCapabilities } from "types/Admin";
 
 const iconProps = { baseStyle: { w: 4, h: 4, flexShrink: 0 } };
 const CoreSettingsIcon = chakra(Cog6ToothIcon, iconProps);
@@ -89,7 +89,15 @@ export const Header: FC = () => {
     () => fetch("/admin/capabilities"),
     { enabled: getUserIsSuccess }
   );
+  const account = useQuery<AccountSummary, Error>(
+    "account-summary",
+    () => fetch("/account/summary"),
+    { enabled: getUserIsSuccess }
+  );
   const canManage = Boolean(capabilities.data?.can_manage_admins);
+  const canAccessPlans = isOwner || Boolean(
+    account.data?.account_status === "ACTIVE" && account.data?.can_manage_plans
+  );
   const { onEditingHosts, onEditingNodes, onShowingNodesUsage } = useDashboard();
   const { t } = useTranslation();
   const location = useLocation();
@@ -179,7 +187,7 @@ export const Header: FC = () => {
           aria-current={isUsersPage ? "page" : undefined}
         >{t("users")}</Button>
         <Button
-          hidden={!isOwner}
+          hidden={!canAccessPlans}
           as={Link}
           to="/plans/"
           size="md"
@@ -239,7 +247,7 @@ export const Header: FC = () => {
 
       <SimpleGrid as="nav" aria-label="ناوبری اصلی دسکتاپ" display={{ base: "none", lg: "grid" }} columns={1} spacing={2}>
         <Button as={Link} to="/" size="md" variant={isUsersPage ? "solid" : "ghost"} colorScheme={isUsersPage ? "primary" : "gray"} color={isUsersPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<UsersNavIcon />} justifyContent="flex-start" aria-current={isUsersPage ? "page" : undefined}>{t("users")}</Button>
-        <Button hidden={!isOwner} as={Link} to="/plans/" size="md" variant={isPlansPage ? "solid" : "ghost"} colorScheme={isPlansPage ? "primary" : "gray"} color={isPlansPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<PlansNavIcon />} justifyContent="flex-start" aria-current={isPlansPage ? "page" : undefined}>Plans</Button>
+        <Button hidden={!canAccessPlans} as={Link} to="/plans/" size="md" variant={isPlansPage ? "solid" : "ghost"} colorScheme={isPlansPage ? "primary" : "gray"} color={isPlansPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<PlansNavIcon />} justifyContent="flex-start" aria-current={isPlansPage ? "page" : undefined}>Plans</Button>
         {canManage && <Button as={Link} to="/admins/" size="md" variant={isAdminsPage ? "solid" : "ghost"} colorScheme={isAdminsPage ? "primary" : "gray"} color={isAdminsPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<AdminsNavIcon />} justifyContent="flex-start" aria-current={isAdminsPage ? "page" : undefined}>{t("admins.nav")}</Button>}
         {isOwner && <Button as={Link} to="/device-limits/" size="md" variant={isDeviceLimitPage ? "solid" : "ghost"} colorScheme={isDeviceLimitPage ? "primary" : "gray"} color={isDeviceLimitPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<DeviceLimitNavIcon />} justifyContent="flex-start" aria-current={isDeviceLimitPage ? "page" : undefined}>{t("deviceLimit.nav")}</Button>}
         <Button as={Link} to="/audit-logs/" size="md" variant={isAuditPage ? "solid" : "ghost"} colorScheme={isAuditPage ? "primary" : "gray"} color={isAuditPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<AuditNavIcon />} justifyContent="flex-start" aria-current={isAuditPage ? "page" : undefined}>{t("audit.nav")}</Button>
