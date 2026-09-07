@@ -93,10 +93,10 @@ def test_mysql_stage10_migration_indexes_explain_and_deep_offset_timing(monkeypa
 
     with engine.connect() as connection:
         status_plan = connection.execute(sa.text(
-            "EXPLAIN SELECT id FROM users WHERE status='active' ORDER BY created_at DESC,id DESC LIMIT 50"
+            "EXPLAIN FORMAT=TRADITIONAL SELECT id FROM users WHERE status='active' ORDER BY created_at DESC,id DESC LIMIT 50"
         )).mappings().one()
         admin_plan = connection.execute(sa.text(
-            "EXPLAIN SELECT id FROM users WHERE admin_id=:admin_id ORDER BY created_at DESC,id DESC LIMIT 50"
+            "EXPLAIN FORMAT=TRADITIONAL SELECT id FROM users WHERE admin_id=:admin_id ORDER BY created_at DESC,id DESC LIMIT 50"
         ), {"admin_id": admin_id}).mappings().one()
         assert status_plan["key"] == "ix_users_status_created_id"
         assert admin_plan["key"] == "ix_users_admin_created_id"
