@@ -1,0 +1,50 @@
+name: Dispatch official v1.0.8 release once
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  actions: write
+  contents: write
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Verify immutable release tag
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git fetch --tags --force
+          tagged_commit="$(git rev-list -n 1 v1.0.8)"
+          test "${tagged_commit}" = "26c71e6b08aa5cdeee3128e1e88b510fd7b494a6"
+          test "$(git show v1.0.8:VERSION)" = "1.0.8"
+
+      - name: Dispatch official Release workflow on v1.0.8
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run build.yml \
+            --ref v1.0.8 \
+            -f git_ref=v1.0.8 \
+            -f image_tag=v1.0.8 \
+            -f tests_only=false
+
+      - name: Remove one-time release helpers
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f .github/workflows/v108-tag-once.yml .github/workflows/v108-release-dispatch-once.yml
+          git add -A .github/workflows
+          git commit -m "ci: remove one-time v1.0.8 release helpers"
+          git push origin HEAD:main
