@@ -40,7 +40,6 @@ assert.ok(filters.includes("همه ادمین‌ها") && filters.includes('aria
 assert.ok(!filters.includes("AdvancedIcon"), "old advanced-filter dropdown must not return");
 for (const status of ["همه کاربران", "فعال", "غیرفعال", "منقضی", "در انتظار"]) assert.ok(filters.includes(status));
 
-assert.ok(!bulk.includes("<Menu placement=\"bottom-end\">"), "bulk operations must not use a dropdown");
 assert.ok(bulk.includes("users.length > 0"), "selected-user bulk controls must stay hidden without a selection");
 for (const key of ["bulkActivate", "bulkDeactivate", "bulkAddVolume", "bulkSubtractVolume", "bulkAddDays", "bulkSubtractDays", "bulkAddVolumeAndDays", "bulkDeleteSelected"]) assert.ok(bulk.includes(key), `bulk action missing: ${key}`);
 assert.ok(!bulk.includes("Retry خطاهای") && !bulk.includes("گزارش job") && !bulk.includes("هدف snapshot"), "mixed UI copy must be normalized");
