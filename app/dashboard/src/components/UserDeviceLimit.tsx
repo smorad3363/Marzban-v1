@@ -64,7 +64,12 @@ const ClientDetails: FC<{ observation: DeviceClientObservation; locale: string }
   );
 };
 
-export const UserDeviceLimit: FC<{ user: User }> = ({ user }) => {
+type UserDeviceLimitProps = {
+  user: User;
+  compact?: boolean;
+};
+
+export const UserDeviceLimit: FC<UserDeviceLimitProps> = ({ user, compact = false }) => {
   const { t, i18n } = useTranslation();
   const toast = useToast();
   const queryClient = useQueryClient();
@@ -117,10 +122,11 @@ export const UserDeviceLimit: FC<{ user: User }> = ({ user }) => {
         <IconButton
           aria-label={t(hasPenalty || warned ? "deviceLimit.openWarning" : "deviceLimit.openDevices")}
           icon={hasPenalty || warned ? <WarningIcon /> : <SafeIcon />}
-          size="sm"
-          minW="44px"
-          h="44px"
-          borderRadius="9px"
+          size={compact ? "xs" : "sm"}
+          minW={compact ? "28px" : "44px"}
+          w={compact ? "28px" : undefined}
+          h={compact ? "28px" : "44px"}
+          borderRadius={compact ? "7px" : "9px"}
           variant="outline"
           color={hasPenalty || warned ? "yellow.200" : "green.200"}
           borderColor={hasPenalty || warned ? "rgba(234,179,8,.5)" : "rgba(34,197,94,.4)"}
