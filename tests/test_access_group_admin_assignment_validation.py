@@ -103,6 +103,14 @@ def _values(group, allowed_admin_ids: list[int]) -> AccessGroupInput:
     )
 
 
+def _legacy_values(group) -> AccessGroupInput:
+    return AccessGroupInput(
+        name=group.name,
+        inbounds=[INBOUND],
+        hosts={INBOUND: [1]},
+    )
+
+
 def _assert_grant_error(db, group, admin_id: int, code: str) -> None:
     with pytest.raises(admin_hierarchy.HierarchyError) as raised:
         _grant(db, group, admin_id)
@@ -124,9 +132,24 @@ def test_legacy_group_without_permission_rows_remains_public_compatible(db):
     access_groups._require_group_access(session, group, target.id)
 
 
+def test_omitted_allowlist_preserves_legacy_public_persistence(db):
+    session, _, target, group = db
+    values = _legacy_values(group)
+    assert "allowed_admin_ids" not in values.model_fields_set
+
+    access_groups._replace_admin_access(session, group, values)
+    session.flush()
+
+    assert access_groups._permission_admin_ids(session, group.id) == []
+    access_groups._require_group_access(session, group, target.id)
+
+
 def test_explicit_empty_allowlist_persists_owner_sentinel_and_denies_admins(db):
     session, owner, target, group = db
-    access_groups._replace_admin_access(session, group, _values(group, []))
+    values = _values(group, [])
+    assert "allowed_admin_ids" in values.model_fields_set
+
+    access_groups._replace_admin_access(session, group, values)
     session.flush()
 
     assert access_groups._permission_admin_ids(session, group.id) == [owner.id]
