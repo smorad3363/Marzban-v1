@@ -13,6 +13,7 @@ def test_release_version_and_install_rollback_contract():
     checkpoints = Path(".github/workflows/checkpoints.yml").read_text()
     installer_lab = Path("tests/release_installer_lab.sh").read_text()
     upgrade_lab = Path("tests/release_upgrade_lab.sh").read_text()
+    node_e2e = Path("tests/node_panel_e2e.sh").read_text(encoding="utf-8")
 
     assert re.fullmatch(r"\d+\.\d+\.\d+", version)
     assert f'__version__ = "{version}"' in app
@@ -94,7 +95,16 @@ def test_release_version_and_install_rollback_contract():
     assert "docker build --tag marzban-v1:ci ." in checkpoints
     assert "Build release image without publishing" in checkpoints
     assert "Verify release image runtime contract" in checkpoints
+    assert "Verify Panel-to-Node mTLS end-to-end" in checkpoints
+    assert "bash tests/node_panel_e2e.sh marzban-v1:ci" in checkpoints
     assert "\n  docker-smoke:" not in checkpoints
+
+    assert "V2ReSTXRayNode" in node_e2e
+    assert "/v2/handshake" in node_e2e
+    assert "node.connect()" in node_e2e
+    assert "node.connected" in node_e2e
+    assert "PANEL_NODE_MTLS_E2E_PASS" in node_e2e
+    assert "node-data/panel-client.key" in node_e2e
 
     historical_notes = Path("docs/RELEASE_NOTES_v1.0.0.md").read_text(encoding="utf-8")
     assert "new canonical `1.0.0` product baseline" in historical_notes

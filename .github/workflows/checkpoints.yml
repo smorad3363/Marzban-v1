@@ -202,3 +202,6 @@ jobs:
              test -s /code/app/dashboard/build/404.html && \
              test -x /usr/bin/marzban-cli && \
              test -f /code/node_runtime/main.py'
+      - name: Verify Panel-to-Node mTLS end-to-end
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
+        run: bash tests/node_panel_e2e.sh marzban-v1:ci
