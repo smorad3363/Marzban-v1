@@ -38,6 +38,19 @@ const emptyDraft = (): Draft => ({
   allowedAdminIds: [],
 });
 
+const adminStatusLabel = (status?: string | null) => ({
+  ACTIVE: "فعال",
+  SUSPENDED: "تعلیق",
+  DISABLED: "غیرفعال",
+}[status || ""] || status || "نامشخص");
+
+const nodeStatusLabel = (status?: string | null) => ({
+  connected: "متصل",
+  connecting: "در حال اتصال",
+  disabled: "غیرفعال",
+  error: "خطا",
+}[status || ""] || status || "نامشخص");
+
 const fetchAdmins = async (): Promise<ManagedAdmin[]> => {
   const result: ManagedAdmin[] = [];
   let offset = 0;
@@ -88,11 +101,11 @@ export const AccessGroupManager = () => {
         queryClient.invalidateQueries("access-groups");
         queryClient.invalidateQueries("users");
         setDraft(emptyDraft());
-        toast({ title: `Access Group «${group.name}» ذخیره شد`, status: "success", duration: 3000 });
+        toast({ title: `گروه دسترسی «${group.name}» ذخیره شد`, status: "success", duration: 3000 });
       },
       onError: (error) => {
         toast({
-          title: "ذخیره Access Group انجام نشد",
+          title: "ذخیره گروه دسترسی انجام نشد",
           description: localizedApiError(error),
           status: "error",
           duration: 5000,
@@ -107,11 +120,11 @@ export const AccessGroupManager = () => {
       onSuccess: () => {
         queryClient.invalidateQueries("access-groups");
         setDraft(emptyDraft());
-        toast({ title: "Access Group بایگانی شد", status: "success", duration: 3000 });
+        toast({ title: "گروه دسترسی بایگانی شد", status: "success", duration: 3000 });
       },
       onError: (error) => {
         toast({
-          title: "بایگانی Access Group انجام نشد",
+          title: "بایگانی گروه دسترسی انجام نشد",
           description: localizedApiError(error),
           status: "error",
           duration: 5000,
@@ -133,7 +146,7 @@ export const AccessGroupManager = () => {
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (!draft.name.trim()) {
-      toast({ title: "نام Access Group الزامی است", status: "warning" });
+      toast({ title: "نام گروه دسترسی الزامی است", status: "warning" });
       return;
     }
     if (network.isLoading) {
@@ -141,20 +154,20 @@ export const AccessGroupManager = () => {
       return;
     }
     if (!draft.inbounds.length) {
-      toast({ title: "حداقل یک Inbound انتخاب کنید", status: "warning" });
+      toast({ title: "حداقل یک اینباند انتخاب کنید", status: "warning" });
       return;
     }
     if (missingInbounds.length || missingHosts.length) {
       toast({
         title: "انتخاب قدیمی یا غیرفعال را اصلاح کنید",
-        description: missingHosts.length ? `Host ID: ${missingHosts.join(", ")}` : missingInbounds.join(", "),
+        description: missingHosts.length ? `شناسه هاست: ${missingHosts.join(", ")}` : missingInbounds.join(", "),
         status: "warning",
         duration: 5000,
       });
       return;
     }
     if (draft.inbounds.some((tag) => !(draft.hosts[tag] || []).length)) {
-      toast({ title: "برای هر Inbound حداقل یک Host فعال انتخاب کنید", status: "warning" });
+      toast({ title: "برای هر اینباند حداقل یک هاست فعال انتخاب کنید", status: "warning" });
       return;
     }
     save.mutate();
@@ -164,13 +177,13 @@ export const AccessGroupManager = () => {
     return <Stack spacing={3}><Skeleton h="64px" /><Skeleton h="180px" /><Skeleton h="96px" /></Stack>;
   }
   if (groups.isError || network.isError || nodes.isError || admins.isError) {
-    return <Alert status="error"><AlertIcon />گزینه‌های Access Group دریافت نشدند.<Button ms={3} onClick={() => { groups.refetch(); network.refetch(); nodes.refetch(); admins.refetch(); }}>تلاش دوباره</Button></Alert>;
+    return <Alert status="error"><AlertIcon />اطلاعات گروه‌های دسترسی دریافت نشد.<Button ms={3} onClick={() => { groups.refetch(); network.refetch(); nodes.refetch(); admins.refetch(); }}>تلاش دوباره</Button></Alert>;
   }
 
   return <Stack spacing={5}>
-    <Alert status="info" variant="left-accent"><AlertIcon />Inbound، Host و Node فقط اینجا مدیریت می‌شوند. ویرایش گروه، کاربران فعال همان گروه را همگام می‌کند.</Alert>
+    <Alert status="info" variant="left-accent"><AlertIcon />اینباند، هاست و نودهای هر گروه از همین بخش مدیریت می‌شوند. با ذخیره تغییرات، کاربران فعال آن گروه نیز همگام می‌شوند.</Alert>
     <Card as="form" onSubmit={submit} p={{ base: 3, md: 4 }} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px">
-      <HStack justify="space-between" align="start" mb={4} gap={3} wrap="wrap"><Box><Text fontWeight="800">{draft.id ? "ویرایش Access Group" : "Access Group جدید"}</Text><Text mt={1} color="var(--panel-text-muted)" _dark={{ color: "gray.400" }} fontSize="sm">انتخاب خالی هرگز به معنی همه نیست؛ فقط Node خالی یعنی بدون فیلتر Node.</Text></Box>{draft.id && <Button minH="44px" variant="ghost" onClick={() => setDraft(emptyDraft())}>انصراف از ویرایش</Button>}</HStack>
+      <HStack justify="space-between" align="start" mb={4} gap={3} wrap="wrap"><Box><Text fontWeight="800">{draft.id ? "ویرایش گروه دسترسی" : "گروه دسترسی جدید"}</Text><Text mt={1} color="var(--panel-text-muted)" fontSize="sm">برای اینباند و هاست انتخاب صریح لازم است؛ خالی گذاشتن نود یعنی محدودیتی روی نود اعمال نمی‌شود.</Text></Box>{draft.id && <Button minH="44px" variant="ghost" onClick={() => setDraft(emptyDraft())}>انصراف از ویرایش</Button>}</HStack>
       <Stack spacing={4}>
         <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
           <FormControl isRequired><FormLabel>نام گروه</FormLabel><Input minH="44px" maxLength={128} value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} /></FormControl>
@@ -191,7 +204,7 @@ export const AccessGroupManager = () => {
                     : current.allowedAdminIds.filter((id) => id !== admin.id),
                 }))}
               >
-                <HStack><Text>{admin.username}</Text><Badge>{admin.account_status}</Badge></HStack>
+                <HStack><Text>{admin.username}</Text><Badge>{adminStatusLabel(admin.account_status)}</Badge></HStack>
               </Checkbox>
             ))}
             {!(admins.data || []).some((admin) => admin.role === "ADMIN") && <Text p={2} color="var(--panel-text-muted)">ادمینی برای واگذاری این گروه وجود ندارد.</Text>}
@@ -203,17 +216,17 @@ export const AccessGroupManager = () => {
           </FormHelperText>
         </FormControl>
         <FormControl>
-          <FormLabel>Nodeها</FormLabel>
+          <FormLabel>نودها</FormLabel>
           <SimpleGrid columns={{ base: 1, md: 2 }} gap={1} p={2} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px">
-            {(nodes.data || []).map((node) => node.id != null && <Checkbox key={node.id} minH="44px" isChecked={draft.nodeIds.includes(node.id)} onChange={(event) => setDraft((current) => ({ ...current, nodeIds: event.target.checked ? [...new Set([...current.nodeIds, node.id!])].sort((a, b) => a - b) : current.nodeIds.filter((id) => id !== node.id) }))}><HStack><Text>{node.name}</Text>{node.status && <Badge>{node.status}</Badge>}</HStack></Checkbox>)}
-            {!nodes.data?.length && <Text p={2} color="var(--panel-text-muted)">Nodeی ثبت نشده است.</Text>}
+            {(nodes.data || []).map((node) => node.id != null && <Checkbox key={node.id} minH="44px" isChecked={draft.nodeIds.includes(node.id)} onChange={(event) => setDraft((current) => ({ ...current, nodeIds: event.target.checked ? [...new Set([...current.nodeIds, node.id!])].sort((a, b) => a - b) : current.nodeIds.filter((id) => id !== node.id) }))}><HStack><Text>{node.name}</Text>{node.status && <Badge>{nodeStatusLabel(node.status)}</Badge>}</HStack></Checkbox>)}
+            {!nodes.data?.length && <Text p={2} color="var(--panel-text-muted)">نودی ثبت نشده است.</Text>}
           </SimpleGrid>
-          <FormHelperText>{draft.nodeIds.length ? `${draft.nodeIds.length} Node انتخاب شده` : "همه Nodeها؛ فیلتر Node اعمال نمی‌شود."}</FormHelperText>
+          <FormHelperText>{draft.nodeIds.length ? `${draft.nodeIds.length} نود انتخاب شده` : "همه نودها؛ فیلتر نود اعمال نمی‌شود."}</FormHelperText>
         </FormControl>
         <FormControl isRequired>
-          <FormLabel>Inbound و Hostهای مجاز</FormLabel>
+          <FormLabel>اینباندها و هاست‌های مجاز</FormLabel>
           <Stack maxH="360px" overflowY="auto" spacing={1} p={2} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px">
-            {options.map((inbound) => <Box key={inbound.tag} px={2} py={1} borderRadius="8px" bg={draft.inbounds.includes(inbound.tag) ? "blackAlpha.100" : "transparent"} _dark={{ bg: draft.inbounds.includes(inbound.tag) ? "whiteAlpha.50" : "transparent" }}>
+            {options.map((inbound) => <Box key={inbound.tag} px={2} py={1} borderRadius="12px" bg={draft.inbounds.includes(inbound.tag) ? "blackAlpha.100" : "transparent"} _dark={{ bg: draft.inbounds.includes(inbound.tag) ? "whiteAlpha.50" : "transparent" }}>
               <Checkbox minH="44px" colorScheme="primary" isChecked={draft.inbounds.includes(inbound.tag)} onChange={(event) => setDraft((current) => {
                 const inbounds = toggleAccessGroupInboundTag(current.inbounds, inbound.tag, event.target.checked);
                 const hosts = { ...current.hosts };
@@ -221,20 +234,20 @@ export const AccessGroupManager = () => {
                 else delete hosts[inbound.tag];
                 return { ...current, inbounds, hosts: normalizeAccessGroupHostScope(hosts) };
               })}><Stack spacing={0} dir="ltr"><Text fontSize="sm" fontWeight="700" overflowWrap="anywhere">{inbound.tag}</Text><Text color="var(--panel-text-muted)" fontSize="xs">{inbound.protocol} · {inbound.network} · {inbound.tls || "none"}{inbound.port ? ` · ${inbound.port}` : ""}</Text></Stack></Checkbox>
-              {draft.inbounds.includes(inbound.tag) && <Stack ms={7} mb={2} spacing={1}>{inbound.hosts.map((host) => <Checkbox key={host.id} minH="44px" colorScheme="cyan" isChecked={(draft.hosts[inbound.tag] || []).includes(host.id)} onChange={(event) => setDraft((current) => ({ ...current, hosts: toggleAccessGroupHostId(current.hosts, inbound.tag, host.id, event.target.checked) }))}><Text fontSize="sm" overflowWrap="anywhere" dir="ltr">#{host.id} · {host.remark}</Text></Checkbox>)}{(draft.hosts[inbound.tag] || []).filter((hostId) => !inbound.hosts.some((host) => host.id === hostId)).map((hostId) => <Checkbox key={hostId} minH="44px" colorScheme="red" isChecked onChange={(event) => setDraft((current) => ({ ...current, hosts: toggleAccessGroupHostId(current.hosts, inbound.tag, hostId, event.target.checked) }))}><HStack dir="ltr"><Text fontSize="sm">#{hostId}</Text><Badge colorScheme="red">حذف‌شده / غیرفعال</Badge></HStack></Checkbox>)}{!inbound.hosts.length && <Text color="red.500" fontSize="xs">Host فعال برای این Inbound وجود ندارد.</Text>}</Stack>}
+              {draft.inbounds.includes(inbound.tag) && <Stack ms={7} mb={2} spacing={1}>{inbound.hosts.map((host) => <Checkbox key={host.id} minH="44px" colorScheme="cyan" isChecked={(draft.hosts[inbound.tag] || []).includes(host.id)} onChange={(event) => setDraft((current) => ({ ...current, hosts: toggleAccessGroupHostId(current.hosts, inbound.tag, host.id, event.target.checked) }))}><Text fontSize="sm" overflowWrap="anywhere" dir="ltr">#{host.id} · {host.remark}</Text></Checkbox>)}{(draft.hosts[inbound.tag] || []).filter((hostId) => !inbound.hosts.some((host) => host.id === hostId)).map((hostId) => <Checkbox key={hostId} minH="44px" colorScheme="red" isChecked onChange={(event) => setDraft((current) => ({ ...current, hosts: toggleAccessGroupHostId(current.hosts, inbound.tag, hostId, event.target.checked) }))}><HStack dir="ltr"><Text fontSize="sm">#{hostId}</Text><Badge colorScheme="red">حذف‌شده / غیرفعال</Badge></HStack></Checkbox>)}{!inbound.hosts.length && <Text color="red.500" fontSize="xs">هاست فعالی برای این اینباند وجود ندارد.</Text>}</Stack>}
             </Box>)}
             {missingInbounds.map((tag) => <Checkbox key={tag} minH="44px" px={2} colorScheme="red" isChecked onChange={(event) => setDraft((current) => ({ ...current, inbounds: toggleAccessGroupInboundTag(current.inbounds, tag, event.target.checked), hosts: Object.fromEntries(Object.entries(current.hosts).filter(([key]) => key !== tag)) }))}><HStack dir="ltr"><Text fontSize="sm">{tag}</Text><Badge colorScheme="red">حذف‌شده / قدیمی</Badge></HStack></Checkbox>)}
-            {!options.length && <Text p={2} color="var(--panel-text-muted)">Inbound واجدشرایطی پیدا نشد.</Text>}
+            {!options.length && <Text p={2} color="var(--panel-text-muted)">اینباند قابل استفاده‌ای پیدا نشد.</Text>}
           </Stack>
-          <FormHelperText>برای هر Inbound انتخاب‌شده، حداقل یک Host فعال لازم است.</FormHelperText>
+          <FormHelperText>برای هر اینباند انتخاب‌شده حداقل یک هاست فعال لازم است.</FormHelperText>
         </FormControl>
-        <HStack justify="flex-end" wrap="wrap"><Button minH="44px" variant="ghost" onClick={() => setDraft(emptyDraft())}>پاک‌کردن فرم</Button><Button minH="44px" type="submit" colorScheme="primary" isLoading={save.isLoading}>{draft.id ? "ذخیره و همگام‌سازی" : "ساخت Access Group"}</Button></HStack>
+        <HStack justify="flex-end" wrap="wrap"><Button minH="44px" variant="ghost" onClick={() => setDraft(emptyDraft())}>پاک‌کردن فرم</Button><Button minH="44px" type="submit" colorScheme="primary" isLoading={save.isLoading}>{draft.id ? "ذخیره و همگام‌سازی" : "ساخت گروه دسترسی"}</Button></HStack>
       </Stack>
     </Card>
     <Stack spacing={2}>
       <Text fontWeight="800">گروه‌های فعال</Text>
-      {(groups.data || []).map((group) => <HStack key={group.id} p={3} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px" align="start" gap={3} wrap="wrap"><Box flex="1" minW="220px"><HStack wrap="wrap"><Text fontWeight="700">{group.name}</Text><Badge variant="outline" color="var(--panel-success)" borderColor="var(--panel-success-border)" bg="var(--panel-success-soft)">{group.active_user_count} کاربر فعال</Badge><Badge>{group.inbounds.length} Inbound</Badge><Badge variant="outline" color="var(--panel-accent)" borderColor="var(--panel-accent-border)" bg="var(--panel-accent-soft)">{group.allowed_admin_ids.length ? `${group.allowed_admin_ids.length} ادمین مجاز` : "همه ادمین‌ها"}</Badge><Badge>{group.node_ids.length ? `${group.node_ids.length} Node` : "همه Nodeها"}</Badge></HStack><Text mt={1} color="var(--panel-text-muted)" _dark={{ color: "gray.400" }} fontSize="sm">{group.description || group.inbounds.join(", ")}</Text></Box><HStack><Button minH="44px" variant="outline" onClick={() => edit(group)}>ویرایش</Button><Button minH="44px" colorScheme="red" variant="ghost" isDisabled={group.active_user_count > 0} isLoading={archive.isLoading} onClick={() => { if (window.confirm(`Access Group «${group.name}» بایگانی شود؟`)) archive.mutate(group); }}>بایگانی</Button></HStack></HStack>)}
-      {!groups.data?.length && <Text role="status" color="var(--panel-text-muted)">هنوز Access Group ساخته نشده است.</Text>}
+      {(groups.data || []).map((group) => <HStack key={group.id} p={3} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px" align="start" gap={3} wrap="wrap"><Box flex="1" minW="220px"><HStack wrap="wrap"><Text fontWeight="700">{group.name}</Text><Badge variant="outline" color="var(--panel-success)" borderColor="var(--panel-success-border)" bg="var(--panel-success-soft)">{group.active_user_count} کاربر فعال</Badge><Badge>{group.inbounds.length} Inbound</Badge><Badge variant="outline" color="var(--panel-accent)" borderColor="var(--panel-accent-border)" bg="var(--panel-accent-soft)">{group.allowed_admin_ids.length ? `${group.allowed_admin_ids.length} ادمین مجاز` : "همه ادمین‌ها"}</Badge><Badge>{group.node_ids.length ? `${group.node_ids.length} نود` : "همه نودها"}</Badge></HStack><Text mt={1} color="var(--panel-text-muted)" fontSize="sm">{group.description || group.inbounds.join(", ")}</Text></Box><HStack><Button minH="44px" variant="outline" onClick={() => edit(group)}>ویرایش</Button><Button minH="44px" colorScheme="red" variant="ghost" isDisabled={group.active_user_count > 0} isLoading={archive.isLoading} onClick={() => { if (window.confirm(`گروه دسترسی «${group.name}» بایگانی شود؟`)) archive.mutate(group); }}>بایگانی</Button></HStack></HStack>)}
+      {!groups.data?.length && <Text role="status" color="var(--panel-text-muted)">هنوز گروه دسترسی ساخته نشده است.</Text>}
     </Stack>
   </Stack>;
 };

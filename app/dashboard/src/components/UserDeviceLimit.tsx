@@ -53,7 +53,7 @@ const ClientDetails: FC<{ observation: DeviceClientObservation; locale: string }
   const { t } = useTranslation();
   const formatDate = (value: string) => new Intl.DateTimeFormat(locale, { dateStyle: "short", timeStyle: "short" }).format(new Date(`${value}Z`));
   return (
-    <SimpleGrid columns={{ base: 1, sm: 2, lg: 4 }} gap={2} mt={2} p={2.5} bg="rgba(2,6,23,.28)" borderRadius="9px">
+    <SimpleGrid columns={{ base: 1, sm: 2, lg: 4 }} gap={2} mt={2} p={2.5} bg="var(--panel-nested)" borderRadius="9px">
       <Box><Text color="var(--panel-text-muted)" fontSize="xs">{t("deviceLimit.client")}</Text><Text dir="ltr" fontFamily="mono" fontSize="xs">{observation.client_name} {observation.client_version || ""}</Text></Box>
       <Box><Text color="var(--panel-text-muted)" fontSize="xs">{t("deviceLimit.platform")}</Text><Text dir="ltr" fontFamily="mono" fontSize="xs">{observation.platform || observation.os_token || "—"}</Text></Box>
       <Box><Text color="var(--panel-text-muted)" fontSize="xs">{t("deviceLimit.lastSeen")}</Text><Text dir="ltr" fontFamily="mono" fontSize="xs">{formatDate(observation.last_seen_at)}</Text></Box>
@@ -64,7 +64,12 @@ const ClientDetails: FC<{ observation: DeviceClientObservation; locale: string }
   );
 };
 
-export const UserDeviceLimit: FC<{ user: User }> = ({ user }) => {
+type UserDeviceLimitProps = {
+  user: User;
+  compact?: boolean;
+};
+
+export const UserDeviceLimit: FC<UserDeviceLimitProps> = ({ user, compact = false }) => {
   const { t, i18n } = useTranslation();
   const toast = useToast();
   const queryClient = useQueryClient();
@@ -117,15 +122,16 @@ export const UserDeviceLimit: FC<{ user: User }> = ({ user }) => {
         <IconButton
           aria-label={t(hasPenalty || warned ? "deviceLimit.openWarning" : "deviceLimit.openDevices")}
           icon={hasPenalty || warned ? <WarningIcon /> : <SafeIcon />}
-          size="sm"
-          minW="44px"
-          h="44px"
-          borderRadius="9px"
+          size={compact ? "xs" : "sm"}
+          minW={compact ? "30px" : "44px"}
+          w={compact ? "30px" : undefined}
+          h={compact ? "30px" : "44px"}
+          borderRadius={compact ? "10px" : "12px"}
           variant="outline"
-          color={hasPenalty || warned ? "yellow.200" : "green.200"}
-          borderColor={hasPenalty || warned ? "rgba(234,179,8,.5)" : "rgba(34,197,94,.4)"}
-          bg={hasPenalty || warned ? "rgba(234,179,8,.08)" : "rgba(34,197,94,.06)"}
-          _hover={{ bg: hasPenalty || warned ? "rgba(234,179,8,.15)" : "rgba(34,197,94,.13)" }}
+          color={hasPenalty || warned ? "var(--panel-warning)" : "var(--panel-success)"}
+          borderColor={hasPenalty || warned ? "var(--panel-warning-border)" : "var(--panel-success-border)"}
+          bg={hasPenalty || warned ? "var(--panel-warning-soft)" : "var(--panel-success-soft)"}
+          _hover={{ bg: hasPenalty || warned ? "var(--panel-warning-soft)" : "var(--panel-success-soft)" }}
           onClick={(event) => { event.stopPropagation(); disclosure.onOpen(); }}
         />
       </Tooltip>
@@ -146,14 +152,14 @@ export const UserDeviceLimit: FC<{ user: User }> = ({ user }) => {
           <ModalBody pb={6}>
             {query.isError && <Alert status="error"><AlertIcon />{t("deviceLimit.loadFailed")}</Alert>}
             {query.isLoading || !summary ? (
-              <Stack>{Array.from({ length: 3 }).map((_, index) => <Skeleton key={index} h="112px" borderRadius="11px" startColor="#14231b" endColor="#243d31" />)}</Stack>
+              <Stack>{Array.from({ length: 3 }).map((_, index) => <Skeleton key={index} h="112px" borderRadius="11px" startColor="var(--panel-nested)" endColor="var(--panel-surface)" />)}</Stack>
             ) : (
               <Stack spacing={4}>
                 <SimpleGrid columns={{ base: 1, sm: 2, lg: 4 }} gap={3}>
-                  <Box p={3} bg="var(--panel-nested)" borderWidth="1px" borderColor="rgba(148,163,184,.15)" borderRadius="10px"><Text color="var(--panel-text-muted)" fontSize="xs">{t("deviceLimit.configuredLimit")}</Text><Text mt={1} dir="ltr" fontFamily="mono" fontWeight="900">{summary.configured_limit ?? "∞"}</Text></Box>
-                  <Box p={3} bg="var(--panel-nested)" borderWidth="1px" borderColor="rgba(148,163,184,.15)" borderRadius="10px"><Text color="var(--panel-text-muted)" fontSize="xs">{t("deviceLimit.liveConnections")}</Text><Text mt={1} dir="ltr" fontFamily="mono" fontWeight="900">{summary.live_active_ip_count}</Text></Box>
-                  <Box p={3} bg="var(--panel-nested)" borderWidth="1px" borderColor="rgba(148,163,184,.15)" borderRadius="10px"><Text color="var(--panel-text-muted)" fontSize="xs">{t("deviceLimit.strikes")}</Text><Text mt={1} dir="ltr" fontFamily="mono" fontWeight="900">{summary.state.violation_count}</Text></Box>
-                  <Box p={3} bg="var(--panel-nested)" borderWidth="1px" borderColor="rgba(148,163,184,.15)" borderRadius="10px"><Text color="var(--panel-text-muted)" fontSize="xs">{t("deviceLimit.penaltyStatus")}</Text><Badge mt={1} colorScheme={summary.state.penalty_status === "clear" ? "green" : "yellow"} textTransform="none">{t(`deviceLimit.status.${summary.state.penalty_status}`)}</Badge></Box>
+                  <Box p={3} bg="var(--panel-nested)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="10px"><Text color="var(--panel-text-muted)" fontSize="xs">{t("deviceLimit.configuredLimit")}</Text><Text mt={1} dir="ltr" fontFamily="mono" fontWeight="900">{summary.configured_limit ?? "∞"}</Text></Box>
+                  <Box p={3} bg="var(--panel-nested)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="10px"><Text color="var(--panel-text-muted)" fontSize="xs">{t("deviceLimit.liveConnections")}</Text><Text mt={1} dir="ltr" fontFamily="mono" fontWeight="900">{summary.live_active_ip_count}</Text></Box>
+                  <Box p={3} bg="var(--panel-nested)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="10px"><Text color="var(--panel-text-muted)" fontSize="xs">{t("deviceLimit.strikes")}</Text><Text mt={1} dir="ltr" fontFamily="mono" fontWeight="900">{summary.state.violation_count}</Text></Box>
+                  <Box p={3} bg="var(--panel-nested)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="10px"><Text color="var(--panel-text-muted)" fontSize="xs">{t("deviceLimit.penaltyStatus")}</Text><Badge mt={1} colorScheme={summary.state.penalty_status === "clear" ? "green" : "yellow"} textTransform="none">{t(`deviceLimit.status.${summary.state.penalty_status}`)}</Badge></Box>
                 </SimpleGrid>
 
                 {summary.state.last_reason && (

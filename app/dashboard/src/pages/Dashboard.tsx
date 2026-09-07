@@ -15,10 +15,9 @@ import { AppShell } from "components/AppShell";
 import { CoreSettingsModal } from "components/CoreSettingsModal";
 import { DashboardOverviewCompact } from "components/DashboardOverviewCompact";
 import { DeleteUserModal } from "components/DeleteUserModal";
-import { FiltersCompact } from "components/FiltersCompact";
+import { FiltersCompact, UserManagementControls } from "components/FiltersCompact";
 import { HostsDialog } from "components/HostsDialog";
 import { NodesDialog } from "components/NodesModal";
-import { NodeBandwidthPanel } from "components/NodeBandwidthPanel";
 import { NodesUsage } from "components/NodesUsage";
 import { PlanCreateModal } from "components/PlanCreateModal";
 import { QRCodeDialog } from "components/QRCodeDialog";
@@ -151,7 +150,6 @@ export const Dashboard: FC = () => {
         </Card>
 
         <DashboardOverviewCompact />
-        {isOwner && <NodeBandwidthPanel />}
 
         <Box as="section" aria-labelledby="user-operations-title">
           <Card
@@ -163,22 +161,33 @@ export const Dashboard: FC = () => {
             boxShadow="var(--shadow-panel)"
             overflow="hidden"
           >
-            <HStack px={{ base: 3, md: 4 }} pt={3.5} justify="space-between" align="end" gap={3}>
-              <Box>
-                <Text color="primary.300" fontSize="10px" fontWeight="800">کاربران</Text>
-                <Text id="user-operations-title" as="h2" mt={0.5} fontSize="lg" fontWeight="850">مدیریت کاربران</Text>
-                <Text mt={1} color="var(--panel-text-muted)" fontSize="11px">اطلاعات مهم، وضعیت، مصرف و عملیات هر کاربر بدون باز کردن پنجره اضافی.</Text>
+            <Stack px={{ base: 3, md: 4 }} pt={3.5} spacing={2.5}>
+              <HStack justify="space-between" align="start" gap={3} flexWrap="wrap">
+                <Box flex="1" minW={0}>
+                  <Text color="var(--panel-accent)" fontSize="10px" fontWeight="800">کاربران</Text>
+                  <Text id="user-operations-title" as="h2" mt={0.5} fontSize="lg" fontWeight="850">
+                    مدیریت کاربران
+                  </Text>
+                  <Text mt={1} color="var(--panel-text-muted)" fontSize="11px">
+                    اطلاعات مهم، وضعیت، مصرف و عملیات هر کاربر بدون باز کردن پنجره اضافی.
+                  </Text>
+                </Box>
+                <Button
+                  display={{ base: "inline-flex", md: "none" }}
+                  size="sm"
+                  variant="ghost"
+                  aria-expanded={mobileUsersOpen}
+                  onClick={() => setMobileUsersOpen((value) => !value)}
+                >
+                  {mobileUsersOpen ? "بستن کاربران" : "نمایش کاربران"}
+                </Button>
+              </HStack>
+
+              <Box pt={2.5} borderTopWidth="1px" borderColor="var(--panel-border)">
+                <UserManagementControls />
               </Box>
-              <Button
-                display={{ base: "inline-flex", md: "none" }}
-                size="sm"
-                variant="ghost"
-                aria-expanded={mobileUsersOpen}
-                onClick={() => setMobileUsersOpen((value) => !value)}
-              >
-                {mobileUsersOpen ? "بستن کاربران" : "نمایش کاربران"}
-              </Button>
-            </HStack>
+            </Stack>
+
             <Collapse in={desktopUsersVisible || mobileUsersOpen} animateOpacity={false}>
               <FiltersCompact />
               <Box px={{ base: 3, md: 4 }} pb={4}>

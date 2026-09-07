@@ -58,6 +58,7 @@ import { User, UserCreate } from "types/User";
 import { localizedApiError } from "utils/apiError";
 import { formatBytes } from "utils/formatByte";
 import { BulkUserActions } from "./BulkUserActions";
+import { UserDeviceLimit } from "./UserDeviceLimit";
 import { Pagination } from "./Pagination";
 
 const CopyIcon = chakra(ClipboardDocumentIcon, { baseStyle: { w: 4, h: 4 } });
@@ -332,24 +333,39 @@ export const UsersTablePro: FC = () => {
 
   return (
     <Box dir={i18n.dir()} w="full" minW={0}>
-      {!readOnly && (
-        <Box px={0} pb={2.5}>
-          <BulkUserActions
-            users={selectedUsers}
-            allVisibleSelected={allVisibleSelected}
-            visibleCount={users.length}
-            onToggleAll={toggleAllVisible}
-            onClear={() => setSelectedMap(new Map())}
-          />
-          {selectedUsers.length > users.filter((user) => selectedMap.has(user.username)).length && (
-            <Text mt={1.5} color="var(--panel-warning)" fontSize="10px">
-              انتخاب‌ها بین صفحه‌ها حفظ شده‌اند؛ مجموع انتخاب‌شده: {selectedUsers.length.toLocaleString("fa-IR")}
-            </Text>
-          )}
-        </Box>
-      )}
-
       <TableContainer overflowX="hidden" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="16px" bg="var(--panel-surface)" boxShadow="var(--shadow-panel)">
+        {!readOnly && (
+          <Box
+            px={{ base: 2, md: 2.5 }}
+            borderBottomWidth="1px"
+            borderColor="var(--panel-border)"
+            bg="var(--panel-nested)"
+            sx={{
+              "& > div:first-of-type": {
+                marginTop: "0 !important",
+                paddingInline: "0 !important",
+                paddingBlock: "8px !important",
+                border: "0 !important",
+                borderRadius: "0 !important",
+                background: "transparent !important",
+              },
+            }}
+          >
+            <BulkUserActions
+              users={selectedUsers}
+              allVisibleSelected={allVisibleSelected}
+              visibleCount={users.length}
+              onToggleAll={toggleAllVisible}
+              onClear={() => setSelectedMap(new Map())}
+            />
+            {selectedUsers.length > users.filter((user) => selectedMap.has(user.username)).length && (
+              <Text pb={2} color="var(--panel-warning)" fontSize="10px">
+                انتخاب‌ها بین صفحه‌ها حفظ شده‌اند؛ مجموع انتخاب‌شده: {selectedUsers.length.toLocaleString("fa-IR")}
+              </Text>
+            )}
+          </Box>
+        )}
+
         <Table size="sm" w="full" sx={{ tableLayout: "fixed", "th, td": { borderBottom: "0 !important", px: 3.5, py: 3, overflow: "hidden" }, "th": { whiteSpace: "normal", lineHeight: 1.45, fontWeight: 600, color: "var(--panel-text-muted)" } }}>
           <Thead bg="var(--panel-nested)">
             <Tr>
@@ -408,7 +424,7 @@ export const UsersTablePro: FC = () => {
                   <Td><Text dir="ltr" textAlign="start" fontSize="11px" fontWeight="800" sx={{ unicodeBidi: "isolate" }}>{user.admin?.username || "—"}</Text></Td>
                   <Td>
                     <Text fontSize="10px" lineHeight="1.6">{fmtDateTime(user.online_at)}</Text>
-                    <Text mt={1} color={user.online_at ? "green.300" : "gray.600"} fontSize="9px">{user.online_at ? "دارای فعالیت" : "بدون فعالیت ثبت‌شده"}</Text>
+                    <Text mt={1} color={user.online_at ? "var(--panel-success)" : "var(--panel-text-muted)"} fontSize="9px">{user.online_at ? "دارای فعالیت" : "بدون فعالیت ثبت‌شده"}</Text>
                   </Td>
                   <Td>
                     <Tooltip label={user.sub_last_user_agent || "—"} hasArrow>
@@ -421,12 +437,13 @@ export const UsersTablePro: FC = () => {
                   </Td>
                   <Td>
                     <Tooltip label={user.note || "—"} hasArrow>
-                      <Text fontSize="10px" noOfLines={2} color={user.note ? "gray.300" : "gray.600"}>{user.note || "—"}</Text>
+                      <Text fontSize="10px" noOfLines={2} color={user.note ? "var(--panel-text-body)" : "var(--panel-text-muted)"}>{user.note || "—"}</Text>
                     </Tooltip>
                   </Td>
                   <Td textAlign="end">
                     <HStack justify="end" gap={1.5} dir="ltr" maxW="full">
                       <Action label="کپی لینک اشتراک" icon={<CopyIcon />} onClick={() => copySubscription(user)} tone="green" />
+                      {!readOnly && isOwner && <UserDeviceLimit user={user} compact />}
                       {!readOnly && <Action label="ویرایش" icon={<EditIcon />} onClick={() => onEditingUser(user)} tone="blue" disabled={busy} />}
                       {!readOnly && <Action label="حذف کاربر" icon={<DeleteIcon />} onClick={() => onDeletingUser(user)} tone="red" disabled={busy} />}
                       <Menu placement="bottom-end" isLazy>

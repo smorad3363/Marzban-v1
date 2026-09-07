@@ -13,7 +13,7 @@ def test_release_version_and_install_rollback_contract():
     installer_lab = Path("tests/release_installer_lab.sh").read_text()
     upgrade_lab = Path("tests/release_upgrade_lab.sh").read_text()
 
-    assert version == "1.0.6"
+    assert version == "1.0.7"
     assert f'__version__ = "{version}"' in app
     assert f'CLI_RELEASE_VERSION="{release_tag}"' in installer
     assert f"ghcr.io/smorad3363/marzban-v1:{release_tag}" in Path("docker-compose.yml").read_text()
@@ -103,7 +103,7 @@ def test_release_version_and_install_rollback_contract():
     assert "--client-cert-file" in v103_notes
     assert "v1.0.2" in v103_notes
 
-    current_notes = Path("docs/RELEASE_NOTES_v1.0.6.md").read_text(encoding="utf-8")
+    current_notes = Path("docs/RELEASE_NOTES_v1.0.7.md").read_text(encoding="utf-8")
     assert "dashboard" in current_notes.lower()
     assert "access group" in current_notes.lower()
     assert "light" in current_notes.lower() and "dark" in current_notes.lower()

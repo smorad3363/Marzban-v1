@@ -12,10 +12,6 @@ import {
   HStack,
   IconButton,
   Input,
-  Menu,
-  MenuButton,
-  MenuItem,
-  MenuList,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -32,7 +28,6 @@ import {
 import {
   BoltIcon,
   CalendarDaysIcon,
-  ChevronDownIcon,
   CircleStackIcon,
   NoSymbolIcon,
   TrashIcon,
@@ -335,7 +330,7 @@ const BulkActionDialog: FC<BulkActionDialogProps> = ({
               >
                 {isOwner && <option value="ALL_USERS">همه کاربران سیستم</option>}
                 <option value="SELECTED_ADMINS_DIRECT">فقط کاربران مستقیم ادمین‌های انتخابی</option>
-                <option value="SELECTED_ADMINS_SUBTREE">کاربران ادمین‌های انتخابی و subtree</option>
+                <option value="SELECTED_ADMINS_SUBTREE">کاربران ادمین‌های انتخابی و زیرمجموعه‌های آن‌ها</option>
               </Select>
             </FormControl>
 
@@ -348,7 +343,7 @@ const BulkActionDialog: FC<BulkActionDialogProps> = ({
                   spacing={1}
                   p={3}
                   borderWidth="1px"
-                  borderColor="whiteAlpha.200"
+                  borderColor="var(--panel-border)"
                   borderRadius="10px"
                 >
                   {adminOptions.map((option) => (
@@ -393,7 +388,7 @@ const BulkActionDialog: FC<BulkActionDialogProps> = ({
               {isPreviewing
                 ? "در حال محاسبه هدف‌ها…"
                 : preview
-                ? `تعداد هدف snapshot: ${preview.resolved_target_count}`
+                ? `تعداد کاربران هدف: ${preview.resolved_target_count}`
                 : "برای اجرا ابتدا دامنه معتبر انتخاب کنید."}
             </Text>
 
@@ -443,8 +438,8 @@ const BulkActionDialog: FC<BulkActionDialogProps> = ({
             )}
 
             {result && (
-              <Box p={3} borderWidth="1px" borderColor="whiteAlpha.200" borderRadius="10px">
-                <Text fontWeight="700">گزارش job: {result.status}</Text>
+              <Box p={3} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="10px">
+                <Text fontWeight="700">گزارش عملیات: {result.status}</Text>
                 <Text fontSize="sm" mt={1}>
                   کل {result.total} · موفق {result.success} · ناموفق {result.failed} · نادیده‌گرفته‌شده {result.skipped}
                 </Text>
@@ -468,7 +463,7 @@ const BulkActionDialog: FC<BulkActionDialogProps> = ({
           </Button>
           {result && result.failed > 0 && (
             <Button variant="outline" onClick={retryFailures} isLoading={isSubmitting}>
-              Retry خطاهای قابل‌تکرار
+              تلاش دوباره برای خطاهای قابل‌تکرار
             </Button>
           )}
           <Button
@@ -730,8 +725,8 @@ export const BulkUserActions: FC<BulkUserActionsProps> = ({
           <Button
             size="sm"
             variant="outline"
-            color="orange.200"
-            borderColor="orange.700"
+            color="var(--panel-warning)"
+            borderColor="var(--panel-warning-border)"
             leftIcon={<TrashIcon width="17px" aria-hidden="true" />}
             onClick={trialCleanupDialog.onOpen}
           >
@@ -741,8 +736,8 @@ export const BulkUserActions: FC<BulkUserActionsProps> = ({
             <Button
               size="sm"
               variant="outline"
-              color="red.200"
-              borderColor="red.800"
+              color="var(--panel-danger)"
+              borderColor="var(--panel-danger-border)"
               leftIcon={<TrashIcon width="17px" aria-hidden="true" />}
               onClick={cleanupDialog.onOpen}
               _hover={{ bg: "rgba(239, 68, 68, .1)", borderColor: "red.600" }}
@@ -750,76 +745,18 @@ export const BulkUserActions: FC<BulkUserActionsProps> = ({
               {t("usersTable.cleanupExpired")}
             </Button>
           )}
-
-          <Menu placement="bottom-end">
-              <MenuButton
-                as={Button}
-                size="sm"
-                colorScheme="primary"
-                rightIcon={<ChevronDownIcon width="16px" aria-hidden="true" />}
-              >
-                {t("usersTable.bulkActions")}
-              </MenuButton>
-              <MenuList
-                dir={i18n.dir()}
-                bg="var(--panel-surface)"
-                borderColor="var(--panel-border)"
-                minW="230px"
-              >
-                <MenuItem
-                  icon={<BoltIcon width="17px" aria-hidden="true" />}
-                  onClick={() => openAction(actionDefinitions[0])}
-                >
-                  {t(actionDefinitions[0].labelKey)}
-                </MenuItem>
-                <MenuItem
-                  icon={<NoSymbolIcon width="17px" aria-hidden="true" />}
-                  onClick={() => openAction(actionDefinitions[1])}
-                >
-                  {t(actionDefinitions[1].labelKey)}
-                </MenuItem>
-                <Divider borderColor="whiteAlpha.100" />
-                <MenuItem
-                  icon={<CircleStackIcon width="17px" aria-hidden="true" />}
-                  onClick={() => openAction(actionDefinitions[2])}
-                >
-                  {t(actionDefinitions[2].labelKey)}
-                </MenuItem>
-                <MenuItem
-                  icon={<CircleStackIcon width="17px" aria-hidden="true" />}
-                  onClick={() => openAction(actionDefinitions[3])}
-                >
-                  {t(actionDefinitions[3].labelKey)}
-                </MenuItem>
-                <MenuItem
-                  icon={<CalendarDaysIcon width="17px" aria-hidden="true" />}
-                  onClick={() => openAction(actionDefinitions[4])}
-                >
-                  {t(actionDefinitions[4].labelKey)}
-                </MenuItem>
-                <MenuItem
-                  icon={<CalendarDaysIcon width="17px" aria-hidden="true" />}
-                  onClick={() => openAction(actionDefinitions[5])}
-                >
-                  {t(actionDefinitions[5].labelKey)}
-                </MenuItem>
-                <Divider borderColor="whiteAlpha.100" />
-                <MenuItem
-                  icon={<CalendarDaysIcon width="17px" aria-hidden="true" />}
-                  onClick={() => openAction(actionDefinitions[6])}
-                >
-                  {t(actionDefinitions[6].labelKey)}
-                </MenuItem>
-                <Divider borderColor="whiteAlpha.100" />
-                <MenuItem
-                  icon={<TrashIcon width="17px" aria-hidden="true" />}
-                  color="red.300"
-                  onClick={() => openAction(actionDefinitions[7])}
-                >
-                  {t(actionDefinitions[7].labelKey)}
-                </MenuItem>
-              </MenuList>
-            </Menu>
+          {users.length > 0 && (
+            <>
+              <Button size="sm" variant="outline" color="var(--panel-success)" borderColor="var(--panel-success-border)" bg="var(--panel-success-soft)" leftIcon={<BoltIcon width="17px" aria-hidden="true" />} onClick={() => openAction(actionDefinitions[0])}>{t(actionDefinitions[0].labelKey)}</Button>
+              <Button size="sm" variant="outline" color="var(--panel-warning)" borderColor="var(--panel-warning-border)" bg="var(--panel-warning-soft)" leftIcon={<NoSymbolIcon width="17px" aria-hidden="true" />} onClick={() => openAction(actionDefinitions[1])}>{t(actionDefinitions[1].labelKey)}</Button>
+              <Button size="sm" variant="outline" color="var(--panel-accent)" borderColor="var(--panel-accent-border)" bg="var(--panel-accent-soft)" leftIcon={<CircleStackIcon width="17px" aria-hidden="true" />} onClick={() => openAction(actionDefinitions[2])}>{t(actionDefinitions[2].labelKey)}</Button>
+              <Button size="sm" variant="outline" color="var(--panel-text-body)" borderColor="var(--panel-border)" bg="var(--panel-muted-soft)" leftIcon={<CircleStackIcon width="17px" aria-hidden="true" />} onClick={() => openAction(actionDefinitions[3])}>{t(actionDefinitions[3].labelKey)}</Button>
+              <Button size="sm" variant="outline" color="var(--panel-accent)" borderColor="var(--panel-accent-border)" bg="var(--panel-accent-soft)" leftIcon={<CalendarDaysIcon width="17px" aria-hidden="true" />} onClick={() => openAction(actionDefinitions[4])}>{t(actionDefinitions[4].labelKey)}</Button>
+              <Button size="sm" variant="outline" color="var(--panel-text-body)" borderColor="var(--panel-border)" bg="var(--panel-muted-soft)" leftIcon={<CalendarDaysIcon width="17px" aria-hidden="true" />} onClick={() => openAction(actionDefinitions[5])}>{t(actionDefinitions[5].labelKey)}</Button>
+              <Button size="sm" variant="outline" color="var(--panel-accent)" borderColor="var(--panel-accent-border)" bg="var(--panel-accent-soft)" leftIcon={<CalendarDaysIcon width="17px" aria-hidden="true" />} onClick={() => openAction(actionDefinitions[6])}>{t(actionDefinitions[6].labelKey)}</Button>
+              <Button size="sm" variant="outline" color="var(--panel-danger)" borderColor="var(--panel-danger-border)" bg="var(--panel-danger-soft)" leftIcon={<TrashIcon width="17px" aria-hidden="true" />} onClick={() => openAction(actionDefinitions[7])}>{t(actionDefinitions[7].labelKey)}</Button>
+            </>
+          )}
 
           {users.length > 0 && (
             <IconButton
