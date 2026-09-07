@@ -119,6 +119,8 @@ def test_node_interactive_certificate_prompt_rejects_incomplete_paste():
     )
     assert result.returncode != 0
     assert "Certificate paste was incomplete" in result.stdout
+
+
 def test_node_interactive_certificate_prompt_rejects_missing_pem_header():
     script = (
         "source scripts/marzban.sh\n"
