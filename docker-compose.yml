@@ -1,6 +1,6 @@
 services:
   marzban:
-    image: ghcr.io/smorad3363/marzban-v1:v1.0.5
+    image: ghcr.io/smorad3363/marzban-v1:v1.0.6
     restart: always
     env_file: .env
     environment:

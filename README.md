@@ -111,7 +111,7 @@ Marzban is user-friendly, feature-rich and reliable. It lets you to create diffe
 MySQL is the only supported database. This command installs the immutable V1 release without a GitHub token:
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.0.3/scripts/marzban.sh)" @ install --version v1.0.3 --database mysql
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.0.6/scripts/marzban.sh)" @ install --version v1.0.6 --database mysql
 ```
 
 The installer verifies the image's exact release-commit label. It rejects stale cached images that reuse the same version tag. If GHCR denies anonymous access, it automatically builds the same tagged release from public source. No PAT is required.
@@ -390,7 +390,7 @@ Marzban V1.0.3 includes **Built-in Node Runtime V2**. A Node uses the same versi
 On the Node server, copy the Node certificate shown in **Master > Nodes**. Never copy the panel private key. Run the exact release installer; it will ask you to paste the complete PEM certificate from `BEGIN CERTIFICATE` through `END CERTIFICATE`:
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.0.3/scripts/marzban.sh)" @ node install --version v1.0.3
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.0.6/scripts/marzban.sh)" @ node install --version v1.0.6
 ```
 
 For unattended automation only, you can still provide an existing PEM file with `--client-cert-file /path/to/panel-client.crt`.
@@ -400,7 +400,7 @@ Useful commands:
 ```bash
 marzban node status
 marzban node logs
-marzban node update --version v1.0.3
+marzban node update --version v1.0.6
 ```
 
 Node Runtime V2 uses strict certificate verification, durable event delivery, and capability-aware client-IP reporting. On a server that also hosts the panel, Node CLI updates are isolated in `/usr/local/bin/marzban-node` and do not overwrite the panel CLI or panel release metadata.
