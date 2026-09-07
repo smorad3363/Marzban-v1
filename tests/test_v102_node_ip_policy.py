@@ -108,11 +108,11 @@ def test_migration_is_single_extension_of_access_group_head():
 
 def test_frontend_exposes_safe_node_ip_source_controls():
     context = Path("app/dashboard/src/contexts/NodesContext.tsx").read_text(encoding="utf-8")
-    modal = Path("app/dashboard/src/components/NodesModal.tsx").read_text(encoding="utf-8")
+    workspace = Path("app/dashboard/src/components/NodesManagementWorkspace.tsx").read_text(encoding="utf-8")
     assert 'z.enum(["direct", "trusted_xff", "proxy_protocol"])' in context
-    assert 'name="ip_source_mode"' in modal
-    assert 'name="trusted_proxy_cidrs"' in modal
-    assert 'nodes.ipSourceRuntimePending' in modal
+    assert 'name="ip_source_mode"' in workspace
+    assert 'name="trusted_proxy_cidrs"' in workspace
+    assert 'تنظیمات منبع IP فقط باید برای پراکسی‌های کاملاً مورد اعتماد فعال شود.' in workspace
 
 
 _XRAY_ACCEPTED = (

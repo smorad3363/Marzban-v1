@@ -20,3 +20,11 @@
 - Access Group and Admin UI contract checks.
 - v1.0.7 Node/Dashboard UI contract.
 - Official MySQL 8.0 and 26.7.0 regression/migration/backup/rollback compatibility workflow before release.
+
+## نصب و به‌روزرسانی
+
+برای نصب یا به‌روزرسانی از ابزار مدیریت Marzban استفاده کنید:
+
+```bash
+marzban update
+```
