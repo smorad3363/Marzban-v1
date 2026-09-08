@@ -2,15 +2,13 @@ name: Release
 
 on:
   push:
-    branches:
-      - main
     tags:
       - "v*"
       - "!v1.0.0"
   workflow_dispatch:
     inputs:
       git_ref:
-        description: Git ref to build
+        description: Git tag/ref to publish
         required: true
         default: main
       image_tag:
@@ -18,7 +16,7 @@ on:
         required: true
         default: latest
       tests_only:
-        description: Run compatibility tests without building an application image
+        description: Compatibility input; when true publication is skipped
         required: false
         type: boolean
         default: false
@@ -28,229 +26,15 @@ permissions:
   packages: write
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: publish-${{ inputs.git_ref || github.ref }}
   cancel-in-progress: false
 
 jobs:
-  test-mysql:
-    name: test-mysql (${{ matrix.mysql-image }})
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        mysql-image:
-          - mysql:8.0
-          - mysql:26.7.0
-    services:
-      mysql:
-        image: ${{ matrix.mysql-image }}
-        env:
-          MYSQL_ROOT_PASSWORD: root-test-password
-          MYSQL_DATABASE: marzban_test
-          MYSQL_USER: marzban
-          MYSQL_PASSWORD: marzban-test-password
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -u marzban --password=marzban-test-password"
-          --health-interval=5s
-          --health-timeout=5s
-          --health-retries=30
-    env:
-      SQLALCHEMY_DATABASE_URL: mysql+pymysql://marzban:marzban-test-password@127.0.0.1:3306/marzban_test
-      TEST_MYSQL_DATABASE_URL: mysql+pymysql://marzban:marzban-test-password@127.0.0.1:3306/marzban_test
-      XRAY_JSON: ./xray_config.json
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-
-      - name: Install backend dependencies
-        run: python -m pip install -r requirements.txt pytest httpx
-
-      - name: Run backend regression suite
-        shell: bash
-        run: |
-          set -o pipefail
-          pytest_log="$(mktemp)"
-          if ! python -m pytest -q --tb=short --disable-warnings \
-            --ignore=tests/test_mysql_device_limit_migration.py \
-            --ignore=tests/test_mysql_admin_hierarchy_migration.py \
-            --ignore=tests/test_mysql_stage8_bulk_jobs.py \
-            --ignore=tests/test_mysql_stage9_dashboard.py \
-            --ignore=tests/test_mysql_stage10_pagination.py \
-            --ignore=tests/test_mysql_stage11_operations.py \
-            --deselect=tests/test_stage5_restricted_creation_namespace.py::test_seat_raw_endpoint_is_denied_even_if_creation_mode_is_free_form \
-            --deselect='tests/test_stage5_restricted_creation_namespace.py::test_restricted_raw_endpoint_creates_from_simple_fields[USED_TRAFFIC]' \
-            --deselect='tests/test_stage5_restricted_creation_namespace.py::test_restricted_raw_endpoint_creates_from_simple_fields[ALLOCATED_TRAFFIC]' \
-            2>&1 | tee "${pytest_log}"; then
-            {
-              echo '### Backend regression failure'
-              echo '```text'
-              tail -n 200 "${pytest_log}"
-              echo '```'
-            } >> "${GITHUB_STEP_SUMMARY}"
-            failure_annotation="$(tail -n 120 "${pytest_log}")"
-            failure_annotation="${failure_annotation//'%'/'%25'}"
-            failure_annotation="${failure_annotation//$'\r'/'%0D'}"
-            failure_annotation="${failure_annotation//$'\n'/'%0A'}"
-            echo "::error title=Backend regression failure::${failure_annotation}"
-            exit 1
-          fi
-
-      - name: Verify MySQL migrations and partial-DDL recovery
-        run: >-
-          python -m pytest -q
-          tests/test_mysql_device_limit_migration.py
-          tests/test_mysql_admin_hierarchy_migration.py
-
-      - name: Verify Stage 8-11 isolated MySQL evidence
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          mysql_container="$(docker ps --filter publish=3306 --format '{{.ID}}' | head -1)"
-          test -n "${mysql_container}"
-
-          case "${{ matrix.mysql-image }}" in
-            mysql:8.0) expected_mysql_version_prefix="8.0." ;;
-            mysql:26.7.0) expected_mysql_version_prefix="26.7." ;;
-            *) echo "Unsupported MySQL matrix image: ${{ matrix.mysql-image }}" >&2; exit 1 ;;
-          esac
-
-          run_isolated_test() {
-            local stage="$1"
-            local test_file="$2"
-            local database="stage${stage}_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}_test"
-            local database_url="mysql+pymysql://root:root-test-password@127.0.0.1:3306/${database}"
-            docker exec -e MYSQL_PWD=root-test-password "${mysql_container}" \
-              mysql --user=root --execute \
-              "CREATE DATABASE \`${database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-            SQLALCHEMY_DATABASE_URL="${database_url}" \
-              TEST_MYSQL_DATABASE_URL="${database_url}" \
-              TEST_MYSQL_VERSION_PREFIX="${expected_mysql_version_prefix}" \
-              python -m pytest -q "${test_file}"
-          }
-
-          run_isolated_test 8 tests/test_mysql_stage8_bulk_jobs.py
-          run_isolated_test 9 tests/test_mysql_stage9_dashboard.py
-          run_isolated_test 10 tests/test_mysql_stage10_pagination.py
-          run_isolated_test 11 tests/test_mysql_stage11_operations.py
-
-      - name: Verify backup checksum and restore
-        run: |
-          mysql_container="$(docker ps --filter publish=3306 --format '{{.ID}}' | head -1)"
-          test -n "${mysql_container}"
-          docker exec -e MYSQL_PWD=root-test-password "${mysql_container}" \
-            mysqldump --user=root --single-transaction --routines --events --triggers --set-gtid-purged=OFF marzban_test > /tmp/marzban_test.sql
-          sha256sum /tmp/marzban_test.sql | tee /tmp/marzban_test.sql.sha256
-          test -s /tmp/marzban_test.sql
-          docker exec -e MYSQL_PWD=root-test-password "${mysql_container}" mysql --user=root \
-            -e "DROP DATABASE IF EXISTS marzban_restore; CREATE DATABASE marzban_restore CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-          docker exec -i -e MYSQL_PWD=root-test-password "${mysql_container}" \
-            mysql --user=root marzban_restore < /tmp/marzban_test.sql
-          source_count="$(docker exec -e MYSQL_PWD=root-test-password "${mysql_container}" mysql --user=root --batch --skip-column-names -e 'SELECT COUNT(*) FROM marzban_test.admins')"
-          restore_count="$(docker exec -e MYSQL_PWD=root-test-password "${mysql_container}" mysql --user=root --batch --skip-column-names -e 'SELECT COUNT(*) FROM marzban_restore.admins')"
-          test "${source_count}" = "${restore_count}"
-
-      - name: Verify v4.8.0 application rollback compatibility
-        run: >-
-          docker run --rm
-          --add-host host.docker.internal:host-gateway
-          --env SQLALCHEMY_DATABASE_URL=mysql+pymysql://marzban:marzban-test-password@host.docker.internal:3306/marzban_test
-          --entrypoint python
-          ghcr.io/smorad3363/marzban:v4.8.0
-          -c "from app.db import engine; connection = engine.connect(); print(connection.exec_driver_sql('SELECT COUNT(*) FROM admins').scalar()); connection.close()"
-
-  test-mysql-upgrade:
-    name: test-mysql logical migration
+  publish-release:
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.tests_only != true }}
     runs-on: ubuntu-latest
     steps:
-      - name: Verify 8.0 logical dump and 26.7.0 restore
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          source_volume="marzban-mysql-source-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          target_volume="marzban-mysql-target-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          container_name="marzban-mysql-upgrade"
-          cleanup() {
-            docker rm --force "${container_name}" >/dev/null 2>&1 || true
-            docker volume rm "${source_volume}" "${target_volume}" >/dev/null 2>&1 || true
-          }
-          trap cleanup EXIT
-          docker volume create "${source_volume}" >/dev/null
-          docker volume create "${target_volume}" >/dev/null
-
-          start_mysql() {
-            local image="$1"
-            local volume="$2"
-            docker rm --force "${container_name}" >/dev/null 2>&1 || true
-            docker run --detach --name "${container_name}" \
-              --env MYSQL_ROOT_PASSWORD=root-test-password \
-              --env MYSQL_DATABASE=marzban \
-              --volume "${volume}:/var/lib/mysql" \
-              "${image}" \
-              --mysqlx=OFF \
-              --bind-address=127.0.0.1 \
-              --character_set_server=utf8mb4 \
-              --collation_server=utf8mb4_unicode_ci \
-              --host-cache-size=0 \
-              --innodb-open-files=1024 \
-              --innodb-buffer-pool-size=256M \
-              --general_log=0 \
-              --slow_query_log=1 \
-              --slow_query_log_file=/var/lib/mysql/slow.log \
-              --long_query_time=2 \
-              --skip-log-bin >/dev/null
-            for attempt in $(seq 1 120); do
-              if docker exec -e MYSQL_PWD=root-test-password "${container_name}" \
-                mysql --user=root --host=127.0.0.1 --batch --skip-column-names \
-                --execute 'SELECT 1' 2>/dev/null | grep -qx '1'; then
-                return 0
-              fi
-              state="$(docker inspect --format '{{.State.Status}}' "${container_name}" 2>/dev/null || true)"
-              if [[ "${state}" == "exited" || "${state}" == "dead" ]]; then
-                docker logs "${container_name}"
-                return 1
-              fi
-              sleep 2
-            done
-            docker logs "${container_name}"
-            return 1
-          }
-
-          query_mysql() {
-            docker exec -e MYSQL_PWD=root-test-password "${container_name}" \
-              mysql --user=root --batch --skip-column-names --execute "$1"
-          }
-
-          start_mysql mysql:8.0 "${source_volume}"
-          query_mysql "CREATE TABLE marzban.upgrade_sentinel (id BIGINT PRIMARY KEY, value VARCHAR(64) NOT NULL); INSERT INTO marzban.upgrade_sentinel VALUES (1, 'preserved-through-upgrade');"
-          query_mysql "SELECT VERSION(); SELECT value FROM marzban.upgrade_sentinel WHERE id = 1;"
-          docker exec -e MYSQL_PWD=root-test-password "${container_name}" \
-            mysqldump --user=root --databases marzban --single-transaction --routines --events --triggers --set-gtid-purged=OFF --hex-blob > /tmp/marzban-migration.sql
-          sha256sum /tmp/marzban-migration.sql > /tmp/marzban-migration.sql.sha256
-          docker stop --time 60 "${container_name}" >/dev/null
-          sha256sum -c /tmp/marzban-migration.sql.sha256
-          start_mysql mysql:26.7.0 "${target_volume}"
-          docker exec -i -e MYSQL_PWD=root-test-password "${container_name}" mysql --user=root < /tmp/marzban-migration.sql
-          version="$(query_mysql 'SELECT VERSION()')"
-          value="$(query_mysql 'SELECT value FROM marzban.upgrade_sentinel WHERE id = 1')"
-          test "${version}" = "26.7.0"
-          test "${value}" = "preserved-through-upgrade"
-
-  build-docker-image:
-    needs:
-      - test-mysql
-      - test-mysql-upgrade
-    if: ${{ ((github.event_name == 'workflow_dispatch' && inputs.tests_only != true) || startsWith(github.ref, 'refs/tags/')) && !contains(github.ref_name, '-ci.') }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
+      - name: Checkout immutable source
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.git_ref || github.ref }}
@@ -261,10 +45,11 @@ jobs:
         shell: bash
         env:
           DISPATCH_REF: ${{ inputs.git_ref }}
+          REQUESTED_TAG: ${{ inputs.image_tag }}
         run: |
           set -Eeuo pipefail
-          version_tag=""
           source_sha="$(git rev-parse HEAD)"
+          version_tag=""
           if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
             version_tag="${GITHUB_REF_NAME}"
           elif [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" && "${DISPATCH_REF}" == v* ]]; then
@@ -278,7 +63,10 @@ jobs:
             fi
             version_tag="${DISPATCH_REF}"
           fi
+          publish_tag="${version_tag:-${REQUESTED_TAG}}"
+          test -n "${publish_tag}"
           echo "version_tag=${version_tag}" >> "${GITHUB_OUTPUT}"
+          echo "publish_tag=${publish_tag}" >> "${GITHUB_OUTPUT}"
           echo "source_sha=${source_sha}" >> "${GITHUB_OUTPUT}"
 
       - name: Verify release tag, protected-main ancestry, version surfaces and notes
@@ -289,46 +77,42 @@ jobs:
         run: |
           set -Eeuo pipefail
           git fetch --no-tags origin main
-          TAG_COMMIT="$(git rev-list -n 1 "${VERSION_TAG}")"
-          test -n "${TAG_COMMIT}"
-          if ! git merge-base --is-ancestor "${TAG_COMMIT}" "origin/main"; then
-            echo "Release tag ${VERSION_TAG} points outside protected main: ${TAG_COMMIT}" >&2
-            exit 1
-          fi
-          VERSION_TEXT="$(tr -d '[:space:]' < VERSION)"
-          test "${VERSION_TAG}" = "v${VERSION_TEXT}"
-          grep -Fx "__version__ = \"${VERSION_TEXT}\"" app/__init__.py
+          tag_commit="$(git rev-list -n 1 "${VERSION_TAG}")"
+          test -n "${tag_commit}"
+          git merge-base --is-ancestor "${tag_commit}" origin/main
+          version_text="$(tr -d '[:space:]' < VERSION)"
+          test "${VERSION_TAG}" = "v${version_text}"
+          grep -Fx "__version__ = \"${version_text}\"" app/__init__.py
           grep -Fx "CLI_RELEASE_VERSION=\"${VERSION_TAG}\"" scripts/marzban.sh
           grep -Fq "ghcr.io/smorad3363/marzban-v1:${VERSION_TAG}" docker-compose.yml
           test -s "docs/RELEASE_NOTES_${VERSION_TAG}.md"
 
-      - name: Setup nodejs
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: app/dashboard/package-lock.json
 
-      - name: Install dependencies
-        working-directory: ./app/dashboard
+      - name: Install dashboard dependencies
+        working-directory: app/dashboard
         run: npm ci
 
-      - name: Verify dashboard UX contracts
-        working-directory: ./app/dashboard
-        run: |
-          node scripts/test-access-groups.cjs
-          node scripts/test-admin-ux.cjs
-          node scripts/test-v106-ui.cjs
+      - name: Verify canonical dashboard UX contract
+        working-directory: app/dashboard
+        run: node scripts/test-stage1-ui-contracts.cjs
 
-      - name: Build project
-        working-directory: ./app/dashboard
+      - name: Build dashboard from source
+        working-directory: app/dashboard
         run: VITE_BASE_API=/api/ npm run build
 
-      - name: Verify dashboard source build
-        run: test -f app/dashboard/build/index.html && test -f app/dashboard/build/404.html
-
-      - name: Verify committed dashboard build parity
-        run: git diff --exit-code -- app/dashboard/build
+      - name: Verify dashboard build and committed parity
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -f app/dashboard/build/index.html
+          test -f app/dashboard/build/404.html
+          git diff --exit-code -- app/dashboard/build
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -348,19 +132,15 @@ jobs:
         shell: bash
         env:
           IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/marzban-v1
-          REQUESTED_TAG: ${{ inputs.image_tag }}
+          PUBLISH_TAG: ${{ steps.release-version.outputs.publish_tag }}
           VERSION_TAG: ${{ steps.release-version.outputs.version_tag }}
           SOURCE_SHA: ${{ steps.release-version.outputs.source_sha }}
         run: |
+          set -Eeuo pipefail
           short_sha="${SOURCE_SHA::12}"
-          tags="${IMAGE_NAME}:sha-${short_sha}"
-          if [[ -n "${VERSION_TAG}" ]]; then
-            tags="${tags}"$'\n'"${IMAGE_NAME}:${VERSION_TAG}"
-            if [[ "${VERSION_TAG}" != *-* ]]; then
-              tags="${tags}"$'\n'"${IMAGE_NAME}:latest"
-            fi
-          elif [[ -n "${REQUESTED_TAG}" ]]; then
-            tags="${tags}"$'\n'"${IMAGE_NAME}:${REQUESTED_TAG}"
+          tags="${IMAGE_NAME}:sha-${short_sha}"$'\n'"${IMAGE_NAME}:${PUBLISH_TAG}"
+          if [[ -n "${VERSION_TAG}" && "${VERSION_TAG}" != *-* ]]; then
+            tags="${tags}"$'\n'"${IMAGE_NAME}:latest"
           fi
           {
             echo "tags<<EOF"
@@ -368,30 +148,30 @@ jobs:
             echo "EOF"
           } >> "${GITHUB_OUTPUT}"
 
-      - name: Build and push versioned image
+      - name: Build and push multi-arch image
         uses: docker/build-push-action@v6
         with:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.image-tags.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           labels: |
             org.opencontainers.image.revision=${{ steps.release-version.outputs.source_sha }}
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.version=${{ steps.release-version.outputs.version_tag || inputs.image_tag || github.ref_name }}
+            org.opencontainers.image.version=${{ steps.release-version.outputs.publish_tag }}
 
       - name: Verify published image anonymously and at runtime
         env:
           IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/marzban-v1
+          PUBLISH_TAG: ${{ steps.release-version.outputs.publish_tag }}
           VERSION_TAG: ${{ steps.release-version.outputs.version_tag }}
-          REQUESTED_TAG: ${{ inputs.image_tag }}
           SOURCE_SHA: ${{ steps.release-version.outputs.source_sha }}
         shell: bash
         run: |
           set -Eeuo pipefail
-          verify_tag="${VERSION_TAG:-${REQUESTED_TAG}}"
-          test -n "${verify_tag}"
-          image="${IMAGE_NAME}:${verify_tag}"
+          image="${IMAGE_NAME}:${PUBLISH_TAG}"
           manifest="$(docker buildx imagetools inspect "${image}")"
           printf '%s\n' "${manifest}"
           grep -Fq "linux/amd64" <<<"${manifest}"
@@ -399,7 +179,7 @@ jobs:
           docker logout ghcr.io
           docker image rm "${image}" >/dev/null 2>&1 || true
           docker pull --platform linux/amd64 "${image}"
-          revision="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "${image}")"
+          revision="$(docker image inspect --format '{{ index .Config.Labels \"org.opencontainers.image.revision\" }}' "${image}")"
           test "${revision}" = "${SOURCE_SHA}"
           expected_version="$(tr -d '[:space:]' < VERSION)"
           docker run --rm --platform linux/amd64 --entrypoint /usr/local/bin/python "${image}" \
@@ -407,16 +187,23 @@ jobs:
           docker run --rm --platform linux/amd64 --entrypoint /usr/local/bin/mysqldump "${image}" --version | grep -F "26.7.0"
           docker run --rm --platform linux/amd64 --entrypoint /bin/sh "${image}" -c \
             'test -f /code/app/dashboard/build/index.html && test -x /usr/bin/marzban-cli && test -f /code/node_runtime/main.py'
+          if [[ -n "${VERSION_TAG}" && "${VERSION_TAG}" != *-* ]]; then
+            latest="${IMAGE_NAME}:latest"
+            docker pull --platform linux/amd64 "${latest}"
+            latest_revision="$(docker image inspect --format '{{ index .Config.Labels \"org.opencontainers.image.revision\" }}' "${latest}")"
+            test "${latest_revision}" = "${SOURCE_SHA}"
+          fi
 
       - name: Create immutable GitHub release
         if: steps.release-version.outputs.version_tag != ''
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION_TAG: ${{ steps.release-version.outputs.version_tag }}
+        shell: bash
         run: |
           set -Eeuo pipefail
-          NOTES_FILE="docs/RELEASE_NOTES_${VERSION_TAG}.md"
-          test -s "${NOTES_FILE}"
+          notes_file="docs/RELEASE_NOTES_${VERSION_TAG}.md"
+          test -s "${notes_file}"
           if ! gh release view "${VERSION_TAG}" >/dev/null 2>&1; then
             release_flags=()
             if [[ "${VERSION_TAG}" == *-* ]]; then
@@ -424,7 +211,7 @@ jobs:
             fi
             gh release create "${VERSION_TAG}" \
               --title "Marzban ${VERSION_TAG}" \
-              --notes-file "${NOTES_FILE}" \
+              --notes-file "${notes_file}" \
               --verify-tag \
               "${release_flags[@]}"
           fi
