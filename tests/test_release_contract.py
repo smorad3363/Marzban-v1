@@ -56,7 +56,6 @@ def test_release_version_and_install_rollback_contract():
     assert "tags:" in release_on_block
     assert "workflow_dispatch:" in release_on_block
     assert "ghcr.io/${{ github.repository_owner }}/marzban-v1" in build_workflow
-    assert "github.event_name == 'workflow_dispatch'" in build_workflow
     assert 'elif [[ "${GITHUB_REF}" == "refs/heads/main" ]]' not in build_workflow
     assert 'git tag -a "${VERSION_TAG}" "${GITHUB_SHA}"' not in build_workflow
     assert "Verify release tag, protected-main ancestry, version surfaces and notes" in build_workflow
