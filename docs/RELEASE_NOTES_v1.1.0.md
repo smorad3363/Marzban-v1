@@ -2,8 +2,9 @@
 
 ## Highlights
 
-- Fix Admin user creation from Plan by loading the Admin-scoped available Plan list instead of the Owner-only Plan-management endpoint.
+- Fix the Dashboard Admin user creation from Plan flow by loading the Admin-scoped available Plan list instead of the Owner-only Plan-management endpoint.
 - Add an explicit Admin user-creation selector: **Form only**, **Plan only**, or **Both**. `USER_CREDIT` remains Plan-only by backend contract.
+- Preserve existing Access Group selection and authorization semantics while fixing the Plan creation path.
 - Preserve billing semantics: `USED_TRAFFIC` charges real usage by the Admin per-GiB rate; `ALLOCATED_TRAFFIC` Plan purchases charge the effective Plan price.
 - Harden the permanent Release workflow for immutable tag-source dispatch and anonymous runtime verification.
 
