@@ -10,6 +10,7 @@ const header = read("src/components/Header.tsx");
 const plans = read("src/pages/Plans.tsx");
 const deviceLimits = read("src/pages/DeviceLimits.tsx");
 const appShell = read("src/components/AppShell.tsx");
+const usersTable = read("src/components/UsersTablePro.tsx");
 
 // Plans must use the same active-account + can_manage_plans contract across page, route and navigation.
 assert.ok(router.includes("const PlanManagerOnly"), "Plans route must use a dedicated permission guard");
@@ -34,6 +35,15 @@ for (const hardCodedDark of ["#2b4437", "#14231b", "#243d31"]) {
 assert.ok(!deviceLimits.includes("linear-gradient(145deg, rgba(14,25,20,.98), rgba(7,19,23,.98))"), "Device Limits runtime card must not force the old dark gradient");
 assert.ok(deviceLimits.includes('bg="var(--panel-surface)"'), "Device Limits cards must use the shared panel surface token");
 assert.ok(deviceLimits.includes('borderColor="var(--panel-border)"'), "Device Limits separators must use the shared panel border token");
+
+// Users table must remain readable on mobile/tablet without removing columns or operations.
+assert.ok(usersTable.includes('overflowX="auto"'), "Users table must allow controlled horizontal scrolling on narrow viewports");
+assert.ok(usersTable.includes('minW="1500px"'), "Users table must keep a readable minimum width instead of squeezing every column");
+assert.ok(usersTable.includes('whiteSpace: "nowrap"') && usersTable.includes('wordBreak: "keep-all"'), "Users table headers must not wrap character-by-character");
+assert.ok(usersTable.includes("برای دیدن همه جزئیات و عملیات، جدول را به صورت افقی بکشید."), "Mobile/tablet users must get a horizontal-scroll affordance hint");
+for (const action of ["کپی لینک اشتراک", "ویرایش", "حذف کاربر", "تمدید با پلن", "بازنشانی مصرف", "ابطال لینک اشتراک"]) {
+  assert.ok(usersTable.includes(action), `Users table action must remain available: ${action}`);
+}
 
 // Keep the already-correct global infrastructure modal architecture from regressing.
 for (const modal of ["<CoreSettingsModal />", "<HostsDialog />", "<NodesDialog />", "<NodesUsage />"]) {
