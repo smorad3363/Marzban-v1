@@ -1,3 +1,4 @@
+# Temporary one-shot v1.1.1 publication helper; remove after successful release.
 name: Release v1.1.1 once
 
 on:
