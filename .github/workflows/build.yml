@@ -403,7 +403,7 @@ jobs:
           test "${revision}" = "${SOURCE_SHA}"
           expected_version="$(tr -d '[:space:]' < VERSION)"
           docker run --rm --platform linux/amd64 --entrypoint /usr/local/bin/python "${image}" \
-            -c "import sys; sys.path.insert(0, '/code'); import app; assert app.__version__ == '${expected_version}', app.__version__"
+            -c "from pathlib import Path; image_version=Path('/code/VERSION').read_text().strip(); assert image_version == '${expected_version}', image_version"
           docker run --rm --platform linux/amd64 --entrypoint /usr/local/bin/mysqldump "${image}" --version | grep -F "26.7.0"
           docker run --rm --platform linux/amd64 --entrypoint /bin/sh "${image}" -c \
             'test -f /code/app/dashboard/build/index.html && test -x /usr/bin/marzban-cli && test -f /code/node_runtime/main.py'
