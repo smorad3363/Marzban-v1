@@ -51,7 +51,10 @@ def test_release_version_and_install_rollback_contract():
     assert '-e MARZBAN_ADMIN_PASSWORD="$password"' not in installer
 
     assert not Path(".github/workflows/release-v1.yml").exists()
-    assert "      - main" in build_workflow
+    release_on_block = build_workflow.split("permissions:", 1)[0]
+    assert "branches:" not in release_on_block
+    assert "tags:" in release_on_block
+    assert "workflow_dispatch:" in release_on_block
     assert "ghcr.io/${{ github.repository_owner }}/marzban-v1" in build_workflow
     assert "github.event_name == 'workflow_dispatch'" in build_workflow
     assert 'elif [[ "${GITHUB_REF}" == "refs/heads/main" ]]' not in build_workflow
