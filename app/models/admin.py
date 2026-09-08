@@ -290,7 +290,6 @@ class MarzhelpAdminPolicy(BaseModel):
     allowed_subscription_modes: list[SubscriptionMode] = Field(
         default_factory=lambda: list(DEFAULT_ADMIN_SUBSCRIPTION_MODES)
     )
-    allowed_form_duration_days: list[int] = Field(default_factory=list)
     view_full_client_ip: bool = True
     max_user_duration_days: Optional[int] = Field(default=None, ge=1)
     calculate_volume: Literal["used_traffic", "created_traffic"] = "used_traffic"
@@ -383,6 +382,7 @@ class AdminCapabilities(BaseModel):
     allowed_subscription_modes: list[SubscriptionMode] = Field(
         default_factory=lambda: list(DEFAULT_ADMIN_SUBSCRIPTION_MODES)
     )
+    allowed_form_duration_days: list[int] = Field(default_factory=list)
     view_full_client_ip: bool = True
     capacity_used: int = 0
     capacity_limit: Optional[int] = None
