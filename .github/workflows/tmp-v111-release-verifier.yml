@@ -26,27 +26,26 @@ jobs:
           old_inner = "import sys; sys.path.insert(0, '/code'); import app; assert app.__version__ == '${expected_version}', app.__version__"
           new_inner = "from pathlib import Path; image_version=Path('/code/VERSION').read_text().strip(); assert image_version == '${expected_version}', image_version"
           if old_inner in s:
-              s = s.replace(old_inner, new_inner, 1)
-              p.write_text(s)
+              p.write_text(s.replace(old_inner, new_inner, 1))
           elif new_inner not in s:
               raise SystemExit('release runtime verifier marker not found')
 
           p = Path('tests/test_release_contract.py')
           s = p.read_text()
-          contract_marker = "verifier_section = build_workflow.split(\"- name: Verify published image anonymously and at runtime\", 1)[1]"
+          contract_marker = 'verifier_section = build_workflow.split("- name: Verify published image anonymously and at runtime", 1)[1]'
           if contract_marker not in s:
               marker = '    assert "--generate-notes" not in build_workflow\n'
-              addition = '''    assert "--generate-notes" not in build_workflow
-
-    verifier_section = build_workflow.split("- name: Verify published image anonymously and at runtime", 1)[1]
-    verifier_section = verifier_section.split("- name: Create immutable GitHub release", 1)[0]
-    assert "import app" not in verifier_section
-    assert "Path('/code/VERSION').read_text().strip()" in verifier_section
-'''
+              addition = (
+                  '    assert "--generate-notes" not in build_workflow\n'
+                  '\n'
+                  '    verifier_section = build_workflow.split("- name: Verify published image anonymously and at runtime", 1)[1]\n'
+                  '    verifier_section = verifier_section.split("- name: Create immutable GitHub release", 1)[0]\n'
+                  '    assert "import app" not in verifier_section\n'
+                  '    assert "Path(\'/code/VERSION\').read_text().strip()" in verifier_section\n'
+              )
               if marker not in s:
                   raise SystemExit('release contract insertion marker not found')
-              s = s.replace(marker, addition, 1)
-              p.write_text(s)
+              p.write_text(s.replace(marker, addition, 1))
           PY
       - name: Verify workflow and release contracts
         shell: bash
