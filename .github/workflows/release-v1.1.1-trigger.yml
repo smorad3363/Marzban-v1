@@ -22,10 +22,11 @@ jobs:
           fetch-depth: 0
 
       - name: Verify immutable release target
+        id: release-target
         shell: bash
         run: |
           set -Eeuo pipefail
-          git fetch --no-tags origin main
+          git fetch --tags origin main
           git cat-file -e "${TARGET_SHA}^{commit}"
           git merge-base --is-ancestor "${TARGET_SHA}" origin/main
           test "$(git show "${TARGET_SHA}:VERSION" | tr -d '[:space:]')" = "1.1.1"
@@ -33,12 +34,16 @@ jobs:
           git show "${TARGET_SHA}:scripts/marzban.sh" | grep -Fx 'CLI_RELEASE_VERSION="v1.1.1"'
           git show "${TARGET_SHA}:docker-compose.yml" | grep -Fq 'ghcr.io/smorad3363/marzban-v1:v1.1.1'
           git show "${TARGET_SHA}:docs/RELEASE_NOTES_v1.1.1.md" >/dev/null
-          if git ls-remote --exit-code --tags origin "refs/tags/${VERSION_TAG}" >/dev/null 2>&1; then
-            echo "Tag ${VERSION_TAG} already exists; refusing to retag." >&2
-            exit 1
+          if git show-ref --verify --quiet "refs/tags/${VERSION_TAG}"; then
+            tag_commit="$(git rev-list -n 1 "${VERSION_TAG}")"
+            test "${tag_commit}" = "${TARGET_SHA}"
+            echo "tag_exists=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "tag_exists=false" >> "${GITHUB_OUTPUT}"
           fi
 
       - name: Create annotated immutable tag
+        if: steps.release-target.outputs.tag_exists != 'true'
         shell: bash
         run: |
           set -Eeuo pipefail
