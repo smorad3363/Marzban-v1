@@ -1,0 +1,133 @@
+name: tmp v1.1.1 release prep
+
+on:
+  push:
+    branches:
+      - release/v1.1.1-prep
+
+permissions:
+  contents: write
+
+jobs:
+  prepare-test-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: release/v1.1.1-prep
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: app/dashboard/package-lock.json
+      - name: Prepare v1.1.1 version surfaces and notes
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          printf '1.1.1\n' > VERSION
+          python - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+              'app/__init__.py': ('__version__ = "1.1.0"', '__version__ = "1.1.1"'),
+              'scripts/marzban.sh': ('CLI_RELEASE_VERSION="v1.1.0"', 'CLI_RELEASE_VERSION="v1.1.1"'),
+              'docker-compose.yml': ('ghcr.io/smorad3363/marzban-v1:v1.1.0', 'ghcr.io/smorad3363/marzban-v1:v1.1.1'),
+          }
+          for name, (old, new) in replacements.items():
+              p = Path(name)
+              s = p.read_text()
+              if old not in s:
+                  if new in s:
+                      continue
+                  raise SystemExit(f'missing version marker in {name}')
+              p.write_text(s.replace(old, new, 1))
+
+          p = Path('RELEASES.md')
+          s = p.read_text(encoding='utf-8')
+          start = s.index('## Release target: v1.1.0')
+          end = s.index('## Release process')
+          target = '''## Release target: v1.1.1
+
+v1.1.1 is the next stable release target. Complete release notes are in
+`docs/RELEASE_NOTES_v1.1.1.md`.
+
+Update to v1.1.1 after publication:
+
+```bash
+marzban update --version v1.1.1
+```
+
+Fresh-install v1.1.1 with MySQL after publication:
+
+```bash
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.1.1/scripts/marzban.sh)" @ install --version v1.1.1 --database mysql
+```
+
+The existing published tags and releases remain immutable; preparing this target does not create or move any tag or container alias.
+
+'''
+          p.write_text(s[:start] + target + s[end:], encoding='utf-8')
+          PY
+          cat > docs/RELEASE_NOTES_v1.1.1.md <<'MD'
+          # Marzban v1.1.1
+
+          ## Highlights
+
+          - Make the Dashboard Users table usable on mobile and tablet with controlled horizontal scrolling, readable non-wrapping headers, and preserved bulk/action behavior.
+          - Restore canonical Admin billing choices for Owner/Sudo creation: used traffic, allocated traffic, and Plan-only account credit (`USER_CREDIT`) without changing billing semantics.
+          - Align delegated Admin manual user creation with Owner-defined duration presets and positive traffic requirements, while preserving the existing Plan creation path and Access Group authorization semantics.
+          - Fix Owner/Sudo Admin deletion authorization when legacy role metadata is stale, while keeping child-admin, unsettled-credit, immutable billing-history, and audit-history protections intact and surfacing structured Persian failure reasons.
+          - Fix updater service-state detection so stopped/exited containers are not treated as running, improve runtime-version diagnostics, and ensure update/rollback recovery brings the target service back up.
+          - Normalize Dashboard/API failures into actionable safe errors with machine error code, Persian message, affected field when known, HTTP status, and request tracking ID without exposing database or traceback details.
+          - Make the published-image release verifier DB-independent by reading `/code/VERSION` directly instead of importing the full application.
+          - Rebuild and lock Dashboard source/build parity and keep release contracts covered by CI on MySQL 8.0 and MySQL 26.7.0.
+
+          ## Upgrade
+
+          ```bash
+          marzban update --version v1.1.1
+          ```
+
+          ## Fresh install
+
+          ```bash
+          sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.1.1/scripts/marzban.sh)" @ install --version v1.1.1 --database mysql
+          ```
+
+          This file prepares the immutable v1.1.1 release material only. Creating the Git tag, GitHub Release, versioned container image, or moving `latest` is a separate publication step.
+          MD
+      - name: Verify version and release contracts
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python -m pip install -q pytest
+          python -m pytest -q tests/test_release_contract.py
+          test "$(tr -d '[:space:]' < VERSION)" = "1.1.1"
+          grep -Fx '__version__ = "1.1.1"' app/__init__.py
+          grep -Fx 'CLI_RELEASE_VERSION="v1.1.1"' scripts/marzban.sh
+          grep -Fq 'ghcr.io/smorad3363/marzban-v1:v1.1.1' docker-compose.yml
+          test -s docs/RELEASE_NOTES_v1.1.1.md
+          grep -Fq 'Release target: v1.1.1' RELEASES.md
+          bash -n scripts/marzban.sh
+          git diff --check
+      - name: Build Dashboard from v1.1.1 source
+        working-directory: app/dashboard
+        run: |
+          npm ci
+          node scripts/test-stage1-ui-contracts.cjs
+          VITE_BASE_API=/api/ npm run build
+      - name: Commit tested release preparation
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add VERSION app/__init__.py scripts/marzban.sh docker-compose.yml RELEASES.md docs/RELEASE_NOTES_v1.1.1.md app/dashboard/build
+          git diff --cached --check
+          if ! git diff --cached --quiet; then
+            git commit -m 'chore(release): prepare v1.1.1 version surfaces and notes'
+            git push origin HEAD:release/v1.1.1-prep
+          fi
