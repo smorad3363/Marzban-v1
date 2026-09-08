@@ -119,7 +119,7 @@ def test_release_version_and_install_rollback_contract():
     assert 'readFileSync("../../VERSION", "utf8").trim()' in Path("app/dashboard/vite.config.ts").read_text()
 
 
-def test_v109_release_candidate_material_is_real_and_repository_scoped():
+def test_v109_release_material_is_real_and_repository_scoped():
     notes = Path("docs/RELEASE_NOTES_v1.0.9.md").read_text(encoding="utf-8")
     releases = Path("RELEASES.md").read_text(encoding="utf-8")
 
@@ -134,8 +134,8 @@ def test_v109_release_candidate_material_is_real_and_repository_scoped():
     ):
         assert phrase.lower() in notes.lower()
 
-    assert "v1.0.9 release candidate" in releases
-    assert "Current stable: v1.0.8" in releases
+    assert "Current stable: v1.0.9" in releases
+    assert "marzban update --version v1.0.9" in releases
     assert "docs/RELEASE_NOTES_v1.0.9.md" in releases
     assert "## v5." not in releases
     assert "## v4." not in releases

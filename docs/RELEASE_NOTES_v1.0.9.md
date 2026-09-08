@@ -11,6 +11,8 @@ pipeline. It does not introduce a new database migration relative to v1.0.8.
 - Device Limits now uses theme tokens consistently in both Light and Dark mode.
 - Dashboard source/build parity is enforced in regular CI so committed assets
   cannot silently drift from the TypeScript source.
+- v1.0.9 dashboard assets were regenerated from the reviewed release source
+  before tagging.
 
 ## Access Group hardening
 
@@ -43,6 +45,8 @@ pipeline. It does not introduce a new database migration relative to v1.0.8.
 - Logical MySQL 8.0 -> 26.7.0 migration remains covered.
 - CI checkpoint naming is version-neutral and release-candidate Docker images are
   built without publishing on pull requests.
+- A real Panel-to-Node mTLS end-to-end gate verifies client-certificate
+  enforcement, v2 handshake, connect/ping/status/disconnect, and private-key isolation.
 - The release path verifies `VERSION`, `app.__version__`, CLI version,
   Docker Compose image tag, dashboard build, and this release-notes file before
   publishing a tagged image.
