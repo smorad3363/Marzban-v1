@@ -8,25 +8,24 @@ Every published release uses an immutable Git tag and permanent container tags:
 `latest` points only to the newest stable tagged release. Older version and SHA
 tags are never replaced.
 
-## Release target: v1.1.0
+## Release target: v1.1.1
 
-v1.1.0 is the next stable release target. Complete release notes are in
-`docs/RELEASE_NOTES_v1.1.0.md`.
+v1.1.1 is the next stable release target. Complete release notes are in
+`docs/RELEASE_NOTES_v1.1.1.md`.
 
-Update to v1.1.0 after publication:
-
-```bash
-marzban update --version v1.1.0
-```
-
-Fresh-install v1.1.0 with MySQL after publication:
+Update to v1.1.1 after publication:
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.1.0/scripts/marzban.sh)" @ install --version v1.1.0 --database mysql
+marzban update --version v1.1.1
 ```
 
-The existing `v1.0.9` source tag is immutable and is not moved or recreated.
-The last confirmed GitHub Release before v1.1.0 remains v1.0.8.
+Fresh-install v1.1.1 with MySQL after publication:
+
+```bash
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.1.1/scripts/marzban.sh)" @ install --version v1.1.1 --database mysql
+```
+
+The existing `v1.0.9` source tag remains immutable, and all previously published tags and releases remain unchanged. Preparing this target does not create or move any tag or container alias.
 
 ## Release process
 
