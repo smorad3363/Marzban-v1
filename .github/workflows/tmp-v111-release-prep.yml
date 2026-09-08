@@ -30,7 +30,6 @@ jobs:
           printf '1.1.1\n' > VERSION
           python - <<'PY'
           from pathlib import Path
-
           replacements = {
               'app/__init__.py': ('__version__ = "1.1.0"', '__version__ = "1.1.1"'),
               'scripts/marzban.sh': ('CLI_RELEASE_VERSION="v1.1.0"', 'CLI_RELEASE_VERSION="v1.1.1"'),
@@ -39,66 +38,22 @@ jobs:
           for name, (old, new) in replacements.items():
               p = Path(name)
               s = p.read_text()
-              if old not in s:
-                  if new in s:
-                      continue
+              if old in s:
+                  p.write_text(s.replace(old, new, 1))
+              elif new not in s:
                   raise SystemExit(f'missing version marker in {name}')
-              p.write_text(s.replace(old, new, 1))
-
+          PY
+          printf '%s' 'IyBNYXJ6YmFuIHYxLjEuMQoKIyMgSGlnaGxpZ2h0cwoKLSBNYWtlIHRoZSBEYXNoYm9hcmQgVXNlcnMgdGFibGUgdXNhYmxlIG9uIG1vYmlsZSBhbmQgdGFibGV0IHdpdGggY29udHJvbGxlZCBob3Jpem9udGFsIHNjcm9sbGluZywgcmVhZGFibGUgbm9uLXdyYXBwaW5nIGhlYWRlcnMsIGFuZCBwcmVzZXJ2ZWQgYnVsay9hY3Rpb24gYmVoYXZpb3IuCi0gUmVzdG9yZSBjYW5vbmljYWwgQWRtaW4gYmlsbGluZyBjaG9pY2VzIGZvciBPd25lci9TdWRvIGNyZWF0aW9uOiB1c2VkIHRyYWZmaWMsIGFsbG9jYXRlZCB0cmFmZmljLCBhbmQgUGxhbi1vbmx5IGFjY291bnQgY3JlZGl0IChgVVNFUl9DUkVESVRgKSB3aXRob3V0IGNoYW5naW5nIGJpbGxpbmcgc2VtYW50aWNzLgotIEFsaWduIGRlbGVnYXRlZCBBZG1pbiBtYW51YWwgdXNlciBjcmVhdGlvbiB3aXRoIE93bmVyLWRlZmluZWQgZHVyYXRpb24gcHJlc2V0cyBhbmQgcG9zaXRpdmUgdHJhZmZpYyByZXF1aXJlbWVudHMsIHdoaWxlIHByZXNlcnZpbmcgdGhlIGV4aXN0aW5nIFBsYW4gY3JlYXRpb24gcGF0aCBhbmQgQWNjZXNzIEdyb3VwIGF1dGhvcml6YXRpb24gc2VtYW50aWNzLgotIEZpeCBPd25lci9TdWRvIEFkbWluIGRlbGV0aW9uIGF1dGhvcml6YXRpb24gd2hlbiBsZWdhY3kgcm9sZSBtZXRhZGF0YSBpcyBzdGFsZSwgd2hpbGUga2VlcGluZyBjaGlsZC1hZG1pbiwgdW5zZXR0bGVkLWNyZWRpdCwgaW1tdXRhYmxlIGJpbGxpbmctaGlzdG9yeSwgYW5kIGF1ZGl0LWhpc3RvcnkgcHJvdGVjdGlvbnMgaW50YWN0IGFuZCBzdXJmYWNpbmcgc3RydWN0dXJlZCBQZXJzaWFuIGZhaWx1cmUgcmVhc29ucy4KLSBGaXggdXBkYXRlciBzZXJ2aWNlLXN0YXRlIGRldGVjdGlvbiBzbyBzdG9wcGVkL2V4aXRlZCBjb250YWluZXJzIGFyZSBub3QgdHJlYXRlZCBhcyBydW5uaW5nLCBpbXByb3ZlIHJ1bnRpbWUtdmVyc2lvbiBkaWFnbm9zdGljcywgYW5kIGVuc3VyZSB1cGRhdGUvcm9sbGJhY2sgcmVjb3ZlcnkgYnJpbmdzIHRoZSB0YXJnZXQgc2VydmljZSBiYWNrIHVwLgotIE5vcm1hbGl6ZSBEYXNoYm9hcmQvQVBJIGZhaWx1cmVzIGludG8gYWN0aW9uYWJsZSBzYWZlIGVycm9ycyB3aXRoIG1hY2hpbmUgZXJyb3IgY29kZSwgUGVyc2lhbiBtZXNzYWdlLCBhZmZlY3RlZCBmaWVsZCB3aGVuIGtub3duLCBIVFRQIHN0YXR1cywgYW5kIHJlcXVlc3QgdHJhY2tpbmcgSUQgd2l0aG91dCBleHBvc2luZyBkYXRhYmFzZSBvciB0cmFjZWJhY2sgZGV0YWlscy4KLSBNYWtlIHRoZSBwdWJsaXNoZWQtaW1hZ2UgcmVsZWFzZSB2ZXJpZmllciBEQi1pbmRlcGVuZGVudCBieSByZWFkaW5nIGAvY29kZS9WRVJTSU9OYCBkaXJlY3RseSBpbnN0ZWFkIG9mIGltcG9ydGluZyB0aGUgZnVsbCBhcHBsaWNhdGlvbi4KLSBSZWJ1aWxkIGFuZCBsb2NrIERhc2hib2FyZCBzb3VyY2UvYnVpbGQgcGFyaXR5IGFuZCBrZWVwIHJlbGVhc2UgY29udHJhY3RzIGNvdmVyZWQgYnkgQ0kgb24gTXlTUUwgOC4wIGFuZCBNeVNRTCAyNi43LjAuCgojIyBVcGdyYWRlCgpgYGBiYXNoCm1hcnpiYW4gdXBkYXRlIC0tdmVyc2lvbiB2MS4xLjEKYGBgCgojIyBGcmVzaCBpbnN0YWxsCgpgYGBiYXNoCnN1ZG8gYmFzaCAtYyAiJChjdXJsIC1mc1NMIGh0dHBzOi8vcmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbS9zbW9yYWQzMzYzL01hcnpiYW4tdjEvdjEuMS4xL3NjcmlwdHMvbWFyemJhbi5zaCkiIEAgaW5zdGFsbCAtLXZlcnNpb24gdjEuMS4xIC0tZGF0YWJhc2UgbXlzcWwKYGBgCgpUaGlzIGZpbGUgcHJlcGFyZXMgdGhlIGltbXV0YWJsZSB2MS4xLjEgcmVsZWFzZSBtYXRlcmlhbCBvbmx5LiBDcmVhdGluZyB0aGUgR2l0IHRhZywgR2l0SHViIFJlbGVhc2UsIHZlcnNpb25lZCBjb250YWluZXIgaW1hZ2UsIG9yIG1vdmluZyBgbGF0ZXN0YCBpcyBhIHNlcGFyYXRlIHB1YmxpY2F0aW9uIHN0ZXAuCg==' | base64 -d > docs/RELEASE_NOTES_v1.1.1.md
+          python - <<'PY'
+          from base64 import b64decode
+          from pathlib import Path
           p = Path('RELEASES.md')
           s = p.read_text(encoding='utf-8')
-          start = s.index('## Release target: v1.1.0')
+          start = s.index('## Release target: v1.1.0') if '## Release target: v1.1.0' in s else s.index('## Release target: v1.1.1')
           end = s.index('## Release process')
-          target = '''## Release target: v1.1.1
-
-v1.1.1 is the next stable release target. Complete release notes are in
-`docs/RELEASE_NOTES_v1.1.1.md`.
-
-Update to v1.1.1 after publication:
-
-```bash
-marzban update --version v1.1.1
-```
-
-Fresh-install v1.1.1 with MySQL after publication:
-
-```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.1.1/scripts/marzban.sh)" @ install --version v1.1.1 --database mysql
-```
-
-The existing published tags and releases remain immutable; preparing this target does not create or move any tag or container alias.
-
-'''
+          target = b64decode('IyMgUmVsZWFzZSB0YXJnZXQ6IHYxLjEuMQoKdjEuMS4xIGlzIHRoZSBuZXh0IHN0YWJsZSByZWxlYXNlIHRhcmdldC4gQ29tcGxldGUgcmVsZWFzZSBub3RlcyBhcmUgaW4KYGRvY3MvUkVMRUFTRV9OT1RFU192MS4xLjEubWRgLgoKVXBkYXRlIHRvIHYxLjEuMSBhZnRlciBwdWJsaWNhdGlvbjoKCmBgYGJhc2gKbWFyemJhbiB1cGRhdGUgLS12ZXJzaW9uIHYxLjEuMQpgYGAKCkZyZXNoLWluc3RhbGwgdjEuMS4xIHdpdGggTXlTUUwgYWZ0ZXIgcHVibGljYXRpb246CgpgYGBiYXNoCnN1ZG8gYmFzaCAtYyAiJChjdXJsIC1mc1NMIGh0dHBzOi8vcmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbS9zbW9yYWQzMzYzL01hcnpiYW4tdjEvdjEuMS4xL3NjcmlwdHMvbWFyemJhbi5zaCkiIEAgaW5zdGFsbCAtLXZlcnNpb24gdjEuMS4xIC0tZGF0YWJhc2UgbXlzcWwKYGBgCgpUaGUgZXhpc3RpbmcgcHVibGlzaGVkIHRhZ3MgYW5kIHJlbGVhc2VzIHJlbWFpbiBpbW11dGFibGU7IHByZXBhcmluZyB0aGlzIHRhcmdldCBkb2VzIG5vdCBjcmVhdGUgb3IgbW92ZSBhbnkgdGFnIG9yIGNvbnRhaW5lciBhbGlhcy4KCg==').decode()
           p.write_text(s[:start] + target + s[end:], encoding='utf-8')
           PY
-          cat > docs/RELEASE_NOTES_v1.1.1.md <<'MD'
-          # Marzban v1.1.1
-
-          ## Highlights
-
-          - Make the Dashboard Users table usable on mobile and tablet with controlled horizontal scrolling, readable non-wrapping headers, and preserved bulk/action behavior.
-          - Restore canonical Admin billing choices for Owner/Sudo creation: used traffic, allocated traffic, and Plan-only account credit (`USER_CREDIT`) without changing billing semantics.
-          - Align delegated Admin manual user creation with Owner-defined duration presets and positive traffic requirements, while preserving the existing Plan creation path and Access Group authorization semantics.
-          - Fix Owner/Sudo Admin deletion authorization when legacy role metadata is stale, while keeping child-admin, unsettled-credit, immutable billing-history, and audit-history protections intact and surfacing structured Persian failure reasons.
-          - Fix updater service-state detection so stopped/exited containers are not treated as running, improve runtime-version diagnostics, and ensure update/rollback recovery brings the target service back up.
-          - Normalize Dashboard/API failures into actionable safe errors with machine error code, Persian message, affected field when known, HTTP status, and request tracking ID without exposing database or traceback details.
-          - Make the published-image release verifier DB-independent by reading `/code/VERSION` directly instead of importing the full application.
-          - Rebuild and lock Dashboard source/build parity and keep release contracts covered by CI on MySQL 8.0 and MySQL 26.7.0.
-
-          ## Upgrade
-
-          ```bash
-          marzban update --version v1.1.1
-          ```
-
-          ## Fresh install
-
-          ```bash
-          sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.1.1/scripts/marzban.sh)" @ install --version v1.1.1 --database mysql
-          ```
-
-          This file prepares the immutable v1.1.1 release material only. Creating the Git tag, GitHub Release, versioned container image, or moving `latest` is a separate publication step.
-          MD
       - name: Verify version and release contracts
         shell: bash
         run: |
