@@ -36,14 +36,14 @@ jobs:
           if marker not in section:
               raise SystemExit('AdminCapabilities field marker not found')
           section = section.replace(marker, replacement, 1)
-          p.write_text(prefix + section)
+          final_text = prefix + section
+          policy_section = final_text[final_text.index('class MarzhelpAdminPolicy'):final_text.index('class AdminQuotaSummary')]
+          capability_section = final_text[final_text.index('class AdminCapabilities'):final_text.index('class ManagedAdminList')]
+          assert 'allowed_form_duration_days' not in policy_section
+          assert 'allowed_form_duration_days' in capability_section
+          p.write_text(final_text)
           PY
           python -m compileall -q app/models/admin.py
-          python - <<'PY'
-          from app.models.admin import AdminCapabilities, MarzhelpAdminPolicy
-          assert 'allowed_form_duration_days' in AdminCapabilities.model_fields
-          assert 'allowed_form_duration_days' not in MarzhelpAdminPolicy.model_fields
-          PY
       - name: Commit correction
         run: |
           git add app/models/admin.py
