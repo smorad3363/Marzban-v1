@@ -65,6 +65,11 @@ def test_release_version_and_install_rollback_contract():
     assert '--notes-file "${NOTES_FILE}"' in build_workflow
     assert "--generate-notes" not in build_workflow
 
+    verifier_section = build_workflow.split("- name: Verify published image anonymously and at runtime", 1)[1]
+    verifier_section = verifier_section.split("- name: Create immutable GitHub release", 1)[0]
+    assert "import app" not in verifier_section
+    assert "Path('/code/VERSION').read_text().strip()" in verifier_section
+
     assert 'IMAGE: ghcr.io/smorad3363/marzban-v1' in verify_workflow
     assert 'release_tag:' in verify_workflow
     assert 'ref: ${{ inputs.source_commit }}' in verify_workflow
