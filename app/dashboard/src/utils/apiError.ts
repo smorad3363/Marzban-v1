@@ -1,10 +1,19 @@
 import i18n from "locales/i18n";
 
+export type ApiErrorInfo = {
+  code: string;
+  message: string;
+  field: string | null;
+  requestId: string | null;
+  status: number;
+};
+
 type ApiErrorDetail = {
   part?: unknown;
   total?: unknown;
   code?: unknown;
   error_code?: unknown;
+  message?: unknown;
   message_fa?: unknown;
   request_id?: unknown;
   field?: unknown;
@@ -29,7 +38,7 @@ const messages: Record<string, string> = {
 
 export const safeUserMessage = (value: unknown): string | null => {
   if (typeof value !== "string" || value.length > 500 || !/[\u0600-\u06ff]/.test(value)) return null;
-  if (/traceback|exception|error|sqlalchemy|mysql|pymysql|xray|\b(select|insert|update|delete|constraint)\b|[a-z]+_[a-z_]+/i.test(value)) return null;
+  if (/traceback|exception|sqlalchemy|mysql|pymysql|xray|\b(select|insert|update|delete|constraint)\b/i.test(value)) return null;
   return value.trim() || null;
 };
 
@@ -38,28 +47,53 @@ const safeIdentifier = (value: unknown): string | null => {
   return value;
 };
 
-export const localizedApiError = (error: unknown): string => {
+const fallbackCode = (status: number) => status ? `HTTP_${status}` : "REQUEST_FAILED";
+
+const rawPayload = (candidate: any): any =>
+  candidate?.response?.data ?? candidate?.response?._data ?? candidate?.data ?? candidate?._data;
+
+export const apiErrorInfo = (error: unknown): ApiErrorInfo => {
   const candidate = error as any;
-  const detail = (candidate?.data?.detail || candidate?.response?._data?.detail) as ApiErrorDetail | string | undefined;
+  const payload = rawPayload(candidate);
+  const detail = (payload?.detail ?? payload) as ApiErrorDetail | string | undefined;
   const status = Number(candidate?.status || candidate?.statusCode || candidate?.response?.status || 0);
+
   if (detail && typeof detail === "object") {
-    const code = safeIdentifier(detail.error_code) || safeIdentifier(detail.code);
+    const code = safeIdentifier(detail.error_code) || safeIdentifier(detail.code) || fallbackCode(status);
+    let message: string | null = null;
     if (code === "backup_missing_part" && Number.isInteger(detail.part) && Number.isInteger(detail.total)) {
-      return `بکاپ ناقص است؛ قطعه ${detail.part} از ${detail.total} موجود نیست.`;
+      message = `بکاپ ناقص است؛ قطعه ${detail.part} از ${detail.total} موجود نیست.`;
     }
-    if (code && messages[code]) return messages[code];
-    const friendly = safeUserMessage(detail.message_fa);
-    if (friendly) return friendly;
-    if (code) {
+    message = message || messages[code] || safeUserMessage(detail.message_fa) || safeUserMessage(detail.message);
+    if (!message) {
       const key = `errors.codes.${code}`;
       const translated = i18n.t(key, { defaultValue: "" });
-      if (translated && translated !== key) return translated;
-      return i18n.t("errors.fallback");
+      message = translated && translated !== key ? translated : null;
     }
-    const correlation = safeIdentifier(detail.request_id) || safeIdentifier(detail.correlation_id) || safeIdentifier(detail.operation_id);
-    if (correlation) return i18n.t("errors.fallbackWithReference", { reference: correlation });
+    return {
+      code,
+      message: message || (status ? i18n.t("errors.fallbackWithStatus", { status }) : i18n.t("errors.fallback")),
+      field: safeIdentifier(detail.field),
+      requestId: safeIdentifier(detail.request_id) || safeIdentifier(detail.correlation_id) || safeIdentifier(detail.operation_id),
+      status,
+    };
   }
-  const friendly = safeUserMessage(detail);
-  if (friendly) return friendly;
-  return status ? i18n.t("errors.fallbackWithStatus", { status }) : i18n.t("errors.fallback");
+
+  return {
+    code: fallbackCode(status),
+    message: safeUserMessage(detail) || (status ? i18n.t("errors.fallbackWithStatus", { status }) : i18n.t("errors.fallback")),
+    field: null,
+    requestId: safeIdentifier(candidate?.response?.headers?.["x-request-id"]),
+    status,
+  };
+};
+
+export const localizedApiError = (error: unknown, fieldOverride?: string): string => {
+  const info = apiErrorInfo(error);
+  const parts = [`[${info.code}] ${info.message}`];
+  const field = safeIdentifier(fieldOverride) || info.field;
+  if (field) parts.push(`فیلد: ${field}`);
+  if (info.status) parts.push(`HTTP ${info.status}`);
+  if (info.requestId) parts.push(`کد پیگیری: ${info.requestId}`);
+  return parts.join(" • ");
 };

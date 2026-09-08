@@ -73,4 +73,15 @@ for (const modal of ["<CoreSettingsModal />", "<HostsDialog />", "<NodesDialog /
 }
 assert.ok(appShell.includes("{isOwner && ("), "global infrastructure modals must remain Owner-gated");
 
+// Global API errors must expose a stable code, actionable Persian text and context.
+const apiError = read("src/utils/apiError.ts");
+const toastHandler = read("src/utils/toastHandler.ts");
+const httpService = read("src/service/http.ts");
+assert.ok(apiError.includes("candidate?.response?.data"), "API error parser must accept Axios-compatible response.data as well as ofetch data");
+assert.ok(apiError.includes("[${info.code}] ${info.message}"), "Visible errors must include an error code and message");
+assert.ok(apiError.includes("فیلد: ${field}"), "Visible errors must identify the failing field when available");
+assert.ok(apiError.includes("کد پیگیری: ${info.requestId}"), "Visible errors must expose the request tracking id");
+assert.ok(toastHandler.includes("localizedApiError(e, field)"), "Validation field errors must use the contextual formatter");
+assert.ok(httpService.includes("error.message = localizedApiError(error)"), "All shared fetch failures must normalize legacy error.message");
+
 console.log("stage 1 UI contracts: assertions passed");

@@ -14,10 +14,30 @@ STATUS_CODES = {
     409: ("DATABASE_CONFLICT", "این تغییر با وضعیت فعلی داده‌ها تداخل دارد."),
     422: ("VALIDATION_ERROR", "اطلاعات واردشده معتبر نیست."),
     429: ("RATE_LIMITED", "تعداد درخواست‌ها زیاد است؛ کمی بعد دوباره تلاش کنید."),
+    500: ("INTERNAL_ERROR", "خطای داخلی رخ داد؛ با کد پیگیری با پشتیبانی تماس بگیرید."),
+    502: ("BAD_GATEWAY", "سرویس بالادستی پاسخ معتبر نداد."),
+    503: ("SERVICE_UNAVAILABLE", "سرویس موقتاً در دسترس نیست."),
+    504: ("GATEWAY_TIMEOUT", "پاسخ سرویس بالادستی بیش از حد طول کشید."),
 }
 
 ERROR_CODE_MESSAGES = {
     "category_in_use": "این دسته‌بندی پلن فعال دارد؛ ابتدا پلن‌ها را منتقل یا بایگانی کنید.",
+    "duration_present_required": "برای ساخت دستی کاربر، مدت سرویس را انتخاب کنید.",
+    "duration_preset_required": "مدت انتخاب‌شده مجاز نیست؛ یکی از مدت‌های تعیین‌شده توسط Owner را انتخاب کنید.",
+    "plan_not_found": "پلن انتخاب‌شده پیدا نشد یا غیرفعال است.",
+    "plan_not_allowed": "اجازه استفاده از این پلن را ندارید.",
+    "plan_required": "برای این عملیات انتخاب پلن الزامی است.",
+    "admin_not_found": "ادمین موردنظر پیدا نشد.",
+    "admin_has_children": "این ادمین زیرمجموعه دارد؛ ابتدا زیرمجموعه‌ها را منتقل یا حذف کنید.",
+    "admin_delete_history_blocked": "این ادمین سابقه حسابداری یا ممیزی دارد و حذف فیزیکی آن مجاز نیست.",
+    "admin_delete_debt_blocked": "این ادمین مانده اعتبار یا بدهی تسویه‌نشده دارد.",
+    "owner_delete_forbidden": "حذف حساب Owner مجاز نیست.",
+    "access_group_required": "انتخاب Access Group الزامی است.",
+    "access_group_not_found": "Access Group انتخاب‌شده پیدا نشد.",
+    "access_group_not_allowed": "اجازه استفاده از این Access Group را ندارید.",
+    "username_already_exists": "این نام کاربری قبلاً استفاده شده است.",
+    "permission_denied": "اجازه انجام این عملیات را ندارید.",
+    "insufficient_credit": "اعتبار کافی برای انجام این عملیات وجود ندارد.",
 }
 
 FIELD_MESSAGES = {
@@ -41,6 +61,7 @@ SAFE_DETAIL_KEYS = {
 }
 
 REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9_.:-]{1,128}$")
+ERROR_CODE_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9_.:-]{0,127}$")
 
 
 def safe_request_id(value: object, fallback: str) -> str:
@@ -61,7 +82,8 @@ def http_error_detail(status_code: int, detail: object, trace_id: str) -> dict[s
         ("REQUEST_FAILED", "انجام درخواست ممکن نشد. دوباره تلاش کنید."),
     )
     source = detail if isinstance(detail, dict) else {}
-    code = str(source.get("error_code") or source.get("code") or fallback_code)
+    token_detail = detail if isinstance(detail, str) and ERROR_CODE_PATTERN.fullmatch(detail) else None
+    code = str(source.get("error_code") or source.get("code") or token_detail or fallback_code)
     candidate_message = source.get("message_fa") or source.get("message") or detail
     message_fa = candidate_message if contains_persian(candidate_message) else ERROR_CODE_MESSAGES.get(code, fallback_message)
     result: dict[str, Any] = {
