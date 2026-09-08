@@ -25,12 +25,18 @@ const creationModeLabels: Record<UserCreationMode, { title: string; help: string
 };
 
 const billingLabels: Record<BillingMode, { title: string; help: string }> = {
-  USED_TRAFFIC: { title: "مصرف واقعی", help: "اعتبار با مصرف واقعی کاربران این شاخه کم می‌شود." },
-  ALLOCATED_TRAFFIC: { title: "حجم ساخته‌شده", help: "اعتبار هنگام اختصاص حجم به کاربر کم می‌شود." },
-  USER_CREDIT: { title: "حجم نامحدود · سقف اکانت", help: "حجم نامحدود است و محدودیت با تعداد اکانت محاسبه می‌شود." },
+  USED_TRAFFIC: { title: "بر اساس حجم مصرفی", help: "اعتبار با مصرف واقعی کاربران این شاخه کم می‌شود." },
+  ALLOCATED_TRAFFIC: { title: "بر اساس حجم ساخته‌شده", help: "اعتبار هنگام اختصاص حجم به کاربر کم می‌شود." },
+  USER_CREDIT: { title: "طبق پلن · سقف اکانت", help: "ساخت کاربر فقط از پلن انجام می‌شود؛ حجم نامحدود است و محدودیت با تعداد اکانت محاسبه می‌شود." },
   LEGACY_COMPAT: { title: "حالت قدیمی", help: "فقط برای مشاهده ادمین‌های مهاجرت‌داده‌شده." },
   SEAT_CREDIT: { title: "اعتبار دستگاه قدیمی", help: "فقط برای سازگاری رکوردهای قبلی." },
 };
+
+const canonicalOwnerBillingModes: BillingMode[] = [
+  "USED_TRAFFIC",
+  "ALLOCATED_TRAFFIC",
+  "USER_CREDIT",
+];
 
 const accessPolicyOptions = [
   { key: "prevent_user_deletion", label: "admins.preventDelete", help: "admins.preventDeleteHelp" },
@@ -258,7 +264,15 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
     creditMutation.mutate({ operation, amount: parsedCreditAmount });
   };
   const displayedBalance = `${(creditBalance || 0).toLocaleString("fa-IR")} تومان`;
-  const allowedModes = capabilitiesQuery.data?.allowed_child_billing_modes || [];
+  const apiAllowedModes = capabilitiesQuery.data?.allowed_child_billing_modes || [];
+  const visibleApiModes = apiAllowedModes.filter(
+    (item) => item !== "LEGACY_COMPAT" && item !== "SEAT_CREDIT"
+  );
+  const allowedModes: BillingMode[] = visibleApiModes.length > 0
+    ? visibleApiModes
+    : accountQuery.data?.role === "OWNER"
+      ? canonicalOwnerBillingModes
+      : [];
   const hierarchyReady = capabilitiesQuery.data?.hierarchy_enabled !== false;
   const subscriptionModes: SubscriptionMode[] = [
     "limited_traffic_unlimited_devices", "unlimited_traffic_limited_devices",
@@ -298,12 +312,18 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
                   <Text fontSize="sm" fontWeight="800">نوع حساب</Text>
                   {isEditing ? <Box><HStack mt={2}><Badge colorScheme="primary">{billingLabels[mode].title}</Badge><Text color="var(--panel-text-muted)" fontSize="xs">{billingLabels[mode].help}</Text></HStack>{mode === "USED_TRAFFIC" && <FormControl mt={3} isRequired maxW="360px"><FormLabel>قیمت خرید هر گیگ (تومان)</FormLabel><Input type="number" min={0} step={1000} dir="ltr" value={form.policy.used_traffic_price_per_gib_toman ?? ""} onChange={(e) => setPolicy("used_traffic_price_per_gib_toman", nullableNumber(e))} /></FormControl>}</Box> : (
                     <SimpleGrid mt={2} columns={{ base: 1, md: Math.min(Math.max(allowedModes.length, 1), 3) }} gap={2}>
-                      {allowedModes.filter((item) => item !== "LEGACY_COMPAT" && item !== "SEAT_CREDIT").map((item) => (
+                      {allowedModes.map((item) => (
                         <Button key={item} type="button" minH="68px" h="auto" py={2.5} px={3} whiteSpace="normal" textAlign="start" justifyContent="flex-start" variant={billingMode === item ? "solid" : "outline"} colorScheme={billingMode === item ? "green" : "gray"} onClick={() => selectBillingMode(item)}>
                           <Box><Text fontWeight="800">{billingLabels[item].title}</Text><Text mt={1} fontSize="xs" fontWeight="400" opacity={0.78}>{billingLabels[item].help}</Text></Box>
                         </Button>
                       ))}
                     </SimpleGrid>
+                  )}
+                  {!isEditing && allowedModes.length === 0 && (
+                    <Alert mt={2} status="warning" borderRadius="10px">
+                      <AlertIcon />
+                      <Text fontSize="sm">نوع حساب قابل ساخت از سرور دریافت نشد. دسترسی ساخت زیرمدیر یا وضعیت Owner را بررسی کنید.</Text>
+                    </Alert>
                   )}
                   {!isEditing && billingMode && <SimpleGrid mt={3} columns={{ base: 1, md: 2 }} gap={3}>
                     <FormControl><FormLabel>اعتبار اولیه (تومان)</FormLabel><Input type="number" min={0} step={1000} dir="ltr" value={form.initial_money_credit_toman} onChange={(e) => setField("initial_money_credit_toman", Math.max(0, Number(e.target.value || 0)))} /><FormHelperText>از کیف پول والد به این مدیر منتقل می‌شود.</FormHelperText></FormControl>

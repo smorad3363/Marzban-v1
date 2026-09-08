@@ -447,7 +447,11 @@ def get_admin_capabilities(
             can_delegate_admin_creation=True,
             admin_creation_remaining=None,
             allowed_child_roles=[admin_hierarchy.ADMIN],
-            allowed_child_billing_modes=admin_hierarchy.allowed_child_billing_modes(db, dbadmin),
+            allowed_child_billing_modes=[
+                BillingMode.USED_TRAFFIC,
+                BillingMode.ALLOCATED_TRAFFIC,
+                BillingMode.USER_CREDIT,
+            ],
             allowed_child_user_creation_modes=[admin_hierarchy.PLAN_ONLY, admin_hierarchy.FREE_FORM],
             can_delegate_plan_management=True,
         )
