@@ -1,0 +1,241 @@
+name: Temporary v1.1.1 Admin User Contract Fix
+
+on:
+  push:
+    branches:
+      - fix/v1.1.1-admin-user-create-delete
+
+permissions:
+  contents: write
+
+jobs:
+  patch-build:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/v1.1.1-admin-user-create-delete
+          fetch-depth: 0
+
+      - name: Apply regression fixes and tests
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str, label: str):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f'{label} marker not found in {path}')
+              p.write_text(text.replace(old, new, 1))
+
+          # Backend: publish Owner-approved duration presets as a capability.
+          replace_once(
+              'app/models/admin.py',
+              '''    allowed_subscription_modes: list[SubscriptionMode] = Field(\n        default_factory=lambda: list(DEFAULT_ADMIN_SUBSCRIPTION_MODES)\n    )\n    view_full_client_ip: bool = True\n''',
+              '''    allowed_subscription_modes: list[SubscriptionMode] = Field(\n        default_factory=lambda: list(DEFAULT_ADMIN_SUBSCRIPTION_MODES)\n    )\n    allowed_form_duration_days: list[int] = Field(default_factory=list)\n    view_full_client_ip: bool = True\n''',
+              'AdminCapabilities duration field',
+          )
+
+          # Backend: a session that is the SystemOwner sentinel and carries the sudo claim
+          # remains an effective manager even if legacy role metadata is stale.
+          replace_once(
+              'app/models/admin.py',
+              '''        dbadmin = crud.get_admin(db, admin.username)\n        if dbadmin is None or not admin_hierarchy.can_manage_children(db, dbadmin):\n            raise HTTPException(status_code=403, detail="You're not allowed")\n        return admin\n''',
+              '''        dbadmin = crud.get_admin(db, admin.username)\n        effective_owner_session = bool(\n            dbadmin is not None\n            and admin.is_sudo\n            and (\n                not admin_hierarchy.hierarchy_enabled(db)\n                or dbadmin.id == admin_hierarchy.owner_id(db)\n            )\n        )\n        if dbadmin is None or not (\n            effective_owner_session or admin_hierarchy.can_manage_children(db, dbadmin)\n        ):\n            raise HTTPException(status_code=403, detail="You're not allowed")\n        return admin\n''',
+              'admin manager Owner fallback',
+          )
+
+          replace_once(
+              'app/utils/owner_pricing.py',
+              '''def update(db: Session, actor: Admin, values: OwnerPricingUpdate) -> OwnerPricingResponse:\n''',
+              '''def enabled_duration_days(db: Session) -> list[int]:\n    return [\n        int(row[0])\n        for row in db.query(OwnerDurationPreset.duration_days)\n        .filter(OwnerDurationPreset.enabled.is_(True))\n        .order_by(OwnerDurationPreset.duration_days)\n        .all()\n    ]\n\n\ndef update(db: Session, actor: Admin, values: OwnerPricingUpdate) -> OwnerPricingResponse:\n''',
+              'enabled duration helper',
+          )
+
+          replace_once(
+              'app/routers/admin.py',
+              'from app.utils import admin_hierarchy, admin_plans, marzhelp_policy, money_billing, report, responses\n',
+              'from app.utils import admin_hierarchy, admin_plans, marzhelp_policy, money_billing, owner_pricing, report, responses\n',
+              'admin router owner_pricing import',
+          )
+          replace_once(
+              'app/routers/admin.py',
+              '''    dbadmin = crud.get_admin(db, admin.username)\n    hierarchy_on = admin_hierarchy.hierarchy_enabled(db)\n    if admin.is_sudo or (dbadmin is not None and admin_hierarchy.is_owner(db, dbadmin)):\n''',
+              '''    dbadmin = crud.get_admin(db, admin.username)\n    hierarchy_on = admin_hierarchy.hierarchy_enabled(db)\n    allowed_form_duration_days = owner_pricing.enabled_duration_days(db)\n    if admin.is_sudo or (dbadmin is not None and admin_hierarchy.is_owner(db, dbadmin)):\n''',
+              'capabilities duration calculation',
+          )
+          replace_once(
+              'app/routers/admin.py',
+              '''            hierarchy_enabled=hierarchy_on,\n            allowed_subscription_modes=list(SubscriptionMode),\n            view_full_client_ip=True,\n''',
+              '''            hierarchy_enabled=hierarchy_on,\n            allowed_subscription_modes=list(SubscriptionMode),\n            allowed_form_duration_days=allowed_form_duration_days,\n            view_full_client_ip=True,\n''',
+              'Owner capabilities duration field',
+          )
+          replace_once(
+              'app/routers/admin.py',
+              '''        allowed_subscription_modes=settings.allowed_subscription_modes,\n        view_full_client_ip=True,\n''',
+              '''        allowed_subscription_modes=settings.allowed_subscription_modes,\n        allowed_form_duration_days=allowed_form_duration_days,\n        view_full_client_ip=True,\n''',
+              'Admin capabilities duration field',
+          )
+
+          # Preserve immutable audit/accounting semantics, but return actionable Persian reasons.
+          replacements = [
+              (
+                  '''        raise HTTPException(status_code=403, detail="Admin is outside your scope")\n''',
+                  '''        raise HTTPException(\n            status_code=403,\n            detail={\n                "code": "admin_delete_scope_forbidden",\n                "message_fa": "این ادمین خارج از محدوده مدیریتی شماست.",\n            },\n        )\n''',
+                  'delete scope error',
+              ),
+              (
+                  '''        raise HTTPException(\n            status_code=403,\n            detail="Owner/self deletion is not allowed",\n        )\n''',
+                  '''        raise HTTPException(\n            status_code=403,\n            detail={\n                "code": "admin_delete_owner_or_self_forbidden",\n                "message_fa": "حذف حساب Owner یا حساب خودتان مجاز نیست.",\n            },\n        )\n''',
+                  'delete owner/self error',
+              ),
+              (
+                  '''        raise HTTPException(status_code=409, detail="Only a leaf admin can be deleted")\n''',
+                  '''        raise HTTPException(\n            status_code=409,\n            detail={\n                "code": "admin_delete_has_children",\n                "message_fa": "این ادمین زیرمجموعه دارد؛ ابتدا زیرمجموعه‌ها را جابه‌جا یا مدیریت کنید.",\n            },\n        )\n''',
+                  'delete children error',
+              ),
+              (
+                  '''        raise HTTPException(status_code=409, detail="Resolve administrator credit before deletion")\n''',
+                  '''        raise HTTPException(\n            status_code=409,\n            detail={\n                "code": "admin_delete_credit_unsettled",\n                "message_fa": "اعتبار یا تعهد مالی این ادمین هنوز تسویه نشده است.",\n            },\n        )\n''',
+                  'delete credit error',
+              ),
+              (
+                  '''        raise HTTPException(\n            status_code=409,\n            detail="Administrator has immutable history; suspend the account instead",\n        )\n''',
+                  '''        raise HTTPException(\n            status_code=409,\n            detail={\n                "code": "admin_delete_immutable_history",\n                "message_fa": "این ادمین سابقه حسابداری یا Audit غیرقابل‌حذف دارد؛ برای حفظ تاریخچه، حساب را تعلیق یا غیرفعال کنید.",\n            },\n        )\n''',
+                  'delete immutable history error',
+              ),
+          ]
+          for old, new, label in replacements:
+              replace_once('app/routers/admin.py', old, new, label)
+
+          # Dashboard types.
+          replace_once(
+              'app/dashboard/src/types/Admin.ts',
+              '''  allowed_subscription_modes: SubscriptionMode[];\n  view_full_client_ip: boolean;\n''',
+              '''  allowed_subscription_modes: SubscriptionMode[];\n  allowed_form_duration_days: number[];\n  view_full_client_ip: boolean;\n''',
+              'TS capabilities duration field',
+          )
+
+          # UserDialog: restricted Form creation must use Owner-approved duration presets,
+          # calculated from submit time instead of an arbitrary end-of-day calendar timestamp.
+          replace_once(
+              'app/dashboard/src/components/UserDialog.tsx',
+              '''  allowed_subscription_modes: [\n    "limited_traffic_unlimited_devices",\n    "unlimited_traffic_limited_devices",\n    "limited_traffic_limited_devices",\n    "unlimited_traffic_unlimited_devices",\n  ],\n  view_full_client_ip: true,\n''',
+              '''  allowed_subscription_modes: [\n    "limited_traffic_unlimited_devices",\n    "unlimited_traffic_limited_devices",\n    "limited_traffic_limited_devices",\n    "unlimited_traffic_unlimited_devices",\n  ],\n  allowed_form_duration_days: [],\n  view_full_client_ip: true,\n''',
+              'unrestricted capabilities duration default',
+          )
+          replace_once(
+              'app/dashboard/src/components/UserDialog.tsx',
+              '''  const [usageVisible, setUsageVisible] = useState(false);\n''',
+              '''  const [usageVisible, setUsageVisible] = useState(false);\n  const [restrictedDurationDays, setRestrictedDurationDays] = useState("");\n''',
+              'restricted duration state',
+          )
+          replace_once(
+              'app/dashboard/src/components/UserDialog.tsx',
+              '''  const unlimitedDevicesAllowed = effectiveCapabilities.allowed_subscription_modes.some(\n    (mode) => mode.endsWith("_unlimited_devices")\n  );\n''',
+              '''  const unlimitedDevicesAllowed = effectiveCapabilities.allowed_subscription_modes.some(\n    (mode) => mode.endsWith("_unlimited_devices")\n  );\n  const restrictedDurationOptions = effectiveCapabilities.allowed_form_duration_days || [];\n  const selectedRestrictedDuration = Number(restrictedDurationDays);\n  const restrictedDurationValid = !restrictedCreate || (\n    Number(dataLimit) > 0\n    && Number.isInteger(selectedRestrictedDuration)\n    && restrictedDurationOptions.includes(selectedRestrictedDuration)\n  );\n''',
+              'restricted duration validity',
+          )
+          replace_once(
+              'app/dashboard/src/components/UserDialog.tsx',
+              '''        expire: values.expire,\n        note: values.note,\n''',
+              '''        expire: restrictedDurationValid\n          ? Math.floor(Date.now() / 1000) + selectedRestrictedDuration * 86400\n          : null,\n        note: values.note,\n''',
+              'restricted expiration submit',
+          )
+          replace_once(
+              'app/dashboard/src/components/UserDialog.tsx',
+              '''    setUsageVisible(false);\n    setUsageFilter("1m");\n''',
+              '''    setUsageVisible(false);\n    setUsageFilter("1m");\n    setRestrictedDurationDays("");\n''',
+              'restricted duration reset',
+          )
+          replace_once(
+              'app/dashboard/src/components/UserDialog.tsx',
+              '''                      <FormControl mb={"10px"}>\n                        <FormLabel>\n                          {isOnHold\n''',
+              '''                      {restrictedCreate && (\n                        <FormControl mb="10px" isRequired>\n                          <FormLabel>مدت سرویس</FormLabel>\n                          <Select\n                            value={restrictedDurationDays}\n                            onChange={(event) => setRestrictedDurationDays(event.target.value)}\n                            isDisabled={disabled || capabilitiesQuery.isLoading}\n                            minH="44px"\n                          >\n                            <option value="">یک مدت مجاز انتخاب کنید</option>\n                            {restrictedDurationOptions.map((days) => (\n                              <option key={days} value={days}>{days.toLocaleString("fa-IR")} روز</option>\n                            ))}\n                          </Select>\n                          {restrictedDurationOptions.length ? (\n                            <FormHelperText>مدت از presetهای فعال Owner گرفته می‌شود و زمان انقضا هنگام ثبت محاسبه می‌شود.</FormHelperText>\n                          ) : (\n                            <Alert mt={2} status="warning" borderRadius="10px">\n                              <AlertIcon />\n                              <Text fontSize="sm">Owner هنوز مدت مجاز فعالی برای ساخت دستی تعریف نکرده است.</Text>\n                            </Alert>\n                          )}\n                        </FormControl>\n                      )}\n                      <FormControl mb={"10px"} display={restrictedCreate ? "none" : "block"}>\n                        <FormLabel>\n                          {isOnHold\n''',
+              'restricted duration selector',
+          )
+          replace_once(
+              'app/dashboard/src/components/UserDialog.tsx',
+              '''                    isDisabled={disabled || (!restrictedCreate && (lacksCapacity || !modeAllowed))}\n''',
+              '''                    isDisabled={disabled || (restrictedCreate ? !restrictedDurationValid : (lacksCapacity || !modeAllowed))}\n''',
+              'submit restricted duration guard',
+          )
+
+          # Deletion UX: make preservation contract explicit before the request.
+          replace_once(
+              'app/dashboard/src/pages/admins/AdminsPage.tsx',
+              '''                <FormHelperText>{t(`admins.deleteStrategyHelp.${deleteStrategy}`)}</FormHelperText>\n''',
+              '''                <FormHelperText>{t(`admins.deleteStrategyHelp.${deleteStrategy}`)}</FormHelperText>\n                <Text mt={3} fontSize="xs" color="var(--panel-text-muted)">\n                  حذف فیزیکی فقط برای ادمین بدون زیرمجموعه، اعتبار تسویه‌نشده و سابقه حسابداری/Audit ممکن است؛ در غیر این صورت دلیل دقیق نمایش داده می‌شود و باید حساب را تعلیق یا غیرفعال کنید.\n                </Text>\n''',
+              'delete preservation hint',
+          )
+
+          # UI contracts: plan creation stays on the scoped endpoint; restricted Form duration is preset-based.
+          ui = Path('app/dashboard/scripts/test-stage1-ui-contracts.cjs')
+          text = ui.read_text()
+          old = '''const adminForm = read("src/components/AdminFormDrawer.tsx");\n'''
+          new = old + '''const userDialog = read("src/components/UserDialog.tsx");\nconst createUserFromPlan = read("src/components/CreateUserFromPlan.tsx");\nconst adminsPage = read("src/pages/admins/AdminsPage.tsx");\n'''
+          if 'const userDialog = read("src/components/UserDialog.tsx");' not in text:
+              if old not in text:
+                  raise SystemExit('UI script source marker not found')
+              text = text.replace(old, new, 1)
+          anchor = '// Keep the already-correct global infrastructure modal architecture from regressing.\n'
+          block = '''// Delegated user creation contracts: Plans use the scoped endpoint; Form durations use Owner presets.\nassert.ok(createUserFromPlan.includes('fetch("/available-user-plans")'), "Plan user creation must load only effective plans");\nassert.ok(createUserFromPlan.includes('fetch("/users/from-plan"'), "Plan user creation must use the dedicated Plan endpoint");\nassert.ok(createUserFromPlan.includes("access_group_id: Number(groupId)"), "Plan user creation must keep explicit Access Group selection");\nassert.ok(userDialog.includes("allowed_form_duration_days"), "Form creation must consume Owner-approved duration presets");\nassert.ok(userDialog.includes("restrictedDurationOptions"), "Restricted Form creation must render preset durations");\nassert.ok(userDialog.includes("Math.floor(Date.now() / 1000) + selectedRestrictedDuration * 86400"), "Restricted Form expiry must be calculated from submit time");\nassert.ok(userDialog.includes('display={restrictedCreate ? "none" : "block"}'), "Restricted Form creation must not expose the arbitrary calendar expiry control");\nassert.ok(adminsPage.includes("حذف فیزیکی فقط برای ادمین بدون زیرمجموعه"), "Admin deletion must explain immutable-history constraints before submit");\n\n'''
+          if block not in text:
+              if anchor not in text:
+                  raise SystemExit('UI contract insertion anchor not found')
+              text = text.replace(anchor, block + anchor, 1)
+          ui.write_text(text)
+
+          # Backend regressions.
+          tests = Path('tests/test_admin_hierarchy_service.py')
+          text = tests.read_text()
+          old = '''    MarzhelpAdminSettings,\n    ProxyHost,\n'''
+          new = '''    MarzhelpAdminSettings,\n    OwnerDurationPreset,\n    ProxyHost,\n'''
+          if '    OwnerDurationPreset,\n' not in text:
+              if old not in text:
+                  raise SystemExit('OwnerDurationPreset import marker not found')
+              text = text.replace(old, new, 1)
+          anchor = '''def test_used_traffic_parent_selects_child_mode_and_delegates_bounded_creation(db):\n'''
+          block = '''def test_sudo_owner_session_can_manage_admins_during_role_metadata_mismatch(db, monkeypatch):\n    owner, _, _, _, _ = _legacy_tree(db)\n    owner.role_id = admin_hierarchy.ROLE_IDS[admin_hierarchy.ADMIN]\n    db.commit()\n    api_owner = APIAdmin(id=owner.id, username=owner.username, is_sudo=True)\n    monkeypatch.setattr(\n        APIAdmin,\n        "get_current",\n        classmethod(lambda cls, request, db, token: api_owner),\n    )\n    request = Request({"type": "http", "method": "DELETE", "path": "/api/admin/leaf", "headers": []})\n\n    managed = APIAdmin.check_admin_manager(request=request, db=db, token="owner-session")\n\n    assert managed.username == owner.username\n\n\ndef test_admin_capabilities_publish_enabled_owner_duration_presets(db):\n    _, _, leaf, _, _ = _legacy_tree(db)\n    db.add_all([\n        OwnerDurationPreset(duration_days=1, multiplier_basis_points=10_000, enabled=True),\n        OwnerDurationPreset(duration_days=7, multiplier_basis_points=10_000, enabled=False),\n        OwnerDurationPreset(duration_days=30, multiplier_basis_points=12_000, enabled=True),\n    ])\n    db.commit()\n\n    capabilities = get_admin_capabilities(\n        db=db,\n        admin=APIAdmin(id=leaf.id, username=leaf.username, is_sudo=False),\n    )\n\n    assert capabilities.allowed_form_duration_days == [1, 30]\n\n\n'''
+          if block not in text:
+              if anchor not in text:
+                  raise SystemExit('backend regression insertion anchor not found')
+              text = text.replace(anchor, block + anchor, 1)
+          tests.write_text(text)
+          PY
+
+      - name: Verify Python syntax
+        run: python -m compileall -q app/models/admin.py app/routers/admin.py app/utils/owner_pricing.py tests/test_admin_hierarchy_service.py
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: app/dashboard/package-lock.json
+
+      - name: Install dashboard dependencies
+        working-directory: app/dashboard
+        run: npm ci
+
+      - name: Verify dashboard contracts
+        working-directory: app/dashboard
+        run: node scripts/test-stage1-ui-contracts.cjs
+
+      - name: Build dashboard
+        working-directory: app/dashboard
+        run: VITE_BASE_API=/api/ npm run build
+
+      - name: Commit fix and generated dashboard
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git add app/models/admin.py app/routers/admin.py app/utils/owner_pricing.py tests/test_admin_hierarchy_service.py app/dashboard/src/types/Admin.ts app/dashboard/src/components/UserDialog.tsx app/dashboard/src/pages/admins/AdminsPage.tsx app/dashboard/scripts/test-stage1-ui-contracts.cjs app/dashboard/build
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "fix(admin): align user duration and deletion contracts"
+          git push origin HEAD:fix/v1.1.1-admin-user-create-delete
