@@ -1,0 +1,53 @@
+name: Temporary v1.1.1 Python Capability Field Fix
+
+on:
+  push:
+    branches:
+      - fix/v1.1.1-admin-user-create-delete
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/v1.1.1-admin-user-create-delete
+          fetch-depth: 0
+      - name: Move duration capability field
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('app/models/admin.py')
+          text = p.read_text()
+          misplaced = '''    allowed_subscription_modes: list[SubscriptionMode] = Field(\n        default_factory=lambda: list(DEFAULT_ADMIN_SUBSCRIPTION_MODES)\n    )\n    allowed_form_duration_days: list[int] = Field(default_factory=list)\n    view_full_client_ip: bool = True\n'''
+          correct_policy = '''    allowed_subscription_modes: list[SubscriptionMode] = Field(\n        default_factory=lambda: list(DEFAULT_ADMIN_SUBSCRIPTION_MODES)\n    )\n    view_full_client_ip: bool = True\n'''
+          if misplaced not in text:
+              raise SystemExit('misplaced MarzhelpAdminPolicy field not found')
+          text = text.replace(misplaced, correct_policy, 1)
+          anchor = 'class AdminCapabilities(BaseModel):'
+          idx = text.index(anchor)
+          prefix, section = text[:idx], text[idx:]
+          marker = '''    allowed_subscription_modes: list[SubscriptionMode] = Field(\n        default_factory=lambda: list(DEFAULT_ADMIN_SUBSCRIPTION_MODES)\n    )\n    view_full_client_ip: bool = True\n'''
+          replacement = '''    allowed_subscription_modes: list[SubscriptionMode] = Field(\n        default_factory=lambda: list(DEFAULT_ADMIN_SUBSCRIPTION_MODES)\n    )\n    allowed_form_duration_days: list[int] = Field(default_factory=list)\n    view_full_client_ip: bool = True\n'''
+          if marker not in section:
+              raise SystemExit('AdminCapabilities field marker not found')
+          section = section.replace(marker, replacement, 1)
+          p.write_text(prefix + section)
+          PY
+          python -m compileall -q app/models/admin.py
+          python - <<'PY'
+          from app.models.admin import AdminCapabilities, MarzhelpAdminPolicy
+          assert 'allowed_form_duration_days' in AdminCapabilities.model_fields
+          assert 'allowed_form_duration_days' not in MarzhelpAdminPolicy.model_fields
+          PY
+      - name: Commit correction
+        run: |
+          git add app/models/admin.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "fix(admin): expose duration presets on capabilities model"
+          git push origin HEAD:fix/v1.1.1-admin-user-create-delete
