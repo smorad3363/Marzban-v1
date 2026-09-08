@@ -51,18 +51,20 @@ def test_release_version_and_install_rollback_contract():
     assert '-e MARZBAN_ADMIN_PASSWORD="$password"' not in installer
 
     assert not Path(".github/workflows/release-v1.yml").exists()
-    assert "      - main" in build_workflow
+    release_on_block = build_workflow.split("permissions:", 1)[0]
+    assert "branches:" not in release_on_block
+    assert "tags:" in release_on_block
+    assert "workflow_dispatch:" in release_on_block
     assert "ghcr.io/${{ github.repository_owner }}/marzban-v1" in build_workflow
-    assert "github.event_name == 'workflow_dispatch'" in build_workflow
     assert 'elif [[ "${GITHUB_REF}" == "refs/heads/main" ]]' not in build_workflow
     assert 'git tag -a "${VERSION_TAG}" "${GITHUB_SHA}"' not in build_workflow
     assert "Verify release tag, protected-main ancestry, version surfaces and notes" in build_workflow
     assert "fetch-depth: 0" in build_workflow
     assert 'git fetch --no-tags origin main' in build_workflow
-    assert 'TAG_COMMIT="$(git rev-list -n 1 "${VERSION_TAG}")"' in build_workflow
-    assert 'git merge-base --is-ancestor "${TAG_COMMIT}" "origin/main"' in build_workflow
+    assert 'tag_commit="$(git rev-list -n 1 "${VERSION_TAG}")"' in build_workflow
+    assert 'git merge-base --is-ancestor "${tag_commit}" origin/main' in build_workflow
     assert 'docs/RELEASE_NOTES_${VERSION_TAG}.md' in build_workflow
-    assert '--notes-file "${NOTES_FILE}"' in build_workflow
+    assert '--notes-file "${notes_file}"' in build_workflow
     assert "--generate-notes" not in build_workflow
 
     verifier_section = build_workflow.split("- name: Verify published image anonymously and at runtime", 1)[1]
