@@ -6,10 +6,10 @@ on:
       - fix/v1.1.1-release-verifier
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  patch-test-commit:
+  patch-test-artifact:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -60,14 +60,15 @@ jobs:
             echo 'release verifier still imports app' >&2
             exit 1
           fi
-      - name: Commit verifier fix
+      - name: Stage tested verifier files
         shell: bash
         run: |
-          set -Eeuo pipefail
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add .github/workflows/build.yml tests/test_release_contract.py
-          if ! git diff --cached --quiet; then
-            git commit -m 'fix(release): verify image version without importing app'
-            git push origin HEAD:fix/v1.1.1-release-verifier
-          fi
+          mkdir -p /tmp/verifier-artifact/.github/workflows /tmp/verifier-artifact/tests
+          cp .github/workflows/build.yml /tmp/verifier-artifact/.github/workflows/build.yml
+          cp tests/test_release_contract.py /tmp/verifier-artifact/tests/test_release_contract.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v111-release-verifier-tested-files
+          path: /tmp/verifier-artifact
+          if-no-files-found: error
+          retention-days: 1
