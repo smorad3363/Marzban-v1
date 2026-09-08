@@ -1,0 +1,141 @@
+name: Temporary v1.1.1 Admin Billing Fix
+
+on:
+  push:
+    branches:
+      - fix/v1.1.1-admin-billing-modes
+
+permissions:
+  contents: write
+
+jobs:
+  patch-build:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/v1.1.1-admin-billing-modes
+          fetch-depth: 0
+
+      - name: Apply admin billing mode regression fix
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          admin_router = Path('app/routers/admin.py')
+          text = admin_router.read_text()
+          old = '            allowed_child_billing_modes=admin_hierarchy.allowed_child_billing_modes(db, dbadmin),\n'
+          new = '''            allowed_child_billing_modes=[\n                BillingMode.USED_TRAFFIC,\n                BillingMode.ALLOCATED_TRAFFIC,\n                BillingMode.USER_CREDIT,\n            ],\n'''
+          if old not in text:
+              raise SystemExit('owner billing capability marker not found')
+          text = text.replace(old, new, 1)
+          admin_router.write_text(text)
+
+          drawer = Path('app/dashboard/src/components/AdminFormDrawer.tsx')
+          text = drawer.read_text()
+          replacements = {
+              '  USED_TRAFFIC: { title: "مصرف واقعی", help: "اعتبار با مصرف واقعی کاربران این شاخه کم می‌شود." },':
+              '  USED_TRAFFIC: { title: "بر اساس حجم مصرفی", help: "اعتبار با مصرف واقعی کاربران این شاخه کم می‌شود." },',
+              '  ALLOCATED_TRAFFIC: { title: "حجم ساخته‌شده", help: "اعتبار هنگام اختصاص حجم به کاربر کم می‌شود." },':
+              '  ALLOCATED_TRAFFIC: { title: "بر اساس حجم ساخته‌شده", help: "اعتبار هنگام اختصاص حجم به کاربر کم می‌شود." },',
+              '  USER_CREDIT: { title: "حجم نامحدود · سقف اکانت", help: "حجم نامحدود است و محدودیت با تعداد اکانت محاسبه می‌شود." },':
+              '  USER_CREDIT: { title: "طبق پلن · سقف اکانت", help: "ساخت کاربر فقط از پلن انجام می‌شود؛ حجم نامحدود است و محدودیت با تعداد اکانت محاسبه می‌شود." },',
+          }
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f'billing label marker not found: {old}')
+              text = text.replace(old, new, 1)
+
+          marker = '''const accessPolicyOptions = [\n'''
+          canonical = '''const canonicalOwnerBillingModes: BillingMode[] = [\n  "USED_TRAFFIC",\n  "ALLOCATED_TRAFFIC",\n  "USER_CREDIT",\n];\n\n'''
+          if canonical not in text:
+              if marker not in text:
+                  raise SystemExit('access policy marker not found')
+              text = text.replace(marker, canonical + marker, 1)
+
+          old = '  const allowedModes = capabilitiesQuery.data?.allowed_child_billing_modes || [];\n'
+          new = '''  const apiAllowedModes = capabilitiesQuery.data?.allowed_child_billing_modes || [];\n  const visibleApiModes = apiAllowedModes.filter(\n    (item) => item !== "LEGACY_COMPAT" && item !== "SEAT_CREDIT"\n  );\n  const allowedModes: BillingMode[] = visibleApiModes.length > 0\n    ? visibleApiModes\n    : accountQuery.data?.role === "OWNER"\n      ? canonicalOwnerBillingModes\n      : [];\n'''
+          if old not in text:
+              raise SystemExit('allowedModes marker not found')
+          text = text.replace(old, new, 1)
+
+          old = '{allowedModes.filter((item) => item !== "LEGACY_COMPAT" && item !== "SEAT_CREDIT").map((item) => ('
+          new = '{allowedModes.map((item) => ('
+          if old not in text:
+              raise SystemExit('billing mode render marker not found')
+          text = text.replace(old, new, 1)
+
+          old = '''                    </SimpleGrid>\n                  )}\n                  {!isEditing && billingMode && <SimpleGrid mt={3} columns={{ base: 1, md: 2 }} gap={3}>\n'''
+          new = '''                    </SimpleGrid>\n                  )}\n                  {!isEditing && allowedModes.length === 0 && (\n                    <Alert mt={2} status="warning" borderRadius="10px">\n                      <AlertIcon />\n                      <Text fontSize="sm">نوع حساب قابل ساخت از سرور دریافت نشد. دسترسی ساخت زیرمدیر یا وضعیت Owner را بررسی کنید.</Text>\n                    </Alert>\n                  )}\n                  {!isEditing && billingMode && <SimpleGrid mt={3} columns={{ base: 1, md: 2 }} gap={3}>\n'''
+          if old not in text:
+              raise SystemExit('billing empty-state insertion marker not found')
+          text = text.replace(old, new, 1)
+          drawer.write_text(text)
+
+          ui_test = Path('app/dashboard/scripts/test-stage1-ui-contracts.cjs')
+          text = ui_test.read_text()
+          old = 'const usersTable = read("src/components/UsersTablePro.tsx");\n'
+          new = old + 'const adminForm = read("src/components/AdminFormDrawer.tsx");\n'
+          if 'const adminForm = read("src/components/AdminFormDrawer.tsx");' not in text:
+              if old not in text:
+                  raise SystemExit('stage1 usersTable marker not found')
+              text = text.replace(old, new, 1)
+          anchor = '// Keep the already-correct global infrastructure modal architecture from regressing.\n'
+          block = '''// Admin creation must always expose the three supported billing contracts to the Owner.\nfor (const label of ["بر اساس حجم مصرفی", "بر اساس حجم ساخته‌شده", "طبق پلن · سقف اکانت"]) {\n  assert.ok(adminForm.includes(label), `Admin billing mode must remain visible: ${label}`);\n}\nassert.ok(adminForm.includes("canonicalOwnerBillingModes"), "Owner billing mode fallback must remain explicit");\nassert.ok(adminForm.includes('accountQuery.data?.role === "OWNER"'), "Owner fallback must be gated by the account role");\nassert.ok(adminForm.includes("allowedModes.length === 0"), "Missing delegated billing modes must show a visible warning instead of a blank selector");\n\n'''
+          if block not in text:
+              if anchor not in text:
+                  raise SystemExit('stage1 insertion anchor not found')
+              text = text.replace(anchor, block + anchor, 1)
+          ui_test.write_text(text)
+
+          backend_test = Path('tests/test_admin_hierarchy_service.py')
+          text = backend_test.read_text()
+          old = '''from app.routers.admin_hierarchy import (\n'''
+          new = '''from app.routers.admin import get_admin_capabilities\nfrom app.routers.admin_hierarchy import (\n'''
+          if 'from app.routers.admin import get_admin_capabilities' not in text:
+              if old not in text:
+                  raise SystemExit('backend test import marker not found')
+              text = text.replace(old, new, 1)
+          anchor = '''def test_used_traffic_parent_selects_child_mode_and_delegates_bounded_creation(db):\n'''
+          test = '''def test_sudo_capabilities_keep_all_child_billing_modes_during_owner_metadata_mismatch(db):\n    owner, _, _, _, _ = _legacy_tree(db)\n    owner.role_id = admin_hierarchy.ROLE_IDS[admin_hierarchy.ADMIN]\n    db.commit()\n\n    capabilities = get_admin_capabilities(\n        db=db,\n        admin=APIAdmin(id=owner.id, username=owner.username, is_sudo=True),\n    )\n\n    assert capabilities.allowed_child_billing_modes == [\n        admin_billing.BillingMode.USED_TRAFFIC,\n        admin_billing.BillingMode.ALLOCATED_TRAFFIC,\n        admin_billing.BillingMode.USER_CREDIT,\n    ]\n\n\n'''
+          if test not in text:
+              if anchor not in text:
+                  raise SystemExit('backend test insertion anchor not found')
+              text = text.replace(anchor, test + anchor, 1)
+          backend_test.write_text(text)
+          PY
+
+      - name: Verify Python syntax
+        run: python -m compileall -q app/routers/admin.py tests/test_admin_hierarchy_service.py
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: app/dashboard/package-lock.json
+
+      - name: Install dashboard dependencies
+        working-directory: app/dashboard
+        run: npm ci
+
+      - name: Verify dashboard contracts
+        working-directory: app/dashboard
+        run: node scripts/test-stage1-ui-contracts.cjs
+
+      - name: Build dashboard
+        working-directory: app/dashboard
+        run: VITE_BASE_API=/api/ npm run build
+
+      - name: Commit fix and generated dashboard
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git add app/routers/admin.py app/dashboard/src/components/AdminFormDrawer.tsx app/dashboard/scripts/test-stage1-ui-contracts.cjs tests/test_admin_hierarchy_service.py app/dashboard/build
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "fix(admin): restore billing mode choices during admin creation"
+          git push origin HEAD:fix/v1.1.1-admin-billing-modes
