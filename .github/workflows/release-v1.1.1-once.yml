@@ -1,0 +1,36 @@
+name: Release v1.1.1 once
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/release-v1.1.1-once.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  retag-release:
+    if: ${{ github.repository == 'smorad3363/Marzban-v1' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout final main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Move v1.1.1 tag to this exact main commit
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "${GITHUB_REF}" = "refs/heads/main"
+          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
+          test "$(tr -d '[:space:]' < VERSION)" = "1.1.1"
+          grep -Fx 'CLI_RELEASE_VERSION="v1.1.1"' scripts/marzban.sh
+          grep -Fq 'ghcr.io/smorad3363/marzban-v1:v1.1.1' docker-compose.yml
+          test -s docs/RELEASE_NOTES_v1.1.1.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -fa v1.1.1 -m "Marzban v1.1.1" "${GITHUB_SHA}"
+          git push --force origin refs/tags/v1.1.1
