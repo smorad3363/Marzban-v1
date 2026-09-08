@@ -333,7 +333,7 @@ export const UsersTablePro: FC = () => {
 
   return (
     <Box dir={i18n.dir()} w="full" minW={0}>
-      <TableContainer overflowX="hidden" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="16px" bg="var(--panel-surface)" boxShadow="var(--shadow-panel)">
+      <Box borderWidth="1px" borderColor="var(--panel-border)" borderRadius="16px" bg="var(--panel-surface)" boxShadow="var(--shadow-panel)" overflow="hidden">
         {!readOnly && (
           <Box
             px={{ base: 2, md: 2.5 }}
@@ -366,120 +366,145 @@ export const UsersTablePro: FC = () => {
           </Box>
         )}
 
-        <Table size="sm" w="full" sx={{ tableLayout: "fixed", "th, td": { borderBottom: "0 !important", px: 3.5, py: 3, overflow: "hidden" }, "th": { whiteSpace: "normal", lineHeight: 1.45, fontWeight: 600, color: "var(--panel-text-muted)" } }}>
-          <Thead bg="var(--panel-nested)">
-            <Tr>
-              {!readOnly && <Th w="36px"><Checkbox isChecked={allVisibleSelected} onChange={(event) => toggleAllVisible(event.target.checked)} colorScheme="primary" /></Th>}
-              <Th w="34px" textAlign="center">#</Th>
-              <Th>کاربر</Th>
-              <Th>وضعیت</Th>
-              <Th>مصرف ترافیک</Th>
-              <Th>پلن بعدی</Th>
-              <Th>انقضا</Th>
-              <Th>تاریخ ایجاد</Th>
-              <Th>ادمین</Th>
-              <Th>آخرین فعالیت</Th>
-              <Th>کلاینت / نسخه</Th>
-              <Th>بازنشانی</Th>
-              <Th>توضیحات</Th>
-              <Th w="18%" textAlign="end">عملیات</Th>
-            </Tr>
-          </Thead>
-          <Tbody>
-            {users.map((user, index) => {
-              const busy = busyUsername === user.username;
-              const nextPlan = user.next_plan;
-              return (
-                <Tr
-                  key={user.username}
-                  data-selected={selectedMap.has(user.username) ? "true" : undefined}
-                  data-disabled={user.status === "disabled" ? "true" : undefined}
-                  transition="opacity .14s ease"
-                >
-                  {!readOnly && <Td><Checkbox isChecked={selectedMap.has(user.username)} onChange={(event) => setSelected(user, event.target.checked)} colorScheme="primary" /></Td>}
-                  <Td textAlign="center" fontWeight="800">{((filters.offset || 0) + index + 1).toLocaleString("fa-IR")}</Td>
-                  <Td>
-                    <HStack spacing={2.5}>
-                      <Box w="32px" h="32px" display="grid" placeItems="center" borderRadius="full" bg="var(--panel-accent-soft)" color="var(--panel-accent)" fontWeight="900" flexShrink={0}>
-                        {user.username.slice(0, 1).toUpperCase()}
-                      </Box>
-                      <Box minW={0}>
-                        <Text dir="ltr" textAlign="start" color="var(--panel-accent)" fontSize="12px" fontWeight="850" noOfLines={1} sx={{ unicodeBidi: "isolate" }}>{user.username}</Text>
-                        <Text mt={1} color="var(--panel-text-muted)" fontSize="9px">سقف اتصال: {user.concurrent_user_limit ?? "∞"}</Text>
-                      </Box>
-                    </HStack>
-                  </Td>
-                  <Td><StatusPill status={user.status} /></Td>
-                  <Td><UsageCell user={user} /></Td>
-                  <Td>
-                    {nextPlan ? (
-                      <Stack spacing={0.5}>
-                        <Badge w="fit-content" colorScheme="primary" variant="outline" textTransform="none" fontSize="9px">{nextPlan.data_limit ? String(formatBytes(nextPlan.data_limit)) : "نامحدود"}</Badge>
-                        <Text color="var(--panel-text-muted)" fontSize="9px">{nextPlan.expire ? fmtExpire(nextPlan.expire) : "بدون انقضا"}</Text>
-                      </Stack>
-                    ) : <Text color="var(--panel-text-muted)" fontSize="10px">تنظیم نشده</Text>}
-                  </Td>
-                  <Td><Text fontSize="11px" fontWeight="700">{fmtExpire(user.expire)}</Text></Td>
-                  <Td><Text fontSize="10px" lineHeight="1.6">{fmtDateTime(user.created_at)}</Text></Td>
-                  <Td><Text dir="ltr" textAlign="start" fontSize="11px" fontWeight="800" sx={{ unicodeBidi: "isolate" }}>{user.admin?.username || "—"}</Text></Td>
-                  <Td>
-                    <Text fontSize="10px" lineHeight="1.6">{fmtDateTime(user.online_at)}</Text>
-                    <Text mt={1} color={user.online_at ? "var(--panel-success)" : "var(--panel-text-muted)"} fontSize="9px">{user.online_at ? "دارای فعالیت" : "بدون فعالیت ثبت‌شده"}</Text>
-                  </Td>
-                  <Td>
-                    <Tooltip label={user.sub_last_user_agent || "—"} hasArrow>
-                      <Text dir="ltr" textAlign="start" fontSize="10px" noOfLines={2} overflowWrap="anywhere" sx={{ unicodeBidi: "isolate" }}>{user.sub_last_user_agent || "—"}</Text>
-                    </Tooltip>
-                  </Td>
-                  <Td>
-                    <Text fontSize="12px" fontWeight="850">{(user.reset_history?.length || 0).toLocaleString("fa-IR")}</Text>
-                    <Text color="var(--panel-text-muted)" fontSize="9px">مرتبه</Text>
-                  </Td>
-                  <Td>
-                    <Tooltip label={user.note || "—"} hasArrow>
-                      <Text fontSize="10px" noOfLines={2} color={user.note ? "var(--panel-text-body)" : "var(--panel-text-muted)"}>{user.note || "—"}</Text>
-                    </Tooltip>
-                  </Td>
-                  <Td textAlign="end">
-                    <HStack justify="end" gap={1.5} dir="ltr" maxW="full">
-                      <Action label="کپی لینک اشتراک" icon={<CopyIcon />} onClick={() => copySubscription(user)} tone="green" />
-                      {!readOnly && isOwner && <UserDeviceLimit user={user} compact />}
-                      {!readOnly && <Action label="ویرایش" icon={<EditIcon />} onClick={() => onEditingUser(user)} tone="blue" disabled={busy} />}
-                      {!readOnly && <Action label="حذف کاربر" icon={<DeleteIcon />} onClick={() => onDeletingUser(user)} tone="red" disabled={busy} />}
-                      <Menu placement="bottom-end" isLazy>
-                        <MenuButton
-                          as={IconButton}
-                          aria-label="عملیات بیشتر"
-                          icon={<MoreIcon />}
-                          size="xs"
-                          minW="32px"
-                          w="32px"
-                          h="32px"
-                          borderRadius="12px"
-                          color="var(--panel-text-body)"
-                          bg="var(--panel-nested)"
-                          borderWidth="1px"
-                          borderColor="var(--panel-border)"
-                          _hover={{ bg: "var(--panel-row-hover)" }}
-                        />
-                        <MenuList dir="rtl" minW="210px" bg="var(--panel-surface)" borderColor="var(--panel-border)" borderRadius="14px" boxShadow="var(--shadow-elevated)" py={1.5}>
-                          <MenuItem icon={<QRIcon />} onClick={() => { setQRCode(user.links); setSubLink(user.subscription_url); }}>QR Code</MenuItem>
-                          <MenuItem icon={<AuditIcon />} onClick={() => navigate(`/audit-logs/?search=${encodeURIComponent(user.username)}`)}>گزارش فعالیت</MenuItem>
-                          {!readOnly && <MenuDivider borderColor="var(--panel-border)" />}
-                          {!readOnly && <MenuItem icon={<RenewIcon />} isDisabled={busy} onClick={() => { renewalRequest.current = null; setRenewalUser(user); setRenewalPlanId(""); renewalModal.onOpen(); }}>تمدید با پلن</MenuItem>}
-                          {!readOnly && <MenuItem icon={user.status === "disabled" ? <PlayActionIcon /> : <PauseActionIcon />} isDisabled={busy} onClick={() => toggleStatus(user)}>{user.status === "disabled" ? "فعال‌سازی" : "غیرفعال‌سازی"}</MenuItem>}
-                          {!readOnly && <MenuItem icon={<ResetIcon />} isDisabled={busy} onClick={() => resetUsage(user)}>بازنشانی مصرف</MenuItem>}
-                          {!readOnly && <MenuItem icon={<RevokeIcon />} isDisabled={busy} onClick={() => revoke(user)}>ابطال لینک اشتراک</MenuItem>}
-                        </MenuList>
-                      </Menu>
-                    </HStack>
-                  </Td>
-                </Tr>
-              );
-            })}
-          </Tbody>
-        </Table>
-      </TableContainer>
+        <Text
+          display={{ base: "block", lg: "none" }}
+          px={3}
+          py={2}
+          color="var(--panel-text-muted)"
+          bg="var(--panel-nested)"
+          borderBottomWidth="1px"
+          borderColor="var(--panel-border)"
+          fontSize="10px"
+          lineHeight="1.6"
+        >
+          برای دیدن همه جزئیات و عملیات، جدول را به صورت افقی بکشید.
+        </Text>
+
+        <TableContainer
+          overflowX="auto"
+          overscrollBehaviorX="contain"
+          tabIndex={0}
+          aria-label="جدول کاربران؛ برای مشاهده ستون‌های بیشتر به صورت افقی پیمایش کنید"
+          sx={{
+            WebkitOverflowScrolling: "touch",
+            scrollbarGutter: "stable",
+          }}
+        >
+          <Table size="sm" w="full" minW="1500px" sx={{ tableLayout: "fixed", "th, td": { borderBottom: "0 !important", px: 3.5, py: 3, overflow: "hidden" }, "th": { whiteSpace: "nowrap", overflowWrap: "normal", wordBreak: "keep-all", lineHeight: 1.45, fontWeight: 600, color: "var(--panel-text-muted)" } }}>
+            <Thead bg="var(--panel-nested)">
+              <Tr>
+                {!readOnly && <Th w="36px"><Checkbox isChecked={allVisibleSelected} onChange={(event) => toggleAllVisible(event.target.checked)} colorScheme="primary" /></Th>}
+                <Th w="34px" textAlign="center">#</Th>
+                <Th>کاربر</Th>
+                <Th>وضعیت</Th>
+                <Th>مصرف ترافیک</Th>
+                <Th>پلن بعدی</Th>
+                <Th>انقضا</Th>
+                <Th>تاریخ ایجاد</Th>
+                <Th>ادمین</Th>
+                <Th>آخرین فعالیت</Th>
+                <Th>کلاینت / نسخه</Th>
+                <Th>بازنشانی</Th>
+                <Th>توضیحات</Th>
+                <Th w="190px" textAlign="end">عملیات</Th>
+              </Tr>
+            </Thead>
+            <Tbody>
+              {users.map((user, index) => {
+                const busy = busyUsername === user.username;
+                const nextPlan = user.next_plan;
+                return (
+                  <Tr
+                    key={user.username}
+                    data-selected={selectedMap.has(user.username) ? "true" : undefined}
+                    data-disabled={user.status === "disabled" ? "true" : undefined}
+                    transition="opacity .14s ease"
+                  >
+                    {!readOnly && <Td><Checkbox isChecked={selectedMap.has(user.username)} onChange={(event) => setSelected(user, event.target.checked)} colorScheme="primary" /></Td>}
+                    <Td textAlign="center" fontWeight="800">{((filters.offset || 0) + index + 1).toLocaleString("fa-IR")}</Td>
+                    <Td>
+                      <HStack spacing={2.5}>
+                        <Box w="32px" h="32px" display="grid" placeItems="center" borderRadius="full" bg="var(--panel-accent-soft)" color="var(--panel-accent)" fontWeight="900" flexShrink={0}>
+                          {user.username.slice(0, 1).toUpperCase()}
+                        </Box>
+                        <Box minW={0}>
+                          <Text dir="ltr" textAlign="start" color="var(--panel-accent)" fontSize="12px" fontWeight="850" noOfLines={1} sx={{ unicodeBidi: "isolate" }}>{user.username}</Text>
+                          <Text mt={1} color="var(--panel-text-muted)" fontSize="9px">سقف اتصال: {user.concurrent_user_limit ?? "∞"}</Text>
+                        </Box>
+                      </HStack>
+                    </Td>
+                    <Td><StatusPill status={user.status} /></Td>
+                    <Td><UsageCell user={user} /></Td>
+                    <Td>
+                      {nextPlan ? (
+                        <Stack spacing={0.5}>
+                          <Badge w="fit-content" colorScheme="primary" variant="outline" textTransform="none" fontSize="9px">{nextPlan.data_limit ? String(formatBytes(nextPlan.data_limit)) : "نامحدود"}</Badge>
+                          <Text color="var(--panel-text-muted)" fontSize="9px">{nextPlan.expire ? fmtExpire(nextPlan.expire) : "بدون انقضا"}</Text>
+                        </Stack>
+                      ) : <Text color="var(--panel-text-muted)" fontSize="10px">تنظیم نشده</Text>}
+                    </Td>
+                    <Td><Text fontSize="11px" fontWeight="700">{fmtExpire(user.expire)}</Text></Td>
+                    <Td><Text fontSize="10px" lineHeight="1.6">{fmtDateTime(user.created_at)}</Text></Td>
+                    <Td><Text dir="ltr" textAlign="start" fontSize="11px" fontWeight="800" sx={{ unicodeBidi: "isolate" }}>{user.admin?.username || "—"}</Text></Td>
+                    <Td>
+                      <Text fontSize="10px" lineHeight="1.6">{fmtDateTime(user.online_at)}</Text>
+                      <Text mt={1} color={user.online_at ? "var(--panel-success)" : "var(--panel-text-muted)"} fontSize="9px">{user.online_at ? "دارای فعالیت" : "بدون فعالیت ثبت‌شده"}</Text>
+                    </Td>
+                    <Td>
+                      <Tooltip label={user.sub_last_user_agent || "—"} hasArrow>
+                        <Text dir="ltr" textAlign="start" fontSize="10px" noOfLines={2} overflowWrap="anywhere" sx={{ unicodeBidi: "isolate" }}>{user.sub_last_user_agent || "—"}</Text>
+                      </Tooltip>
+                    </Td>
+                    <Td>
+                      <Text fontSize="12px" fontWeight="850">{(user.reset_history?.length || 0).toLocaleString("fa-IR")}</Text>
+                      <Text color="var(--panel-text-muted)" fontSize="9px">مرتبه</Text>
+                    </Td>
+                    <Td>
+                      <Tooltip label={user.note || "—"} hasArrow>
+                        <Text fontSize="10px" noOfLines={2} color={user.note ? "var(--panel-text-body)" : "var(--panel-text-muted)"}>{user.note || "—"}</Text>
+                      </Tooltip>
+                    </Td>
+                    <Td textAlign="end">
+                      <HStack justify="end" gap={1.5} dir="ltr" maxW="full">
+                        <Action label="کپی لینک اشتراک" icon={<CopyIcon />} onClick={() => copySubscription(user)} tone="green" />
+                        {!readOnly && isOwner && <UserDeviceLimit user={user} compact />}
+                        {!readOnly && <Action label="ویرایش" icon={<EditIcon />} onClick={() => onEditingUser(user)} tone="blue" disabled={busy} />}
+                        {!readOnly && <Action label="حذف کاربر" icon={<DeleteIcon />} onClick={() => onDeletingUser(user)} tone="red" disabled={busy} />}
+                        <Menu placement="bottom-end" isLazy>
+                          <MenuButton
+                            as={IconButton}
+                            aria-label="عملیات بیشتر"
+                            icon={<MoreIcon />}
+                            size="xs"
+                            minW="32px"
+                            w="32px"
+                            h="32px"
+                            borderRadius="12px"
+                            color="var(--panel-text-body)"
+                            bg="var(--panel-nested)"
+                            borderWidth="1px"
+                            borderColor="var(--panel-border)"
+                            _hover={{ bg: "var(--panel-row-hover)" }}
+                          />
+                          <MenuList dir="rtl" minW="210px" bg="var(--panel-surface)" borderColor="var(--panel-border)" borderRadius="14px" boxShadow="var(--shadow-elevated)" py={1.5}>
+                            <MenuItem icon={<QRIcon />} onClick={() => { setQRCode(user.links); setSubLink(user.subscription_url); }}>QR Code</MenuItem>
+                            <MenuItem icon={<AuditIcon />} onClick={() => navigate(`/audit-logs/?search=${encodeURIComponent(user.username)}`)}>گزارش فعالیت</MenuItem>
+                            {!readOnly && <MenuDivider borderColor="var(--panel-border)" />}
+                            {!readOnly && <MenuItem icon={<RenewIcon />} isDisabled={busy} onClick={() => { renewalRequest.current = null; setRenewalUser(user); setRenewalPlanId(""); renewalModal.onOpen(); }}>تمدید با پلن</MenuItem>}
+                            {!readOnly && <MenuItem icon={user.status === "disabled" ? <PlayActionIcon /> : <PauseActionIcon />} isDisabled={busy} onClick={() => toggleStatus(user)}>{user.status === "disabled" ? "فعال‌سازی" : "غیرفعال‌سازی"}</MenuItem>}
+                            {!readOnly && <MenuItem icon={<ResetIcon />} isDisabled={busy} onClick={() => resetUsage(user)}>بازنشانی مصرف</MenuItem>}
+                            {!readOnly && <MenuItem icon={<RevokeIcon />} isDisabled={busy} onClick={() => revoke(user)}>ابطال لینک اشتراک</MenuItem>}
+                          </MenuList>
+                        </Menu>
+                      </HStack>
+                    </Td>
+                  </Tr>
+                );
+              })}
+            </Tbody>
+          </Table>
+        </TableContainer>
+      </Box>
 
       <Pagination />
 

@@ -49,7 +49,11 @@ assert.ok(users.includes('boxSize="6px"') && users.includes('borderColor={meta.b
 assert.ok(users.includes("<MenuButton") && users.includes("عملیات بیشتر"), "secondary row actions stay in kebab menu");
 assert.ok(users.includes("<UserDeviceLimit user={user} compact"), "Device Limit shield must be restored in user rows");
 assert.ok(device.includes("compact?: boolean") && device.includes('minW={compact ? "30px" : "44px"}'));
-assert.ok(users.indexOf("<BulkUserActions") > users.indexOf("<TableContainer"), "bulk toolbar must live inside the table container");
+assert.ok(users.indexOf("<BulkUserActions") < users.indexOf("<TableContainer"), "bulk toolbar must stay outside the horizontal scroll region");
+assert.ok(users.includes('overflowX="auto"'), "users table must expose controlled horizontal scrolling on narrow viewports");
+assert.ok(users.includes('minW="1500px"'), "users table must keep a readable minimum width instead of squeezing all columns");
+assert.ok(users.includes('whiteSpace: "nowrap"') && users.includes('wordBreak: "keep-all"'), "users table headers must not wrap character-by-character");
+assert.ok(users.includes("برای دیدن همه جزئیات و عملیات، جدول را به صورت افقی بکشید."), "narrow viewports must explain the horizontal-scroll affordance");
 assert.ok(users.includes('data-disabled={user.status === "disabled"'));
 
 assert.ok(plans.includes('id="access-groups"') && plans.includes("گروه‌های دسترسی"));
