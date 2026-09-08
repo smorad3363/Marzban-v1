@@ -1,0 +1,228 @@
+name: Prepare v1.1.0 branch
+
+on:
+  push:
+    branches:
+      - fix/v1.1.0-admin-release
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/v1.1.0-admin-release
+          fetch-depth: 0
+
+      - name: Apply scoped v1.1.0 fixes
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace(path: str, old: str, new: str, count: int = 1):
+              p = Path(path)
+              text = p.read_text()
+              found = text.count(old)
+              if found < count:
+                  raise SystemExit(f"{path}: expected at least {count} occurrence(s), found {found}: {old[:120]!r}")
+              text = text.replace(old, new, count)
+              p.write_text(text)
+
+          # Admin plan picker must use the scoped, read-only endpoint instead of Owner-only plan management.
+          path = Path("app/dashboard/src/components/CreateUserFromPlan.tsx")
+          text = path.read_text()
+          text = text.replace('import { AccessGroup, UserPlan } from "types/Admin";', 'import { AccessGroup } from "types/Admin";')
+          marker = 'import { queryClient } from "utils/react-query";\n\n'
+          if marker not in text:
+              raise SystemExit("CreateUserFromPlan: type insertion marker missing")
+          text = text.replace(marker, marker + '''type AvailableUserPlan = {\n  id: number;\n  name: string;\n  data_limit: number;\n  duration_days: number;\n  price_toman: number;\n  concurrent_user_limit: number | null;\n};\n\n''', 1)
+          old = 'const plans = useQuery<UserPlan[]>("user-plans", () => fetch("/user-plans"), { enabled: isOpen });'
+          new = 'const plans = useQuery<AvailableUserPlan[]>("available-user-plans", () => fetch("/available-user-plans"), { enabled: isOpen });'
+          if old not in text:
+              raise SystemExit("CreateUserFromPlan: Owner-only query contract missing")
+          text = text.replace(old, new, 1)
+          old = '{plans.data?.filter((item) => !item.archived_at).map((item) => <option key={item.id} value={item.id}>{item.name} · {item.effective_price_toman.toLocaleString()} Toman</option>)}'
+          new = '{plans.data?.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.price_toman.toLocaleString()} Toman</option>)}'
+          if old not in text:
+              raise SystemExit("CreateUserFromPlan: plan option contract missing")
+          text = text.replace(old, new, 1)
+          old = '{plan && <Text role="status">{plan.version.duration_days} days · {plan.version.data_limit / 1024 ** 3} GiB · Price {plan.effective_price_toman.toLocaleString()} Toman. Charging follows your account policy.</Text>}'
+          new = '{plan && <Text role="status">{plan.duration_days} days · {plan.data_limit / 1024 ** 3} GiB · Price {plan.price_toman.toLocaleString()} Toman. Charging follows your account policy.</Text>}'
+          if old not in text:
+              raise SystemExit("CreateUserFromPlan: plan summary contract missing")
+          path.write_text(text)
+
+          # Expose the backend-supported Form / Plan / Both creation policy in the Admin form.
+          path = Path("app/dashboard/src/components/AdminFormDrawer.tsx")
+          text = path.read_text()
+          old = '  AdminCapabilities, AdminPolicy, ManagedAdmin, ManagedAdminList, ManagedAdminPayload,\n  SubscriptionMode,\n'
+          new = '  AccountSummary, AdminCapabilities, AdminPolicy, ManagedAdmin, ManagedAdminList, ManagedAdminPayload,\n  SubscriptionMode,\n'
+          if old not in text:
+              raise SystemExit("AdminFormDrawer: import contract missing")
+          text = text.replace(old, new, 1)
+          old = 'type BillingMode = AdminPolicy["billing_mode"];\n\n'
+          new = '''type BillingMode = AdminPolicy["billing_mode"];\ntype UserCreationMode = "FORM_ONLY" | "PLAN_ONLY" | "BOTH";\n\nconst creationModeLabels: Record<UserCreationMode, { title: string; help: string }> = {\n  FORM_ONLY: { title: "فقط فرم دلخواه", help: "ادمین فقط با فرم دستی و محدودیت‌های واگذارشده کاربر می‌سازد." },\n  PLAN_ONLY: { title: "فقط پلن", help: "ادمین فقط از پلن‌های قابل استفاده در محدوده خودش کاربر می‌سازد." },\n  BOTH: { title: "هر دو روش", help: "ادمین هم فرم دلخواه و هم پلن‌های مجاز را برای ساخت کاربر در اختیار دارد." },\n};\n\n'''
+          if old not in text:
+              raise SystemExit("AdminFormDrawer: BillingMode marker missing")
+          text = text.replace(old, new, 1)
+          old = '''  const capabilitiesQuery = useQuery<AdminCapabilities, Error>(\n    "admin-capabilities", () => fetch("/admin/capabilities"),\n    { enabled: isOpen, staleTime: 15000 }\n  );\n'''
+          new = old + '''  const accountQuery = useQuery<AccountSummary, Error>(\n    "account-summary", () => fetch("/account/summary"),\n    { enabled: isOpen, staleTime: 15000 }\n  );\n'''
+          if old not in text:
+              raise SystemExit("AdminFormDrawer: capabilities query marker missing")
+          text = text.replace(old, new, 1)
+          old = '''  const selectBillingMode = (mode: BillingMode | "") => {\n    setBillingMode(mode);\n    if (!mode) return;\n    setForm((current) => ({\n      ...current,\n      user_creation_mode: mode === "USED_TRAFFIC" ? "FREE_FORM" : "PLAN_ONLY",\n      can_manage_plans: mode === "USED_TRAFFIC" ? false : current.can_manage_plans,\n      can_create_allocated_children: mode === "USED_TRAFFIC" && current.can_create_allocated_children,\n      policy: {\n        ...current.policy, billing_mode: mode,\n        calculate_volume: mode === "ALLOCATED_TRAFFIC" ? "created_traffic" : "used_traffic",\n        total_traffic: null, max_users: null, device_capacity_limit: null,\n      },\n    }));\n  };\n\n'''
+          new = '''  const selectBillingMode = (mode: BillingMode | "") => {\n    setBillingMode(mode);\n    if (!mode) return;\n    setForm((current) => ({\n      ...current,\n      user_creation_mode: mode === "USER_CREDIT"\n        ? "PLAN_ONLY"\n        : current.user_creation_mode === "FREE_FORM" ? "FORM_ONLY" : current.user_creation_mode,\n      can_manage_plans: mode === "USED_TRAFFIC" ? false : current.can_manage_plans,\n      can_create_allocated_children: mode === "USED_TRAFFIC" && current.can_create_allocated_children,\n      policy: {\n        ...current.policy, billing_mode: mode,\n        calculate_volume: mode === "ALLOCATED_TRAFFIC" ? "created_traffic" : "used_traffic",\n        total_traffic: null, max_users: null, device_capacity_limit: null,\n      },\n    }));\n  };\n\n  const mode = billingMode || form.policy.billing_mode;\n  const normalizedCreationMode: UserCreationMode = form.user_creation_mode === "FREE_FORM"\n    ? "FORM_ONLY"\n    : form.user_creation_mode;\n  const parentCreationMode = accountQuery.data?.user_creation_mode;\n  const allowedCreationModes: UserCreationMode[] = mode === "USER_CREDIT"\n    ? ["PLAN_ONLY"]\n    : accountQuery.data?.role === "OWNER"\n      ? ["FORM_ONLY", "PLAN_ONLY", "BOTH"]\n      : parentCreationMode === "BOTH"\n        ? ["FORM_ONLY", "PLAN_ONLY", "BOTH"]\n        : parentCreationMode === "FREE_FORM" || parentCreationMode === "FORM_ONLY"\n          ? ["FORM_ONLY"]\n          : ["PLAN_ONLY"];\n\n'''
+          if old not in text:
+              raise SystemExit("AdminFormDrawer: billing-mode forcing block missing")
+          text = text.replace(old, new, 1)
+          old = '    if (!isEditing && !billingMode) return showWarning("نوع حساب فرزند را انتخاب کنید");\n'
+          new = old + '    if (!allowedCreationModes.includes(normalizedCreationMode)) return showWarning("روش ساخت کاربر با دسترسی والد سازگار نیست");\n'
+          if old not in text:
+              raise SystemExit("AdminFormDrawer: validation marker missing")
+          text = text.replace(old, new, 1)
+          old = '''      user_creation_mode: mode === "USED_TRAFFIC" ? "FREE_FORM" as const : "PLAN_ONLY" as const,\n      can_manage_plans: mode === "USED_TRAFFIC" ? false : form.can_manage_plans,\n'''
+          new = '''      user_creation_mode: normalizedCreationMode,\n      can_manage_plans: mode === "USED_TRAFFIC" ? false : form.can_manage_plans,\n'''
+          if old not in text:
+              raise SystemExit("AdminFormDrawer: submit forcing contract missing")
+          text = text.replace(old, new, 1)
+          old = '  const mode = billingMode || form.policy.billing_mode;\n  const parsedCreditAmount = Number(creditAmount);\n'
+          new = '  const parsedCreditAmount = Number(creditAmount);\n'
+          if old not in text:
+              raise SystemExit("AdminFormDrawer: duplicate mode marker missing")
+          text = text.replace(old, new, 1)
+          old = '''                </Box>\n\n                <SimpleGrid mt={4} pt={4} borderTopWidth="1px" borderColor="var(--panel-border)" columns={{ base: 1, lg: 2 }} gap={3}>\n'''
+          new = '''                </Box>\n\n                <Box mt={4} pt={4} borderTopWidth="1px" borderColor="var(--panel-border)">\n                  <Text fontSize="sm" fontWeight="800">روش ساخت کاربر</Text>\n                  <Text mt={1} color="var(--panel-text-muted)" fontSize="xs">مشخص کنید این ادمین با فرم دلخواه، پلن‌های مجاز یا هر دو روش بتواند کاربر بسازد.</Text>\n                  <SimpleGrid mt={2} columns={{ base: 1, md: Math.min(Math.max(allowedCreationModes.length, 1), 3) }} gap={2}>\n                    {allowedCreationModes.map((item) => (\n                      <Button key={item} type="button" minH="66px" h="auto" py={2.5} px={3} whiteSpace="normal" textAlign="start" justifyContent="flex-start" variant={normalizedCreationMode === item ? "solid" : "outline"} colorScheme={normalizedCreationMode === item ? "primary" : "gray"} onClick={() => setField("user_creation_mode", item)}>\n                        <Box><Text fontWeight="800">{creationModeLabels[item].title}</Text><Text mt={1} fontSize="xs" fontWeight="400" opacity={0.78}>{creationModeLabels[item].help}</Text></Box>\n                      </Button>\n                    ))}\n                  </SimpleGrid>\n                  {mode === "USER_CREDIT" && <FormHelperText>حساب «سقف اکانت» طبق قرارداد Backend همیشه فقط با پلن کار می‌کند.</FormHelperText>}\n                </Box>\n\n                <SimpleGrid mt={4} pt={4} borderTopWidth="1px" borderColor="var(--panel-border)" columns={{ base: 1, lg: 2 }} gap={3}>\n'''
+          if old not in text:
+              raise SystemExit("AdminFormDrawer: creation-mode UI insertion marker missing")
+          text = text.replace(old, new, 1)
+          old = 'isDisabled={capabilitiesQuery.isLoading || capabilitiesQuery.isError || !hierarchyReady}'
+          new = 'isDisabled={capabilitiesQuery.isLoading || capabilitiesQuery.isError || accountQuery.isLoading || accountQuery.isError || !hierarchyReady}'
+          if old not in text:
+              raise SystemExit("AdminFormDrawer: save guard marker missing")
+          text = text.replace(old, new, 1)
+          path.write_text(text)
+
+          # Lock the UI contracts to the scoped Plan endpoint and explicit creation-mode selector.
+          path = Path("app/dashboard/scripts/test-admin-ux.cjs")
+          text = path.read_text()
+          old = 'const drawer = read("src/components/AdminFormDrawer.tsx");\n'
+          new = old + 'const planCreate = read("src/components/CreateUserFromPlan.tsx");\n'
+          if old not in text:
+              raise SystemExit("test-admin-ux: drawer marker missing")
+          text = text.replace(old, new, 1)
+          old = 'assert.ok(!drawer.includes("روش ساخت کاربر") && !drawer.includes("ساخت سفارشی"), "Admin form must not expose the backend-derived user creation method");'
+          new = 'assert.ok(drawer.includes("روش ساخت کاربر") && drawer.includes("فقط فرم دلخواه") && drawer.includes("فقط پلن") && drawer.includes("هر دو روش"), "Admin form must expose Form-only, Plan-only, and Both creation modes");'
+          if old not in text:
+              raise SystemExit("test-admin-ux: old creation-mode assertion missing")
+          text = text.replace(old, new, 1)
+          old = 'assert.ok(drawer.includes(\'mode === "USED_TRAFFIC" ? "FREE_FORM" as const : "PLAN_ONLY" as const\'), "billing mode must authoritatively choose custom or Plan-only creation");'
+          new = 'assert.ok(drawer.includes(\'mode === "USER_CREDIT"\') && drawer.includes("normalizedCreationMode"), "USER_CREDIT must stay Plan-only while other billing modes preserve the explicit creation choice");'
+          if old not in text:
+              raise SystemExit("test-admin-ux: old forced mode assertion missing")
+          text = text.replace(old, new, 1)
+          anchor = 'assert.ok(overview.includes(\'["FREE_FORM", "FORM_ONLY", "BOTH"]\') && overview.includes("CreateUserFromPlan"), "quick creation must respect explicit modes without Owner-only routing");\n'
+          extra = anchor + 'assert.ok(planCreate.includes(\'fetch("/available-user-plans")\') && !planCreate.includes(\'fetch("/user-plans")\'), "Admin Plan picker must use the scoped available-user-plans endpoint");\nassert.ok(planCreate.includes(\'"available-user-plans"\') && planCreate.includes("price_toman"), "scoped Plan picker must use its own cache shape and effective price summary");\n'
+          if anchor not in text:
+              raise SystemExit("test-admin-ux: Plan creation anchor missing")
+          text = text.replace(anchor, extra, 1)
+          path.write_text(text)
+
+          # Permanent Release workflow: manual tag-source dispatches must behave like tag releases,
+          # and GitHub Release creation must happen only after anonymous runtime verification succeeds.
+          path = Path(".github/workflows/build.yml")
+          text = path.read_text()
+          old = '''      - name: Resolve immutable release version\n        id: release-version\n        shell: bash\n        run: |\n          version_tag=""\n          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then\n            version_tag="${GITHUB_REF_NAME}"\n          fi\n          echo "version_tag=${version_tag}" >> "${GITHUB_OUTPUT}"\n'''
+          new = '''      - name: Resolve immutable release version\n        id: release-version\n        shell: bash\n        env:\n          DISPATCH_REF: ${{ inputs.git_ref }}\n        run: |\n          set -Eeuo pipefail\n          version_tag=""\n          source_sha="$(git rev-parse HEAD)"\n          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then\n            version_tag="${GITHUB_REF_NAME}"\n          elif [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" && "${DISPATCH_REF}" == v* ]]; then\n            if ! git show-ref --verify --quiet "refs/tags/${DISPATCH_REF}"; then\n              git fetch --no-tags origin "refs/tags/${DISPATCH_REF}:refs/tags/${DISPATCH_REF}"\n            fi\n            tag_sha="$(git rev-list -n 1 "${DISPATCH_REF}")"\n            if [[ "${tag_sha}" != "${source_sha}" ]]; then\n              echo "Requested release tag ${DISPATCH_REF} does not match checked-out source ${source_sha}" >&2\n              exit 1\n            fi\n            version_tag="${DISPATCH_REF}"\n          fi\n          echo "version_tag=${version_tag}" >> "${GITHUB_OUTPUT}"\n          echo "source_sha=${source_sha}" >> "${GITHUB_OUTPUT}"\n'''
+          if old not in text:
+              raise SystemExit("build.yml: release-version block missing")
+          text = text.replace(old, new, 1)
+          old = '''          REQUESTED_TAG: ${{ inputs.image_tag }}\n          VERSION_TAG: ${{ steps.release-version.outputs.version_tag }}\n        run: |\n          short_sha="${GITHUB_SHA::12}"\n'''
+          new = '''          REQUESTED_TAG: ${{ inputs.image_tag }}\n          VERSION_TAG: ${{ steps.release-version.outputs.version_tag }}\n          SOURCE_SHA: ${{ steps.release-version.outputs.source_sha }}\n        run: |\n          short_sha="${SOURCE_SHA::12}"\n'''
+          if old not in text:
+              raise SystemExit("build.yml: image tag SHA block missing")
+          text = text.replace(old, new, 1)
+          old = '            org.opencontainers.image.revision=${{ github.sha }}\n'
+          new = '            org.opencontainers.image.revision=${{ steps.release-version.outputs.source_sha }}\n'
+          if old not in text:
+              raise SystemExit("build.yml: OCI revision label missing")
+          text = text.replace(old, new, 1)
+          marker = '''      - name: Create immutable GitHub release\n        if: steps.release-version.outputs.version_tag != ''\n'''
+          verify = '''      - name: Verify published image anonymously and at runtime\n        env:\n          IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/marzban-v1\n          VERSION_TAG: ${{ steps.release-version.outputs.version_tag }}\n          REQUESTED_TAG: ${{ inputs.image_tag }}\n          SOURCE_SHA: ${{ steps.release-version.outputs.source_sha }}\n        shell: bash\n        run: |\n          set -Eeuo pipefail\n          verify_tag="${VERSION_TAG:-${REQUESTED_TAG}}"\n          test -n "${verify_tag}"\n          image="${IMAGE_NAME}:${verify_tag}"\n          manifest="$(docker buildx imagetools inspect "${image}")"\n          printf '%s\\n' "${manifest}"\n          grep -Fq "linux/amd64" <<<"${manifest}"\n          grep -Fq "linux/arm64" <<<"${manifest}"\n          docker logout ghcr.io\n          docker image rm "${image}" >/dev/null 2>&1 || true\n          docker pull --platform linux/amd64 "${image}"\n          revision="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "${image}")"\n          test "${revision}" = "${SOURCE_SHA}"\n          expected_version="$(tr -d '[:space:]' < VERSION)"\n          docker run --rm --platform linux/amd64 --entrypoint /usr/local/bin/python "${image}" \\\n            -c "import sys; sys.path.insert(0, '/code'); import app; assert app.__version__ == '${expected_version}', app.__version__"\n          docker run --rm --platform linux/amd64 --entrypoint /usr/local/bin/mysqldump "${image}" --version | grep -F "26.7.0"\n          docker run --rm --platform linux/amd64 --entrypoint /bin/sh "${image}" -c \\\n            'test -f /code/app/dashboard/build/index.html && test -x /usr/bin/marzban-cli && test -f /code/node_runtime/main.py'\n\n'''
+          if marker not in text:
+              raise SystemExit("build.yml: release creation marker missing")
+          text = text.replace(marker, verify + marker, 1)
+          path.write_text(text)
+
+          # v1.1.0 is a minor release: user-visible Admin creation controls plus release-pipeline hardening.
+          replace("VERSION", "1.0.9\n", "1.1.0\n")
+          replace("app/__init__.py", '__version__ = "1.0.9"', '__version__ = "1.1.0"')
+          replace("scripts/marzban.sh", 'CLI_RELEASE_VERSION="v1.0.9"', 'CLI_RELEASE_VERSION="v1.1.0"')
+          replace("docker-compose.yml", 'image: ghcr.io/smorad3363/marzban-v1:v1.0.9', 'image: ghcr.io/smorad3363/marzban-v1:v1.1.0')
+
+          Path("docs/RELEASE_NOTES_v1.1.0.md").write_text('''# Marzban v1.1.0\n\n## Highlights\n\n- Fix Admin user creation from Plan: the dashboard now loads the Admin-scoped available Plan list instead of the Owner-only Plan-management endpoint.\n- Add an explicit Admin user-creation policy selector: **Form only**, **Plan only**, or **Both**. `USER_CREDIT` remains Plan-only by backend contract.\n- Preserve existing billing semantics: `USED_TRAFFIC` charges real usage by the Admin per-GiB rate; `ALLOCATED_TRAFFIC` Plan purchases charge the effective Plan price.\n- Harden the permanent Release workflow so a manual dispatch using a version tag as its source is treated as an immutable release, image revision labels use the checked-out source SHA, and GitHub Release creation waits for anonymous multi-arch/runtime verification.\n\n## Upgrade\n\n```bash\nmarzban update --version v1.1.0\n```\n\n## Fresh install\n\n```bash\nsudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.1.0/scripts/marzban.sh)" @ install --version v1.1.0 --database mysql\n```\n\nThe existing `v1.0.9` tag remains unchanged.\n''')
+
+          releases = Path("RELEASES.md")
+          text = releases.read_text()
+          start = text.index("## Current stable: v1.0.9")
+          end = text.index("## Release process")
+          replacement = '''## Release target: v1.1.0\n\nv1.1.0 is the next stable release target. Complete release notes are in\n`docs/RELEASE_NOTES_v1.1.0.md`.\n\nUpdate to v1.1.0 after publication:\n\n```bash\nmarzban update --version v1.1.0\n```\n\nFresh-install v1.1.0 with MySQL after publication:\n\n```bash\nsudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.1.0/scripts/marzban.sh)" @ install --version v1.1.0 --database mysql\n```\n\nThe existing `v1.0.9` source tag is immutable and is not moved or recreated.\nThe last confirmed GitHub Release before v1.1.0 remains v1.0.8.\n\n'''
+          releases.write_text(text[:start] + replacement + text[end:])
+          PY
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: app/dashboard/package-lock.json
+
+      - name: Install dashboard dependencies
+        working-directory: app/dashboard
+        run: npm ci
+
+      - name: Run dashboard contract tests
+        working-directory: app/dashboard
+        run: |
+          node scripts/test-access-groups.cjs
+          node scripts/test-admin-ux.cjs
+          node scripts/test-v106-ui.cjs
+          node scripts/test-stage1-ui-contracts.cjs
+
+      - name: Build committed dashboard
+        working-directory: app/dashboard
+        run: VITE_BASE_API=/api/ npm run build
+
+      - name: Verify generated dashboard and patch hygiene
+        run: |
+          test -f app/dashboard/build/index.html
+          test -f app/dashboard/build/404.html
+          git diff --check
+          grep -Fx '1.1.0' VERSION
+          grep -Fx '__version__ = "1.1.0"' app/__init__.py
+          grep -Fx 'CLI_RELEASE_VERSION="v1.1.0"' scripts/marzban.sh
+          grep -Fq 'ghcr.io/smorad3363/marzban-v1:v1.1.0' docker-compose.yml
+          test -s docs/RELEASE_NOTES_v1.1.0.md
+
+      - name: Commit prepared branch
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            .github/workflows/build.yml \
+            app/dashboard/src/components/CreateUserFromPlan.tsx \
+            app/dashboard/src/components/AdminFormDrawer.tsx \
+            app/dashboard/scripts/test-admin-ux.cjs \
+            app/dashboard/build \
+            VERSION app/__init__.py scripts/marzban.sh docker-compose.yml \
+            RELEASES.md docs/RELEASE_NOTES_v1.1.0.md
+          git diff --cached --exit-code && { echo "No prepared changes" >&2; exit 1; } || true
+          git commit -m "feat(release): prepare v1.1.0 admin creation fixes"
+          git push origin HEAD:fix/v1.1.0-admin-release
