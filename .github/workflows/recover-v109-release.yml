@@ -126,7 +126,7 @@ jobs:
           docker image rm "${IMAGE_NAME}:${RELEASE_TAG}" >/dev/null 2>&1 || true
           docker pull --platform linux/amd64 "${IMAGE_NAME}:${RELEASE_TAG}"
           test "$(docker image inspect --format '{{ index .Config.Labels \"org.opencontainers.image.revision\" }}' "${IMAGE_NAME}:${RELEASE_TAG}")" = "${RELEASE_COMMIT}"
-          docker run --rm --entrypoint python "${IMAGE_NAME}:${RELEASE_TAG}" -c 'import app; assert app.__version__ == "1.0.9"'
+          docker run --rm --entrypoint /usr/local/bin/python "${IMAGE_NAME}:${RELEASE_TAG}" -c 'import sys; sys.path.insert(0, "/code"); import app; assert app.__version__ == "1.0.9"'
           docker run --rm --entrypoint mysqldump "${IMAGE_NAME}:${RELEASE_TAG}" --version | grep -Fq '26.7.0'
           docker run --rm --entrypoint sh "${IMAGE_NAME}:${RELEASE_TAG}" -c 'test -f /code/app/dashboard/build/index.html && test -x /usr/bin/marzban-cli && test -f /code/node_runtime/main.py'
 
