@@ -8,36 +8,30 @@ Every published release uses an immutable Git tag and permanent container tags:
 `latest` points only to the newest stable tagged release. Older version and SHA
 tags are never replaced.
 
-## v1.0.9 release candidate
+## Current stable: v1.0.9
 
-The v1.0.9 release candidate is audited but is **not published** until all version
-surfaces are bumped together, the protected-main checks pass, and tag `v1.0.9` is
-created from the reviewed commit.
+v1.0.9 is the current published stable release. Complete release notes are in
+`docs/RELEASE_NOTES_v1.0.9.md`.
 
-The complete release notes are maintained in
-`docs/RELEASE_NOTES_v1.0.9.md`. They cover delegated Plan permissions, Light/Dark
-Device Limits, Node log interval validation, Access Group fail-closed policy,
-Owner-transfer hardening, SQLAlchemy overflow compatibility, dual-MySQL evidence,
-and dashboard/release pipeline parity.
-
-## Current stable: v1.0.8
-
-v1.0.8 is the current published stable release until v1.0.9 is tagged and its
-release workflow completes.
-
-Update to v1.0.8:
+Update to v1.0.9:
 
 ```bash
-marzban update --version v1.0.8
+marzban update --version v1.0.9
 ```
 
-Fresh-install v1.0.8 with MySQL:
+Or update to the newest stable release:
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.0.8/scripts/marzban.sh)" @ install --version v1.0.8 --database mysql
+marzban update
 ```
 
-Historical v1 release notes are kept under `docs/RELEASE_NOTES_v1.*.md`.
+Fresh-install v1.0.9 with MySQL:
+
+```bash
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.0.9/scripts/marzban.sh)" @ install --version v1.0.9 --database mysql
+```
+
+The previous stable v1.0.8 remains available as an immutable tag.
 
 ## Release process
 
