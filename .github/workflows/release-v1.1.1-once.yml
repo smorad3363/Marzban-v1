@@ -8,6 +8,7 @@ on:
       - ".github/workflows/release-v1.1.1-once.yml"
 
 permissions:
+  actions: write
   contents: write
 
 jobs:
@@ -34,3 +35,15 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -fa v1.1.1 -m "Marzban v1.1.1" "${GITHUB_SHA}"
           git push --force origin refs/tags/v1.1.1
+
+      - name: Dispatch canonical Release workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          gh workflow run build.yml \
+            --ref main \
+            -f git_ref=v1.1.1 \
+            -f image_tag=v1.1.1 \
+            -f tests_only=false
