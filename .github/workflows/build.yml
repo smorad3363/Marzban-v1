@@ -259,12 +259,27 @@ jobs:
       - name: Resolve immutable release version
         id: release-version
         shell: bash
+        env:
+          DISPATCH_REF: ${{ inputs.git_ref }}
         run: |
+          set -Eeuo pipefail
           version_tag=""
+          source_sha="$(git rev-parse HEAD)"
           if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
             version_tag="${GITHUB_REF_NAME}"
+          elif [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" && "${DISPATCH_REF}" == v* ]]; then
+            if ! git show-ref --verify --quiet "refs/tags/${DISPATCH_REF}"; then
+              git fetch --no-tags origin "refs/tags/${DISPATCH_REF}:refs/tags/${DISPATCH_REF}"
+            fi
+            tag_sha="$(git rev-list -n 1 "${DISPATCH_REF}")"
+            if [[ "${tag_sha}" != "${source_sha}" ]]; then
+              echo "Requested release tag ${DISPATCH_REF} does not match checked-out source ${source_sha}" >&2
+              exit 1
+            fi
+            version_tag="${DISPATCH_REF}"
           fi
           echo "version_tag=${version_tag}" >> "${GITHUB_OUTPUT}"
+          echo "source_sha=${source_sha}" >> "${GITHUB_OUTPUT}"
 
       - name: Verify release tag, protected-main ancestry, version surfaces and notes
         if: steps.release-version.outputs.version_tag != ''
@@ -335,8 +350,9 @@ jobs:
           IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/marzban-v1
           REQUESTED_TAG: ${{ inputs.image_tag }}
           VERSION_TAG: ${{ steps.release-version.outputs.version_tag }}
+          SOURCE_SHA: ${{ steps.release-version.outputs.source_sha }}
         run: |
-          short_sha="${GITHUB_SHA::12}"
+          short_sha="${SOURCE_SHA::12}"
           tags="${IMAGE_NAME}:sha-${short_sha}"
           if [[ -n "${VERSION_TAG}" ]]; then
             tags="${tags}"$'\n'"${IMAGE_NAME}:${VERSION_TAG}"
@@ -360,9 +376,37 @@ jobs:
           push: true
           tags: ${{ steps.image-tags.outputs.tags }}
           labels: |
-            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.revision=${{ steps.release-version.outputs.source_sha }}
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.version=${{ steps.release-version.outputs.version_tag || inputs.image_tag || github.ref_name }}
+
+      - name: Verify published image anonymously and at runtime
+        env:
+          IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/marzban-v1
+          VERSION_TAG: ${{ steps.release-version.outputs.version_tag }}
+          REQUESTED_TAG: ${{ inputs.image_tag }}
+          SOURCE_SHA: ${{ steps.release-version.outputs.source_sha }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          verify_tag="${VERSION_TAG:-${REQUESTED_TAG}}"
+          test -n "${verify_tag}"
+          image="${IMAGE_NAME}:${verify_tag}"
+          manifest="$(docker buildx imagetools inspect "${image}")"
+          printf '%s\n' "${manifest}"
+          grep -Fq "linux/amd64" <<<"${manifest}"
+          grep -Fq "linux/arm64" <<<"${manifest}"
+          docker logout ghcr.io
+          docker image rm "${image}" >/dev/null 2>&1 || true
+          docker pull --platform linux/amd64 "${image}"
+          revision="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "${image}")"
+          test "${revision}" = "${SOURCE_SHA}"
+          expected_version="$(tr -d '[:space:]' < VERSION)"
+          docker run --rm --platform linux/amd64 --entrypoint /usr/local/bin/python "${image}" \
+            -c "import sys; sys.path.insert(0, '/code'); import app; assert app.__version__ == '${expected_version}', app.__version__"
+          docker run --rm --platform linux/amd64 --entrypoint /usr/local/bin/mysqldump "${image}" --version | grep -F "26.7.0"
+          docker run --rm --platform linux/amd64 --entrypoint /bin/sh "${image}" -c \
+            'test -f /code/app/dashboard/build/index.html && test -x /usr/bin/marzban-cli && test -f /code/node_runtime/main.py'
 
       - name: Create immutable GitHub release
         if: steps.release-version.outputs.version_tag != ''
