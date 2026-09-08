@@ -2,6 +2,7 @@ from pathlib import Path
 
 
 WORKFLOW_PATH = Path(".github/workflows/build.yml")
+ONE_SHOT_HELPER_PATH = Path(".github/workflows/release-v1.1.1-once.yml")
 
 
 def test_release_image_verifier_uses_valid_docker_label_template() -> None:
@@ -24,3 +25,7 @@ def test_release_image_verifier_reads_version_without_importing_app() -> None:
     assert "Path('/code/VERSION').read_text().strip()" in verifier
     assert "import app" not in verifier
     assert "from app" not in verifier
+
+
+def test_v111_one_shot_release_helper_is_removed() -> None:
+    assert not ONE_SHOT_HELPER_PATH.exists()
