@@ -1,0 +1,84 @@
+name: Temporary v1.1.1 Admin User Contract Fix Corrected
+
+on:
+  push:
+    branches:
+      - fix/v1.1.1-admin-user-create-delete
+
+permissions:
+  contents: write
+
+jobs:
+  patch-build:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/v1.1.1-admin-user-create-delete
+          fetch-depth: 0
+
+      - name: Apply corrected regression patch
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          workflow = Path('.github/workflows/tmp-v111-admin-user-contract-fix.yml').read_text().splitlines()
+          start = next(i for i, line in enumerate(workflow) if line.strip() == "python - <<'PY'") + 1
+          end = next(i for i in range(start, len(workflow)) if workflow[i] == '          PY')
+          code = '\n'.join(line[10:] if line.startswith('          ') else line for line in workflow[start:end])
+          exec(compile(code, 'tmp-v111-admin-user-contract-fix.yml', 'exec'), {})
+
+          # The first temporary workflow used an ambiguous TS marker that also exists in AdminPolicy.
+          # Move the new capability field to AdminCapabilities where it belongs.
+          path = Path('app/dashboard/src/types/Admin.ts')
+          text = path.read_text()
+          misplaced = '  allowed_form_duration_days: number[];\n'
+          if misplaced not in text:
+              raise SystemExit('misplaced duration type field not found')
+          text = text.replace(misplaced, '', 1)
+          anchor = 'export type AdminCapabilities = {'
+          start = text.index(anchor)
+          before = text[:start]
+          section = text[start:]
+          marker = '  allowed_subscription_modes: SubscriptionMode[];\n  view_full_client_ip: boolean;\n'
+          replacement = '  allowed_subscription_modes: SubscriptionMode[];\n  allowed_form_duration_days: number[];\n  view_full_client_ip: boolean;\n'
+          if marker not in section:
+              raise SystemExit('AdminCapabilities TS marker not found')
+          section = section.replace(marker, replacement, 1)
+          path.write_text(before + section)
+          PY
+
+      - name: Verify Python syntax
+        run: python -m compileall -q app/models/admin.py app/routers/admin.py app/utils/owner_pricing.py tests/test_admin_hierarchy_service.py
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: app/dashboard/package-lock.json
+
+      - name: Install dashboard dependencies
+        working-directory: app/dashboard
+        run: npm ci
+
+      - name: Verify dashboard contracts
+        working-directory: app/dashboard
+        run: node scripts/test-stage1-ui-contracts.cjs
+
+      - name: Build dashboard
+        working-directory: app/dashboard
+        run: VITE_BASE_API=/api/ npm run build
+
+      - name: Commit fix and generated dashboard
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git add app/models/admin.py app/routers/admin.py app/utils/owner_pricing.py tests/test_admin_hierarchy_service.py app/dashboard/src/types/Admin.ts app/dashboard/src/components/UserDialog.tsx app/dashboard/src/pages/admins/AdminsPage.tsx app/dashboard/scripts/test-stage1-ui-contracts.cjs app/dashboard/build
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "fix(admin): align user duration and deletion contracts"
+          git push origin HEAD:fix/v1.1.1-admin-user-create-delete
