@@ -41,6 +41,16 @@ def response(db: Session) -> OwnerPricingResponse:
     )
 
 
+def enabled_duration_days(db: Session) -> list[int]:
+    return [
+        int(row[0])
+        for row in db.query(OwnerDurationPreset.duration_days)
+        .filter(OwnerDurationPreset.enabled.is_(True))
+        .order_by(OwnerDurationPreset.duration_days)
+        .all()
+    ]
+
+
 def update(db: Session, actor: Admin, values: OwnerPricingUpdate) -> OwnerPricingResponse:
     if not admin_hierarchy.is_owner(db, actor):
         raise admin_hierarchy.HierarchyError("pricing_owner_only", "Only Owner can manage pricing")

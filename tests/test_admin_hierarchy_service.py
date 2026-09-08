@@ -27,6 +27,7 @@ from app.db.models import (
     AdminUserPlanPrice,
     AdminUserPlanVersion,
     MarzhelpAdminSettings,
+    OwnerDurationPreset,
     ProxyHost,
     ProxyInbound,
     User,
@@ -146,6 +147,40 @@ def test_sudo_capabilities_keep_all_child_billing_modes_during_owner_metadata_mi
         admin_billing.BillingMode.ALLOCATED_TRAFFIC,
         admin_billing.BillingMode.USER_CREDIT,
     ]
+
+
+def test_sudo_owner_session_can_manage_admins_during_role_metadata_mismatch(db, monkeypatch):
+    owner, _, _, _, _ = _legacy_tree(db)
+    owner.role_id = admin_hierarchy.ROLE_IDS[admin_hierarchy.ADMIN]
+    db.commit()
+    api_owner = APIAdmin(id=owner.id, username=owner.username, is_sudo=True)
+    monkeypatch.setattr(
+        APIAdmin,
+        "get_current",
+        classmethod(lambda cls, request, db, token: api_owner),
+    )
+    request = Request({"type": "http", "method": "DELETE", "path": "/api/admin/leaf", "headers": []})
+
+    managed = APIAdmin.check_admin_manager(request=request, db=db, token="owner-session")
+
+    assert managed.username == owner.username
+
+
+def test_admin_capabilities_publish_enabled_owner_duration_presets(db):
+    _, _, leaf, _, _ = _legacy_tree(db)
+    db.add_all([
+        OwnerDurationPreset(duration_days=1, multiplier_basis_points=10_000, enabled=True),
+        OwnerDurationPreset(duration_days=7, multiplier_basis_points=10_000, enabled=False),
+        OwnerDurationPreset(duration_days=30, multiplier_basis_points=12_000, enabled=True),
+    ])
+    db.commit()
+
+    capabilities = get_admin_capabilities(
+        db=db,
+        admin=APIAdmin(id=leaf.id, username=leaf.username, is_sudo=False),
+    )
+
+    assert capabilities.allowed_form_duration_days == [1, 30]
 
 
 def test_used_traffic_parent_selects_child_mode_and_delegates_bounded_creation(db):

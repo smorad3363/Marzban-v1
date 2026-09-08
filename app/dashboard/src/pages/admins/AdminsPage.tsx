@@ -456,6 +456,9 @@ export const AdminsPage: FC = () => {
                   <option value="delete_users">{t("admins.deleteUsers")}</option>
                 </Select>
                 <FormHelperText>{t(`admins.deleteStrategyHelp.${deleteStrategy}`)}</FormHelperText>
+                <Text mt={3} fontSize="xs" color="var(--panel-text-muted)">
+                  حذف فیزیکی فقط برای ادمین بدون زیرمجموعه، اعتبار تسویه‌نشده و سابقه حسابداری/Audit ممکن است؛ در غیر این صورت دلیل دقیق نمایش داده می‌شود و باید حساب را تعلیق یا غیرفعال کنید.
+                </Text>
               </FormControl>
             </AlertDialogBody>
             <AlertDialogFooter borderTopWidth="1px" borderColor="whiteAlpha.100" gap={3}>

@@ -12,6 +12,9 @@ const deviceLimits = read("src/pages/DeviceLimits.tsx");
 const appShell = read("src/components/AppShell.tsx");
 const usersTable = read("src/components/UsersTablePro.tsx");
 const adminForm = read("src/components/AdminFormDrawer.tsx");
+const userDialog = read("src/components/UserDialog.tsx");
+const createUserFromPlan = read("src/components/CreateUserFromPlan.tsx");
+const adminsPage = read("src/pages/admins/AdminsPage.tsx");
 
 // Plans must use the same active-account + can_manage_plans contract across page, route and navigation.
 assert.ok(router.includes("const PlanManagerOnly"), "Plans route must use a dedicated permission guard");
@@ -53,6 +56,16 @@ for (const label of ["بر اساس حجم مصرفی", "بر اساس حجم س
 assert.ok(adminForm.includes("canonicalOwnerBillingModes"), "Owner billing mode fallback must remain explicit");
 assert.ok(adminForm.includes('accountQuery.data?.role === "OWNER"'), "Owner fallback must be gated by the account role");
 assert.ok(adminForm.includes("allowedModes.length === 0"), "Missing delegated billing modes must show a visible warning instead of a blank selector");
+
+// Delegated user creation contracts: Plans use the scoped endpoint; Form durations use Owner presets.
+assert.ok(createUserFromPlan.includes('fetch("/available-user-plans")'), "Plan user creation must load only effective plans");
+assert.ok(createUserFromPlan.includes('fetch("/users/from-plan"'), "Plan user creation must use the dedicated Plan endpoint");
+assert.ok(createUserFromPlan.includes("access_group_id: Number(groupId)"), "Plan user creation must keep explicit Access Group selection");
+assert.ok(userDialog.includes("allowed_form_duration_days"), "Form creation must consume Owner-approved duration presets");
+assert.ok(userDialog.includes("restrictedDurationOptions"), "Restricted Form creation must render preset durations");
+assert.ok(userDialog.includes("Math.floor(Date.now() / 1000) + selectedRestrictedDuration * 86400"), "Restricted Form expiry must be calculated from submit time");
+assert.ok(userDialog.includes('display={restrictedCreate ? "none" : "block"}'), "Restricted Form creation must not expose the arbitrary calendar expiry control");
+assert.ok(adminsPage.includes("حذف فیزیکی فقط برای ادمین بدون زیرمجموعه"), "Admin deletion must explain immutable-history constraints before submit");
 
 // Keep the already-correct global infrastructure modal architecture from regressing.
 for (const modal of ["<CoreSettingsModal />", "<HostsDialog />", "<NodesDialog />", "<NodesUsage />"]) {

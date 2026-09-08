@@ -236,6 +236,7 @@ export type AdminCapabilities = {
   all_user_limits: boolean;
   allowed_user_limits: number[];
   allowed_subscription_modes: SubscriptionMode[];
+  allowed_form_duration_days: number[];
   view_full_client_ip: boolean;
   capacity_used: number;
   capacity_limit: number | null;
