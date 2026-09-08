@@ -11,11 +11,18 @@ import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "react-query";
 import { fetch } from "service/http";
 import {
-  AdminCapabilities, AdminPolicy, ManagedAdmin, ManagedAdminList, ManagedAdminPayload,
+  AccountSummary, AdminCapabilities, AdminPolicy, ManagedAdmin, ManagedAdminList, ManagedAdminPayload,
   SubscriptionMode,
 } from "types/Admin";
 import { localizedApiError } from "utils/apiError";
 type BillingMode = AdminPolicy["billing_mode"];
+type UserCreationMode = "FORM_ONLY" | "PLAN_ONLY" | "BOTH";
+
+const creationModeLabels: Record<UserCreationMode, { title: string; help: string }> = {
+  FORM_ONLY: { title: "فقط فرم دلخواه", help: "ادمین فقط با فرم دستی و محدودیت‌های واگذارشده کاربر می‌سازد." },
+  PLAN_ONLY: { title: "فقط پلن", help: "ادمین فقط از پلن‌های قابل استفاده در محدوده خودش کاربر می‌سازد." },
+  BOTH: { title: "هر دو روش", help: "ادمین هم فرم دلخواه و هم پلن‌های مجاز را برای ساخت کاربر در اختیار دارد." },
+};
 
 const billingLabels: Record<BillingMode, { title: string; help: string }> = {
   USED_TRAFFIC: { title: "مصرف واقعی", help: "اعتبار با مصرف واقعی کاربران این شاخه کم می‌شود." },
@@ -84,6 +91,10 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
 
   const capabilitiesQuery = useQuery<AdminCapabilities, Error>(
     "admin-capabilities", () => fetch("/admin/capabilities"),
+    { enabled: isOpen, staleTime: 15000 }
+  );
+  const accountQuery = useQuery<AccountSummary, Error>(
+    "account-summary", () => fetch("/account/summary"),
     { enabled: isOpen, staleTime: 15000 }
   );
   useEffect(() => {
@@ -162,7 +173,9 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
     if (!mode) return;
     setForm((current) => ({
       ...current,
-      user_creation_mode: mode === "USED_TRAFFIC" ? "FREE_FORM" : "PLAN_ONLY",
+      user_creation_mode: mode === "USER_CREDIT"
+        ? "PLAN_ONLY"
+        : current.user_creation_mode === "FREE_FORM" ? "FORM_ONLY" : current.user_creation_mode,
       can_manage_plans: mode === "USED_TRAFFIC" ? false : current.can_manage_plans,
       can_create_allocated_children: mode === "USED_TRAFFIC" && current.can_create_allocated_children,
       policy: {
@@ -173,12 +186,28 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
     }));
   };
 
+  const mode = billingMode || form.policy.billing_mode;
+  const normalizedCreationMode: UserCreationMode = form.user_creation_mode === "FREE_FORM"
+    ? "FORM_ONLY"
+    : form.user_creation_mode;
+  const parentCreationMode = accountQuery.data?.user_creation_mode;
+  const allowedCreationModes: UserCreationMode[] = mode === "USER_CREDIT"
+    ? ["PLAN_ONLY"]
+    : accountQuery.data?.role === "OWNER"
+      ? ["FORM_ONLY", "PLAN_ONLY", "BOTH"]
+      : parentCreationMode === "BOTH"
+        ? ["FORM_ONLY", "PLAN_ONLY", "BOTH"]
+        : parentCreationMode === "FREE_FORM" || parentCreationMode === "FORM_ONLY"
+          ? ["FORM_ONLY"]
+          : ["PLAN_ONLY"];
+
   const showWarning = (title: string) => { toast({ title, status: "warning", duration: 3000 }); return false; };
   const validate = () => {
     if (!form.username.trim()) return showWarning("نام کاربری را وارد کنید");
     if (!isEditing && !form.password) return showWarning(t("admins.passwordRequired"));
     if (form.phone && !/^09\d{9}$/.test(form.phone)) return showWarning("شماره تلفن باید با فرمت 09xxxxxxxxx باشد");
     if (!isEditing && !billingMode) return showWarning("نوع حساب فرزند را انتخاب کنید");
+    if (!allowedCreationModes.includes(normalizedCreationMode)) return showWarning("روش ساخت کاربر با دسترسی والد سازگار نیست");
     if (mode === "USED_TRAFFIC" && form.policy.used_traffic_price_per_gib_toman === null) return showWarning("قیمت خرید هر گیگ را وارد کنید");
     if (!isEditing && form.initial_money_credit_toman < 0) return showWarning("اعتبار اولیه نامعتبر است");
     if (!form.policy.all_inbounds && !form.policy.allowed_inbounds.length) return showWarning(t("admins.selectInboundRequired"));
@@ -193,7 +222,7 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
     const payload = {
       ...form,
       role: "ADMIN" as const,
-      user_creation_mode: mode === "USED_TRAFFIC" ? "FREE_FORM" as const : "PLAN_ONLY" as const,
+      user_creation_mode: normalizedCreationMode,
       can_manage_plans: mode === "USED_TRAFFIC" ? false : form.can_manage_plans,
       phone: form.phone?.trim() || null,
       policy: {
@@ -221,7 +250,6 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
     ? [...new Set([...form.policy.allowed_subscription_modes, mode])]
     : form.policy.allowed_subscription_modes.filter((value) => value !== mode));
 
-  const mode = billingMode || form.policy.billing_mode;
   const parsedCreditAmount = Number(creditAmount);
   const creditAmountValid = Number.isInteger(parsedCreditAmount) && parsedCreditAmount > 0;
   const adjustCredit = (operation: "grant" | "reclaim") => {
@@ -283,6 +311,19 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
                   </SimpleGrid>}
                 </Box>
 
+                <Box mt={4} pt={4} borderTopWidth="1px" borderColor="var(--panel-border)">
+                  <Text fontSize="sm" fontWeight="800">روش ساخت کاربر</Text>
+                  <Text mt={1} color="var(--panel-text-muted)" fontSize="xs">مشخص کنید این ادمین با فرم دلخواه، پلن‌های مجاز یا هر دو روش بتواند کاربر بسازد.</Text>
+                  <SimpleGrid mt={2} columns={{ base: 1, md: Math.min(Math.max(allowedCreationModes.length, 1), 3) }} gap={2}>
+                    {allowedCreationModes.map((item) => (
+                      <Button key={item} type="button" minH="66px" h="auto" py={2.5} px={3} whiteSpace="normal" textAlign="start" justifyContent="flex-start" variant={normalizedCreationMode === item ? "solid" : "outline"} colorScheme={normalizedCreationMode === item ? "primary" : "gray"} onClick={() => setField("user_creation_mode", item)}>
+                        <Box><Text fontWeight="800">{creationModeLabels[item].title}</Text><Text mt={1} fontSize="xs" fontWeight="400" opacity={0.78}>{creationModeLabels[item].help}</Text></Box>
+                      </Button>
+                    ))}
+                  </SimpleGrid>
+                  {mode === "USER_CREDIT" && <FormHelperText>حساب «سقف اکانت» طبق قرارداد Backend همیشه فقط با پلن کار می‌کند.</FormHelperText>}
+                </Box>
+
                 <SimpleGrid mt={4} pt={4} borderTopWidth="1px" borderColor="var(--panel-border)" columns={{ base: 1, lg: 2 }} gap={3}>
                   {mode !== "USED_TRAFFIC" && <HStack justify="space-between" p={3} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="10px"><Box><Text fontSize="sm" fontWeight="700">اجازه مدیریت پلن</Text><Text color="var(--panel-text-muted)" fontSize="xs">ساخت و ویرایش پلن با مجوز والد.</Text></Box><Switch isChecked={form.can_manage_plans} isDisabled={!capabilitiesQuery.data?.can_delegate_plan_management} onChange={(e) => setField("can_manage_plans", e.target.checked)} /></HStack>}
                   <Box>
@@ -329,7 +370,7 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
         </ModalBody>
 
         <ModalFooter gap={2} px={{ base: 4, md: 5 }} py={3} borderTopWidth="1px" borderColor="var(--panel-border)" bg="var(--panel-surface)">
-          <Button type="button" variant="ghost" onClick={onClose}>{t("cancel")}</Button><Box flex={1} /><Button type="submit" colorScheme="primary" isLoading={mutation.isLoading} isDisabled={capabilitiesQuery.isLoading || capabilitiesQuery.isError || !hierarchyReady}>{t("save")}</Button>
+          <Button type="button" variant="ghost" onClick={onClose}>{t("cancel")}</Button><Box flex={1} /><Button type="submit" colorScheme="primary" isLoading={mutation.isLoading} isDisabled={capabilitiesQuery.isLoading || capabilitiesQuery.isError || accountQuery.isLoading || accountQuery.isError || !hierarchyReady}>{t("save")}</Button>
         </ModalFooter>
       </ModalContent>
     </Modal>

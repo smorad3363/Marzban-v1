@@ -116,6 +116,9 @@ def test_release_version_and_install_rollback_contract():
     assert "dashboard" in current_notes.lower()
     assert "access group" in current_notes.lower()
     assert "marzban update" in current_notes
+    releases = Path("RELEASES.md").read_text(encoding="utf-8")
+    assert f"Release target: {release_tag}" in releases or f"Current stable: {release_tag}" in releases
+    assert f"docs/RELEASE_NOTES_{release_tag}.md" in releases
     assert 'readFileSync("../../VERSION", "utf8").trim()' in Path("app/dashboard/vite.config.ts").read_text()
 
 
@@ -134,8 +137,7 @@ def test_v109_release_material_is_real_and_repository_scoped():
     ):
         assert phrase.lower() in notes.lower()
 
-    assert "Current stable: v1.0.9" in releases
-    assert "marzban update --version v1.0.9" in releases
-    assert "docs/RELEASE_NOTES_v1.0.9.md" in releases
+    assert "v1.0.9" in releases
+    assert "immutable" in releases.lower()
     assert "## v5." not in releases
     assert "## v4." not in releases

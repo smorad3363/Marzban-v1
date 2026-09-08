@@ -6,6 +6,7 @@ const root = path.resolve(__dirname, "..");
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "utf8");
 
 const drawer = read("src/components/AdminFormDrawer.tsx");
+const planCreate = read("src/components/CreateUserFromPlan.tsx");
 const admins = [
   read("src/pages/Admins.tsx"),
   read("src/pages/admins/AdminsPage.tsx"),
@@ -63,11 +64,11 @@ assert.ok(drawer.includes("اجازه واگذاری ساخت زیرمدیر"), 
 assert.ok(drawer.includes('user_creation_mode: "PLAN_ONLY"'), "new Admins must default to Plan-only user creation");
 assert.ok(drawer.includes('role: "ADMIN" as const'), "all saved child accounts must use the single Admin role");
 assert.ok(!drawer.includes("allowed_child_roles.map"), "Admin form must not expose a role selector");
-assert.ok(!drawer.includes("روش ساخت کاربر") && !drawer.includes("ساخت سفارشی"), "Admin form must not expose the backend-derived user creation method");
+assert.ok(drawer.includes("روش ساخت کاربر") && drawer.includes("فقط فرم دلخواه") && drawer.includes("فقط پلن") && drawer.includes("هر دو روش"), "Admin form must expose Form-only, Plan-only, and Both creation modes");
 assert.ok(drawer.includes("plan_prices: undefined"), "ordinary Admin edits must preserve reseller prices managed by the Plan flow");
 assert.ok(drawer.includes('setQueriesData<ManagedAdminList | undefined>("admin-management"'), "saved Admin response must replace stale list cache before closing");
 assert.ok(drawer.includes("item.id === savedAdmin.id ? savedAdmin : item"), "Admin cache update must use the canonical saved record");
-assert.ok(drawer.includes('mode === "USED_TRAFFIC" ? "FREE_FORM" as const : "PLAN_ONLY" as const'), "billing mode must authoritatively choose custom or Plan-only creation");
+assert.ok(drawer.includes('mode === "USER_CREDIT"') && drawer.includes("normalizedCreationMode"), "USER_CREDIT must stay Plan-only while other billing modes preserve the explicit creation choice");
 assert.ok(drawer.includes("hierarchy_enabled") && drawer.includes("command-line administration") && drawer.includes("!hierarchyReady"), "Admin form must fail closed until hierarchy initialization");
 assert.ok(drawer.includes("تغییر سریع اعتبار"), "edit flow must expose a separate credit adjustment section");
 assert.ok(drawer.includes('/money/${operation}'), "credit adjustment must use the monetary ledger endpoint");
@@ -122,6 +123,8 @@ assert.ok(overview.includes('enabled: Boolean(isOwner && account.data)'), "syste
 assert.ok(overview.includes("mobileDetailsOpen") && overview.includes("نمایش نمودارها و فعالیت‌ها"), "mobile dashboard details must be collapsed behind an explicit control");
 assert.ok(!dashboard.includes("<AdminCreditSummary") && !dashboard.includes("<Statistics"), "dashboard must not repeat account, user, or traffic summaries in legacy cards");
 assert.ok(overview.includes('["FREE_FORM", "FORM_ONLY", "BOTH"]') && overview.includes("CreateUserFromPlan"), "quick creation must respect explicit modes without Owner-only routing");
+assert.ok(planCreate.includes('fetch("/available-user-plans")') && !planCreate.includes('fetch("/user-plans")'), "Admin Plan picker must use the scoped available-user-plans endpoint");
+assert.ok(planCreate.includes('"available-user-plans"') && planCreate.includes("price_toman"), "scoped Plan picker must use its own cache shape and effective price summary");
 assert.ok(userDialog.includes('isOpen && customCreateAllowed'), "user dialog must fail closed until free-form creation is explicitly allowed");
 assert.ok(userDialog.includes('["FREE_FORM", "FORM_ONLY", "BOTH"]') && userDialog.includes('billing_mode !== "USER_CREDIT"'), "Form creation must support Core modes and exclude USER_CREDIT");
 assert.ok(userDialog.includes("planOnlyEditLocked"), "Plan-only Admin edits must lock traffic, expiry, and device limits");
