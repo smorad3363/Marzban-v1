@@ -61,10 +61,10 @@ def test_release_version_and_install_rollback_contract():
     assert "Verify release tag, protected-main ancestry, version surfaces and notes" in build_workflow
     assert "fetch-depth: 0" in build_workflow
     assert 'git fetch --no-tags origin main' in build_workflow
-    assert 'TAG_COMMIT="$(git rev-list -n 1 "${VERSION_TAG}")"' in build_workflow
-    assert 'git merge-base --is-ancestor "${TAG_COMMIT}" "origin/main"' in build_workflow
+    assert 'tag_commit="$(git rev-list -n 1 "${VERSION_TAG}")"' in build_workflow
+    assert 'git merge-base --is-ancestor "${tag_commit}" origin/main' in build_workflow
     assert 'docs/RELEASE_NOTES_${VERSION_TAG}.md' in build_workflow
-    assert '--notes-file "${NOTES_FILE}"' in build_workflow
+    assert '--notes-file "${notes_file}"' in build_workflow
     assert "--generate-notes" not in build_workflow
 
     verifier_section = build_workflow.split("- name: Verify published image anonymously and at runtime", 1)[1]
