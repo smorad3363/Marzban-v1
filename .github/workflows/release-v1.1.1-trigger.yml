@@ -1,0 +1,60 @@
+name: Release v1.1.1 Trigger
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  create-tag-and-dispatch:
+    runs-on: ubuntu-latest
+    env:
+      VERSION_TAG: v1.1.1
+      TARGET_SHA: b358be118258d1aa25dc04f7d005a53deebd7199
+    steps:
+      - name: Checkout repository history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify immutable release target
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git fetch --no-tags origin main
+          git cat-file -e "${TARGET_SHA}^{commit}"
+          git merge-base --is-ancestor "${TARGET_SHA}" origin/main
+          test "$(git show "${TARGET_SHA}:VERSION" | tr -d '[:space:]')" = "1.1.1"
+          git show "${TARGET_SHA}:app/__init__.py" | grep -Fx '__version__ = "1.1.1"'
+          git show "${TARGET_SHA}:scripts/marzban.sh" | grep -Fx 'CLI_RELEASE_VERSION="v1.1.1"'
+          git show "${TARGET_SHA}:docker-compose.yml" | grep -Fq 'ghcr.io/smorad3363/marzban-v1:v1.1.1'
+          git show "${TARGET_SHA}:docs/RELEASE_NOTES_v1.1.1.md" >/dev/null
+          if git ls-remote --exit-code --tags origin "refs/tags/${VERSION_TAG}" >/dev/null 2>&1; then
+            echo "Tag ${VERSION_TAG} already exists; refusing to retag." >&2
+            exit 1
+          fi
+
+      - name: Create annotated immutable tag
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${VERSION_TAG}" "${TARGET_SHA}" -m "Marzban ${VERSION_TAG}"
+          git push origin "refs/tags/${VERSION_TAG}"
+
+      - name: Dispatch permanent Release workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          gh workflow run build.yml \
+            --ref main \
+            -f git_ref="${VERSION_TAG}" \
+            -f image_tag="${VERSION_TAG}" \
+            -f tests_only=false
