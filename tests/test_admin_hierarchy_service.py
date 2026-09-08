@@ -42,6 +42,7 @@ from app.models.admin_hierarchy import (
 from pydantic import ValidationError
 from app.models.admin import Admin as APIAdmin
 from app.models.user import UserStatus
+from app.routers.admin import get_admin_capabilities
 from app.routers.admin_hierarchy import (
     activate_disabled_admin as activate_disabled_admin_route,
     freeze_admin as freeze_admin_route,
@@ -128,6 +129,23 @@ def test_set_owner_backfills_without_deleting_ids_or_users(db):
     assert db.get(User, unowned.id).admin_id == owner.id
     assert admin_hierarchy.hierarchy_enabled(db)
     assert report["closure_rows"] == 5
+
+
+def test_sudo_capabilities_keep_all_child_billing_modes_during_owner_metadata_mismatch(db):
+    owner, _, _, _, _ = _legacy_tree(db)
+    owner.role_id = admin_hierarchy.ROLE_IDS[admin_hierarchy.ADMIN]
+    db.commit()
+
+    capabilities = get_admin_capabilities(
+        db=db,
+        admin=APIAdmin(id=owner.id, username=owner.username, is_sudo=True),
+    )
+
+    assert capabilities.allowed_child_billing_modes == [
+        admin_billing.BillingMode.USED_TRAFFIC,
+        admin_billing.BillingMode.ALLOCATED_TRAFFIC,
+        admin_billing.BillingMode.USER_CREDIT,
+    ]
 
 
 def test_used_traffic_parent_selects_child_mode_and_delegates_bounded_creation(db):

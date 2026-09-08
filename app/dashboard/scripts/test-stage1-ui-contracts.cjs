@@ -11,6 +11,7 @@ const plans = read("src/pages/Plans.tsx");
 const deviceLimits = read("src/pages/DeviceLimits.tsx");
 const appShell = read("src/components/AppShell.tsx");
 const usersTable = read("src/components/UsersTablePro.tsx");
+const adminForm = read("src/components/AdminFormDrawer.tsx");
 
 // Plans must use the same active-account + can_manage_plans contract across page, route and navigation.
 assert.ok(router.includes("const PlanManagerOnly"), "Plans route must use a dedicated permission guard");
@@ -44,6 +45,14 @@ assert.ok(usersTable.includes("برای دیدن همه جزئیات و عملی
 for (const action of ["کپی لینک اشتراک", "ویرایش", "حذف کاربر", "تمدید با پلن", "بازنشانی مصرف", "ابطال لینک اشتراک"]) {
   assert.ok(usersTable.includes(action), `Users table action must remain available: ${action}`);
 }
+
+// Admin creation must always expose the three supported billing contracts to the Owner.
+for (const label of ["بر اساس حجم مصرفی", "بر اساس حجم ساخته‌شده", "طبق پلن · سقف اکانت"]) {
+  assert.ok(adminForm.includes(label), `Admin billing mode must remain visible: ${label}`);
+}
+assert.ok(adminForm.includes("canonicalOwnerBillingModes"), "Owner billing mode fallback must remain explicit");
+assert.ok(adminForm.includes('accountQuery.data?.role === "OWNER"'), "Owner fallback must be gated by the account role");
+assert.ok(adminForm.includes("allowedModes.length === 0"), "Missing delegated billing modes must show a visible warning instead of a blank selector");
 
 // Keep the already-correct global infrastructure modal architecture from regressing.
 for (const modal of ["<CoreSettingsModal />", "<HostsDialog />", "<NodesDialog />", "<NodesUsage />"]) {
