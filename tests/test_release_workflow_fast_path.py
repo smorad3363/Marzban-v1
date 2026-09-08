@@ -3,7 +3,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = (ROOT / ".github" / "workflows" / "build.yml").read_text(encoding="utf-8")
-TRIGGER = (ROOT / ".github" / "workflows" / "release-v1.1.1-trigger.yml").read_text(encoding="utf-8")
+TRIGGER_PATH = ROOT / ".github" / "workflows" / "release-v1.1.1-trigger.yml"
 
 
 def test_release_publish_path_uses_canonical_dashboard_contract_only():
@@ -37,12 +37,9 @@ def test_release_publish_path_keeps_safety_gates_and_cache():
 def test_release_workflow_no_longer_runs_on_every_main_push():
     on_block = WORKFLOW.split("permissions:", 1)[0]
     assert "branches:" not in on_block
-    assert 'tags:' in on_block
-    assert 'workflow_dispatch:' in on_block
+    assert "tags:" in on_block
+    assert "workflow_dispatch:" in on_block
 
 
-def test_v111_trigger_is_idempotent_without_retagging():
-    assert "tag_exists=true" in TRIGGER
-    assert "tag_commit" in TRIGGER
-    assert "steps.release-target.outputs.tag_exists != 'true'" in TRIGGER
-    assert 'gh workflow run build.yml' in TRIGGER
+def test_v111_temporary_auto_release_trigger_is_removed():
+    assert not TRIGGER_PATH.exists()
