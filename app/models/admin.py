@@ -183,7 +183,17 @@ class Admin(BaseModel):
 
         admin = cls.get_current(request, db, token)
         dbadmin = crud.get_admin(db, admin.username)
-        if dbadmin is None or not admin_hierarchy.can_manage_children(db, dbadmin):
+        effective_owner_session = bool(
+            dbadmin is not None
+            and admin.is_sudo
+            and (
+                not admin_hierarchy.hierarchy_enabled(db)
+                or dbadmin.id == admin_hierarchy.owner_id(db)
+            )
+        )
+        if dbadmin is None or not (
+            effective_owner_session or admin_hierarchy.can_manage_children(db, dbadmin)
+        ):
             raise HTTPException(status_code=403, detail="You're not allowed")
         return admin
 
@@ -280,6 +290,7 @@ class MarzhelpAdminPolicy(BaseModel):
     allowed_subscription_modes: list[SubscriptionMode] = Field(
         default_factory=lambda: list(DEFAULT_ADMIN_SUBSCRIPTION_MODES)
     )
+    allowed_form_duration_days: list[int] = Field(default_factory=list)
     view_full_client_ip: bool = True
     max_user_duration_days: Optional[int] = Field(default=None, ge=1)
     calculate_volume: Literal["used_traffic", "created_traffic"] = "used_traffic"

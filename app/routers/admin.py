@@ -41,7 +41,7 @@ from app.models.admin import (
 )
 from app.models.user import UserStatus
 from app.device_limit.constants import SubscriptionMode
-from app.utils import admin_hierarchy, admin_plans, marzhelp_policy, money_billing, report, responses
+from app.utils import admin_hierarchy, admin_plans, marzhelp_policy, money_billing, owner_pricing, report, responses
 from app.utils.admin_billing import BillingMode
 from app.utils.audit import (
     AuditLogService,
@@ -341,21 +341,42 @@ def remove_admin(
     """Remove an admin from the database."""
     actor = crud.get_admin(db, current_admin.username)
     if actor is None or not admin_hierarchy.admin_in_scope(db, actor, dbadmin.id):
-        raise HTTPException(status_code=403, detail="Admin is outside your scope")
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "admin_delete_scope_forbidden",
+                "message_fa": "این ادمین خارج از محدوده مدیریتی شماست.",
+            },
+        )
     if dbadmin.id == actor.id or admin_hierarchy.role_code(dbadmin) == admin_hierarchy.OWNER:
         raise HTTPException(
             status_code=403,
-            detail="Owner/self deletion is not allowed",
+            detail={
+                "code": "admin_delete_owner_or_self_forbidden",
+                "message_fa": "حذف حساب Owner یا حساب خودتان مجاز نیست.",
+            },
         )
     if dbadmin.children:
-        raise HTTPException(status_code=409, detail="Only a leaf admin can be deleted")
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "admin_delete_has_children",
+                "message_fa": "این ادمین زیرمجموعه دارد؛ ابتدا زیرمجموعه‌ها را جابه‌جا یا مدیریت کنید.",
+            },
+        )
     settings = db.get(MarzhelpAdminSettings, dbadmin.id)
     if settings and (
         int(settings.delegated_traffic or 0) > 0
         or int(settings.total_traffic or 0) > 0
         or admin_hierarchy.own_credit_spend(db, settings) > 0
     ):
-        raise HTTPException(status_code=409, detail="Resolve administrator credit before deletion")
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "admin_delete_credit_unsettled",
+                "message_fa": "اعتبار یا تعهد مالی این ادمین هنوز تسویه نشده است.",
+            },
+        )
     historical_rows = sum(
         query.count()
         for query in (
@@ -394,7 +415,10 @@ def remove_admin(
     if historical_rows:
         raise HTTPException(
             status_code=409,
-            detail="Administrator has immutable history; suspend the account instead",
+            detail={
+                "code": "admin_delete_immutable_history",
+                "message_fa": "این ادمین سابقه حسابداری یا Audit غیرقابل‌حذف دارد؛ برای حفظ تاریخچه، حساب را تعلیق یا غیرفعال کنید.",
+            },
         )
 
     target_id = dbadmin.id
@@ -437,10 +461,12 @@ def get_admin_capabilities(
 
     dbadmin = crud.get_admin(db, admin.username)
     hierarchy_on = admin_hierarchy.hierarchy_enabled(db)
+    allowed_form_duration_days = owner_pricing.enabled_duration_days(db)
     if admin.is_sudo or (dbadmin is not None and admin_hierarchy.is_owner(db, dbadmin)):
         return AdminCapabilities(
             hierarchy_enabled=hierarchy_on,
             allowed_subscription_modes=list(SubscriptionMode),
+            allowed_form_duration_days=allowed_form_duration_days,
             view_full_client_ip=True,
             can_manage_admins=True,
             can_create_admins=True,
@@ -468,6 +494,7 @@ def get_admin_capabilities(
         all_user_limits=settings.all_user_limits,
         allowed_user_limits=settings.allowed_user_limits,
         allowed_subscription_modes=settings.allowed_subscription_modes,
+        allowed_form_duration_days=allowed_form_duration_days,
         view_full_client_ip=True,
         capacity_used=used,
         capacity_limit=maximum,

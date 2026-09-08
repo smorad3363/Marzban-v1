@@ -286,6 +286,7 @@ const unrestrictedCapabilities: AdminCapabilities = {
     "limited_traffic_limited_devices",
     "unlimited_traffic_unlimited_devices",
   ],
+  allowed_form_duration_days: [],
   view_full_client_ip: true,
   capacity_used: 0,
   capacity_limit: null,
@@ -344,6 +345,7 @@ export const UserDialog: FC<UserDialogProps> = () => {
   const { colorMode } = useColorMode();
 
   const [usageVisible, setUsageVisible] = useState(false);
+  const [restrictedDurationDays, setRestrictedDurationDays] = useState("");
   const handleUsageToggle = () => {
     setUsageVisible((current) => !current);
   };
@@ -454,6 +456,13 @@ export const UserDialog: FC<UserDialogProps> = () => {
   const unlimitedDevicesAllowed = effectiveCapabilities.allowed_subscription_modes.some(
     (mode) => mode.endsWith("_unlimited_devices")
   );
+  const restrictedDurationOptions = effectiveCapabilities.allowed_form_duration_days || [];
+  const selectedRestrictedDuration = Number(restrictedDurationDays);
+  const restrictedDurationValid = !restrictedCreate || (
+    Number(dataLimit) > 0
+    && Number.isInteger(selectedRestrictedDuration)
+    && restrictedDurationOptions.includes(selectedRestrictedDuration)
+  );
 
   useEffect(() => {
     if (!isOpen || effectiveCapabilities.all_user_limits) return;
@@ -533,7 +542,9 @@ export const UserDialog: FC<UserDialogProps> = () => {
       ? {
         username: values.username,
         data_limit: values.data_limit,
-        expire: values.expire,
+        expire: restrictedDurationValid
+          ? Math.floor(Date.now() / 1000) + selectedRestrictedDuration * 86400
+          : null,
         note: values.note,
         access_group_id: values.access_group_id,
       }
@@ -626,6 +637,7 @@ export const UserDialog: FC<UserDialogProps> = () => {
     setError(null);
     setUsageVisible(false);
     setUsageFilter("1m");
+    setRestrictedDurationDays("");
   };
 
   const handleResetUsage = () => {
@@ -1024,7 +1036,31 @@ export const UserDialog: FC<UserDialogProps> = () => {
                         </FormControl>
                       </Collapse>}
 
-                      <FormControl mb={"10px"}>
+                      {restrictedCreate && (
+                        <FormControl mb="10px" isRequired>
+                          <FormLabel>مدت سرویس</FormLabel>
+                          <Select
+                            value={restrictedDurationDays}
+                            onChange={(event) => setRestrictedDurationDays(event.target.value)}
+                            isDisabled={disabled || capabilitiesQuery.isLoading}
+                            minH="44px"
+                          >
+                            <option value="">یک مدت مجاز انتخاب کنید</option>
+                            {restrictedDurationOptions.map((days) => (
+                              <option key={days} value={days}>{days.toLocaleString("fa-IR")} روز</option>
+                            ))}
+                          </Select>
+                          {restrictedDurationOptions.length ? (
+                            <FormHelperText>مدت از presetهای فعال Owner گرفته می‌شود و زمان انقضا هنگام ثبت محاسبه می‌شود.</FormHelperText>
+                          ) : (
+                            <Alert mt={2} status="warning" borderRadius="10px">
+                              <AlertIcon />
+                              <Text fontSize="sm">Owner هنوز مدت مجاز فعالی برای ساخت دستی تعریف نکرده است.</Text>
+                            </Alert>
+                          )}
+                        </FormControl>
+                      )}
+                      <FormControl mb={"10px"} display={restrictedCreate ? "none" : "block"}>
                         <FormLabel>
                           {isOnHold
                             ? t("userDialog.onHoldExpireDuration")
@@ -1326,7 +1362,7 @@ export const UserDialog: FC<UserDialogProps> = () => {
                     px="8"
                     colorScheme="primary"
                     isLoading={loading}
-                    isDisabled={disabled || (!restrictedCreate && (lacksCapacity || !modeAllowed))}
+                    isDisabled={disabled || (restrictedCreate ? !restrictedDurationValid : (lacksCapacity || !modeAllowed))}
                     w={{ base: "full", sm: "auto" }}
                   >
                     {isEditing ? t("userDialog.editUser") : t("createUser")}
