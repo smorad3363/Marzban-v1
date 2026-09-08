@@ -13,23 +13,26 @@ def _read(path: Path) -> str:
 
 
 def test_stage8_11_mysql_evidence_runs_on_both_matrix_images():
-    for path in (RELEASE_WORKFLOW, CHECKPOINTS_WORKFLOW):
-        text = _read(path)
-        assert "mysql:8.0" in text
-        assert "mysql:26.7.0" in text
-        assert "matrix.mysql-image == 'mysql:8.0'" not in text
-        assert 'matrix.mysql-image == "mysql:8.0"' not in text
-        assert 'mysql:8.0) expected_mysql_version_prefix="8.0."' in text
-        assert 'mysql:26.7.0) expected_mysql_version_prefix="26.7."' in text
-        assert 'TEST_MYSQL_VERSION_PREFIX="${expected_mysql_version_prefix}"' in text
-        assert "Unsupported MySQL matrix image" in text
-        for stage_test in (
-            "tests/test_mysql_stage8_bulk_jobs.py",
-            "tests/test_mysql_stage9_dashboard.py",
-            "tests/test_mysql_stage10_pagination.py",
-            "tests/test_mysql_stage11_operations.py",
-        ):
-            assert stage_test in text
+    text = _read(CHECKPOINTS_WORKFLOW)
+    assert "mysql:8.0" in text
+    assert "mysql:26.7.0" in text
+    assert "matrix.mysql-image == 'mysql:8.0'" not in text
+    assert 'matrix.mysql-image == "mysql:8.0"' not in text
+    assert 'mysql:8.0) expected_mysql_version_prefix="8.0."' in text
+    assert 'mysql:26.7.0) expected_mysql_version_prefix="26.7."' in text
+    assert 'TEST_MYSQL_VERSION_PREFIX="${expected_mysql_version_prefix}"' in text
+    assert "Unsupported MySQL matrix image" in text
+    for stage_test in (
+        "tests/test_mysql_stage8_bulk_jobs.py",
+        "tests/test_mysql_stage9_dashboard.py",
+        "tests/test_mysql_stage10_pagination.py",
+        "tests/test_mysql_stage11_operations.py",
+    ):
+        assert stage_test in text
+
+    release_text = _read(RELEASE_WORKFLOW)
+    assert "test-mysql (" not in release_text
+    assert "test-mysql logical migration" not in release_text
 
 
 def test_stage9_10_server_version_checks_are_matrix_driven():
@@ -39,8 +42,8 @@ def test_stage9_10_server_version_checks_are_matrix_driven():
         assert '.startswith("8.0.")' not in text
 
 
-def test_release_matrix_keeps_migration_backup_and_rollback_checks():
-    text = _read(RELEASE_WORKFLOW)
+def test_checkpoint_matrix_keeps_migration_backup_and_rollback_checks():
+    text = _read(CHECKPOINTS_WORKFLOW)
     assert "Verify MySQL migrations and partial-DDL recovery" in text
     assert "Verify backup checksum and restore" in text
     assert "Verify v4.8.0 application rollback compatibility" in text
