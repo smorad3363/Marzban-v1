@@ -1,0 +1,151 @@
+name: Recover v1.0.9 Release
+
+on:
+  push:
+    branches:
+      - ops/recover-v1.0.9-release
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: recover-v1.0.9-release
+  cancel-in-progress: false
+
+env:
+  RELEASE_TAG: v1.0.9
+  RELEASE_COMMIT: f58c7291d8947ef08704fcd16df19607de032cb1
+  IMAGE_NAME: ghcr.io/smorad3363/marzban-v1
+  RECOVERY_BRANCH: ops/recover-v1.0.9-release
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout immutable release source
+        uses: actions/checkout@v4
+        with:
+          ref: v1.0.9
+          fetch-depth: 0
+
+      - name: Verify immutable tag and protected-main ancestry
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          TAG_COMMIT="$(git rev-list -n 1 "${RELEASE_TAG}")"
+          test "${TAG_COMMIT}" = "${RELEASE_COMMIT}"
+          git merge-base --is-ancestor "${TAG_COMMIT}" origin/main
+          VERSION_TEXT="$(tr -d '[:space:]' < VERSION)"
+          test "${RELEASE_TAG}" = "v${VERSION_TEXT}"
+          grep -Fx "__version__ = \"${VERSION_TEXT}\"" app/__init__.py
+          grep -Fx "CLI_RELEASE_VERSION=\"${RELEASE_TAG}\"" scripts/marzban.sh
+          grep -Fq "${IMAGE_NAME}:${RELEASE_TAG}" docker-compose.yml
+          test -s "docs/RELEASE_NOTES_${RELEASE_TAG}.md"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: app/dashboard/package-lock.json
+
+      - name: Install dashboard dependencies
+        working-directory: app/dashboard
+        run: npm ci
+
+      - name: Verify dashboard contracts against immutable source
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cp app/dashboard/scripts/test-access-groups.cjs /tmp/tag-test-access-groups.cjs
+          git show origin/main:app/dashboard/scripts/test-access-groups.cjs > app/dashboard/scripts/test-access-groups.cjs
+          (
+            cd app/dashboard
+            node scripts/test-access-groups.cjs
+            node scripts/test-admin-ux.cjs
+            node scripts/test-v106-ui.cjs
+            node scripts/test-stage1-ui-contracts.cjs
+          )
+          cp /tmp/tag-test-access-groups.cjs app/dashboard/scripts/test-access-groups.cjs
+          git diff --exit-code -- app/dashboard/scripts/test-access-groups.cjs
+
+      - name: Build dashboard and verify committed parity
+        working-directory: app/dashboard
+        run: VITE_BASE_API=/api/ npm run build
+
+      - name: Verify dashboard output
+        shell: bash
+        run: |
+          test -f app/dashboard/build/index.html
+          test -f app/dashboard/build/404.html
+          git diff --exit-code -- app/dashboard/build
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push immutable multi-platform image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/smorad3363/marzban-v1:v1.0.9
+            ghcr.io/smorad3363/marzban-v1:sha-f58c7291d894
+            ghcr.io/smorad3363/marzban-v1:latest
+          labels: |
+            org.opencontainers.image.revision=f58c7291d8947ef08704fcd16df19607de032cb1
+            org.opencontainers.image.source=https://github.com/smorad3363/Marzban-v1
+            org.opencontainers.image.version=v1.0.9
+
+      - name: Verify multi-platform manifest
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          docker buildx imagetools inspect "${IMAGE_NAME}:${RELEASE_TAG}" | tee /tmp/manifest.txt
+          grep -Fq 'linux/amd64' /tmp/manifest.txt
+          grep -Fq 'linux/arm64' /tmp/manifest.txt
+
+      - name: Verify image is anonymously readable and runtime-correct
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          docker logout ghcr.io
+          docker image rm "${IMAGE_NAME}:${RELEASE_TAG}" >/dev/null 2>&1 || true
+          docker pull --platform linux/amd64 "${IMAGE_NAME}:${RELEASE_TAG}"
+          test "$(docker image inspect --format '{{ index .Config.Labels \"org.opencontainers.image.revision\" }}' "${IMAGE_NAME}:${RELEASE_TAG}")" = "${RELEASE_COMMIT}"
+          docker run --rm --entrypoint python "${IMAGE_NAME}:${RELEASE_TAG}" -c 'import app; assert app.__version__ == "1.0.9"'
+          docker run --rm --entrypoint mysqldump "${IMAGE_NAME}:${RELEASE_TAG}" --version | grep -Fq '26.7.0'
+          docker run --rm --entrypoint sh "${IMAGE_NAME}:${RELEASE_TAG}" -c 'test -f /code/app/dashboard/build/index.html && test -x /usr/bin/marzban-cli && test -f /code/node_runtime/main.py'
+
+      - name: Create immutable GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          NOTES_FILE="docs/RELEASE_NOTES_${RELEASE_TAG}.md"
+          if ! gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
+            gh release create "${RELEASE_TAG}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --title "Marzban ${RELEASE_TAG}" \
+              --notes-file "${NOTES_FILE}" \
+              --verify-tag
+          fi
+          gh release view "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" --json tagName,name,isDraft,isPrerelease,url
+
+      - name: Remove temporary recovery branch
+        shell: bash
+        run: git push origin --delete "${RECOVERY_BRANCH}"
