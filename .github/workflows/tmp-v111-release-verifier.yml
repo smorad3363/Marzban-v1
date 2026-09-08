@@ -63,12 +63,12 @@ jobs:
       - name: Stage tested verifier files
         shell: bash
         run: |
-          mkdir -p /tmp/verifier-artifact/.github/workflows /tmp/verifier-artifact/tests
-          cp .github/workflows/build.yml /tmp/verifier-artifact/.github/workflows/build.yml
-          cp tests/test_release_contract.py /tmp/verifier-artifact/tests/test_release_contract.py
+          mkdir -p /tmp/verifier-artifact
+          cp .github/workflows/build.yml /tmp/verifier-artifact/build.yml
+          cp tests/test_release_contract.py /tmp/verifier-artifact/test_release_contract.py
       - uses: actions/upload-artifact@v4
         with:
-          name: v111-release-verifier-tested-files
+          name: v111-release-verifier-tested-files-v2
           path: /tmp/verifier-artifact
           if-no-files-found: error
           retention-days: 1
