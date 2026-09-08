@@ -179,7 +179,7 @@ jobs:
           docker logout ghcr.io
           docker image rm "${image}" >/dev/null 2>&1 || true
           docker pull --platform linux/amd64 "${image}"
-          revision="$(docker image inspect --format '{{ index .Config.Labels \"org.opencontainers.image.revision\" }}' "${image}")"
+          revision="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "${image}")"
           test "${revision}" = "${SOURCE_SHA}"
           expected_version="$(tr -d '[:space:]' < VERSION)"
           docker run --rm --platform linux/amd64 --entrypoint /usr/local/bin/python "${image}" \
@@ -190,7 +190,7 @@ jobs:
           if [[ -n "${VERSION_TAG}" && "${VERSION_TAG}" != *-* ]]; then
             latest="${IMAGE_NAME}:latest"
             docker pull --platform linux/amd64 "${latest}"
-            latest_revision="$(docker image inspect --format '{{ index .Config.Labels \"org.opencontainers.image.revision\" }}' "${latest}")"
+            latest_revision="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "${latest}")"
             test "${latest_revision}" = "${SOURCE_SHA}"
           fi
 
