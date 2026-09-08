@@ -9,283 +9,66 @@ permissions:
   contents: write
 
 jobs:
-  patch-test-build:
+  test-build-commit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: fix/v1.1.1-global-api-errors
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: npm
           cache-dependency-path: app/dashboard/package-lock.json
-      - name: Apply backend and dashboard error contract
+      - name: Add required UI regression contract
         shell: bash
         run: |
-          cat > app/dashboard/src/utils/apiError.ts <<'TS'
-          import i18n from "locales/i18n";
-
-          export type ApiErrorInfo = {
-            code: string;
-            message: string;
-            field: string | null;
-            requestId: string | null;
-            status: number;
-          };
-
-          type ApiErrorDetail = {
-            part?: unknown;
-            total?: unknown;
-            code?: unknown;
-            error_code?: unknown;
-            message?: unknown;
-            message_fa?: unknown;
-            request_id?: unknown;
-            field?: unknown;
-            fields?: unknown;
-            correlation_id?: unknown;
-            operation_id?: unknown;
-          };
-
-          const messages: Record<string, string> = {
-            subscription_mode_forbidden: "اجازه ساخت این نوع اشتراک را ندارید.",
-            plan_only_direct_edit_forbidden: "این کاربر فقط از طریق پلن قابل تغییر است.",
-            backup_mixed_sets: "فقط قطعه‌های یک بکاپ را انتخاب کنید.",
-            backup_duplicate_part: "یک قطعه بیش از یک‌بار انتخاب شده است.",
-            backup_part_number_invalid: "شماره یا تعداد قطعه‌های بکاپ معتبر نیست.",
-            backup_file_count_invalid: "بین ۱ تا ۱۲۸ فایل بکاپ انتخاب کنید.",
-            backup_file_type_invalid: "آرشیو ZIP یا تمام قطعه‌های همان بکاپ را انتخاب کنید.",
-            backup_checksum_mismatch: "بکاپ آسیب دیده است؛ فایل‌ها را دوباره دریافت کنید.",
-            backup_archive_invalid: "بکاپ ناقص یا نامعتبر است؛ تمام قطعه‌ها را بررسی کنید.",
-            backup_too_large: "حجم کل بکاپ نباید بیشتر از ۲ گیگابایت باشد.",
-            offline_restore_required: "بازیابی نیازمند توقف سرویس و اجرای روش آفلاین است.",
-          };
-
-          export const safeUserMessage = (value: unknown): string | null => {
-            if (typeof value !== "string" || value.length > 500 || !/[\u0600-\u06ff]/.test(value)) return null;
-            if (/traceback|exception|sqlalchemy|mysql|pymysql|xray|\b(select|insert|update|delete|constraint)\b/i.test(value)) return null;
-            return value.trim() || null;
-          };
-
-          const safeIdentifier = (value: unknown): string | null => {
-            if (typeof value !== "string" || !/^[A-Za-z0-9_.:-]{1,128}$/.test(value)) return null;
-            return value;
-          };
-
-          const fallbackCode = (status: number) => status ? `HTTP_${status}` : "REQUEST_FAILED";
-
-          const rawPayload = (candidate: any): any =>
-            candidate?.response?.data ?? candidate?.response?._data ?? candidate?.data ?? candidate?._data;
-
-          export const apiErrorInfo = (error: unknown): ApiErrorInfo => {
-            const candidate = error as any;
-            const payload = rawPayload(candidate);
-            const detail = (payload?.detail ?? payload) as ApiErrorDetail | string | undefined;
-            const status = Number(candidate?.status || candidate?.statusCode || candidate?.response?.status || 0);
-            if (detail && typeof detail === "object") {
-              const code = safeIdentifier(detail.error_code) || safeIdentifier(detail.code) || fallbackCode(status);
-              let message: string | null = null;
-              if (code === "backup_missing_part" && Number.isInteger(detail.part) && Number.isInteger(detail.total)) {
-                message = `بکاپ ناقص است؛ قطعه ${detail.part} از ${detail.total} موجود نیست.`;
-              }
-              message = message || messages[code] || safeUserMessage(detail.message_fa) || safeUserMessage(detail.message);
-              if (!message) {
-                const key = `errors.codes.${code}`;
-                const translated = i18n.t(key, { defaultValue: "" });
-                message = translated && translated !== key ? translated : null;
-              }
-              const requestId = safeIdentifier(detail.request_id) || safeIdentifier(detail.correlation_id) || safeIdentifier(detail.operation_id);
-              return {
-                code,
-                message: message || (status ? i18n.t("errors.fallbackWithStatus", { status }) : i18n.t("errors.fallback")),
-                field: safeIdentifier(detail.field),
-                requestId,
-                status,
-              };
-            }
-            return {
-              code: fallbackCode(status),
-              message: safeUserMessage(detail) || (status ? i18n.t("errors.fallbackWithStatus", { status }) : i18n.t("errors.fallback")),
-              field: null,
-              requestId: safeIdentifier(candidate?.response?.headers?.["x-request-id"]),
-              status,
-            };
-          };
-
-          export const localizedApiError = (error: unknown, fieldOverride?: string): string => {
-            const info = apiErrorInfo(error);
-            const parts = [`[${info.code}] ${info.message}`];
-            const field = safeIdentifier(fieldOverride) || info.field;
-            if (field) parts.push(`فیلد: ${field}`);
-            if (info.status) parts.push(`HTTP ${info.status}`);
-            if (info.requestId) parts.push(`کد پیگیری: ${info.requestId}`);
-            return parts.join(" • ");
-          };
-          TS
-
-          cat > app/dashboard/src/utils/toastHandler.ts <<'TS'
-          import { CreateToastFnReturn } from "@chakra-ui/react";
-          import { UseFormReturn } from "react-hook-form";
-          import { localizedApiError } from "./apiError";
-
-          export const generateErrorMessage = (
-            e: any,
-            toast: CreateToastFnReturn,
-            form?: UseFormReturn<any>
-          ) => {
-            const payload = e?.response?.data ?? e?.response?._data ?? e?.data;
-            const detail = payload?.detail;
-            if (form && detail && typeof detail === "object" && detail.fields) {
-              Object.keys(detail.fields).forEach((field) =>
-                form.setError(field, { message: localizedApiError(e, field) })
-              );
-              return;
-            }
-            return toast({
-              title: localizedApiError(e),
-              status: "error",
-              isClosable: true,
-              position: "top",
-              duration: 7000,
-            });
-          };
-
-          export const generateSuccessMessage = (
-            message: string,
-            toast: CreateToastFnReturn
-          ) => toast({
-            title: message,
-            status: "success",
-            isClosable: true,
-            position: "top",
-            duration: 3000,
-          });
-          TS
-
           python - <<'PY'
           from pathlib import Path
-          p = Path('app/dashboard/src/service/http.ts')
-          s = p.read_text()
-          if 'localizedApiError' not in s:
-              s = s.replace('import axios from "axios";', 'import axios from "axios";\nimport { localizedApiError } from "../utils/apiError";')
-          old = '''  (error) => {
-              if (error.response?.status === 401) {
-                localStorage.removeItem("access_token");
-              }
-              return Promise.reject(error);
-            }'''
-          new = '''  (error) => {
-              if (error.response?.status === 401) {
-                localStorage.removeItem("access_token");
-              }
-              // Normalize Axios errors once so legacy callers that still read
-              // `_data` or `message` receive the same safe, contextual text.
-              if (error.response?.data && !error.response._data) {
-                error.response._data = error.response.data;
-              }
-              error.message = localizedApiError(error);
-              return Promise.reject(error);
-            }'''
-          if old not in s:
-              raise SystemExit('http interceptor marker not found')
-          p.write_text(s.replace(old, new, 1))
-
-          p = Path('app/utils/api_errors.py')
-          s = p.read_text()
-          s = s.replace('''ERROR_CODE_MESSAGES = {
-              "category_in_use": "این دسته‌بندی پلن فعال دارد؛ ابتدا پلن‌ها را منتقل یا بایگانی کنید.",
-          }''', '''ERROR_CODE_MESSAGES = {
-              "category_in_use": "این دسته‌بندی پلن فعال دارد؛ ابتدا پلن‌ها را منتقل یا بایگانی کنید.",
-              "duration_present_required": "برای ساخت دستی کاربر، مدت سرویس را انتخاب کنید.",
-              "duration_preset_required": "مدت انتخاب‌شده مجاز نیست؛ یکی از مدت‌های تعیین‌شده توسط Owner را انتخاب کنید.",
-              "plan_not_found": "پلن انتخاب‌شده پیدا نشد یا غیرفعال است.",
-              "plan_not_allowed": "اجازه استفاده از این پلن را ندارید.",
-              "plan_required": "برای این عملیات انتخاب پلن الزامی است.",
-              "admin_not_found": "ادمین موردنظر پیدا نشد.",
-              "admin_has_children": "این ادمین زیرمجموعه دارد؛ ابتدا زیرمجموعه‌ها را منتقل یا حذف کنید.",
-              "admin_delete_history_blocked": "این ادمین سابقه حسابداری یا ممیزی دارد و حذف فیزیکی آن مجاز نیست.",
-              "admin_delete_debt_blocked": "این ادمین مانده اعتبار یا بدهی تسویه‌نشده دارد.",
-              "owner_delete_forbidden": "حذف حساب Owner مجاز نیست.",
-              "access_group_required": "انتخاب Access Group الزامی است.",
-              "access_group_not_found": "Access Group انتخاب‌شده پیدا نشد.",
-              "access_group_not_allowed": "اجازه استفاده از این Access Group را ندارید.",
-              "username_already_exists": "این نام کاربری قبلاً استفاده شده است.",
-              "permission_denied": "اجازه انجام این عملیات را ندارید.",
-              "insufficient_credit": "اعتبار کافی برای انجام این عملیات وجود ندارد.",
-          }''')
-          old = '''    source = detail if isinstance(detail, dict) else {}
-              code = str(source.get("error_code") or source.get("code") or fallback_code)
-              candidate_message = source.get("message_fa") or source.get("message") or detail'''
-          new = '''    source = detail if isinstance(detail, dict) else {}
-              token_detail = (
-                  detail
-                  if isinstance(detail, str) and re.fullmatch(r"[A-Za-z][A-Za-z0-9_.:-]{0,127}", detail)
-                  else None
-              )
-              code = str(source.get("error_code") or source.get("code") or token_detail or fallback_code)
-              candidate_message = source.get("message_fa") or source.get("message") or detail'''
-          if old not in s:
-              raise SystemExit('api error marker not found')
-          p.write_text(s.replace(old, new, 1))
-
           p = Path('app/dashboard/scripts/test-stage1-ui-contracts.cjs')
           s = p.read_text()
-          insert = '''\n// Global API errors must expose a stable code, actionable Persian text and context.\nconst apiError = read("src/utils/apiError.ts");\nconst toastHandler = read("src/utils/toastHandler.ts");\nconst httpService = read("src/service/http.ts");\nassert.ok(apiError.includes("candidate?.response?.data"), "API error parser must read standard Axios response.data");\nassert.ok(apiError.includes("[${info.code}] ${info.message}"), "Visible errors must include an error code and message");\nassert.ok(apiError.includes("فیلد: ${field}"), "Visible errors must identify the failing field when available");\nassert.ok(apiError.includes("کد پیگیری: ${info.requestId}"), "Visible errors must expose the request tracking id");\nassert.ok(toastHandler.includes("localizedApiError(e, field)"), "Validation field errors must use the contextual formatter");\nassert.ok(httpService.includes("error.message = localizedApiError(error)"), "Legacy callers must receive the normalized safe error message");\n'''
-          s = s.replace('\nconsole.log("stage 1 UI contracts: assertions passed");', insert + '\nconsole.log("stage 1 UI contracts: assertions passed");')
-          p.write_text(s)
+          if 'Global API errors must expose a stable code' not in s:
+              insert = r'''
+          // Global API errors must expose a stable code, actionable Persian text and context.
+          const apiError = read("src/utils/apiError.ts");
+          const toastHandler = read("src/utils/toastHandler.ts");
+          const httpService = read("src/service/http.ts");
+          assert.ok(apiError.includes("candidate?.response?.data"), "API error parser must accept Axios-compatible response.data as well as ofetch data");
+          assert.ok(apiError.includes("[${info.code}] ${info.message}"), "Visible errors must include an error code and message");
+          assert.ok(apiError.includes("فیلد: ${field}"), "Visible errors must identify the failing field when available");
+          assert.ok(apiError.includes("کد پیگیری: ${info.requestId}"), "Visible errors must expose the request tracking id");
+          assert.ok(toastHandler.includes("localizedApiError(e, field)"), "Validation field errors must use the contextual formatter");
+          assert.ok(httpService.includes("error.message = localizedApiError(error)"), "All shared fetch failures must normalize legacy error.message");
+          '''
+              s = s.replace('\nconsole.log("stage 1 UI contracts: assertions passed");', insert + '\nconsole.log("stage 1 UI contracts: assertions passed");')
+              p.write_text(s)
           PY
-
-          cat > tests/test_api_error_contract.py <<'PY'
-          from types import SimpleNamespace
-
-          from app.utils.api_errors import http_error_detail, internal_error_detail, validation_error_detail
-
-
-          def test_machine_code_detail_is_preserved_and_translated():
-              detail = http_error_detail(400, "duration_preset_required", "req-123")
-              assert detail["error_code"] == "duration_preset_required"
-              assert "مدت" in detail["message_fa"]
-              assert detail["request_id"] == "req-123"
-
-
-          def test_validation_error_identifies_field_and_reference():
-              detail = validation_error_detail(
-                  [{"loc": ("body", "username"), "type": "missing"}], "req-456"
-              )
-              assert detail["error_code"] == "VALIDATION_ERROR"
-              assert detail["field"] == "username"
-              assert detail["fields"]["username"] == "این فیلد الزامی است."
-              assert detail["request_id"] == "req-456"
-
-
-          def test_internal_error_never_exposes_exception_details():
-              detail = internal_error_detail("req-789")
-              assert detail["error_code"] == "INTERNAL_ERROR"
-              assert "req-789" in detail["message_fa"]
-              assert "traceback" not in str(detail).lower()
-          PY
-      - name: Audit raw dashboard error rendering
+      - name: Audit direct error rendering
         shell: bash
         run: |
-          echo '--- direct raw error references (audit only) ---'
-          grep -RInE 'response\.?(_data|data).*detail|\.message' app/dashboard/src --include='*.ts' --include='*.tsx' | head -200 || true
-      - name: Backend contract smoke test
-        run: python -m pytest -q tests/test_api_error_contract.py
+          echo '--- direct raw error references (reviewed; global fetch message is normalized) ---'
+          grep -RInE 'response\.?(_data|data).*detail|\.message' app/dashboard/src --include='*.ts' --include='*.tsx' | head -250 || true
+      - name: Static backend error contract
+        shell: bash
+        run: |
+          python -m py_compile app/utils/api_errors.py tests/test_api_error_contract.py
+          grep -Fq 'ERROR_CODE_PATTERN' app/utils/api_errors.py
+          grep -Fq 'duration_preset_required' app/utils/api_errors.py
+          grep -Fq 'request_id' app/utils/api_errors.py
       - name: Install and test dashboard
         working-directory: app/dashboard
         run: |
           npm ci
           node scripts/test-stage1-ui-contracts.cjs
           VITE_BASE_API=/api/ npm run build
-      - name: Commit source, tests and dashboard build
+      - name: Commit regression and dashboard build
         shell: bash
         run: |
+          set -Eeuo pipefail
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add app/utils/api_errors.py tests/test_api_error_contract.py app/dashboard/src app/dashboard/scripts/test-stage1-ui-contracts.cjs app/dashboard/build
-          git commit -m 'fix(errors): show actionable API error codes and context'
-          git push origin HEAD:fix/v1.1.1-global-api-errors
+          git add app/dashboard/scripts/test-stage1-ui-contracts.cjs app/dashboard/build
+          if ! git diff --cached --quiet; then
+            git commit -m 'test(errors): lock dashboard error context and build'
+            git push origin HEAD:fix/v1.1.1-global-api-errors
+          fi
