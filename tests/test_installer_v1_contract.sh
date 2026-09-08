@@ -26,6 +26,22 @@ PATH="$test_root:$PATH"
 COMPOSE_FILE="$test_root/docker-compose.yml"
 touch "$COMPOSE_FILE"
 
+# is_marzban_up must only report a running application service as up.
+# A stopped/exited container may still appear with `compose ps -a`.
+COMPOSE=mock_compose_state
+mock_compose_state() {
+  case "$*" in
+    *"ps -q marzban"*) printf '%s\n' "running-marzban-id" ;;
+    *) return 0 ;;
+  esac
+}
+is_marzban_up
+mock_compose_state() { return 0; }
+if is_marzban_up; then
+  echo "is_marzban_up treated a stopped service as running" >&2
+  exit 1
+fi
+
 check_running_as_root() { :; }
 is_marzban_installed() { return 0; }
 detect_compose() { COMPOSE=mock_compose; }
@@ -81,3 +97,9 @@ if (create_owner_command release_owner unexpected >/dev/null 2>&1); then
 fi
 
 printf '%s\n' "INSTALLER_V1_CONTRACT_OK"
+
+grep -Fq 'Unable to read the running Marzban version.' scripts/marzban.sh
+grep -Fq 'update_command --version "$1"' scripts/marzban.sh
+update_body="$(sed -n '/^update_command() {/,/^rollback_command() {/p' scripts/marzban.sh)"
+grep -Fq 'down_marzban' <<< "$update_body"
+grep -Fq 'up_marzban' <<< "$update_body"

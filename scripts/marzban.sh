@@ -1520,11 +1520,9 @@ set_owner_command() {
 
 
 is_marzban_up() {
-    if [ -z "$($COMPOSE -f $COMPOSE_FILE ps -q -a)" ]; then
-        return 1
-    else
-        return 0
-    fi
+    local container_id
+    container_id=$(running_service_container marzban)
+    [ -n "$container_id" ]
 }
 
 uninstall_command() {
@@ -1824,9 +1822,12 @@ update_command() {
 
     local current_version backup_path source_container
     local configured_source_image app_container running_source_image
-    current_version=$(runtime_app_version | tr -d '\r[:space:]')
+    if ! current_version=$(runtime_app_version | tr -d '\r[:space:]') || [ -z "$current_version" ]; then
+        colorized_echo red "Unable to read the running Marzban version. Ensure the marzban service is running, then retry the update."
+        exit 1
+    fi
     if ! is_release_version "$requested_version" || ! is_release_version "v${current_version}"; then
-        colorized_echo red "Production update requires a known runtime and exact release version."
+        colorized_echo red "Production update requires an exact release version; running version is '${current_version:-unavailable}'."
         exit 1
     fi
     if [ "$(printf '%s\n%s\n' "$current_version" "${requested_version#v}" | sort -V | head -n 1)" != "$current_version" ]; then
