@@ -686,173 +686,175 @@ export const BulkUserActions: FC<BulkUserActionsProps> = ({
 
   return (
     <>
-      <Flex
-        dir={i18n.dir()}
-        data-sticky-bulk-actions={hasSelection ? "true" : undefined}
-        role={hasSelection ? "region" : undefined}
-        aria-label={hasSelection ? "عملیات گروهی کاربران انتخاب‌شده" : undefined}
-        position={hasSelection ? "fixed" : "relative"}
-        bottom={hasSelection ? "max(12px, env(safe-area-inset-bottom))" : undefined}
-        left={hasSelection ? { base: "50%", lg: fixedCenter } : undefined}
-        transform={hasSelection ? "translateX(-50%)" : undefined}
-        zIndex={hasSelection ? 1200 : "auto"}
-        w={hasSelection ? { base: "calc(100vw - 24px)", lg: "min(920px, calc(100vw - 320px))" } : "full"}
-        maxW={hasSelection ? "920px" : "none"}
-        mt={hasSelection ? 0 : 4}
-        px={{ base: 2.5, md: 3 }}
-        py={{ base: 2.5, md: 2.5 }}
-        minW={0}
-        align="center"
-        justify="space-between"
-        gap={{ base: 2, md: 3 }}
-        wrap="wrap"
-        borderRadius={hasSelection ? "16px" : "12px"}
-        bg={hasSelection ? "var(--panel-surface)" : "var(--panel-nested)"}
-        borderWidth="1px"
-        borderColor={hasSelection ? "var(--panel-accent-border)" : "var(--panel-border)"}
-        boxShadow={hasSelection ? "var(--shadow-elevated)" : "none"}
-        backdropFilter={hasSelection ? "blur(18px)" : undefined}
-      >
-        <HStack
-          spacing={{ base: 2, md: 3 }}
+      <Box w="full">
+        <Flex
+          dir={i18n.dir()}
+          data-sticky-bulk-actions={hasSelection ? "true" : undefined}
+          role={hasSelection ? "region" : undefined}
+          aria-label={hasSelection ? "عملیات گروهی کاربران انتخاب‌شده" : undefined}
+          position={hasSelection ? "fixed" : "relative"}
+          bottom={hasSelection ? "max(12px, env(safe-area-inset-bottom))" : undefined}
+          left={hasSelection ? { base: "50%", lg: fixedCenter } : undefined}
+          transform={hasSelection ? "translateX(-50%)" : undefined}
+          zIndex={hasSelection ? 1200 : "auto"}
+          w={hasSelection ? { base: "calc(100vw - 24px)", lg: "min(920px, calc(100vw - 320px))" } : "full"}
+          maxW={hasSelection ? "920px" : "none"}
+          mt={hasSelection ? 0 : 4}
+          px={{ base: 2.5, md: 3 }}
+          py={{ base: 2.5, md: 2.5 }}
           minW={0}
-          w={{ base: "full", md: "auto" }}
-          justify={{ base: "space-between", md: "flex-start" }}
-          flexWrap="nowrap"
+          align="center"
+          justify="space-between"
+          gap={{ base: 2, md: 3 }}
+          wrap="wrap"
+          borderRadius={hasSelection ? "16px" : "12px"}
+          bg={hasSelection ? "var(--panel-surface)" : "var(--panel-nested)"}
+          borderWidth="1px"
+          borderColor={hasSelection ? "var(--panel-accent-border)" : "var(--panel-border)"}
+          boxShadow={hasSelection ? "var(--shadow-elevated)" : "none"}
+          backdropFilter={hasSelection ? "blur(18px)" : undefined}
         >
-          <Checkbox
-            isChecked={allVisibleSelected}
-            isIndeterminate={hasSelection && !allVisibleSelected}
-            onChange={(event) => onToggleAll(event.target.checked)}
-            colorScheme="primary"
-            flexShrink={0}
+          <HStack
+            spacing={{ base: 2, md: 3 }}
+            minW={0}
+            w={{ base: "full", md: "auto" }}
+            justify={{ base: "space-between", md: "flex-start" }}
+            flexWrap="nowrap"
           >
-            <Text fontSize={{ base: "xs", md: "sm" }} fontWeight="700" whiteSpace="nowrap">
-              {allVisibleSelected
-                ? t("usersTable.deselectAll")
-                : t("usersTable.selectAll", { count: visibleCount })}
-            </Text>
-          </Checkbox>
-          <Badge
-            px={2.5}
-            py={1}
-            flexShrink={0}
-            borderRadius="full"
-            bg={hasSelection ? "var(--panel-accent-soft)" : "var(--panel-surface)"}
-            color={hasSelection ? "var(--panel-accent)" : "var(--panel-text-muted)"}
-            textTransform="none"
-          >
-            {t("usersTable.selectedCount", { count: users.length })}
-          </Badge>
-        </HStack>
-
-        <HStack
-          spacing={2}
-          w={{ base: "full", md: "auto" }}
-          maxW="full"
-          overflowX={{ base: "auto", md: "visible" }}
-          flexWrap={{ base: "nowrap", md: "wrap" }}
-          justify={{ base: "flex-start", md: "flex-end" }}
-          pb={{ base: 1, md: 0 }}
-          sx={{ scrollbarWidth: "thin" }}
-        >
-          <Menu placement="bottom-end">
-            <MenuButton
-              as={Button}
-              size="sm"
+            <Checkbox
+              isChecked={allVisibleSelected}
+              isIndeterminate={hasSelection && !allVisibleSelected}
+              onChange={(event) => onToggleAll(event.target.checked)}
+              colorScheme="primary"
               flexShrink={0}
-              variant="outline"
-              color="var(--panel-text-body)"
-              borderColor="var(--panel-border)"
-              rightIcon={<ChevronDownIcon width="15px" aria-hidden="true" />}
             >
-              پاک‌سازی
-            </MenuButton>
-            <MenuList minW="220px" bg="var(--panel-surface)" borderColor="var(--panel-border)" boxShadow="var(--shadow-elevated)">
-              <MenuItem bg="transparent" _hover={{ bg: "var(--panel-row-hover)" }} icon={<TrashIcon width="16px" />} onClick={trialCleanupDialog.onOpen}>
-                پاک‌سازی اکانت تست
-              </MenuItem>
-              {userData.is_sudo && (
-                <MenuItem bg="transparent" color="var(--panel-danger)" _hover={{ bg: "var(--panel-danger-soft)" }} icon={<TrashIcon width="16px" />} onClick={cleanupDialog.onOpen}>
-                  {t("usersTable.cleanupExpired")}
-                </MenuItem>
-              )}
-            </MenuList>
-          </Menu>
+              <Text fontSize={{ base: "xs", md: "sm" }} fontWeight="700" whiteSpace="nowrap">
+                {allVisibleSelected
+                  ? t("usersTable.deselectAll")
+                  : t("usersTable.selectAll", { count: visibleCount })}
+              </Text>
+            </Checkbox>
+            <Badge
+              px={2.5}
+              py={1}
+              flexShrink={0}
+              borderRadius="full"
+              bg={hasSelection ? "var(--panel-accent-soft)" : "var(--panel-surface)"}
+              color={hasSelection ? "var(--panel-accent)" : "var(--panel-text-muted)"}
+              textTransform="none"
+            >
+              {t("usersTable.selectedCount", { count: users.length })}
+            </Badge>
+          </HStack>
 
-          {hasSelection && (
-            <>
-              <Menu placement="bottom-end">
-                <MenuButton
-                  as={Button}
-                  size="sm"
-                  flexShrink={0}
-                  variant="outline"
-                  color="var(--panel-success)"
-                  borderColor="var(--panel-success-border)"
-                  bg="var(--panel-success-soft)"
-                  rightIcon={<ChevronDownIcon width="15px" aria-hidden="true" />}
-                >
-                  وضعیت
-                </MenuButton>
-                <MenuList minW="210px" bg="var(--panel-surface)" borderColor="var(--panel-border)" boxShadow="var(--shadow-elevated)">
-                  <MenuItem bg="transparent" _hover={{ bg: "var(--panel-success-soft)" }} icon={<BoltIcon width="16px" />} onClick={() => openAction(actionDefinitions[0])}>
-                    {t(actionDefinitions[0].labelKey)}
-                  </MenuItem>
-                  <MenuItem bg="transparent" _hover={{ bg: "var(--panel-warning-soft)" }} icon={<NoSymbolIcon width="16px" />} onClick={() => openAction(actionDefinitions[1])}>
-                    {t(actionDefinitions[1].labelKey)}
-                  </MenuItem>
-                </MenuList>
-              </Menu>
-
-              <Menu placement="bottom-end">
-                <MenuButton
-                  as={Button}
-                  size="sm"
-                  flexShrink={0}
-                  variant="outline"
-                  color="var(--panel-accent)"
-                  borderColor="var(--panel-accent-border)"
-                  bg="var(--panel-accent-soft)"
-                  rightIcon={<ChevronDownIcon width="15px" aria-hidden="true" />}
-                >
-                  اعتبار
-                </MenuButton>
-                <MenuList minW="230px" bg="var(--panel-surface)" borderColor="var(--panel-border)" boxShadow="var(--shadow-elevated)">
-                  <MenuItem bg="transparent" _hover={{ bg: "var(--panel-row-hover)" }} icon={<CircleStackIcon width="16px" />} onClick={() => openAction(actionDefinitions[2])}>{t(actionDefinitions[2].labelKey)}</MenuItem>
-                  <MenuItem bg="transparent" _hover={{ bg: "var(--panel-row-hover)" }} icon={<CircleStackIcon width="16px" />} onClick={() => openAction(actionDefinitions[3])}>{t(actionDefinitions[3].labelKey)}</MenuItem>
-                  <Divider />
-                  <MenuItem bg="transparent" _hover={{ bg: "var(--panel-row-hover)" }} icon={<CalendarDaysIcon width="16px" />} onClick={() => openAction(actionDefinitions[4])}>{t(actionDefinitions[4].labelKey)}</MenuItem>
-                  <MenuItem bg="transparent" _hover={{ bg: "var(--panel-row-hover)" }} icon={<CalendarDaysIcon width="16px" />} onClick={() => openAction(actionDefinitions[5])}>{t(actionDefinitions[5].labelKey)}</MenuItem>
-                  <MenuItem bg="transparent" _hover={{ bg: "var(--panel-row-hover)" }} icon={<CalendarDaysIcon width="16px" />} onClick={() => openAction(actionDefinitions[6])}>{t(actionDefinitions[6].labelKey)}</MenuItem>
-                </MenuList>
-              </Menu>
-
-              <Button
+          <HStack
+            spacing={2}
+            w={{ base: "full", md: "auto" }}
+            maxW="full"
+            overflowX={{ base: "auto", md: "visible" }}
+            flexWrap={{ base: "nowrap", md: "wrap" }}
+            justify={{ base: "flex-start", md: "flex-end" }}
+            pb={{ base: 1, md: 0 }}
+            sx={{ scrollbarWidth: "thin" }}
+          >
+            <Menu placement="bottom-end">
+              <MenuButton
+                as={Button}
                 size="sm"
                 flexShrink={0}
                 variant="outline"
-                color="var(--panel-danger)"
-                borderColor="var(--panel-danger-border)"
-                bg="var(--panel-danger-soft)"
-                leftIcon={<TrashIcon width="17px" aria-hidden="true" />}
-                onClick={() => openAction(actionDefinitions[7])}
+                color="var(--panel-text-body)"
+                borderColor="var(--panel-border)"
+                rightIcon={<ChevronDownIcon width="15px" aria-hidden="true" />}
               >
-                {t(actionDefinitions[7].labelKey)}
-              </Button>
+                پاک‌سازی
+              </MenuButton>
+              <MenuList minW="220px" bg="var(--panel-surface)" borderColor="var(--panel-border)" boxShadow="var(--shadow-elevated)">
+                <MenuItem bg="transparent" _hover={{ bg: "var(--panel-row-hover)" }} icon={<TrashIcon width="16px" />} onClick={trialCleanupDialog.onOpen}>
+                  پاک‌سازی اکانت تست
+                </MenuItem>
+                {userData.is_sudo && (
+                  <MenuItem bg="transparent" color="var(--panel-danger)" _hover={{ bg: "var(--panel-danger-soft)" }} icon={<TrashIcon width="16px" />} onClick={cleanupDialog.onOpen}>
+                    {t("usersTable.cleanupExpired")}
+                  </MenuItem>
+                )}
+              </MenuList>
+            </Menu>
 
-              <IconButton
-                size="sm"
-                flexShrink={0}
-                variant="ghost"
-                aria-label={t("usersTable.deselectAll")}
-                icon={<XMarkIcon width="18px" aria-hidden="true" />}
-                onClick={onClear}
-              />
-            </>
-          )}
-        </HStack>
-      </Flex>
+            {hasSelection && (
+              <>
+                <Menu placement="bottom-end">
+                  <MenuButton
+                    as={Button}
+                    size="sm"
+                    flexShrink={0}
+                    variant="outline"
+                    color="var(--panel-success)"
+                    borderColor="var(--panel-success-border)"
+                    bg="var(--panel-success-soft)"
+                    rightIcon={<ChevronDownIcon width="15px" aria-hidden="true" />}
+                  >
+                    وضعیت
+                  </MenuButton>
+                  <MenuList minW="210px" bg="var(--panel-surface)" borderColor="var(--panel-border)" boxShadow="var(--shadow-elevated)">
+                    <MenuItem bg="transparent" _hover={{ bg: "var(--panel-success-soft)" }} icon={<BoltIcon width="16px" />} onClick={() => openAction(actionDefinitions[0])}>
+                      {t(actionDefinitions[0].labelKey)}
+                    </MenuItem>
+                    <MenuItem bg="transparent" _hover={{ bg: "var(--panel-warning-soft)" }} icon={<NoSymbolIcon width="16px" />} onClick={() => openAction(actionDefinitions[1])}>
+                      {t(actionDefinitions[1].labelKey)}
+                    </MenuItem>
+                  </MenuList>
+                </Menu>
+
+                <Menu placement="bottom-end">
+                  <MenuButton
+                    as={Button}
+                    size="sm"
+                    flexShrink={0}
+                    variant="outline"
+                    color="var(--panel-accent)"
+                    borderColor="var(--panel-accent-border)"
+                    bg="var(--panel-accent-soft)"
+                    rightIcon={<ChevronDownIcon width="15px" aria-hidden="true" />}
+                  >
+                    اعتبار
+                  </MenuButton>
+                  <MenuList minW="230px" bg="var(--panel-surface)" borderColor="var(--panel-border)" boxShadow="var(--shadow-elevated)">
+                    <MenuItem bg="transparent" _hover={{ bg: "var(--panel-row-hover)" }} icon={<CircleStackIcon width="16px" />} onClick={() => openAction(actionDefinitions[2])}>{t(actionDefinitions[2].labelKey)}</MenuItem>
+                    <MenuItem bg="transparent" _hover={{ bg: "var(--panel-row-hover)" }} icon={<CircleStackIcon width="16px" />} onClick={() => openAction(actionDefinitions[3])}>{t(actionDefinitions[3].labelKey)}</MenuItem>
+                    <Divider />
+                    <MenuItem bg="transparent" _hover={{ bg: "var(--panel-row-hover)" }} icon={<CalendarDaysIcon width="16px" />} onClick={() => openAction(actionDefinitions[4])}>{t(actionDefinitions[4].labelKey)}</MenuItem>
+                    <MenuItem bg="transparent" _hover={{ bg: "var(--panel-row-hover)" }} icon={<CalendarDaysIcon width="16px" />} onClick={() => openAction(actionDefinitions[5])}>{t(actionDefinitions[5].labelKey)}</MenuItem>
+                    <MenuItem bg="transparent" _hover={{ bg: "var(--panel-row-hover)" }} icon={<CalendarDaysIcon width="16px" />} onClick={() => openAction(actionDefinitions[6])}>{t(actionDefinitions[6].labelKey)}</MenuItem>
+                  </MenuList>
+                </Menu>
+
+                <Button
+                  size="sm"
+                  flexShrink={0}
+                  variant="outline"
+                  color="var(--panel-danger)"
+                  borderColor="var(--panel-danger-border)"
+                  bg="var(--panel-danger-soft)"
+                  leftIcon={<TrashIcon width="17px" aria-hidden="true" />}
+                  onClick={() => openAction(actionDefinitions[7])}
+                >
+                  {t(actionDefinitions[7].labelKey)}
+                </Button>
+
+                <IconButton
+                  size="sm"
+                  flexShrink={0}
+                  variant="ghost"
+                  aria-label={t("usersTable.deselectAll")}
+                  icon={<XMarkIcon width="18px" aria-hidden="true" />}
+                  onClick={onClear}
+                />
+              </>
+            )}
+          </HStack>
+        </Flex>
+      </Box>
 
       <CheckedBulkDialog
         users={users}
