@@ -14,7 +14,6 @@ concurrency:
 
 jobs:
   build-dashboard:
-    if: github.actor != 'github-actions[bot]' || !contains(github.event.head_commit.message, 'chore: refresh v1.1.2 dashboard build')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
