@@ -14,6 +14,7 @@ const plans = read("src/pages/Plans.tsx");
 const deviceLimits = read("src/pages/DeviceLimits.tsx");
 const appShell = read("src/components/AppShell.tsx");
 const usersTable = read("src/components/UsersTablePro.tsx");
+const userDetailsDrawer = read("src/components/UserDetailsDrawer.tsx");
 const adminForm = read("src/components/AdminFormDrawer.tsx");
 const userDialog = read("src/components/UserDialog.tsx");
 const createUserFromPlan = read("src/components/CreateUserFromPlan.tsx");
@@ -59,11 +60,15 @@ assert.ok(!deviceLimits.includes("linear-gradient(145deg, rgba(14,25,20,.98), rg
 assert.ok(deviceLimits.includes('bg="var(--panel-surface)"'), "Device Limits cards must use the shared panel surface token");
 assert.ok(deviceLimits.includes('borderColor="var(--panel-border)"'), "Device Limits separators must use the shared panel border token");
 
-// Users table must remain readable on mobile/tablet without removing columns or operations.
+// Users management V3 keeps the table compact while preserving mobile scrolling, actions and a lazy details surface.
 assert.ok(usersTable.includes('overflowX="auto"'), "Users table must allow controlled horizontal scrolling on narrow viewports");
-assert.ok(usersTable.includes('minW="1500px"'), "Users table must keep a readable minimum width instead of squeezing every column");
-assert.ok(usersTable.includes('whiteSpace: "nowrap"') && usersTable.includes('wordBreak: "keep-all"'), "Users table headers must not wrap character-by-character");
-assert.ok(usersTable.includes("برای دیدن همه جزئیات و عملیات، جدول را به صورت افقی بکشید."), "Mobile/tablet users must get a horizontal-scroll affordance hint");
+assert.ok(usersTable.includes('minW={isOwner ? "1220px" : "1100px"}'), "Users table must keep a bounded readable width without returning to the legacy 1500px layout");
+assert.ok(usersTable.includes('whiteSpace: "nowrap"'), "Users table headers must remain single-line and readable");
+assert.ok(usersTable.includes("برای جزئیات روی نام کاربر بزنید؛ جدول در موبایل افقی پیمایش می‌شود."), "Mobile users must get the compact-table and details affordance hint");
+assert.ok(usersTable.includes("plan_meta"), "Users table must consume bounded current-Plan metadata instead of issuing per-row Plan requests");
+assert.ok(usersTable.includes("UserDetailsDrawer"), "Users table must expose the dedicated details Drawer");
+assert.ok(userDetailsDrawer.includes('enabled:') && userDetailsDrawer.includes('tabIndex === deviceTabIndex'), "Device detail query must remain lazy until its Drawer tab is selected");
+assert.ok(userDetailsDrawer.includes('tabIndex === auditTabIndex'), "Audit detail query must remain lazy until its Drawer tab is selected");
 for (const action of ["کپی لینک اشتراک", "ویرایش", "حذف کاربر", "تمدید با پلن", "بازنشانی مصرف", "ابطال لینک اشتراک"]) {
   assert.ok(usersTable.includes(action), `Users table action must remain available: ${action}`);
 }
