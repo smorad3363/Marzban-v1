@@ -1,136 +1,61 @@
 # V1 Continuation State
 
-## V1.1.2 Active Checkpoint
+## Active Task: Node Operations V2
 
-- Release branch: `release/v1.1.2`
-- Pull request: `#32` into `main`
-- Target version: `v1.1.2`
-- Fixes committed: USER_CREDIT Admin-form crash, route render/service error separation, logout cache/history cleanup.
-- Regression coverage: Plan/manual creation modes and Admin deletion strategy.
-- Dashboard build is regenerated from source with Node.js 20 before merge.
-- NEXT EXACT TASK: remove the temporary artifact-builder workflow after the final v1.1.2 build commit, then require clean PR CI before merge/tag publication.
+- Working branch: `feat/node-operations-v2`
+- Base/main SHA at task start: `59bdb0dd2b65435a5e3f774b5ebd4f8186217906`
+- Stable release invariant: `v1.1.6` MUST remain at `b6056e3e3f91828a18c39ea71df8252608562216`; do not move or recreate the tag.
+- Release workflow already verified before this task: `34339151023` succeeded.
+- Latest main CI verified before this task: `34339215039` succeeded.
+- Task source: end-to-end Node Operations audit and implementation across backend, database, API, Node Runtime V2, traffic/telemetry, reconnect/error observability, frontend, installer/updater, documentation, and tests.
+- Release policy for this task: do not create a Git tag, GitHub Release, or publish a new stable version unless the user explicitly requests publication.
 
+## Status
 
-## Baseline
+AUDIT IN PROGRESS. No production code has been modified yet.
 
-- Baseline tag: `baseline-v1-source`
-- Baseline commit: `0c714b182bcfd52d8eb24f1b06aa4f3f14784cf1`
+## Verified Architecture Findings
 
-## Current State
+- Node API models live in `app/models/node.py`.
+- Node REST/WebSocket routes live in `app/routers/node.py`.
+- Existing node routes include `/nodes`, `/nodes/bandwidth`, `/nodes/usage`, `/node/{node_id}/reconnect`, node settings/watchdog endpoints, and a privileged node-log WebSocket.
+- Live bandwidth is served from the existing bounded `bandwidth_store`; do not add a parallel collector.
+- Node Runtime V2 protocol lives in `app/xray/node_protocol_v2.py`.
+- Runtime V2 already has protocol/version handshake validation, bounded capability negotiation, reliable-event capability requirements, monotonic event IDs, duplicate filtering, and bounded event batches. Extend this protocol rather than creating a second runtime/event subsystem.
+- Current runtime capabilities include `control_v1`, `event_ack_v1`, and `client_ip_direct_v1`.
+- Prompt names `NodeBandwidthPanel` and `onShowingNodesUsage` were not found on current HEAD; use actual repository names before removing any legacy UI.
 
-- Current branch: `release/v1.0.2`
-- Current HEAD: V1.0.2 release-prep branch tip; exact source commit is finalized only after clean release-prep CI
-- Current milestone/checkpoint: V1.0.2 Built-in Node Runtime V2, fail-closed Node IP trust, bandwidth/resource telemetry, built-in Node deployment, CLI co-location isolation, and permanent Node deployment CI are implemented; clean feature checkpoint run `34040916354` passed all four jobs before release-prep
+## Invariants To Preserve
 
-## Completed Checkpoints
+- v1.1.6 Dashboard/Users split and Admin self-information privacy.
+- v1.1.5 safe Admin retirement/delete behavior.
+- Plan and Access Group authorization/network ownership behavior.
+- MySQL 8.0 and 26.7.0 migration/rollback gates.
+- Installer, dashboard source/build parity, release-image runtime contract, and Panel-to-Node mTLS gates.
+- Existing Node Runtime V2, certificate model, bandwidth collector, reconnect path, and authorization patterns unless a verified defect requires a scoped change.
 
-- Created concise active execution, scope, and continuation files.
-- Converted active application, installer, repository, branch, container, workflow, documentation, and release-test identity to V1.
-- Renamed reviewed image publish/verification workflows for V1 and removed stale fixed vNext image digest.
-- Rebuilt committed dashboard assets with version `1.0.0`.
-- Removed Inbound/Host fields from `PlanVersionInput`; unexpected network fields now fail validation.
-- Removed Plan create/update network validation and `AdminUserPlanInbound`/`AdminUserPlanHost` writes while retaining legacy response reads.
-- Updated focused service, Access Group, seat-renewal, and trial tests for commercial-only Plans.
-- Required a valid active Access Group before Plan user creation and before renewal.
-- Preserved the current Access Group and user topology during default Plan renewal; topology changes only when an explicit replacement group is supplied.
-- Removed runtime subscription and Host-change fallback to legacy Plan network snapshots.
-- Changed Host impact analysis, confirmation, propagation, and active-user sync to Access Groups.
-- Added fail-closed single/batch subscription scope resolution for Plan-assigned users without an Access Group.
-- Added migration `c9e1f4a7b203` and model index `ix_access_group_hosts_host_group` for Host-to-Access-Group reverse lookups.
-- Removed Inbound, Host, and Node controls from Plan create/edit UI and retired the Plan-named network option endpoint/utilities.
-- Added Owner-facing Access Group create/edit/archive UI with explicit Node, Inbound, and Host controls.
-- Required explicit Access Group selection in both Plan-based user-creation surfaces.
-- Updated Host impact UI and query contracts to Access Group terminology.
-- Rebuilt committed dashboard assets after the Access Group UI change.
-- Added a narrow, verified product-line transition from the exact mature `ghcr.io/smorad3363/marzban-vnext:v5.2.0` runtime to `v1.0.0`; all other application downgrades remain refused.
-- Hardened `marzban create-owner [USERNAME]` argument handling and kept the Owner password out of Docker command arguments.
-- Prevented `main` pushes from creating the V1 tag, release, or image before dedicated verification.
-- Required the reviewed 40-character commit and an unused `v1.0.0` tag before immutable image publication.
-- Made published-image verification confirm the `v1.0.0` image tag digest and source commit before creating the immutable tag and stable GitHub release.
-- Added V1 release notes covering the new baseline, Plan/Access Group separation, and preserved mature functionality.
-- Completed the final `baseline-v1-source..HEAD` change inventory and security/release review.
-- Confirmed the authenticated GitHub account is `smorad3363`, the target repository does not exist, no `origin` remote exists, and no local `v1.0.0` tag exists.
-- Scanned tracked source for common private-key and token signatures; no matches were found.
-- Confirmed remaining active `5.2.0`/vNext references are limited to the explicit, tested V1 lineage-transition guard and its documentation/tests.
-- Created the public repository `smorad3363/Marzban-v1` and pushed exact reviewed `main` commit `cb9c181a791ad1534702dc2715e0c13ed38b3fce` plus `baseline-v1-source` without force.
-- First GitHub CI run `33974555761` passed the real MySQL `8.0` to `26.7.0` logical migration and failed before any image/tag/release publication.
-- Repaired the CI-only `httpx` dependency, two missing creation-mode fixtures, and one stale localization assertion; explicitly deselected only the three previously documented unrelated Stage 5 cases.
-- GitHub CI run `33974990272` passed both MySQL matrices, isolated Stage 8-11 migration evidence, logical MySQL migration, backup/restore, and v4.8.0 rollback compatibility.
-- Published immutable multi-platform image `ghcr.io/smorad3363/marzban-v1:v1.0.0` from exact commit `6bc7688a294bc603eb30f320428e3002288bb8b2`; digest `sha256:99c1a1e20a042c3385e7c31ad9084ea233314e8f9047585a6c834a720a123906`.
-- Verification run `33975841184` confirmed AMD64/ARM64 manifests, source label, runtime `1.0.0`, MySQL client `26.7.0`, and dashboard/CLI content before creating the tag/release.
-- Created immutable tag `v1.0.0` at `6bc7688a294bc603eb30f320428e3002288bb8b2` and stable GitHub release `Marzban V1.0.0`.
-- Added a disposable published-installer workflow for anonymous GHCR access, the exact fresh-install command, Owner creation, version integrity, reinstall/downgrade refusal, and mature `5.2.0` to V1 upgrade preservation.
-- Repaired the installer lab's Owner lookup assertion to query the disposable MySQL database directly after the successful `marzban create-owner` command, avoiding presentation-layer output and closed-pipe behavior.
-- Added failure-only expected/actual diagnostics to the installer lab's exact version and Owner assertions; no credentials are printed.
-- Kept V1 anonymous-access verification unchanged and made the upgrade lab build the exact historical VNext `v5.2.0` tag commit `2d8df17b526236c9980ade37d802531dbca0d06f` from its public source, matching the recorded VNext installer fallback without changing package visibility.
-- Disposable installer-validation run `33977212649` passed the full fresh-install and mature-upgrade contract against immutable V1 commit `6bc7688a294bc603eb30f320428e3002288bb8b2` and digest `sha256:99c1a1e20a042c3385e7c31ad9084ea233314e8f9047585a6c834a720a123906`.
-- Final public verification confirmed repository readability, stable release state, peeled `v1.0.0` tag parity, anonymous OCI manifest access, exact GHCR digest, immutable raw installer readability/syntax, and V1 repository/image/version defaults.
+## Tests Run For This Branch
 
-## Tests Passed
+- None yet. Audit only.
 
-- `uv run --with pytest --python C:\Users\Saji\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\python.exe python -m pytest -q tests/test_release_contract.py` — `1 passed`.
-- `uv run --with-requirements requirements.txt --with pytest --python C:\Users\Saji\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\python.exe python -m pytest -q tests/test_release_contract.py tests/test_marzhelp_migration_backup.py::test_installer_targets_release_image_and_pinned_mysql_image` with `SQLALCHEMY_DATABASE_URL=mysql+pymysql://marzban:test@127.0.0.1:3306/marzban_test` and `DEBUG=false` — `2 passed`.
-- `npm.cmd run build -- --outDir build --assetsDir statics` with Node `v24.19.0` and `VITE_BASE_API=/api/` — passed; dashboard assets rebuilt.
-- PyYAML `safe_load` of `.github/workflows/build.yml`, `.github/workflows/release-v1.yml`, and `.github/workflows/verify-v1-image.yml` — passed.
-- Targeted `rg` for stale active vNext/`5.2.0`/`master` identity outside legacy docs, dependency locks, and intentional compatibility fixtures — no matches.
-- `git diff --check` — passed.
-- `uv run --with-requirements requirements.txt --with pytest --python C:\Users\Saji\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\python.exe python -m pytest -q tests/test_stage4_plan_network_scope.py` — `8 passed`.
-- Same environment, `python -m pytest -q tests/test_stage5_restricted_creation_namespace.py::test_seat_plan_renewal_charges_exact_cost_once_on_retry tests/test_stage6_trials.py` — `11 passed, 1 skipped`.
+## Last Work File
 
-- Same environment, `python -m compileall -q app` — passed.
-- Same environment, `python -m pytest -q tests/test_stage2_network_sync.py tests/test_stage4_plan_network_scope.py` — `21 passed`.
-- Same environment, `python -m pytest -q tests/test_stage5_restricted_creation_namespace.py tests/test_stage6_trials.py tests/test_admin_hierarchy_service.py` — relevant runtime coverage passed; aggregate result `47 passed, 1 skipped, 3 failed`.
+`app/xray/node_protocol_v2.py`
 
-- `npx.cmd tsc --noEmit` in `app/dashboard` with `C:\Program Files\nodejs` on `PATH` — passed.
-- `npm.cmd run test:access-groups`, `npm.cmd run test:admin-ux`, and `npm.cmd run test:admin-hierarchy` in `app/dashboard` — passed.
-- `VITE_BASE_API=/api/ npm.cmd run build -- --outDir build --assetsDir statics` in `app/dashboard` — passed; `1731` modules transformed. Existing vendor chunk-size and `use client` warnings remain non-blocking.
-- Same backend environment, `python -m pytest -q tests/test_admin_hierarchy_api_contract.py tests/test_stage4_plan_network_scope.py tests/test_stage2_network_sync.py` — `23 passed`.
-- Playwright mock verification at `1440x900` and `375x812` — Access Group create/list controls rendered, Host choices appeared after Inbound selection, no horizontal overflow, and no console errors.
-- `C:\Program Files\Git\bin\bash.exe -n scripts/marzban.sh` — passed.
-- `C:\Program Files\Git\bin\bash.exe tests/test_installer_v1_contract.sh` — `INSTALLER_V1_CONTRACT_OK`; validated the exact lineage gate, `marzban version`, and `marzban create-owner USERNAME` wrapper contract.
-- Same backend environment, `python -m pytest -q tests/test_release_contract.py tests/test_marzhelp_migration_backup.py` — `7 passed, 1 skipped`.
-- PyYAML `safe_load` of `.github/workflows/build.yml`, `.github/workflows/release-v1.yml`, and `.github/workflows/verify-v1-image.yml` after publication-order changes — passed.
-- Consolidated frontend gate: `npx.cmd tsc --noEmit`, `npm.cmd run test:access-groups`, `npm.cmd run test:admin-ux`, `npm.cmd run test:admin-hierarchy`, and `VITE_BASE_API=/api/ npm.cmd run build -- --outDir build --assetsDir statics` — passed; `1731` modules transformed with the same non-blocking warnings.
-- Consolidated backend gate: `python -m pytest -q tests/test_admin_hierarchy_api_contract.py tests/test_stage2_network_sync.py tests/test_stage4_plan_network_scope.py tests/test_stage5_restricted_creation_namespace.py tests/test_stage6_trials.py tests/test_admin_hierarchy_service.py` with the three documented unrelated cases deselected — `70 passed, 1 skipped, 3 deselected`.
-- `git diff --check baseline-v1-source..HEAD` — passed after removing two trailing blank lines in execution documentation.
-- Focused first-push CI repair verification with `httpx`: backup upload contract, localization response contract, Stage 6 trials, both user-access creation cases, and release contract — `15 passed, 1 skipped`.
-- PyYAML validation of the repaired `.github/workflows/build.yml` — passed.
-- `bash -n` for `scripts/marzban.sh`, `tests/release_installer_lab.sh`, and `tests/release_upgrade_lab.sh` — passed.
-- Updated release contract test for the disposable published-installer workflow — `1 passed`; workflow YAML validation passed.
-
-- GitHub Actions run `33977212649` passed in `3m33s`; emitted `FRESH_INSTALL_CREATE_OWNER_VERSION_PASS`, `BASELINE_RUNTIME 5.2.0`, preserved the upgrade sentinel/Owner/Alembic state, and emitted `UPGRADE_V520_TO_V100_PASS`.
-- Final anonymous GHCR manifest request returned HTTP `200` with OCI image-index digest `sha256:99c1a1e20a042c3385e7c31ad9084ea233314e8f9047585a6c834a720a123906`.
-- Immutable installer URL syntax/default verification passed for `v1.0.0`, `smorad3363/Marzban-v1`, and `ghcr.io/smorad3363/marzban-v1`.
-
-## Tests Failed
-
-- No current release-blocking failures remain. The entries below are retained as resolved historical diagnostics.
-
-- Published-installer run `33976252559`: install, version integrity, and Owner creation succeeded; the combined step then failed because `docker exec ... | grep -q` triggered a test-only closed-pipe failure under `pipefail`. Production behavior was not implicated; the harness is repaired for the next run.
-- Published-installer run `33976563658`: the same production checks again succeeded, but the CLI table-based Owner lookup produced no stable assertion output. The harness now verifies the committed Owner row directly in the disposable MySQL database.
-- Published-installer run `33976717772`: the same public/fresh-install/Owner checkpoints succeeded, then a silent exact-line assertion failed. Failure-only diagnostics were added to identify the precise mismatch on the next run.
-- Published-installer run `33976849090`: anonymous V1 image access, exact fresh installation, Owner creation/persistence, version/digest/source integrity, reinstall refusal, and downgrade refusal passed. Upgrade setup then failed only because the historical `marzban-vnext:v5.2.0` baseline is private; V1 artifact visibility and content were unaffected.
-- Published-installer run `33977032363`: scoped GHCR login succeeded, but the historical private baseline package denied this repository token. Public tag parity for `smorad3363/Marzban-vNext@v5.2.0` was verified at `2d8df17b526236c9980ade37d802531dbca0d06f`; the lab now builds that exact source locally instead of widening package access.
-
-- `bash -n scripts/marzban.sh` — not run: Windows WSL launcher reports `execvpe(/bin/bash) failed: No such file or directory`; Docker Desktop daemon is also unavailable for fallback.
-
-- Broader Stage 5 suite has three unrelated failures: one raw-endpoint expectation reaches response rendering with `used_traffic=None`, and two pricing tests use fixed expiry `2000000000`, which no longer matches an Owner duration preset on the current date.
-
-## Known Blockers
-
-- None.
-
-## Uncommitted Work
-
-- None expected after committing and pushing this documentation-only completion record.
-
-## V1.0.2 Release-Prep Update
-
-- Node Runtime V2 and deployment are complete, including durable event delivery, strict certificate verification, source-integrity checks, and co-located CLI isolation.
-- Permanent checkpoint CI now covers panel compose, Node compose, installer contracts, MySQL 8.0, MySQL 26.7.0, Stage 8-11 evidence, and dashboard production builds.
-- The V1 release publisher, image verifier, and published-installer validator are generalized to the requested release tag and must match `VERSION`.
-- Historical lineage remains exactly `5.2.0 -> v1.0.0`; current release validation upgrades from that historical baseline into the requested V1 release without widening the exception.
+Before resuming after any interruption, fetch and review this file first, then read this state file again if HEAD moved.
 
 ## NEXT EXACT TASK
 
-Run the clean V1.0.2 release-prep CI, review `main...release/v1.0.2`, then merge and publish only from the exact verified main commit.
+1. Review `app/xray/node.py` and `app/xray/operations.py` to map heartbeat/event delivery/reconnect and current error/status transitions.
+2. Then inspect Node DB models/CRUD/migrations and bandwidth storage to identify the smallest compatible persistence design for structured events and historical traffic.
+3. Update this state after the audit milestone before starting schema changes.
+
+## Recovery Rule
+
+When resuming this task (including after the user says `ادامه بده`):
+
+1. Fetch `docs/CODEX/STATE.md` from `feat/node-operations-v2`.
+2. Fetch and review `Last Work File` before editing anything else.
+3. Verify branch HEAD and inspect any changes since this checkpoint.
+4. Execute `NEXT EXACT TASK`.
+5. After each meaningful milestone, record the last source file edited/reviewed, commands or CI actually run, validation results, failures, and the next exact action here.
