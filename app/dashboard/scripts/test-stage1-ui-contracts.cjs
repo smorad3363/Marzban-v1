@@ -14,6 +14,7 @@ const plans = read("src/pages/Plans.tsx");
 const deviceLimits = read("src/pages/DeviceLimits.tsx");
 const appShell = read("src/components/AppShell.tsx");
 const usersTable = read("src/components/UsersTablePro.tsx");
+const bulkUserActions = read("src/components/BulkUserActions.tsx");
 const userDetailsDrawer = read("src/components/UserDetailsDrawer.tsx");
 const adminForm = read("src/components/AdminFormDrawer.tsx");
 const userDialog = read("src/components/UserDialog.tsx");
@@ -69,6 +70,10 @@ assert.ok(usersTable.includes("plan_meta"), "Users table must consume bounded cu
 assert.ok(usersTable.includes("UserDetailsDrawer"), "Users table must expose the dedicated details Drawer");
 assert.ok(userDetailsDrawer.includes('enabled:') && userDetailsDrawer.includes('tabIndex === deviceTabIndex'), "Device detail query must remain lazy until its Drawer tab is selected");
 assert.ok(userDetailsDrawer.includes('tabIndex === auditTabIndex'), "Audit detail query must remain lazy until its Drawer tab is selected");
+assert.ok(bulkUserActions.includes("data-sticky-bulk-actions"), "Selected users must expose the sticky bulk-action surface");
+assert.ok(bulkUserActions.includes('position={hasSelection ? "fixed" : "relative"}'), "Bulk actions must become fixed only while a selection is active");
+assert.ok(bulkUserActions.includes('overflowX={{ base: "auto", md: "visible" }}'), "Sticky bulk actions must remain horizontally usable on narrow screens");
+assert.ok(usersTable.includes('pb={selectedUsers.length > 0 ? { base: "104px", md: "88px" } : 0}'), "Users table must reserve content space while the sticky bulk bar is active");
 for (const action of ["کپی لینک اشتراک", "ویرایش", "حذف کاربر", "تمدید با پلن", "بازنشانی مصرف", "ابطال لینک اشتراک"]) {
   assert.ok(usersTable.includes(action), `Users table action must remain available: ${action}`);
 }
