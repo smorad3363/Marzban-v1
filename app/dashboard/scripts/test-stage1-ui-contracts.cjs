@@ -6,6 +6,8 @@ const root = path.resolve(__dirname, "..");
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "utf8");
 
 const router = read("src/pages/Router.tsx");
+const dashboard = read("src/pages/Dashboard.tsx");
+const usersPage = read("src/pages/Users.tsx");
 const header = read("src/components/Header.tsx");
 const plans = read("src/pages/Plans.tsx");
 const deviceLimits = read("src/pages/DeviceLimits.tsx");
@@ -15,6 +17,18 @@ const adminForm = read("src/components/AdminFormDrawer.tsx");
 const userDialog = read("src/components/UserDialog.tsx");
 const createUserFromPlan = read("src/components/CreateUserFromPlan.tsx");
 const adminsPage = read("src/pages/admins/AdminsPage.tsx");
+
+// Dashboard and Users must remain distinct surfaces.
+assert.ok(router.includes('path: "/users/"'), "Users must have a dedicated route");
+assert.ok(header.includes('to="/users/"'), "Navigation must expose the dedicated Users route");
+assert.ok(dashboard.includes("مانده اعتبار"), "Admin dashboard must expose remaining credit");
+assert.ok(dashboard.includes("اعتبار مالی"), "Admin dashboard must expose account credit");
+assert.ok(!dashboard.includes("UserManagementControls"), "Dashboard must not embed user management controls");
+assert.ok(usersPage.includes("UserManagementControls"), "Users page must own user management controls");
+assert.ok(usersPage.includes("UsersTablePro"), "Users page must own the users table");
+for (const hiddenCommercialLabel of ["بر اساس حجم مصرفی", "بر اساس حجم ساخته‌شده", "طبق پلن · سقف اکانت"]) {
+  assert.ok(!dashboard.includes(hiddenCommercialLabel), `Admin self dashboard must hide commercial mode label: ${hiddenCommercialLabel}`);
+}
 
 // Plans must use the same active-account + can_manage_plans contract across page, route and navigation.
 assert.ok(router.includes("const PlanManagerOnly"), "Plans route must use a dedicated permission guard");

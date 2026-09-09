@@ -494,7 +494,11 @@ def get_admins(
         and not admin_hierarchy.is_owner(db, actor)
         else None
     )
-    return crud.get_admins(db, offset, limit, username, scope_admin_id=scope_admin_id)
+    return crud.get_admins(
+        db, offset, limit, username,
+        scope_admin_id=scope_admin_id,
+        exclude_admin_id=actor.id if actor is not None else None,
+    )
 
 
 @router.get(
@@ -529,6 +533,7 @@ def get_managed_admins(
         limit,
         username,
         scope_admin_id=scope_admin_id,
+        exclude_admin_id=actor.id if actor is not None else None,
         role=role,
         billing_mode=billing_mode.value if billing_mode else None,
         account_status=account_status,
