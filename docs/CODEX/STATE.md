@@ -1,5 +1,16 @@
 # V1 Continuation State
 
+## V1.1.2 Active Checkpoint
+
+- Release branch: `release/v1.1.2`
+- Pull request: `#32` into `main`
+- Target version: `v1.1.2`
+- Fixes committed: USER_CREDIT Admin-form crash, route render/service error separation, logout cache/history cleanup.
+- Regression coverage: Plan/manual creation modes and Admin deletion strategy.
+- Dashboard build is regenerated from source with Node.js 20 before merge.
+- NEXT EXACT TASK: remove the temporary artifact-builder workflow after the final v1.1.2 build commit, then require clean PR CI before merge/tag publication.
+
+
 ## Baseline
 
 - Baseline tag: `baseline-v1-source`
