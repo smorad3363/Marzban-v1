@@ -16,8 +16,10 @@ from app.db.models import (
     MarzhelpAdminInboundPermission,
     MarzhelpAdminSettings,
     SystemOwner,
+    User,
 )
 from app.models.admin_hierarchy import AccessGroupInput
+from app.models.user import UserStatus
 from app.utils import access_groups, admin_hierarchy
 
 
@@ -249,3 +251,25 @@ def test_active_admin_with_unrestricted_network_scope_is_allowed(db):
     _grant(session, group, target.id)
     session.commit()
     assert session.get(AccessGroupAdminAccess, (group.id, target.id)) is not None
+
+
+def test_revoking_admin_permission_preserves_existing_user_binding(db):
+    session, _, target, group = db
+    access_groups._replace_admin_access(session, group, _values(group, [target.id]))
+    session.flush()
+    user = User(
+        username="existing-binding",
+        admin_id=target.id,
+        access_group_id=group.id,
+        status=UserStatus.active,
+    )
+    session.add(user)
+    session.commit()
+
+    access_groups._replace_admin_access(session, group, _values(group, []))
+    session.commit()
+
+    assert user.access_group_id == group.id
+    with pytest.raises(admin_hierarchy.HierarchyError) as raised:
+        access_groups._require_group_access(session, group, target.id)
+    assert raised.value.code == "access_group_forbidden"

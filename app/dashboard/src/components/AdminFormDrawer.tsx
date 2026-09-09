@@ -12,7 +12,7 @@ import { useMutation, useQuery, useQueryClient } from "react-query";
 import { fetch } from "service/http";
 import {
   AccountSummary, AdminCapabilities, AdminPolicy, ManagedAdmin, ManagedAdminList, ManagedAdminPayload,
-  SubscriptionMode,
+  PlanCategory, SubscriptionMode,
 } from "types/Admin";
 import { localizedApiError } from "utils/apiError";
 type BillingMode = AdminPolicy["billing_mode"];
@@ -103,6 +103,10 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
     "account-summary", () => fetch("/account/summary"),
     { enabled: isOpen, staleTime: 15000 }
   );
+  const categoriesQuery = useQuery<PlanCategory[], Error>(
+    "plan-categories", () => fetch("/plan-categories"),
+    { enabled: isOpen, staleTime: 15000 }
+  );
   useEffect(() => {
     if (admin) {
       setForm({
@@ -114,7 +118,7 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
           prevent_user_creation: false,
           prevent_revoke_subscription: false,
         },
-        plan_category_ids: [], plan_prices: undefined, initial_money_credit_toman: 0,
+        plan_category_ids: admin.plan_category_ids ?? [], plan_prices: admin.plan_prices, initial_money_credit_toman: 0,
         user_creation_mode: admin.user_creation_mode,
         can_manage_plans: admin.can_manage_plans,
         can_create_admins: admin.can_create_admins,
@@ -214,6 +218,7 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
     if (form.phone && !/^09\d{9}$/.test(form.phone)) return showWarning("شماره تلفن باید با فرمت 09xxxxxxxxx باشد");
     if (!isEditing && !billingMode) return showWarning("نوع حساب فرزند را انتخاب کنید");
     if (!allowedCreationModes.includes(normalizedCreationMode)) return showWarning("روش ساخت کاربر با دسترسی والد سازگار نیست");
+    if (normalizedCreationMode !== "FORM_ONLY" && !form.plan_category_ids.length) return showWarning("حداقل یک دسته‌بندی پلن برای این روش ساخت کاربر انتخاب کنید");
     if (mode === "USED_TRAFFIC" && form.policy.used_traffic_price_per_gib_toman === null) return showWarning("قیمت خرید هر گیگ را وارد کنید");
     if (!isEditing && form.initial_money_credit_toman < 0) return showWarning("اعتبار اولیه نامعتبر است");
     if (!form.policy.all_inbounds && !form.policy.allowed_inbounds.length) return showWarning(t("admins.selectInboundRequired"));
@@ -243,6 +248,12 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
     mutation.mutate(payload);
   };
 
+  const togglePlanCategory = (categoryId: number, checked: boolean) => setField(
+    "plan_category_ids",
+    checked
+      ? [...new Set([...form.plan_category_ids, categoryId])].sort((a, b) => a - b)
+      : form.plan_category_ids.filter((value) => value !== categoryId)
+  );
   const toggleInbound = (tag: string, checked: boolean) => setPolicy("allowed_inbounds", (checked
     ? [...new Set([...form.policy.allowed_inbounds, tag])]
     : form.policy.allowed_inbounds.filter((value) => value !== tag)).sort());
@@ -343,6 +354,27 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
                   </SimpleGrid>
                   {mode === "USER_CREDIT" && <Text mt={1} color="var(--panel-text-muted)" fontSize="xs">حساب «سقف اکانت» طبق قرارداد Backend همیشه فقط با پلن کار می‌کند.</Text>}
                 </Box>
+
+                {normalizedCreationMode !== "FORM_ONLY" && (
+                  <Box mt={4} pt={4} borderTopWidth="1px" borderColor="var(--panel-border)">
+                    <Text fontSize="sm" fontWeight="800">دسترسی پلن</Text>
+                    <Text mt={1} color="var(--panel-text-muted)" fontSize="xs">دسته‌بندی‌هایی را انتخاب کنید که پلن‌هایشان برای این ادمین در ساخت کاربر قابل مشاهده باشد.</Text>
+                    {categoriesQuery.isLoading ? <Skeleton mt={2} h="52px" borderRadius="10px" /> : categoriesQuery.isError ? (
+                      <Alert mt={2} status="error" borderRadius="10px"><AlertIcon />دسته‌بندی‌های پلن بارگذاری نشد.</Alert>
+                    ) : (
+                      <SimpleGrid mt={2} columns={{ base: 1, md: 2 }} gap={2}>
+                        {(categoriesQuery.data || []).map((category) => (
+                          <Checkbox key={category.id} isChecked={form.plan_category_ids.includes(category.id)} onChange={(e) => togglePlanCategory(category.id, e.target.checked)}>
+                            {category.name} · {category.plan_count} پلن
+                          </Checkbox>
+                        ))}
+                      </SimpleGrid>
+                    )}
+                    {!categoriesQuery.isLoading && !categoriesQuery.isError && (categoriesQuery.data || []).length === 0 && (
+                      <Alert mt={2} status="warning" borderRadius="10px"><AlertIcon />ابتدا در بخش پلن‌ها یک دسته‌بندی و پلن فعال بسازید.</Alert>
+                    )}
+                  </Box>
+                )}
 
                 <SimpleGrid mt={4} pt={4} borderTopWidth="1px" borderColor="var(--panel-border)" columns={{ base: 1, lg: 2 }} gap={3}>
                   {mode !== "USED_TRAFFIC" && <HStack justify="space-between" p={3} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="10px"><Box><Text fontSize="sm" fontWeight="700">اجازه مدیریت پلن</Text><Text color="var(--panel-text-muted)" fontSize="xs">ساخت و ویرایش پلن با مجوز والد.</Text></Box><Switch isChecked={form.can_manage_plans} isDisabled={!capabilitiesQuery.data?.can_delegate_plan_management} onChange={(e) => setField("can_manage_plans", e.target.checked)} /></HStack>}

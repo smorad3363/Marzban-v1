@@ -368,6 +368,7 @@ def remove_admin(
     if settings and (
         int(settings.delegated_traffic or 0) > 0
         or int(settings.total_traffic or 0) > 0
+        or int(settings.money_balance_toman or 0) != 0
         or admin_hierarchy.own_credit_spend(db, settings) > 0
     ):
         raise HTTPException(
@@ -377,50 +378,8 @@ def remove_admin(
                 "message_fa": "اعتبار یا تعهد مالی این ادمین هنوز تسویه نشده است.",
             },
         )
-    historical_rows = sum(
-        query.count()
-        for query in (
-            db.query(AdminCreditTransfer).filter(
-                (AdminCreditTransfer.from_admin_id == dbadmin.id)
-                | (AdminCreditTransfer.to_admin_id == dbadmin.id)
-                | (AdminCreditTransfer.actor_admin_id == dbadmin.id)
-            ),
-            db.query(AdminSuspensionEvent).filter(
-                (AdminSuspensionEvent.admin_id == dbadmin.id)
-                | (AdminSuspensionEvent.actor_admin_id == dbadmin.id)
-                | (AdminSuspensionEvent.resolved_by_admin_id == dbadmin.id)
-            ),
-            db.query(AdminSuspensionAdmin).filter(AdminSuspensionAdmin.admin_id == dbadmin.id),
-            db.query(AdminReferralAttribution).filter(
-                (AdminReferralAttribution.referred_admin_id == dbadmin.id)
-                | (AdminReferralAttribution.referrer_admin_id == dbadmin.id)
-                | (AdminReferralAttribution.created_by_admin_id == dbadmin.id)
-                | (AdminReferralAttribution.updated_by_admin_id == dbadmin.id)
-            ),
-            db.query(AdminReferralEvent).filter(
-                (AdminReferralEvent.actor_admin_id == dbadmin.id)
-                | (AdminReferralEvent.referred_admin_id == dbadmin.id)
-                | (AdminReferralEvent.previous_referrer_admin_id == dbadmin.id)
-                | (AdminReferralEvent.new_referrer_admin_id == dbadmin.id)
-            ),
-            db.query(AdminBulkJob).filter(
-                (AdminBulkJob.actor_admin_id == dbadmin.id)
-                | (AdminBulkJob.target_admin_id == dbadmin.id)
-            ),
-            db.query(AdminUserPlan).filter(AdminUserPlan.owner_admin_id == dbadmin.id),
-            db.query(AdminUserPlanVersion).filter(AdminUserPlanVersion.created_by_admin_id == dbadmin.id),
-            db.query(UserPlanAssignment).filter(UserPlanAssignment.actor_admin_id == dbadmin.id),
-        )
-    )
-    if historical_rows:
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "code": "admin_delete_immutable_history",
-                "message_fa": "این ادمین سابقه حسابداری یا Audit غیرقابل‌حذف دارد؛ برای حفظ تاریخچه، حساب را تعلیق یا غیرفعال کنید.",
-            },
-        )
-
+    # Immutable accounting/Audit rows intentionally keep their Admin foreign keys.
+    # crud.remove_admin retires the account instead of deleting that identity row.
     target_id = dbadmin.id
     target_name = dbadmin.username
     previous_value = admin_audit_state(dbadmin)
@@ -811,6 +770,12 @@ def create_managed_admin(
                 child=dbadmin,
                 child_role=new_admin.role or admin_hierarchy.ADMIN,
                 commit=False,
+            )
+            admin_plans.replace_admin_categories(
+                db,
+                actor=actor,
+                target=dbadmin,
+                category_ids=new_admin.plan_category_ids or [],
             )
             if new_admin.plan_prices:
                 money_billing.replace_child_plan_prices(
@@ -1209,6 +1174,20 @@ def modify_managed_admin(
             int(settings.used_traffic or 0),
             marzhelp_policy.allocated_credit_baseline(db, dbadmin.id),
         )
+    if modified_admin.plan_category_ids is not None:
+        try:
+            admin_plans.replace_admin_categories(
+                db,
+                actor=actor,
+                target=dbadmin,
+                category_ids=modified_admin.plan_category_ids,
+            )
+        except admin_hierarchy.HierarchyError as exc:
+            db.rollback()
+            raise HTTPException(
+                status_code=400,
+                detail={"code": exc.code, "message": str(exc)},
+            )
     if modified_admin.plan_prices is not None:
         try:
             money_billing.replace_child_plan_prices(

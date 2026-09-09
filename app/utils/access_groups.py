@@ -95,24 +95,9 @@ def _replace_admin_access(
 ) -> None:
     allowed = _validate_allowed_admin_ids(db, values)
     explicit_policy = "allowed_admin_ids" in values.model_fields_set
-    if explicit_policy:
-        disallowed_query = db.query(User.admin_id).filter(
-            User.access_group_id == group.id,
-            User.admin_id.is_not(None),
-            User.admin_id != group.owner_admin_id,
-        )
-        if allowed:
-            disallowed_query = disallowed_query.filter(~User.admin_id.in_(allowed))
-        disallowed_user_admins = {
-            row[0]
-            for row in disallowed_query.distinct().all()
-        }
-        if disallowed_user_admins:
-            raise admin_hierarchy.HierarchyError(
-                "access_group_permission_in_use",
-                "Cannot remove Access Group permission while users owned by these administrators still reference it: "
-                + ", ".join(str(value) for value in sorted(disallowed_user_admins)),
-            )
+    # Permission policy controls future Access Group selection. Existing users
+    # keep their already-authorized binding so Owner can revoke an Admin without
+    # breaking active subscriptions or blocking later network maintenance.
     db.query(AccessGroupAdminAccess).filter(
         AccessGroupAdminAccess.access_group_id == group.id
     ).delete(synchronize_session=False)
@@ -390,8 +375,13 @@ def update(db: Session, actor: Admin, group: AccessGroup, values: AccessGroupInp
         .order_by(User.id)
         .all()
     )
+    inbounds, _, _ = _validated_network_scope(db, group.id)
+    from app.utils.admin_plans import _apply_network_to_user
+
     for user in users:
-        apply_to_user(db, user, group.id)
+        # This is maintenance of an existing binding, not a new selection.
+        _apply_network_to_user(db, user, inbounds)
+        user.access_group_id = group.id
     db.commit()
     return [user.id for user in users]
 
@@ -416,7 +406,7 @@ def host_scope(db: Session, user: User) -> dict[str, set[int]] | None:
     if getattr(user, "access_group_id", None) is None:
         return None
     try:
-        _, hosts, _ = validated_scope(db, user.access_group_id, user.admin_id)
+        _, hosts, _ = _validated_network_scope(db, user.access_group_id)
     except admin_hierarchy.HierarchyError:
         return {}
     return hosts
@@ -500,18 +490,13 @@ def host_scopes(
             if settings is not None and settings.all_inbounds
             else set(settings.allowed_inbounds or []) if settings is not None else set()
         )
-        permission_valid = (
-            group_id not in restricted_groups
-            or user.admin_id == group_owners.get(group_id)
-            or user.admin_id in allowed_admins_by_group.get(group_id, set())
-        )
+        # Batched Host scope resolution serves already-bound users. Permission
+        # revocation blocks future selection but must not invalidate these bindings.
         valid = (
-            permission_valid
-            and bool(inbounds)
+            bool(inbounds)
             and set(hosts) == inbounds
             and all(hosts.get(tag) for tag in inbounds)
             and inbounds <= configured
-            and inbounds <= allowed
             and all(
                 active_hosts.get(host_id) == tag
                 for tag, ids in hosts.items()
@@ -530,7 +515,7 @@ def user_node_scope(user: User) -> set[int] | None:
     if db is None:
         return set()
     try:
-        _, _, nodes = validated_scope(db, user.access_group_id, user.admin_id)
+        _, _, nodes = _validated_network_scope(db, user.access_group_id)
     except admin_hierarchy.HierarchyError:
         return set()
     return nodes or None
