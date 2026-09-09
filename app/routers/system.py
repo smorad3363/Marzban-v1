@@ -1,4 +1,4 @@
-from typing import Dict, List, Union
+from typing import Dict, List, Literal, Union
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 
@@ -20,6 +20,7 @@ router = APIRouter(tags=["System"], prefix="/api", responses={401: responses._40
 @router.get("/dashboard/overview", response_model=DashboardOverview)
 def get_dashboard_overview(
     timezone_offset_minutes: int = 0,
+    traffic_range: Literal["24h", "7d", "30d"] = "24h",
     db: Session = Depends(get_db),
     admin: Admin = Depends(Admin.get_current),
 ):
@@ -31,6 +32,7 @@ def get_dashboard_overview(
         db,
         dbadmin or admin,
         timezone_offset_minutes=timezone_offset_minutes,
+        traffic_range=traffic_range,
     )
 
 

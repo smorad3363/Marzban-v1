@@ -98,9 +98,11 @@ jobs:
         working-directory: app/dashboard
         run: npm ci
 
-      - name: Verify canonical dashboard UX contract
+      - name: Verify canonical dashboard UX contracts
         working-directory: app/dashboard
-        run: node scripts/test-stage1-ui-contracts.cjs
+        run: |
+          node scripts/test-stage1-ui-contracts.cjs
+          node scripts/test-autofill-contract.cjs
 
       - name: Build dashboard from source
         working-directory: app/dashboard

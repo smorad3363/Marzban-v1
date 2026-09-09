@@ -7,6 +7,7 @@ const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), "u
 
 const router = read("src/pages/Router.tsx");
 const dashboard = read("src/pages/Dashboard.tsx");
+const dashboardOverview = read("src/components/DashboardOverview.tsx");
 const usersPage = read("src/pages/Users.tsx");
 const header = read("src/components/Header.tsx");
 const plans = read("src/pages/Plans.tsx");
@@ -22,13 +23,16 @@ const nodesWorkspace = read("src/components/NodesManagementWorkspace.tsx");
 // Dashboard and Users must remain distinct surfaces.
 assert.ok(router.includes('path: "/users/"'), "Users must have a dedicated route");
 assert.ok(header.includes('to="/users/"'), "Navigation must expose the dedicated Users route");
-assert.ok(dashboard.includes("مانده اعتبار"), "Admin dashboard must expose remaining credit");
-assert.ok(dashboard.includes("اعتبار مالی"), "Admin dashboard must expose account credit");
-assert.ok(!dashboard.includes("UserManagementControls"), "Dashboard must not embed user management controls");
+assert.ok(dashboard.includes("DashboardOverview"), "Dashboard wrapper must render the role-based overview");
+assert.ok(dashboardOverview.includes("مانده اعتبار"), "Admin dashboard must expose remaining credit");
+assert.ok(dashboardOverview.includes("اعتبار"), "Admin dashboard must expose account credit");
+assert.ok(dashboardOverview.includes("داشبورد مدیریتی"), "Owner dashboard must expose its dedicated management heading");
+assert.ok(dashboardOverview.includes("داشبورد کاربران"), "Admin dashboard must expose its dedicated scoped heading");
+assert.ok(!dashboardOverview.includes("UserManagementControls"), "Dashboard must not embed user management controls");
 assert.ok(usersPage.includes("UserManagementControls"), "Users page must own user management controls");
 assert.ok(usersPage.includes("UsersTablePro"), "Users page must own the users table");
 for (const hiddenCommercialLabel of ["بر اساس حجم مصرفی", "بر اساس حجم ساخته‌شده", "طبق پلن · سقف اکانت"]) {
-  assert.ok(!dashboard.includes(hiddenCommercialLabel), `Admin self dashboard must hide commercial mode label: ${hiddenCommercialLabel}`);
+  assert.ok(!dashboardOverview.includes(hiddenCommercialLabel), `Admin self dashboard must hide commercial mode label: ${hiddenCommercialLabel}`);
 }
 
 // Plans must use the same active-account + can_manage_plans contract across page, route and navigation.
