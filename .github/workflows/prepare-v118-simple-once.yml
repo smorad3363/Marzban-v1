@@ -22,7 +22,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Apply reviewed release preparation
-        run: python scripts/prepare_v118_release_candidate.py
+        run: python scripts/run_v118_product_prep.py
       - name: Compile changed Python
         run: python -m compileall -q app/routers/system.py app/utils/dashboard_metrics.py app/models/system.py tests/test_dashboard_owner_admin_v2.py
       - uses: actions/setup-node@v4
