@@ -1,0 +1,55 @@
+name: Temporary v1.1.5 final dashboard rebuild
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/v115-final-dashboard-rebuild.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  rebuild-v115-dashboard:
+    runs-on: ubuntu-24.04
+    env:
+      EXPECTED_HEAD: 1394de9e82081a9f34ed0f7625197c764fe96087
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: release/v1.1.5
+          fetch-depth: 0
+      - name: Verify immutable working head
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: app/dashboard/package-lock.json
+      - name: Rebuild final dashboard artifacts
+        working-directory: app/dashboard
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          npm ci
+          node scripts/test-stage1-ui-contracts.cjs
+          npm run build
+      - name: Commit exact generated build
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git add -A app/dashboard/build
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo "Dashboard build already matches source"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: rebuild v1.1.5 dashboard"
+          git fetch origin release/v1.1.5
+          test "$(git rev-parse origin/release/v1.1.5)" = "$EXPECTED_HEAD"
+          git push origin HEAD:release/v1.1.5
