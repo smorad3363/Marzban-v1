@@ -8,6 +8,7 @@ on:
 permissions:
   contents: write
 
+# Rerun marker: XRay core is stubbed as a stopped core in the route regression.
 jobs:
   patch-test-build:
     runs-on: ubuntu-24.04
