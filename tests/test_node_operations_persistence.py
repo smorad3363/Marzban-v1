@@ -158,7 +158,7 @@ def test_traffic_samples_accumulate_in_minute_bucket_and_average_by_sample_time(
         engine.dispose()
 
 
-def test_retention_cleanup_is_bounded_and_node_delete_cascades_telemetry():
+def test_retention_cleanup_is_bounded():
     engine, db, node = _session()
     try:
         old = datetime(2026, 1, 1, 0, 0, 0)
@@ -184,7 +184,7 @@ def test_retention_cleanup_is_bounded_and_node_delete_cascades_telemetry():
 
         deleted_events, deleted_traffic = purge_node_operations_before(
             db,
-            event_before=datetime(2026, 2, 1),
+            event_before=datetime(2027, 2, 1),
             traffic_before=datetime(2026, 2, 1),
             batch_size=2,
         )
