@@ -50,7 +50,7 @@ jobs:
           grep -Fx 'CLI_RELEASE_VERSION="v1.1.8"' scripts/marzban.sh
           grep -Fq 'ghcr.io/smorad3363/marzban-v1:v1.1.8' docker-compose.yml
           test -s docs/RELEASE_NOTES_v1.1.8.md
-          git add app .github/workflows/build.yml VERSION scripts/marzban.sh docker-compose.yml docs tests
+          git add app VERSION scripts/marzban.sh docker-compose.yml docs tests
           git diff --cached --check
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
