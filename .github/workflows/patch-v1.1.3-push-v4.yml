@@ -8,7 +8,7 @@ permissions:
   contents: write
 
 jobs:
-  patch-and-build:
+  access-group-security-followup:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-24.04
     steps:
@@ -17,119 +17,91 @@ jobs:
           ref: release/v1.1.3
           fetch-depth: 0
 
-      - name: Apply reviewed repair and migration
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Enforce Admin inbound ceiling for existing Access Group bindings
         shell: bash
         run: |
           set -Eeuo pipefail
           python - <<'PY'
           from pathlib import Path
-          import ast
 
-          source = Path('.github/workflows/patch-v1.1.3-branch.yml').read_text()
-          block = source.split("python - <<'PY'\n", 1)[1].split("\n          PY", 1)[0]
-          program = "\n".join(line[10:] if line.startswith("          ") else line for line in block.splitlines())
-          marker_a = "# New Alembic head for the Admin retirement marker."
-          marker_b = "# Lightweight source-contract gate for the exact v1.1.3 regressions."
-          prefix, rest = program.split(marker_a, 1)
-          _old_migration, suffix = rest.split(marker_b, 1)
-          exec(compile(prefix, 'v1.1.3-repair-prefix', 'exec'))
+          path = Path("app/utils/access_groups.py")
+          source = path.read_text()
 
-          versions = Path('app/db/migrations/versions')
+          helper_anchor = "\n\ndef validated_scope(\n"
+          helper = '''\n\ndef _require_admin_network_scope(\n    db: Session,\n    inbounds: set[str],\n    admin_id: int,\n) -> None:\n    \"\"\"Keep existing bindings inside the owning Admin's inbound ceiling.\"\"\"\n    settings = db.get(MarzhelpAdminSettings, admin_id)\n    if settings is None:\n        raise admin_hierarchy.HierarchyError(\"policy_missing\", \"Administrator policy is missing\")\n    if not settings.all_inbounds:\n        forbidden = inbounds - set(settings.allowed_inbounds or [])\n        if forbidden:\n            raise admin_hierarchy.HierarchyError(\n                \"access_group_scope_forbidden\",\n                f\"Access Group exceeds Admin scope: {sorted(forbidden)}\",\n            )\n'''
+          if "def _require_admin_network_scope(" not in source:
+              if helper_anchor not in source:
+                  raise SystemExit("validated_scope helper anchor missing")
+              source = source.replace(helper_anchor, helper + helper_anchor, 1)
 
-          def assignment_value(tree, name):
-              for node in tree.body:
-                  if isinstance(node, ast.Assign):
-                      if any(isinstance(target, ast.Name) and target.id == name for target in node.targets):
-                          return ast.literal_eval(node.value)
-                  if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and node.target.id == name:
-                      return ast.literal_eval(node.value)
-              return None
+          old = '''    settings = db.get(MarzhelpAdminSettings, admin_id)\n    if settings is None:\n        raise admin_hierarchy.HierarchyError(\"policy_missing\", \"Administrator policy is missing\")\n    if not settings.all_inbounds:\n        forbidden = inbounds - set(settings.allowed_inbounds or [])\n        if forbidden:\n            raise admin_hierarchy.HierarchyError(\n                \"access_group_scope_forbidden\",\n                f\"Access Group exceeds Admin scope: {sorted(forbidden)}\",\n            )\n    return inbounds, hosts, nodes\n'''
+          new = '''    _require_admin_network_scope(db, inbounds, admin_id)\n    return inbounds, hosts, nodes\n'''
+          if old not in source:
+              raise SystemExit("validated_scope ceiling block missing")
+          source = source.replace(old, new, 1)
 
-          revisions = set()
-          referenced = set()
-          for item in versions.glob('*.py'):
-              tree = ast.parse(item.read_text())
-              revision = assignment_value(tree, 'revision')
-              down = assignment_value(tree, 'down_revision')
-              if isinstance(revision, str):
-                  revisions.add(revision)
-              if isinstance(down, str):
-                  referenced.add(down)
-              elif isinstance(down, (tuple, list)):
-                  referenced.update(value for value in down if isinstance(value, str))
-          heads = sorted(revisions - referenced)
-          if len(heads) != 1:
-              raise SystemExit(f'Expected one Alembic head, found {heads}')
-          head = heads[0]
-          lines = [
-              '"""add Admin retirement marker',
-              '',
-              'Revision ID: e7b1c4d9a213',
-              f'Revises: {head}',
-              '"""',
-              'from alembic import op',
-              'import sqlalchemy as sa',
-              '',
-              'revision = "e7b1c4d9a213"',
-              f'down_revision = "{head}"',
-              'branch_labels = None',
-              'depends_on = None',
-              '',
-              '',
-              'def upgrade():',
-              '    op.add_column("admins", sa.Column("deleted_at", sa.DateTime(), nullable=True))',
-              '    op.create_index("ix_admins_deleted_at", "admins", ["deleted_at"], unique=False)',
-              '',
-              '',
-              'def downgrade():',
-              '    op.drop_index("ix_admins_deleted_at", table_name="admins")',
-              '    op.drop_column("admins", "deleted_at")',
-              '',
-          ]
-          (versions / 'e7b1c4d9a213_add_admin_deleted_at.py').write_text('\n'.join(lines))
-          exec(compile(marker_b + suffix, 'v1.1.3-repair-suffix', 'exec'))
+          old = '''    for user in users:\n        # This is maintenance of an existing binding, not a new selection.\n        _apply_network_to_user(db, user, inbounds)\n        user.access_group_id = group.id\n'''
+          new = '''    for user in users:\n        # This is maintenance of an existing binding, not a new selection.\n        # Permission revocation is intentionally ignored, but the owning Admin's\n        # inbound ceiling remains fail-closed.\n        if user.admin_id is None:\n            raise admin_hierarchy.HierarchyError(\n                \"access_group_owner_missing\", \"Access Group users require an administrator owner\"\n            )\n        _require_admin_network_scope(db, inbounds, user.admin_id)\n        _apply_network_to_user(db, user, inbounds)\n        user.access_group_id = group.id\n'''
+          if old not in source:
+              raise SystemExit("update maintenance loop anchor missing")
+          source = source.replace(old, new, 1)
+
+          old = '''    try:\n        _, hosts, _ = _validated_network_scope(db, user.access_group_id)\n    except admin_hierarchy.HierarchyError:\n        return {}\n    return hosts\n'''
+          new = '''    try:\n        inbounds, hosts, _ = _validated_network_scope(db, user.access_group_id)\n        if user.admin_id is None:\n            return {}\n        _require_admin_network_scope(db, inbounds, user.admin_id)\n    except admin_hierarchy.HierarchyError:\n        return {}\n    return hosts\n'''
+          if old not in source:
+              raise SystemExit("host_scope anchor missing")
+          source = source.replace(old, new, 1)
+
+          old = '''            and inbounds <= configured\n            and all(\n'''
+          new = '''            and inbounds <= configured\n            and inbounds <= allowed\n            and all(\n'''
+          if old not in source:
+              raise SystemExit("host_scopes configured ceiling anchor missing")
+          source = source.replace(old, new, 1)
+
+          old = '''        for user in users:\n            # Host maintenance resyncs an existing binding; it is not a new\n            # Access Group selection, so Admin authorization is intentionally\n            # not re-evaluated here. Network validity is still fail-closed.\n            _apply_network_to_user(db, user, inbounds)\n            user.access_group_id = group_id\n            synced.append(user.id)\n'''
+          new = '''        for user in users:\n            # Host maintenance resyncs an existing binding; it is not a new\n            # Access Group selection, so permission is intentionally not\n            # re-evaluated. The owning Admin's inbound ceiling still applies.\n            if user.admin_id is None:\n                raise admin_hierarchy.HierarchyError(\n                    \"access_group_owner_missing\", \"Access Group users require an administrator owner\"\n                )\n            _require_admin_network_scope(db, inbounds, user.admin_id)\n            _apply_network_to_user(db, user, inbounds)\n            user.access_group_id = group_id\n            synced.append(user.id)\n'''
+          if old not in source:
+              raise SystemExit("host propagation maintenance loop anchor missing")
+          source = source.replace(old, new, 1)
+          path.write_text(source)
+
+          behavior = Path("tests/test_access_group_admin_assignment_validation.py")
+          test_source = behavior.read_text()
+          if "test_revoked_binding_still_obeys_admin_network_ceiling" not in test_source:
+              test_source += '''\n\ndef test_revoked_binding_still_obeys_admin_network_ceiling(db):\n    session, _, target, group = db\n    access_groups._replace_admin_access(session, group, _values(group, [target.id]))\n    user = User(\n        username=\"existing-binding-ceiling\",\n        admin_id=target.id,\n        access_group_id=group.id,\n        status=UserStatus.active,\n    )\n    session.add(user)\n    session.commit()\n\n    access_groups._replace_admin_access(session, group, _values(group, []))\n    settings = session.get(MarzhelpAdminSettings, target.id)\n    settings.all_inbounds = False\n    session.commit()\n\n    assert user.access_group_id == group.id\n    with pytest.raises(admin_hierarchy.HierarchyError) as raised:\n        access_groups._require_admin_network_scope(session, {INBOUND}, target.id)\n    assert raised.value.code == \"access_group_scope_forbidden\"\n'''
+              behavior.write_text(test_source)
+
+          contract = Path("tests/test_access_group_admin_permissions_contract.py")
+          contract_source = contract.read_text()
+          if "test_existing_binding_maintenance_keeps_admin_inbound_ceiling" not in contract_source:
+              contract_source += '''\n\ndef test_existing_binding_maintenance_keeps_admin_inbound_ceiling():\n    source = Path(\"app/utils/access_groups.py\").read_text(encoding=\"utf-8\")\n    assert source.count(\"_require_admin_network_scope(db, inbounds, user.admin_id)\") >= 3\n    assert \"_require_admin_network_scope(db, inbounds, admin_id)\" in source\n    assert \"and inbounds <= allowed\" in source\n'''
+              contract.write_text(contract_source)
           PY
           python -m compileall -q app
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: npm
-          cache-dependency-path: app/dashboard/package-lock.json
-
-      - name: Regenerate committed dashboard build
-        working-directory: app/dashboard
+      - name: Run focused Access Group backend regressions
         shell: bash
         run: |
           set -Eeuo pipefail
-          python - <<'PY'
-          from pathlib import Path
-          path = Path('scripts/test-v1.1.3-regressions.cjs')
-          text = path.read_text().replace('\\n', '\n')
-          old = 'const read = (path) => fs.readFileSync(path, "utf8");'
-          new = '''const nodePath = require("path");
-          const read = (file) => fs.readFileSync(
-            file.startsWith("../../")
-              ? nodePath.resolve(__dirname, file)
-              : nodePath.resolve(__dirname, "..", file),
-            "utf8"
-          );'''
-          if old not in text:
-              raise SystemExit('v1.1.3 regression read helper anchor missing')
-          path.write_text(text.replace(old, new, 1))
-          PY
-          npm ci
-          npm run test:v1.1.3
-          VITE_BASE_API=/api/ npm run build
-          cp build/index.html build/404.html
+          python -m pip install -r requirements.txt pytest httpx
+          python -m pytest -q --tb=short --disable-warnings \
+            tests/test_access_group_admin_assignment_validation.py \
+            tests/test_access_group_admin_permissions_contract.py
 
-      - name: Commit repaired source and build
+      - name: Commit security follow-up
         shell: bash
         run: |
           set -Eeuo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app tests
+          git add app/utils/access_groups.py \
+            tests/test_access_group_admin_assignment_validation.py \
+            tests/test_access_group_admin_permissions_contract.py
           git diff --cached --check
-          git commit -m "fix: repair admin deletion and plan access regressions"
+          git commit -m "fix: preserve Access Group inbound ceilings after permission revoke"
           git push origin HEAD:release/v1.1.3
