@@ -1140,7 +1140,10 @@ def get_admin(db: Session, username: str) -> Admin:
     Returns:
         Admin: The admin object.
     """
-    return db.query(Admin).filter(Admin.username == username).first()
+    return db.query(Admin).filter(
+        Admin.username == username,
+        Admin.deleted_at.is_(None),
+    ).first()
 
 
 def create_admin(db: Session, admin: AdminCreate, commit: bool = True) -> Admin:
@@ -1426,6 +1429,20 @@ def remove_admin(
     ).delete()
     db.query(AdminApiToken).filter(AdminApiToken.admin_id == dbadmin.id).delete()
     db.query(AdminUserPlanAccess).filter(AdminUserPlanAccess.admin_id == dbadmin.id).delete()
+    # Tombstoning does not invoke database ON DELETE cascades, so remove mutable
+    # access/delegation rows explicitly while retaining immutable history rows.
+    from app.db.access_group_models import AccessGroupAdminAccess
+    from app.db.models import AdminPlanCategoryAccess, AdminUserPlanPrice
+
+    db.query(AccessGroupAdminAccess).filter(
+        AccessGroupAdminAccess.admin_id == dbadmin.id
+    ).delete(synchronize_session=False)
+    db.query(AdminPlanCategoryAccess).filter(
+        AdminPlanCategoryAccess.admin_id == dbadmin.id
+    ).delete(synchronize_session=False)
+    db.query(AdminUserPlanPrice).filter(
+        AdminUserPlanPrice.admin_id == dbadmin.id
+    ).delete(synchronize_session=False)
     db.query(AdminHierarchy).filter(
         (AdminHierarchy.ancestor_id == dbadmin.id)
         | (AdminHierarchy.descendant_id == dbadmin.id)
@@ -1433,7 +1450,15 @@ def remove_admin(
     db.query(MarzhelpAdminSettings).filter(
         MarzhelpAdminSettings.admin_id == dbadmin.id
     ).delete()
-    db.delete(dbadmin)
+    dbadmin.parent_admin_id = None
+    dbadmin.external_api_enabled = False
+    dbadmin.is_sudo = False
+    dbadmin.hashed_password = ""
+    dbadmin.telegram_id = None
+    dbadmin.phone = None
+    dbadmin.discord_webhook = None
+    dbadmin.deleted_at = datetime.utcnow()
+    db.add(dbadmin)
     db.commit()
     return len(owned_users)
 
@@ -1449,7 +1474,10 @@ def get_admin_by_id(db: Session, id: int) -> Admin:
     Returns:
         Admin: The admin object.
     """
-    return db.query(Admin).filter(Admin.id == id).first()
+    return db.query(Admin).filter(
+        Admin.id == id,
+        Admin.deleted_at.is_(None),
+    ).first()
 
 
 def get_admin_by_telegram_id(db: Session, telegram_id: int) -> Admin:
@@ -1483,7 +1511,9 @@ def get_admins(db: Session,
     Returns:
         List[Admin]: A list of admin objects.
     """
-    query = db.query(Admin).order_by(Admin.created_at.desc(), Admin.id.desc())
+    query = db.query(Admin).filter(Admin.deleted_at.is_(None)).order_by(
+        Admin.created_at.desc(), Admin.id.desc()
+    )
     if scope_admin_id is not None:
         query = query.filter(
             exists().where(
@@ -1512,7 +1542,7 @@ def get_admins_with_count(
     billing_mode: Optional[str] = None,
     account_status: Optional[str] = None,
 ) -> Tuple[List[Admin], int]:
-    query = db.query(Admin)
+    query = db.query(Admin).filter(Admin.deleted_at.is_(None))
     if scope_admin_id is not None:
         query = query.filter(
             exists().where(

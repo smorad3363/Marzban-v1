@@ -123,8 +123,8 @@ export const Plans: FC = () => {
           renewal_volume_strategy: "replace",
           renewal_time_strategy: "extend_max",
         },
-        allowed_admin_ids: [],
-        include_subtree: false,
+        allowed_admin_ids: editing ? editing.allowed_admin_ids : [],
+        include_subtree: editing ? editing.include_subtree : false,
       };
       return fetch(editing ? `/user-plans/${editing.id}` : "/user-plans", { method: editing ? "PUT" : "POST", body: payload });
     },

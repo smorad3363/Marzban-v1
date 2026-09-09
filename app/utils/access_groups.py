@@ -95,24 +95,9 @@ def _replace_admin_access(
 ) -> None:
     allowed = _validate_allowed_admin_ids(db, values)
     explicit_policy = "allowed_admin_ids" in values.model_fields_set
-    if explicit_policy:
-        disallowed_query = db.query(User.admin_id).filter(
-            User.access_group_id == group.id,
-            User.admin_id.is_not(None),
-            User.admin_id != group.owner_admin_id,
-        )
-        if allowed:
-            disallowed_query = disallowed_query.filter(~User.admin_id.in_(allowed))
-        disallowed_user_admins = {
-            row[0]
-            for row in disallowed_query.distinct().all()
-        }
-        if disallowed_user_admins:
-            raise admin_hierarchy.HierarchyError(
-                "access_group_permission_in_use",
-                "Cannot remove Access Group permission while users owned by these administrators still reference it: "
-                + ", ".join(str(value) for value in sorted(disallowed_user_admins)),
-            )
+    # Permission policy controls future Access Group selection. Existing users
+    # keep their already-authorized binding so Owner can revoke an Admin without
+    # breaking active subscriptions or blocking later network maintenance.
     db.query(AccessGroupAdminAccess).filter(
         AccessGroupAdminAccess.access_group_id == group.id
     ).delete(synchronize_session=False)
@@ -188,6 +173,24 @@ def _validated_network_scope(
     return inbounds, hosts, nodes
 
 
+def _require_admin_network_scope(
+    db: Session,
+    inbounds: set[str],
+    admin_id: int,
+) -> None:
+    """Keep existing bindings inside the owning Admin's inbound ceiling."""
+    settings = db.get(MarzhelpAdminSettings, admin_id)
+    if settings is None:
+        raise admin_hierarchy.HierarchyError("policy_missing", "Administrator policy is missing")
+    if not settings.all_inbounds:
+        forbidden = inbounds - set(settings.allowed_inbounds or [])
+        if forbidden:
+            raise admin_hierarchy.HierarchyError(
+                "access_group_scope_forbidden",
+                f"Access Group exceeds Admin scope: {sorted(forbidden)}",
+            )
+
+
 def validated_scope(
     db: Session,
     group_id: int,
@@ -201,16 +204,7 @@ def validated_scope(
         )
     _require_group_access(db, group, admin_id)
     inbounds, hosts, nodes = _validated_network_scope(db, group_id)
-    settings = db.get(MarzhelpAdminSettings, admin_id)
-    if settings is None:
-        raise admin_hierarchy.HierarchyError("policy_missing", "Administrator policy is missing")
-    if not settings.all_inbounds:
-        forbidden = inbounds - set(settings.allowed_inbounds or [])
-        if forbidden:
-            raise admin_hierarchy.HierarchyError(
-                "access_group_scope_forbidden",
-                f"Access Group exceeds Admin scope: {sorted(forbidden)}",
-            )
+    _require_admin_network_scope(db, inbounds, admin_id)
     return inbounds, hosts, nodes
 
 def network_options(db: Session, actor: Admin) -> list[dict]:
@@ -390,8 +384,20 @@ def update(db: Session, actor: Admin, group: AccessGroup, values: AccessGroupInp
         .order_by(User.id)
         .all()
     )
+    inbounds, _, _ = _validated_network_scope(db, group.id)
+    from app.utils.admin_plans import _apply_network_to_user
+
     for user in users:
-        apply_to_user(db, user, group.id)
+        # This is maintenance of an existing binding, not a new selection.
+        # Permission revocation is intentionally ignored, but the owning Admin's
+        # inbound ceiling remains fail-closed.
+        if user.admin_id is None:
+            raise admin_hierarchy.HierarchyError(
+                "access_group_owner_missing", "Access Group users require an administrator owner"
+            )
+        _require_admin_network_scope(db, inbounds, user.admin_id)
+        _apply_network_to_user(db, user, inbounds)
+        user.access_group_id = group.id
     db.commit()
     return [user.id for user in users]
 
@@ -416,7 +422,10 @@ def host_scope(db: Session, user: User) -> dict[str, set[int]] | None:
     if getattr(user, "access_group_id", None) is None:
         return None
     try:
-        _, hosts, _ = validated_scope(db, user.access_group_id, user.admin_id)
+        inbounds, hosts, _ = _validated_network_scope(db, user.access_group_id)
+        if user.admin_id is None:
+            return {}
+        _require_admin_network_scope(db, inbounds, user.admin_id)
     except admin_hierarchy.HierarchyError:
         return {}
     return hosts
@@ -500,14 +509,10 @@ def host_scopes(
             if settings is not None and settings.all_inbounds
             else set(settings.allowed_inbounds or []) if settings is not None else set()
         )
-        permission_valid = (
-            group_id not in restricted_groups
-            or user.admin_id == group_owners.get(group_id)
-            or user.admin_id in allowed_admins_by_group.get(group_id, set())
-        )
+        # Batched Host scope resolution serves already-bound users. Permission
+        # revocation blocks future selection but must not invalidate these bindings.
         valid = (
-            permission_valid
-            and bool(inbounds)
+            bool(inbounds)
             and set(hosts) == inbounds
             and all(hosts.get(tag) for tag in inbounds)
             and inbounds <= configured
@@ -530,7 +535,7 @@ def user_node_scope(user: User) -> set[int] | None:
     if db is None:
         return set()
     try:
-        _, _, nodes = validated_scope(db, user.access_group_id, user.admin_id)
+        _, _, nodes = _validated_network_scope(db, user.access_group_id)
     except admin_hierarchy.HierarchyError:
         return set()
     return nodes or None
@@ -604,8 +609,13 @@ def propagate_host_changes(
 
         for user in users:
             # Host maintenance resyncs an existing binding; it is not a new
-            # Access Group selection, so Admin authorization is intentionally
-            # not re-evaluated here. Network validity is still fail-closed.
+            # Access Group selection, so permission is intentionally not
+            # re-evaluated. The owning Admin's inbound ceiling still applies.
+            if user.admin_id is None:
+                raise admin_hierarchy.HierarchyError(
+                    "access_group_owner_missing", "Access Group users require an administrator owner"
+                )
+            _require_admin_network_scope(db, inbounds, user.admin_id)
             _apply_network_to_user(db, user, inbounds)
             user.access_group_id = group_id
             synced.append(user.id)

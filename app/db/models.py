@@ -66,6 +66,7 @@ class Admin(Base):
     hashed_password = Column(String(128))
     users = relationship("User", back_populates="admin")
     created_at = Column(DateTime, default=datetime.utcnow)
+    deleted_at = Column(DateTime, nullable=True, index=True)
     is_sudo = Column(Boolean, default=False)
     password_reset_at = Column(DateTime, nullable=True)
     telegram_id = Column(BigInteger, nullable=True, default=None)

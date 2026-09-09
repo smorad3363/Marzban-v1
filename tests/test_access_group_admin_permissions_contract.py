@@ -37,3 +37,10 @@ def test_access_group_response_exposes_legacy_vs_restricted_policy_state():
     assert "گروه برای همه ادمین‌ها قابل استفاده می‌ماند" not in manager
     assert "دسترسی همه ادمین‌های واگذارشده بسته می‌شود" in manager
 
+
+
+def test_existing_binding_maintenance_keeps_admin_inbound_ceiling():
+    source = Path("app/utils/access_groups.py").read_text(encoding="utf-8")
+    assert source.count("_require_admin_network_scope(db, inbounds, user.admin_id)") >= 3
+    assert "_require_admin_network_scope(db, inbounds, admin_id)" in source
+    assert "and inbounds <= allowed" in source
