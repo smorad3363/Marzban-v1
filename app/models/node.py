@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import Enum
 from ipaddress import ip_network
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from pydantic import ConfigDict, BaseModel, Field, field_validator, model_validator
 
@@ -187,6 +187,77 @@ class NodesBandwidthResponse(BaseModel):
     total_bps: float = 0
     online_nodes: int = 0
     total_nodes: int = 0
+
+
+class NodeTrafficAverageResponse(BaseModel):
+    uplink_bytes: int = 0
+    downlink_bytes: int = 0
+    sample_seconds: float = 0
+    sample_count: int = 0
+    uplink_bps: float = 0
+    downlink_bps: float = 0
+    total_bps: float = 0
+
+
+class NodeOperationsSummaryResponse(BaseModel):
+    node_id: int
+    node_name: str
+    status: NodeStatus
+    operational_state: str
+    message: Optional[str] = None
+    xray_version: Optional[str] = None
+    last_status_change: Optional[datetime] = None
+    live: NodeBandwidthResponse
+    average_1h: NodeTrafficAverageResponse
+    average_24h: NodeTrafficAverageResponse
+
+
+class NodesOperationsResponse(BaseModel):
+    nodes: List[NodeOperationsSummaryResponse]
+
+
+class NodeTrafficPointResponse(BaseModel):
+    bucket_start: datetime
+    uplink_bps: float = 0
+    downlink_bps: float = 0
+    total_bps: float = 0
+    sample_seconds: float = 0
+    sample_count: int = 0
+
+
+class NodeTrafficHistoryResponse(BaseModel):
+    node_id: int
+    window_minutes: int
+    points: List[NodeTrafficPointResponse]
+
+
+class NodeEventResponse(BaseModel):
+    id: int
+    occurred_at: datetime
+    received_at: datetime
+    event_type: str
+    severity: str
+    reason_code: Optional[str] = None
+    trigger_reason: Optional[str] = None
+    root_cause: Optional[str] = None
+    source: str
+    message: Optional[str] = None
+    previous_state: Optional[str] = None
+    new_state: Optional[str] = None
+    reconnect_mode: Optional[str] = None
+    reconnect_attempt: Optional[int] = None
+    reconnect_result: Optional[str] = None
+    downtime_seconds: Optional[int] = None
+    runtime_version: Optional[str] = None
+    metadata: Any = None
+
+
+class NodeEventsResponse(BaseModel):
+    node_id: int
+    events: List[NodeEventResponse]
+    total: int
+    offset: int
+    limit: int
 
 
 class NodeWatchdogSettingsUpdate(BaseModel):

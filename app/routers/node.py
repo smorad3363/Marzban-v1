@@ -1,23 +1,32 @@
 import asyncio
 import time
-from typing import List
+from datetime import datetime, timedelta, timezone
+from typing import List, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, WebSocket
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, WebSocket
 from sqlalchemy.exc import IntegrityError
 from starlette.websockets import WebSocketDisconnect
 
 from app import logger, xray
 from app.db import Session, crud, get_db
+from app.db.node_operations import list_node_events, list_traffic_buckets, traffic_window_average
 from app.dependencies import get_dbnode, validate_dates
 from app.models.admin import Admin
 from app.models.node import (
     NodeBandwidthResponse,
     NodeCreate,
+    NodeEventResponse,
+    NodeEventsResponse,
     NodeModify,
+    NodeOperationsSummaryResponse,
     NodeResponse,
     NodeSettings,
     NodeStatus,
+    NodeTrafficAverageResponse,
+    NodeTrafficHistoryResponse,
+    NodeTrafficPointResponse,
     NodesBandwidthResponse,
+    NodesOperationsResponse,
     NodesUsageResponse,
     NodeWatchdogSettingsResponse,
     NodeWatchdogSettingsUpdate,
@@ -45,6 +54,69 @@ def _forget_device_limit_ip_policy(node_id: int) -> None:
     from app.device_limit.engine import engine as device_limit_engine
 
     device_limit_engine.forget_source_ip_trust(f"node:{node_id}")
+
+
+def _bandwidth_response_for(
+    node_id: int | None,
+    name: str,
+    runtime_online: bool,
+) -> NodeBandwidthResponse:
+    snapshot = bandwidth_store.snapshot(node_id)
+    if not runtime_online:
+        snapshot = {
+            **snapshot,
+            "state": "offline",
+            "uplink_bps": 0.0,
+            "downlink_bps": 0.0,
+        }
+    return NodeBandwidthResponse(
+        node_id=node_id,
+        node_name=name,
+        total_bps=snapshot["uplink_bps"] + snapshot["downlink_bps"],
+        **snapshot,
+    )
+
+
+def _operational_state(status: NodeStatus, live_state: str) -> str:
+    if status == NodeStatus.disabled:
+        return "disabled"
+    if status == NodeStatus.connecting:
+        return "reconnecting"
+    if status == NodeStatus.error:
+        return "offline"
+    if live_state in ("online", "warming_up"):
+        return "healthy"
+    return "degraded"
+
+
+def _traffic_point(bucket) -> NodeTrafficPointResponse:
+    sample_seconds = float(bucket.sample_seconds or 0.0)
+    if sample_seconds > 0:
+        uplink_bps = int(bucket.uplink_bytes or 0) * 8.0 / sample_seconds
+        downlink_bps = int(bucket.downlink_bytes or 0) * 8.0 / sample_seconds
+    else:
+        uplink_bps = downlink_bps = 0.0
+    return NodeTrafficPointResponse(
+        bucket_start=bucket.bucket_start,
+        uplink_bps=uplink_bps,
+        downlink_bps=downlink_bps,
+        total_bps=uplink_bps + downlink_bps,
+        sample_seconds=sample_seconds,
+        sample_count=int(bucket.sample_count or 0),
+    )
+
+
+def _downsample_buckets(rows: list, max_points: int) -> list:
+    if len(rows) <= max_points:
+        return rows
+    last_index = len(rows) - 1
+    indexes = sorted(
+        {
+            round(index * last_index / (max_points - 1))
+            for index in range(max_points)
+        }
+    )
+    return [rows[index] for index in indexes]
 
 
 def add_host_if_needed(new_node: NodeCreate, db: Session):
@@ -257,36 +329,140 @@ def get_nodes(
     return crud.get_nodes(db)
 
 
+@router.get("/nodes/operations", response_model=NodesOperationsResponse)
+def get_nodes_operations(
+    db: Session = Depends(get_db),
+    _: Admin = Depends(Admin.check_sudo_admin),
+):
+    """Return unified operational summaries using persisted telemetry and live cache only."""
+    now = datetime.now(timezone.utc)
+    rows: list[NodeOperationsSummaryResponse] = []
+    for dbnode in crud.get_nodes(db):
+        status = dbnode.status
+        live = _bandwidth_response_for(
+            dbnode.id,
+            dbnode.name,
+            status == NodeStatus.connected,
+        )
+        rows.append(
+            NodeOperationsSummaryResponse(
+                node_id=dbnode.id,
+                node_name=dbnode.name,
+                status=status,
+                operational_state=_operational_state(status, live.state),
+                message=dbnode.message,
+                xray_version=dbnode.xray_version,
+                last_status_change=getattr(dbnode, "last_status_change", None),
+                live=live,
+                average_1h=NodeTrafficAverageResponse(**traffic_window_average(
+                    db,
+                    node_id=dbnode.id,
+                    from_time=now - timedelta(hours=1),
+                    to_time=now,
+                )),
+                average_24h=NodeTrafficAverageResponse(**traffic_window_average(
+                    db,
+                    node_id=dbnode.id,
+                    from_time=now - timedelta(hours=24),
+                    to_time=now,
+                )),
+            )
+        )
+    return NodesOperationsResponse(nodes=rows)
+
+
+@router.get("/node/{node_id}/operations/history", response_model=NodeTrafficHistoryResponse)
+def get_node_operations_history(
+    dbnode=Depends(get_dbnode),
+    minutes: int = Query(1440, ge=1, le=10080),
+    max_points: int = Query(120, ge=2, le=240),
+    db: Session = Depends(get_db),
+    _: Admin = Depends(Admin.check_sudo_admin),
+):
+    """Return bounded persisted traffic history without contacting Xray."""
+    now = datetime.now(timezone.utc)
+    buckets = list_traffic_buckets(
+        db,
+        node_id=dbnode.id,
+        from_time=now - timedelta(minutes=minutes),
+        to_time=now,
+        limit=10080,
+    )
+    selected = _downsample_buckets(buckets, max_points)
+    return NodeTrafficHistoryResponse(
+        node_id=dbnode.id,
+        window_minutes=minutes,
+        points=[_traffic_point(bucket) for bucket in selected],
+    )
+
+
+@router.get("/node/{node_id}/events", response_model=NodeEventsResponse)
+def get_node_events(
+    dbnode=Depends(get_dbnode),
+    offset: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    event_type: Optional[str] = Query(None, max_length=48),
+    severity: Optional[str] = Query(None, max_length=16),
+    from_time: Optional[datetime] = Query(None),
+    to_time: Optional[datetime] = Query(None),
+    db: Session = Depends(get_db),
+    _: Admin = Depends(Admin.check_sudo_admin),
+):
+    """Return a bounded sanitized operational event timeline for one node."""
+    events, total = list_node_events(
+        db,
+        node_id=dbnode.id,
+        offset=offset,
+        limit=limit,
+        event_type=event_type,
+        severity=severity,
+        from_time=from_time,
+        to_time=to_time,
+    )
+    return NodeEventsResponse(
+        node_id=dbnode.id,
+        total=total,
+        offset=offset,
+        limit=limit,
+        events=[
+            NodeEventResponse(
+                id=event.id,
+                occurred_at=event.occurred_at,
+                received_at=event.received_at,
+                event_type=event.event_type,
+                severity=event.severity,
+                reason_code=event.reason_code,
+                trigger_reason=event.trigger_reason,
+                root_cause=event.root_cause,
+                source=event.source,
+                message=event.sanitized_message,
+                previous_state=event.previous_state,
+                new_state=event.new_state,
+                reconnect_mode=event.reconnect_mode,
+                reconnect_attempt=event.reconnect_attempt,
+                reconnect_result=event.reconnect_result,
+                downtime_seconds=event.downtime_seconds,
+                runtime_version=event.runtime_version,
+                metadata=event.metadata_json,
+            )
+            for event in events
+        ],
+    )
+
+
 @router.get("/nodes/bandwidth", response_model=NodesBandwidthResponse)
 def get_bandwidth(
     db: Session = Depends(get_db),
     _: Admin = Depends(Admin.check_sudo_admin),
 ):
     """Return bounded live Xray throughput without polling Xray from the request path."""
-
-    def response_for(node_id, name: str, runtime_online: bool) -> NodeBandwidthResponse:
-        snapshot = bandwidth_store.snapshot(node_id)
-        if not runtime_online:
-            snapshot = {
-                **snapshot,
-                "state": "offline",
-                "uplink_bps": 0.0,
-                "downlink_bps": 0.0,
-            }
-        return NodeBandwidthResponse(
-            node_id=node_id,
-            node_name=name,
-            total_bps=snapshot["uplink_bps"] + snapshot["downlink_bps"],
-            **snapshot,
-        )
-
     rows: list[NodeBandwidthResponse] = [
-        response_for(None, "Master", bool(getattr(xray.core, "started", False)))
+        _bandwidth_response_for(None, "Master", bool(getattr(xray.core, "started", False)))
     ]
     for dbnode in crud.get_nodes(db):
         status = getattr(dbnode.status, "value", dbnode.status)
         rows.append(
-            response_for(
+            _bandwidth_response_for(
                 dbnode.id,
                 dbnode.name,
                 status == NodeStatus.connected.value,
