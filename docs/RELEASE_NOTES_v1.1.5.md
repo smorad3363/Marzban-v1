@@ -35,5 +35,6 @@ sudo marzban node install --version v1.1.5
 - Dashboard Stage 1 contracts, TypeScript production build, and committed source/build parity are required to pass on the final release commit.
 - Full backend regression, migrations/partial-DDL recovery, Stage 8-11, backup/restore, and rollback compatibility are required against MySQL 8.0 and 26.7.0.
 - Installer, Panel compose, release-image runtime, and Panel-to-Node mTLS contracts are required before publication.
+- The immutable `v1.1.5` tag must resolve to the exact reviewed merge commit on `main`; release publication must not move or recreate the tag.
 
 This file prepares the immutable v1.1.5 release material. Publication is complete only after the reviewed release commit reaches `main`, the immutable `v1.1.5` tag is created from that commit, and the canonical Release workflow verifies and publishes the multi-architecture image and GitHub Release.
