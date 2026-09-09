@@ -79,7 +79,17 @@ Before continuing after interruption, re-open these files and review their curre
 
 Wait for and inspect the final-head `Dashboard UI Contracts` and `CI Checkpoints` triggered after this checkpoint. Require Stage 1/authenticated-autofill/typecheck/build/committed parity green, MySQL 8.0 and 26.7.0 backend/migration/Stage 8-11/backup/rollback green, installer/runtime/Panel-to-Node checks green, and no new unresolved review threads. If a real failure appears, reopen the exact failing file and fix only that failure, regenerate build assets if source UI changed, remove any helper, and re-run the relevant gates. If all gates are green, stop at PR-ready state and wait for a separate explicit merge instruction. Do not merge, tag, publish, or release from a generic “continue” instruction.
 
-## Current State: v1.1.8 released
+## Current State: v1.1.9 release candidate
+
+- Release task: Users Management V3 + `v1.1.9` publication.
+- Pull request `#41` was squash-merged into `main`.
+- Reviewed Users Management PR head: `0a9d1780f68507cb3561211baebe46dd600298e5`.
+- Users Management main commit: `ab98e693226eeaf3fea052e1d67f9c630f687393`.
+- `v1.1.8` remains the latest published stable release until the new immutable tag and Release workflow complete.
+- Release surfaces are prepared for `1.1.9` / `v1.1.9`; no tag, container alias, or GitHub Release is created by this preparation checkpoint.
+- NEXT EXACT TASK: review and merge this release preparation, then create immutable tag `v1.1.9` from the reviewed `main` release commit and verify the canonical Release workflow.
+
+## Previous Release: v1.1.8 released
 
 - Release task: Dashboard Owner/Admin V2 + `v1.1.8` publication.
 - Pull request `#39` was squash-merged into `main`.
