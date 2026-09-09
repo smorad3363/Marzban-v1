@@ -8,6 +8,7 @@
     "test:access-groups": "node scripts/test-access-groups.cjs",
     "test:admin-hierarchy": "node scripts/test-admin-hierarchy-authorization.cjs",
     "test:admin-ux": "node scripts/test-admin-ux.cjs",
+    "test:v1.1.2": "node scripts/test-v1.1.2-regressions.cjs",
     "preview": "vite preview --port 3000",
     "gen:theme-typings": "chakra-cli tokens ./chakra.config.ts",
     "postinstall": "npm run gen:theme-typings"
