@@ -34,6 +34,7 @@ sudo marzban node install --version v1.1.5
 
 - Focused Admin deletion regression suite passes against MySQL 8 with the route-level accounting-history scenario.
 - Dashboard Stage 1 contracts, TypeScript production build, and committed source/build parity are required to pass on the final release commit.
+- The committed dashboard build is regenerated with the same canonical `VITE_BASE_API=/api/` build environment used by repository CI.
 - Full backend regression, migrations/partial-DDL recovery, Stage 8-11, backup/restore, and rollback compatibility are required against MySQL 8.0 and 26.7.0.
 - Installer, Panel compose, release-image runtime, and Panel-to-Node mTLS contracts are required before publication.
 - The immutable `v1.1.5` tag must resolve to the exact reviewed merge commit on `main`; release publication must not move or recreate the tag.
