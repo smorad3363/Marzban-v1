@@ -64,7 +64,8 @@ const SummaryCard: FC<{
   icon: ReactElement;
   tone: Tone;
   loading: boolean;
-}> = ({ title, value, description, icon, tone, loading }) => {
+  failed: boolean;
+}> = ({ title, value, description, icon, tone, loading, failed }) => {
   const palette = tones[tone];
   return (
     <Box
@@ -91,7 +92,7 @@ const SummaryCard: FC<{
               fontWeight="900"
               letterSpacing="-0.03em"
             >
-              {(value ?? 0).toLocaleString("fa-IR")}
+              {failed ? "—" : (value ?? 0).toLocaleString("fa-IR")}
             </Text>
           )}
           <Text color="var(--panel-text-muted)" fontSize="9px" lineHeight="1.7" noOfLines={2}>
@@ -129,6 +130,7 @@ export const UserSummaryCards: FC = () => {
 
   const data = summary.data;
   const loading = summary.isLoading && !data;
+  const failed = summary.isError && !data;
 
   return (
     <SimpleGrid columns={{ base: 1, sm: 2, xl: 4 }} gap={3} aria-live="polite">
@@ -139,6 +141,7 @@ export const UserSummaryCards: FC = () => {
         icon={<UsersIcon />}
         tone="primary"
         loading={loading}
+        failed={failed}
       />
       <SummaryCard
         title="آنلاین الآن"
@@ -147,6 +150,7 @@ export const UserSummaryCards: FC = () => {
         icon={<OnlineIcon />}
         tone="blue"
         loading={loading}
+        failed={failed}
       />
       <SummaryCard
         title="نزدیک انقضا"
@@ -155,6 +159,7 @@ export const UserSummaryCards: FC = () => {
         icon={<ExpiringIcon />}
         tone="warning"
         loading={loading}
+        failed={failed}
       />
       <SummaryCard
         title="حجم رو به اتمام"
@@ -163,6 +168,7 @@ export const UserSummaryCards: FC = () => {
         icon={<UsageIcon />}
         tone="danger"
         loading={loading}
+        failed={failed}
       />
     </SimpleGrid>
   );
