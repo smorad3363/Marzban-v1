@@ -65,7 +65,12 @@ assert.ok(userDialog.includes("allowed_form_duration_days"), "Form creation must
 assert.ok(userDialog.includes("restrictedDurationOptions"), "Restricted Form creation must render preset durations");
 assert.ok(userDialog.includes("Math.floor(Date.now() / 1000) + selectedRestrictedDuration * 86400"), "Restricted Form expiry must be calculated from submit time");
 assert.ok(userDialog.includes('display={restrictedCreate ? "none" : "block"}'), "Restricted Form creation must not expose the arbitrary calendar expiry control");
-assert.ok(adminsPage.includes("حذف فیزیکی فقط برای ادمین بدون زیرمجموعه"), "Admin deletion must explain immutable-history constraints before submit");
+
+// Admin deletion is safe retirement: immutable history is retained while accounting state is not a blocker.
+assert.ok(adminsPage.includes("حذف ادمین به‌صورت امن با بازنشسته‌سازی حساب انجام می‌شود"), "Admin deletion must explain safe retirement before submit");
+assert.ok(adminsPage.includes("سابقه حسابداری و Audit حفظ می‌شود"), "Admin deletion must explain immutable history preservation");
+assert.ok(adminsPage.includes("مانده اعتبار یا ترافیک مانع حذف نیست"), "Admin deletion must explain that accounting state does not block retirement");
+assert.ok(adminsPage.includes("فقط ادمین دارای زیرمجموعه فعال"), "Admin deletion must keep the child-Admin blocker visible");
 
 // Keep the already-correct global infrastructure modal architecture from regressing.
 for (const modal of ["<CoreSettingsModal />", "<HostsDialog />", "<NodesDialog />", "<NodesUsage />"]) {
