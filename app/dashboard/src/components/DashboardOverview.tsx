@@ -299,7 +299,7 @@ export const DashboardOverview: FC = () => {
   const canPlan = Boolean(accountActive && (accountData?.billing_mode === "USER_CREDIT" || ["PLAN_ONLY", "BOTH"].includes(accountData?.user_creation_mode || "")));
 
   return (
-    <Stack spacing={4} dir="rtl">
+    <Stack spacing={4} dir="rtl" aria-live="polite">
       <HStack justify="space-between" align="start" gap={4} flexWrap="wrap" px={{ base: 1, md: 0 }}>
         <Box>
           <HStack spacing={2} color="var(--panel-accent)">

@@ -277,13 +277,11 @@ def modify_hosts(
 )
 def host_update_impact(
     modified_hosts: Dict[str, List[ProxyHost]],
-    db: Session = Depends(get_db), admin: Admin = Depends(Admin.check_sudo_admin),
+    db: Session = Depends(get_db),
+    admin: Admin = Depends(Admin.check_sudo_admin),
 ):
     """Preview Access Group and active-User impact without mutating data."""
     for inbound_tag in modified_hosts:
         if inbound_tag not in xray.config.inbounds_by_tag:
             raise HTTPException(status_code=400, detail=f"Inbound {inbound_tag} doesn't exist")
-    impact = analyze_host_update(db, modified_hosts)
-    if impact.invalid_access_group_ids:
-        raise HTTPException(status_code=409, detail={"error_code": "host_change_would_invalidate_access_group", "message": "این تغییر حداقل یک Access Group را بدون Host معتبر باقی می‌گذارد.", "impact": impact.model_dump()})
-    return impact
+    return analyze_host_update(db, modified_hosts)
