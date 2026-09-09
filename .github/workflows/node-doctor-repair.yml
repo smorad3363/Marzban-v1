@@ -1,0 +1,52 @@
+name: Repair Isolated Node Doctor Patch
+
+on:
+  push:
+    branches:
+      - codex/node-doctor-build
+
+permissions:
+  contents: write
+
+jobs:
+  repair-build:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install pytest PyYAML
+      - name: Repair nested fixture quoting and apply product patch
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/node_doctor_patch.py')
+          text = path.read_text()
+          old_start = "    shell = f'''source scripts/marzban.sh\n"
+          new_start = '    shell = f"""source scripts/marzban.sh\n'
+          old_end = "node_doctor_command\n'''\n    result = subprocess.run("
+          new_end = 'node_doctor_command\n"""\n    result = subprocess.run('
+          if text.count(old_start) != 1 or text.count(old_end) != 1:
+              raise SystemExit('unexpected Node doctor fixture quote anchors')
+          path.write_text(text.replace(old_start, new_start, 1).replace(old_end, new_end, 1))
+          PY
+          python scripts/node_doctor_patch.py
+      - name: Verify installer and Node doctor contracts
+        run: |
+          set -Eeuo pipefail
+          bash -n scripts/marzban.sh
+          bash tests/test_installer_v1_contract.sh
+          python -m pytest -q tests/test_node_deployment_contract.py tests/test_release_contract.py
+          git diff --check
+      - name: Commit verified product files only
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/marzban.sh tests/test_node_deployment_contract.py docs/NODE_OPERATIONS_V2_FA.md
+          git diff --cached --check
+          git commit -m "feat: add Node installer doctor diagnostics"
+          git push
