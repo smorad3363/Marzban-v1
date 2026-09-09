@@ -2,26 +2,17 @@ name: Prepare v1.1.3 release
 
 on:
   push:
-    branches:
-      - release/v1.1.3
-    paths:
-      - .github/workflows/v113-release-prep.yml
-  pull_request:
-    branches:
-      - main
-    paths:
-      - .github/workflows/v113-release-prep.yml
+    branches: [release/v1.1.3]
 
 permissions:
   contents: write
 
 jobs:
   prepare-release:
-    if: github.head_ref == 'release/v1.1.3' || github.ref_name == 'release/v1.1.3'
-    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
     steps:
-      - name: Checkout release branch
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: release/v1.1.3
           fetch-depth: 0
