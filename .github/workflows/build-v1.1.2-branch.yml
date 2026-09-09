@@ -19,6 +19,84 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: release/v1.1.2
+      - name: Prepare v1.1.2 release surfaces
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          version = "1.1.2"
+          tag = f"v{version}"
+
+          Path("VERSION").write_text(version + "\n", encoding="utf-8")
+
+          app = Path("app/__init__.py")
+          text = app.read_text(encoding="utf-8")
+          text = text.replace('__version__ = "1.1.1"', f'__version__ = "{version}"')
+          if f'__version__ = "{version}"' not in text:
+              raise SystemExit("app version surface was not updated")
+          app.write_text(text, encoding="utf-8")
+
+          cli = Path("scripts/marzban.sh")
+          text = cli.read_text(encoding="utf-8")
+          text = text.replace('CLI_RELEASE_VERSION="v1.1.1"', f'CLI_RELEASE_VERSION="{tag}"')
+          if f'CLI_RELEASE_VERSION="{tag}"' not in text:
+              raise SystemExit("CLI release surface was not updated")
+          cli.write_text(text, encoding="utf-8")
+
+          compose = Path("docker-compose.yml")
+          text = compose.read_text(encoding="utf-8")
+          text = text.replace("ghcr.io/smorad3363/marzban-v1:v1.1.1", f"ghcr.io/smorad3363/marzban-v1:{tag}")
+          if f"ghcr.io/smorad3363/marzban-v1:{tag}" not in text:
+              raise SystemExit("compose release surface was not updated")
+          compose.write_text(text, encoding="utf-8")
+
+          releases = Path("RELEASES.md")
+          text = releases.read_text(encoding="utf-8").replace("v1.1.1", tag)
+          releases.write_text(text, encoding="utf-8")
+
+          notes = Path(f"docs/RELEASE_NOTES_{tag}.md")
+          notes.write_text(f'''# Marzban {tag}
+
+## Highlights
+
+- Fix the Dashboard Admin creation crash when Owner selects `USER_CREDIT` (طبق پلن · سقف اکانت) by removing Chakra `FormHelperText` usage outside a `FormControl`.
+- Make the Dashboard route error boundary distinguish frontend render failures from API/service failures while keeping the current session intact.
+- Harden logout by clearing authentication-scoped React Query cache and replacing browser history before returning to Login.
+- Add regression coverage for `FORM_ONLY`, `PLAN_ONLY`, `BOTH`, and `USER_CREDIT` creation behavior; scoped Plan creation continues through `/available-user-plans`.
+- Preserve Admin deletion cleanup-strategy behavior and the existing immutable billing/audit-history safeguards.
+- Keep Access Group authorization semantics and Plan authorization scope unchanged; this hotfix does not widen Admin permissions.
+
+## Upgrade
+
+```bash
+marzban update --version {tag}
+```
+
+## Fresh install
+
+```bash
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/{tag}/scripts/marzban.sh)" @ install --version {tag} --database mysql
+```
+
+## Validation
+
+- Dashboard Admin UX and {tag} regression checks.
+- Dashboard source/build parity with Node.js 20.
+- Existing Access Group, Admin hierarchy, installer, migration, and Node contracts remain under the repository CI checkpoints.
+
+This file prepares the immutable {tag} release material. Publication is completed only after the reviewed commit reaches `main`, the immutable tag is created, and the tag-triggered Release workflow verifies and publishes the image and GitHub Release.
+''', encoding="utf-8")
+
+          state = Path("docs/CODEX/STATE.md")
+          current = state.read_text(encoding="utf-8")
+          marker = "## V1.1.2 Active Checkpoint"
+          if marker not in current:
+              prefix = f'''# V1 Continuation State\n\n{marker}\n\n- Release branch: `release/v1.1.2`\n- Pull request: `#32` into `main`\n- Target version: `{tag}`\n- Fixes committed: USER_CREDIT Admin-form crash, route render/service error separation, logout cache/history cleanup.\n- Regression coverage: Plan/manual creation modes and Admin deletion strategy.\n- Dashboard build is regenerated from source with Node.js 20 before merge.\n- NEXT EXACT TASK: remove the temporary artifact-builder workflow after the final {tag} build commit, then require clean PR CI before merge/tag publication.\n\n'''
+              current = prefix + current.split("\n", 1)[1]
+              state.write_text(current, encoding="utf-8")
+          PY
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -27,20 +105,23 @@ jobs:
       - name: Install dashboard dependencies
         working-directory: app/dashboard
         run: npm ci
+      - name: Verify v1.1.2 dashboard regressions
+        working-directory: app/dashboard
+        run: npm run test:admin-ux
       - name: Build dashboard
         working-directory: app/dashboard
         run: VITE_BASE_API=/api/ npm run build
-      - name: Refresh committed dashboard build
+      - name: Commit v1.1.2 release surfaces and dashboard build
         shell: bash
         run: |
           set -Eeuo pipefail
           cp app/dashboard/build/index.html app/dashboard/build/404.html
-          if git diff --quiet -- app/dashboard/build; then
-            echo "Dashboard build is already current."
+          if git diff --quiet; then
+            echo "v1.1.2 release surfaces and dashboard build are already current."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/dashboard/build
-          git commit -m "chore: refresh v1.1.2 dashboard build"
+          git add VERSION app/__init__.py scripts/marzban.sh docker-compose.yml RELEASES.md docs/RELEASE_NOTES_v1.1.2.md docs/CODEX/STATE.md app/dashboard/build
+          git commit -m "chore: prepare v1.1.2 release surfaces"
           git push origin HEAD:release/v1.1.2
