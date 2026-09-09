@@ -26,37 +26,44 @@ On any interruption:
 ### Current Checkpoint
 
 - Checkpoint `UMV3-00` — branch/bootstrap and architecture audit: COMPLETE.
-- Checkpoint `UMV3-01` — scoped summary aggregate + four compact Summary Cards: COMPLETE at source level.
+- Checkpoint `UMV3-01` — scoped summary aggregate + four compact Summary Cards: COMPLETE.
   - Added `/api/users/summary` with real scoped counts for total, 24h-online, near-expiry, and high-usage users.
   - Reused hierarchy/inbound restrictions, the existing 24h Online definition, and centralized notification thresholds.
   - Added focused hierarchy-scoping coverage in `tests/test_user_summary.py`.
   - Added responsive `UserSummaryCards` and integrated it into the dedicated Users page without removing existing operations.
-- Checkpoint `UMV3-02` — scoped management list + real advanced filters + bounded current-Plan metadata: SOURCE COMPLETE; MIRRORED CI VERIFICATION PARTIAL.
+- Checkpoint `UMV3-02` — scoped management list + real advanced filters + bounded current-Plan metadata: COMPLETE.
   - Added `/api/users/management` while preserving the full existing User row payload, pagination, sort semantics, hierarchy scope, inbound scope, usage redaction, and authorization behavior.
   - Added server-side Plan/current-assignment, without-Plan, Trial, Attention, expiry, usage, device-limit, unlimited-traffic, and inactivity filters using only real database state.
   - Current Plan metadata is resolved for the bounded visible page from the latest immutable `UserPlanAssignment`; no per-row Plan requests were introduced.
   - Refactored the toolbar to compact Admin/Plan/Sort controls and smart filter chips while preserving Create User/Create From Plan/account restrictions and debounced search.
   - Added focused `tests/test_user_management_query.py` coverage for hierarchy scope, latest Plan assignment, no-Plan/Trial and attention/smart filters.
-  - PR #41 source verification at head `d50d2f9f2a8322d7086fea3b06f807d29b51ab1f`: Stage 1 UI contracts SUCCESS; authenticated-autofill contract SUCCESS; TypeScript type-check + production dashboard build SUCCESS; MySQL 26.7.0 backend regression/migrations/Stage 8-11/backup/rollback SUCCESS; installer/runtime/Panel-to-Node checks SUCCESS.
-  - The mirrored MySQL 8.0 job was still running its backend regression suite at the last checkpoint poll. Re-check it on resume before claiming both database tracks green.
-  - Dashboard parity currently fails only because generated `app/dashboard/build/**` has not yet been refreshed on the feature branch. Do not treat that expected generated-output delta as a source/build failure. Refresh committed build assets once source UI work settles, then require parity green before final review/merge.
+- Checkpoint `UMV3-03` — compact Users table + real User Details Drawer: COMPLETE at source/build level.
+  - Replaced the legacy 1500px detail-heavy table with compact management columns: User, Status, current Plan, Usage, Expiry, Device, Last Activity, Owner-only Admin, and Operations.
+  - Current Plan uses the bounded `plan_meta` map; no per-row Plan request was added.
+  - Last Activity uses only the real `online_at` value and does not conflate it with User status.
+  - Added `UserDetailsDrawer` with Overview, Subscription, optional Devices, and Activity/Audit tabs.
+  - Device and Audit requests are lazy and fire only after the relevant Drawer tab is opened; existing Device modal semantics remain available to Owner.
+  - Preserved QR/copy/edit/delete/renew/enable-disable/reset/revoke/audit/device operations and cross-page selection behavior.
+  - Traffic warning visuals now use 80% warning and 95% danger.
+  - Updated the Stage 1 Users contract to require the compact table/Drawer architecture while preserving horizontal-scroll fallback and all actions.
+  - Verification on head `8947a39b2830889707e0b14b17d9668351fcadf5`: Stage 1 UI contracts SUCCESS; authenticated-autofill contract SUCCESS; TypeScript + production dashboard build SUCCESS; MySQL 8.0 backend/migration/Stage 8-11/backup/rollback SUCCESS; MySQL 26.7.0 backend/migration/Stage 8-11/backup/rollback SUCCESS; installer/runtime/Panel-to-Node checks SUCCESS.
+  - Dashboard jobs fail only at committed build parity because `app/dashboard/build/**` has intentionally not yet been refreshed. Source/build checks are green. Refresh generated build assets after the final responsive/bulk pass, then require parity green before review/merge.
 
 ### CURRENT FILES
 
 Before continuing after interruption, re-open these files and review their current branch versions:
 
-- `app/utils/user_management.py` — authoritative new scoped filter/query service; preserve its hierarchy/inbound scope behavior.
-- `app/routers/user_management.py` — dedicated management list contract and pagination/filter validation.
-- `app/dashboard/src/contexts/DashboardContext.tsx` — management endpoint/filter state and bounded `plan_meta` integration.
-- `app/dashboard/src/components/FiltersCompact.tsx` — compact toolbar/smart filters; source compiles successfully.
-- `tests/test_user_management_query.py` — focused current-filter coverage.
-- `app/dashboard/src/components/UsersTablePro.tsx` — NEXT implementation target; current branch version was re-opened after UMV3-02 and still contains the wide legacy table plus all existing actions.
-- `app/dashboard/src/components/UserDeviceLimit.tsx` — existing lazy Device modal; preserve lazy Device loading and sudo/Owner action semantics.
-- `app/dashboard/src/types/Audit.ts` and `app/dashboard/src/types/DeviceLimit.ts` — existing typed lazy-data contracts for the upcoming Drawer.
+- `app/dashboard/src/components/BulkUserActions.tsx` — NEXT implementation target; preserve all bulk job, selected-user, cleanup, preview, retry, and scope semantics while moving selected-state UX to a sticky bottom action bar.
+- `app/dashboard/src/components/UsersTablePro.tsx` — compact table + Drawer integration; preserve cross-page selection and all row actions.
+- `app/dashboard/src/components/UserDetailsDrawer.tsx` — completed lazy Drawer; preserve lazy Device/Audit loading.
+- `app/dashboard/src/components/FiltersCompact.tsx` — compact toolbar/smart filters; include in responsive/mobile polish only, without changing server filter semantics.
+- `app/dashboard/src/pages/Users.tsx` — dedicated Users surface composition.
+- `app/dashboard/scripts/test-stage1-ui-contracts.cjs` — current Users management source contract.
+- `app/dashboard/build/**` — generated assets are intentionally stale until source UI settles; refresh only after `UMV3-04` source is verified.
 
 ### NEXT EXACT TASK
 
-Implement checkpoint `UMV3-03`: compact the Users table to the requested management columns and add a real User Details Drawer without removing any existing action. Use bounded `plan_meta` for the current Plan column, use only real `online_at` for last activity, move secondary row details into the Drawer, keep Device and Audit data lazy, and preserve QR/copy/edit/delete/renew/enable-disable/reset/revoke/audit/device operations. Update traffic warning visual thresholds to 80% warning / 95% danger. Keep the current selection behavior and prepare the bulk controls for the later sticky-bottom pass. Before marking `UMV3-03` complete, re-check the pending MySQL 8.0 result from `UMV3-02`, then run frontend type/build and focused backend regression for any new backend work (if none, do not invent backend changes).
+Implement checkpoint `UMV3-04`: finish the bulk UX and responsive pass. When one or more visible/cross-page users are selected, present the existing bulk actions as a compact sticky-bottom action bar without changing bulk target semantics, preview, retry, cleanup, or authorization behavior. Preserve Select All and cross-page selection visibility, ensure the bar does not cover pagination/content, and keep controls usable on narrow mobile/tablet widths. Polish the Users toolbar/table/Drawer responsive behavior against the requested premium management reference without removing columns or operations. Update the Stage 1 contract for the sticky bulk UX, run frontend type/build, then refresh committed `app/dashboard/build/**` exactly once and require dashboard parity green. No backend change is expected; if no backend code changes, do not invent backend work.
 
 ## Current State: v1.1.8 released
 
