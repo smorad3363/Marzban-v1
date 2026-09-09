@@ -54,6 +54,8 @@ const AddIcon = chakra(PlusIcon, { baseStyle: { w: 4, h: 4 } });
 
 const fa = (value: number) => Number(value || 0).toLocaleString("fa-IR");
 const toman = (value: number | null | undefined) => value == null ? "نامحدود" : `${fa(value)} تومان`;
+const credit = (value: number | null | undefined) => value == null ? "نامحدود" : fa(Number(value));
+const parseUtcDate = (value: string) => new Date(/(?:Z|[+-]\d\d:\d\d)$/.test(value) ? value : `${value}Z`);
 
 const formatTraffic = (value?: number | null) => {
   const amount = Number(value || 0);
@@ -87,7 +89,7 @@ const reasonLabel = (item: DashboardAttentionUser) => {
 };
 
 const relativeTime = (value: string) => {
-  const timestamp = new Date(value).getTime();
+  const timestamp = parseUtcDate(value).getTime();
   if (!Number.isFinite(timestamp)) return "—";
   const seconds = Math.max(0, (Date.now() - timestamp) / 1000);
   if (seconds < 3600) return `${fa(Math.max(1, Math.round(seconds / 60)))} دقیقه پیش`;
@@ -245,7 +247,7 @@ export const DashboardOverview: FC = () => {
   const data = overview.data;
   const trafficSeries = useMemo(() => [{
     name: "مصرف",
-    data: (data?.traffic_history || []).map((point) => ({ x: new Date(point.timestamp).getTime(), y: point.total_traffic })),
+    data: (data?.traffic_history || []).map((point) => ({ x: parseUtcDate(point.timestamp).getTime(), y: point.total_traffic })),
   }], [data?.traffic_history]);
   const trafficOptions = useMemo<ApexOptions>(() => ({
     chart: { toolbar: { show: false }, zoom: { enabled: false }, animations: { enabled: false }, background: "transparent", fontFamily: "Vazirmatn" },
@@ -273,12 +275,12 @@ export const DashboardOverview: FC = () => {
     );
   }
 
-  const onlinePercent = data.active_users > 0 ? Math.min(100, (data.online_users / data.active_users) * 100) : 0;
   const statusItems = [
     { label: "فعال", value: data.active_users, color: "#2fd788" },
     { label: "منقضی", value: data.expired_users, color: "#ef5d67" },
     { label: "غیرفعال", value: data.disabled_users, color: "#748094" },
-    { label: "در انتظار", value: data.on_hold_users + data.limited_users, color: "#d7ad54" },
+    { label: "در انتظار", value: data.on_hold_users, color: "#d7ad54" },
+    { label: "محدود", value: data.limited_users, color: "#9b7ad8" },
   ];
   const statusOptions: ApexOptions = {
     chart: { animations: { enabled: false }, background: "transparent", fontFamily: "Vazirmatn" },
@@ -333,7 +335,7 @@ export const DashboardOverview: FC = () => {
 
       <SimpleGrid columns={{ base: 1, sm: 2, xl: 5 }} gap={3}>
         <MetricCard label={isOwner ? "کل کاربران" : "کاربران من"} value={fa(data.total_users)} hint={isOwner ? "کل کاربران قابل مشاهده" : "در محدوده مجاز حساب شما"} icon={<UsersMetricIcon />} />
-        <MetricCard label="آنلاین الآن" value={fa(data.online_users)} hint={`${fa(Math.round(onlinePercent))}٪ از کاربران فعال`} icon={<OnlineMetricIcon />} tone="blue" />
+        <MetricCard label="آنلاین الآن" value={fa(data.online_users)} hint={`فعالیت ثبت‌شده در ${fa(data.online_window_seconds)} ثانیه اخیر`} icon={<OnlineMetricIcon />} tone="blue" />
         <MetricCard label="فعال" value={fa(data.active_users)} hint="کاربران با وضعیت فعال" icon={<ActiveMetricIcon />} tone="green" />
         <MetricCard label="نیازمند توجه" value={fa(data.attention_count)} hint="براساس وضعیت، حجم، انقضا و Device Limit" icon={<AttentionMetricIcon />} tone={data.attention_count ? "red" : "green"} />
         {isOwner ? (
@@ -428,9 +430,9 @@ export const DashboardOverview: FC = () => {
             ) : (
               <Stack spacing={2.5}>
                 <HStack justify="space-between"><Text fontSize="11px" color="var(--panel-text-muted)">مانده اعتبار</Text><Text fontSize="sm" fontWeight="850">{toman(accountData.money_balance_toman)}</Text></HStack>
-                <HStack justify="space-between"><Text fontSize="11px" color="var(--panel-text-muted)">سقف اعتبار</Text><Text fontSize="sm" fontWeight="850">{quota?.credit_limit == null ? "نامحدود" : formatTraffic(quota.credit_limit)}</Text></HStack>
-                <HStack justify="space-between"><Text fontSize="11px" color="var(--panel-text-muted)">اعتبار مصرف‌شده</Text><Text fontSize="sm" fontWeight="850">{quota ? formatTraffic(quota.credit_used) : "—"}</Text></HStack>
-                <HStack justify="space-between"><Text fontSize="11px" color="var(--panel-text-muted)">مانده ظرفیت</Text><Text fontSize="sm" fontWeight="850">{quota?.credit_remaining == null ? "نامحدود" : formatTraffic(quota.credit_remaining)}</Text></HStack>
+                <HStack justify="space-between"><Text fontSize="11px" color="var(--panel-text-muted)">سقف اعتبار</Text><Text fontSize="sm" fontWeight="850">{credit(quota?.credit_limit)}</Text></HStack>
+                <HStack justify="space-between"><Text fontSize="11px" color="var(--panel-text-muted)">اعتبار مصرف‌شده</Text><Text fontSize="sm" fontWeight="850">{quota ? credit(quota.credit_used) : "—"}</Text></HStack>
+                <HStack justify="space-between"><Text fontSize="11px" color="var(--panel-text-muted)">مانده اعتبار</Text><Text fontSize="sm" fontWeight="850">{credit(quota?.credit_remaining)}</Text></HStack>
                 <HStack justify="space-between"><Text fontSize="11px" color="var(--panel-text-muted)">سهمیه تست باقی‌مانده</Text><Text fontSize="sm" fontWeight="850">{fa(trialRemaining)}</Text></HStack>
                 {quota?.credit_usage_percent != null && <Progress value={Math.min(100, quota.credit_usage_percent)} size="sm" borderRadius="full" colorScheme={quota.credit_usage_percent >= 85 ? "red" : "yellow"} />}
               </Stack>

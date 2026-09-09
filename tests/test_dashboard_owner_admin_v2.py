@@ -112,6 +112,7 @@ def test_admin_dashboard_is_scoped_and_uses_real_usage_history(tmp_path):
         assert next(item for item in result.attention_users if item.username == "scoped").reason_code == "device_limit"
         assert result.node_summary is None
         assert result.admin_summary is None
+        assert result.billing_modes == []
     finally:
         db.close()
         engine.dispose()
@@ -124,7 +125,8 @@ def test_owner_dashboard_adds_global_node_and_admin_summaries(tmp_path):
         owner = Admin(username="owner", hashed_password="x", is_sudo=True)
         active_admin = Admin(username="active-admin", hashed_password="x")
         suspended_admin = Admin(username="suspended-admin", hashed_password="x")
-        db.add_all([owner, active_admin, suspended_admin])
+        legacy_admin = Admin(username="legacy-admin", hashed_password="x")
+        db.add_all([owner, active_admin, suspended_admin, legacy_admin])
         db.flush()
         db.add_all([
             AdminAccountStatus(id=1, code="ACTIVE"),
@@ -159,8 +161,8 @@ def test_owner_dashboard_adds_global_node_and_admin_summaries(tmp_path):
         assert result.node_summary.reconnecting == 1
         assert result.node_summary.error == 1
         assert result.admin_summary is not None
-        assert result.admin_summary.total == 2
-        assert result.admin_summary.active == 1
+        assert result.admin_summary.total == 3
+        assert result.admin_summary.active == 2
         assert result.admin_summary.suspended == 1
     finally:
         db.close()

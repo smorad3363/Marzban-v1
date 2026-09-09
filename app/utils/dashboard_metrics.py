@@ -11,7 +11,6 @@ from sqlalchemy.orm import Query, Session
 from app.db import crud
 from app.db.models import (
     Admin,
-    AdminAccountStatus,
     AdminHierarchy,
     DeviceLimitUserState,
     MarzhelpAdminSettings,
@@ -286,12 +285,24 @@ def _owner_node_summary(db: Session) -> DashboardNodeSummary:
 
 
 def _owner_admin_summary(db: Session, actor: Admin) -> DashboardAdminSummary:
+    status_expression = case(
+        (
+            MarzhelpAdminSettings.account_status_id
+            == admin_hierarchy.ACCOUNT_STATUS_IDS[admin_hierarchy.SUSPENDED],
+            admin_hierarchy.SUSPENDED,
+        ),
+        (
+            MarzhelpAdminSettings.account_status_id
+            == admin_hierarchy.ACCOUNT_STATUS_IDS[admin_hierarchy.DISABLED],
+            admin_hierarchy.DISABLED,
+        ),
+        else_=admin_hierarchy.ACTIVE,
+    )
     rows = (
-        db.query(AdminAccountStatus.code, func.count(Admin.id))
-        .join(MarzhelpAdminSettings, MarzhelpAdminSettings.admin_id == Admin.id)
-        .join(AdminAccountStatus, AdminAccountStatus.id == MarzhelpAdminSettings.account_status_id)
+        db.query(status_expression.label("status"), func.count(Admin.id))
+        .outerjoin(MarzhelpAdminSettings, MarzhelpAdminSettings.admin_id == Admin.id)
         .filter(Admin.id != actor.id, Admin.deleted_at.is_(None))
-        .group_by(AdminAccountStatus.code)
+        .group_by(status_expression)
         .all()
     )
     counts = {str(code): int(count) for code, count in rows}
@@ -373,39 +384,45 @@ def overview(
         ),
     ).one()
 
-    mode_expression = func.coalesce(MarzhelpAdminSettings.billing_mode, BillingMode.LEGACY_COMPAT.value)
-    admin_rows = (
-        _visible_admins(db, actor, hierarchy_on=hierarchy_on, actor_is_owner=actor_is_owner)
-        .join(MarzhelpAdminSettings, MarzhelpAdminSettings.admin_id == Admin.id)
-        .with_entities(mode_expression.label("mode"), func.count(Admin.id))
-        .group_by(mode_expression)
-        .all()
-    )
-    admin_counts = {str(mode): int(count) for mode, count in admin_rows}
+    admin_counts: dict[str, int] = {}
+    user_by_mode: dict[str, tuple[int, int, int, int]] = {}
+    if actor_is_owner:
+        mode_expression = func.coalesce(
+            MarzhelpAdminSettings.billing_mode,
+            BillingMode.LEGACY_COMPAT.value,
+        )
+        admin_rows = (
+            _visible_admins(db, actor, hierarchy_on=hierarchy_on, actor_is_owner=True)
+            .join(MarzhelpAdminSettings, MarzhelpAdminSettings.admin_id == Admin.id)
+            .with_entities(mode_expression.label("mode"), func.count(Admin.id))
+            .group_by(mode_expression)
+            .all()
+        )
+        admin_counts = {str(mode): int(count) for mode, count in admin_rows}
 
-    user_rows = (
-        _visible_users(
-            db,
-            actor,
-            hierarchy_on=hierarchy_on,
-            actor_is_owner=actor_is_owner,
-            allowed_inbounds=allowed_inbounds,
+        user_rows = (
+            _visible_users(
+                db,
+                actor,
+                hierarchy_on=hierarchy_on,
+                actor_is_owner=True,
+                allowed_inbounds=allowed_inbounds,
+            )
+            .join(MarzhelpAdminSettings, MarzhelpAdminSettings.admin_id == User.admin_id)
+            .with_entities(
+                mode_expression.label("mode"),
+                func.count(User.id),
+                func.coalesce(func.sum(case((User.status == UserStatus.active, 1), else_=0)), 0),
+                func.coalesce(func.sum(User.used_traffic), 0),
+                func.coalesce(func.sum(User.data_limit), 0),
+            )
+            .group_by(mode_expression)
+            .all()
         )
-        .join(MarzhelpAdminSettings, MarzhelpAdminSettings.admin_id == User.admin_id)
-        .with_entities(
-            mode_expression.label("mode"),
-            func.count(User.id),
-            func.coalesce(func.sum(case((User.status == UserStatus.active, 1), else_=0)), 0),
-            func.coalesce(func.sum(User.used_traffic), 0),
-            func.coalesce(func.sum(User.data_limit), 0),
-        )
-        .group_by(mode_expression)
-        .all()
-    )
-    user_by_mode = {
-        str(mode): (int(count), int(active), int(used), int(allocated))
-        for mode, count, active, used, allocated in user_rows
-    }
+        user_by_mode = {
+            str(mode): (int(count), int(active), int(used), int(allocated))
+            for mode, count, active, used, allocated in user_rows
+        }
 
     today_traffic, traffic_available, traffic_history = _traffic_history(
         db,
@@ -465,17 +482,19 @@ def overview(
             previous=previous_new,
             change_percent=change_percent,
         ),
-        billing_modes=[
-            DashboardBillingModeMetric(
-                billing_mode=mode,
-                admin_count=admin_counts.get(mode, 0),
-                user_count=user_by_mode.get(mode, (0, 0, 0, 0))[0],
-                active_users=user_by_mode.get(mode, (0, 0, 0, 0))[1],
-                current_used_traffic=(
-                    user_by_mode.get(mode, (0, 0, 0, 0))[2] if usage_visible else None
-                ),
-                allocated_quota=user_by_mode.get(mode, (0, 0, 0, 0))[3],
-            )
-            for mode in MODES
-        ],
+        billing_modes=(
+            [
+                DashboardBillingModeMetric(
+                    billing_mode=mode,
+                    admin_count=admin_counts.get(mode, 0),
+                    user_count=user_by_mode.get(mode, (0, 0, 0, 0))[0],
+                    active_users=user_by_mode.get(mode, (0, 0, 0, 0))[1],
+                    current_used_traffic=user_by_mode.get(mode, (0, 0, 0, 0))[2],
+                    allocated_quota=user_by_mode.get(mode, (0, 0, 0, 0))[3],
+                )
+                for mode in MODES
+            ]
+            if actor_is_owner
+            else []
+        ),
     )
