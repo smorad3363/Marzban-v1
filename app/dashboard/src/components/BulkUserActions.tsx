@@ -672,6 +672,8 @@ export const BulkUserActions: FC<BulkUserActionsProps> = ({
   const [action, setAction] = useState<ActionDefinition | null>(null);
   const { refetchUsers } = useDashboard();
   const { userData } = useGetUser();
+  const hasSelection = users.length > 0;
+  const fixedCenter = i18n.dir() === "rtl" ? "calc(50% - 136px)" : "calc(50% + 136px)";
   const openAction = (definition: ActionDefinition) => {
     setAction(definition);
     actionDialog.onOpen();
@@ -686,29 +688,46 @@ export const BulkUserActions: FC<BulkUserActionsProps> = ({
     <>
       <Flex
         dir={i18n.dir()}
-        mt={4}
-        px={{ base: 3, md: 4 }}
-        py={3}
+        data-sticky-bulk-actions={hasSelection ? "true" : undefined}
+        role={hasSelection ? "region" : undefined}
+        aria-label={hasSelection ? "عملیات گروهی کاربران انتخاب‌شده" : undefined}
+        position={hasSelection ? "fixed" : "relative"}
+        bottom={hasSelection ? "max(12px, env(safe-area-inset-bottom))" : undefined}
+        left={hasSelection ? { base: "50%", lg: fixedCenter } : undefined}
+        transform={hasSelection ? "translateX(-50%)" : undefined}
+        zIndex={hasSelection ? 1200 : "auto"}
+        w={hasSelection ? { base: "calc(100vw - 24px)", lg: "min(920px, calc(100vw - 320px))" } : "full"}
+        maxW={hasSelection ? "920px" : "none"}
+        mt={hasSelection ? 0 : 4}
+        px={{ base: 2.5, md: 3 }}
+        py={{ base: 2.5, md: 2.5 }}
         minW={0}
         align="center"
         justify="space-between"
-        gap={3}
+        gap={{ base: 2, md: 3 }}
         wrap="wrap"
-        borderRadius="12px"
-        bg="var(--panel-nested)"
+        borderRadius={hasSelection ? "16px" : "12px"}
+        bg={hasSelection ? "var(--panel-surface)" : "var(--panel-nested)"}
         borderWidth="1px"
-        borderColor={
-          users.length > 0 ? "var(--panel-accent-border)" : "var(--panel-border)"
-        }
+        borderColor={hasSelection ? "var(--panel-accent-border)" : "var(--panel-border)"}
+        boxShadow={hasSelection ? "var(--shadow-elevated)" : "none"}
+        backdropFilter={hasSelection ? "blur(18px)" : undefined}
       >
-        <HStack spacing={3} minW={0} flexWrap="wrap">
+        <HStack
+          spacing={{ base: 2, md: 3 }}
+          minW={0}
+          w={{ base: "full", md: "auto" }}
+          justify={{ base: "space-between", md: "flex-start" }}
+          flexWrap="nowrap"
+        >
           <Checkbox
             isChecked={allVisibleSelected}
-            isIndeterminate={users.length > 0 && !allVisibleSelected}
+            isIndeterminate={hasSelection && !allVisibleSelected}
             onChange={(event) => onToggleAll(event.target.checked)}
             colorScheme="primary"
+            flexShrink={0}
           >
-            <Text fontSize="sm" fontWeight="700">
+            <Text fontSize={{ base: "xs", md: "sm" }} fontWeight="700" whiteSpace="nowrap">
               {allVisibleSelected
                 ? t("usersTable.deselectAll")
                 : t("usersTable.selectAll", { count: visibleCount })}
@@ -717,20 +736,31 @@ export const BulkUserActions: FC<BulkUserActionsProps> = ({
           <Badge
             px={2.5}
             py={1}
+            flexShrink={0}
             borderRadius="full"
-            bg={users.length > 0 ? "var(--panel-accent-soft)" : "var(--panel-surface)"}
-            color={users.length > 0 ? "var(--panel-accent)" : "var(--panel-text-muted)"}
+            bg={hasSelection ? "var(--panel-accent-soft)" : "var(--panel-surface)"}
+            color={hasSelection ? "var(--panel-accent)" : "var(--panel-text-muted)"}
             textTransform="none"
           >
             {t("usersTable.selectedCount", { count: users.length })}
           </Badge>
         </HStack>
 
-        <HStack spacing={2} flexWrap="wrap" justify="flex-end">
+        <HStack
+          spacing={2}
+          w={{ base: "full", md: "auto" }}
+          maxW="full"
+          overflowX={{ base: "auto", md: "visible" }}
+          flexWrap={{ base: "nowrap", md: "wrap" }}
+          justify={{ base: "flex-start", md: "flex-end" }}
+          pb={{ base: 1, md: 0 }}
+          sx={{ scrollbarWidth: "thin" }}
+        >
           <Menu placement="bottom-end">
             <MenuButton
               as={Button}
               size="sm"
+              flexShrink={0}
               variant="outline"
               color="var(--panel-text-body)"
               borderColor="var(--panel-border)"
@@ -750,12 +780,13 @@ export const BulkUserActions: FC<BulkUserActionsProps> = ({
             </MenuList>
           </Menu>
 
-          {users.length > 0 && (
+          {hasSelection && (
             <>
               <Menu placement="bottom-end">
                 <MenuButton
                   as={Button}
                   size="sm"
+                  flexShrink={0}
                   variant="outline"
                   color="var(--panel-success)"
                   borderColor="var(--panel-success-border)"
@@ -778,6 +809,7 @@ export const BulkUserActions: FC<BulkUserActionsProps> = ({
                 <MenuButton
                   as={Button}
                   size="sm"
+                  flexShrink={0}
                   variant="outline"
                   color="var(--panel-accent)"
                   borderColor="var(--panel-accent-border)"
@@ -798,6 +830,7 @@ export const BulkUserActions: FC<BulkUserActionsProps> = ({
 
               <Button
                 size="sm"
+                flexShrink={0}
                 variant="outline"
                 color="var(--panel-danger)"
                 borderColor="var(--panel-danger-border)"
@@ -810,6 +843,7 @@ export const BulkUserActions: FC<BulkUserActionsProps> = ({
 
               <IconButton
                 size="sm"
+                flexShrink={0}
                 variant="ghost"
                 aria-label={t("usersTable.deselectAll")}
                 icon={<XMarkIcon width="18px" aria-hidden="true" />}
