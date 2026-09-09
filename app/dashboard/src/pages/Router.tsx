@@ -39,13 +39,21 @@ const PlanManagerOnly = ({ children }: { children: ReactNode }) => {
     );
     return isOwner || canManagePlans ? <>{children}</> : <Navigate to="/" replace />;
 };
+type RouteFailure = {
+    status?: number;
+    statusCode?: number;
+    response?: { status?: number };
+};
 const RouteError = () => {
-    const error = useRouteError() as { status?: number; statusCode?: number; response?: { status?: number } };
+    const error = useRouteError() as RouteFailure;
     const status = error?.statusCode ?? error?.status ?? error?.response?.status;
     if (status === 401 || !getAuthToken()) return <Login />;
+    const isServiceFailure = typeof status === "number";
     return <Center minH="100vh" p={6}><Stack maxW="lg" spacing={4}>
-        <Alert status="error"><AlertIcon />Unable to load this page</Alert>
-        <Text>The service may be unavailable. Your session has been kept; retry when the connection returns.</Text>
+        <Alert status="error"><AlertIcon />{isServiceFailure ? "Unable to reach the service" : "Unable to render this page"}</Alert>
+        <Text>{isServiceFailure
+            ? "The service may be unavailable. Your session has been kept; retry when the connection returns."
+            : "The dashboard hit an unexpected interface error. Your session has been kept; retrying the page is safe."}</Text>
         <Button onClick={() => window.location.reload()}>Retry</Button>
     </Stack></Center>;
 };
