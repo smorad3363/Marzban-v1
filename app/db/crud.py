@@ -1498,7 +1498,8 @@ def get_admins(db: Session,
                offset: Optional[int] = None,
                limit: Optional[int] = None,
                username: Optional[str] = None,
-               scope_admin_id: Optional[int] = None) -> List[Admin]:
+               scope_admin_id: Optional[int] = None,
+               exclude_admin_id: Optional[int] = None) -> List[Admin]:
     """
     Retrieves a list of admins with optional filters and pagination.
 
@@ -1523,6 +1524,8 @@ def get_admins(db: Session,
                 )
             )
         )
+    if exclude_admin_id is not None:
+        query = query.filter(Admin.id != exclude_admin_id)
     if username:
         query = query.filter(Admin.username.ilike(f'%{username}%'))
     if offset:
@@ -1538,6 +1541,7 @@ def get_admins_with_count(
     limit: int = 20,
     username: Optional[str] = None,
     scope_admin_id: Optional[int] = None,
+    exclude_admin_id: Optional[int] = None,
     role: Optional[str] = None,
     billing_mode: Optional[str] = None,
     account_status: Optional[str] = None,
@@ -1552,6 +1556,8 @@ def get_admins_with_count(
                 )
             )
         )
+    if exclude_admin_id is not None:
+        query = query.filter(Admin.id != exclude_admin_id)
     if username:
         query = query.filter(Admin.username.ilike(f"%{username}%"))
     if role:

@@ -1,191 +1,143 @@
 import {
   Badge,
   Box,
-  Button,
   Card,
-  Collapse,
   HStack,
+  SimpleGrid,
+  Skeleton,
   Stack,
   Text,
-  useBreakpointValue,
-  useDisclosure,
 } from "@chakra-ui/react";
-import { AdminFormDrawer } from "components/AdminFormDrawer";
 import { AppShell } from "components/AppShell";
-import { DashboardOverviewCompact } from "components/DashboardOverviewCompact";
-import { DeleteUserModal } from "components/DeleteUserModal";
-import { FiltersCompact, UserManagementControls } from "components/FiltersCompact";
-import { PlanCreateModal } from "components/PlanCreateModal";
-import { QRCodeDialog } from "components/QRCodeDialog";
-import { ResetUserUsageModal } from "components/ResetUserUsageModal";
-import { RevokeSubscriptionModal } from "components/RevokeSubscriptionModal";
-import { UserDialog } from "components/UserDialog";
-import { UsersTablePro } from "components/UsersTablePro";
-import { fetchInbounds, useDashboard } from "contexts/DashboardContext";
 import useGetUser from "hooks/useGetUser";
-import { FC, useEffect, useState } from "react";
+import { FC } from "react";
 import { useQuery } from "react-query";
 import { fetch } from "service/http";
-import { AccountSummary, AdminCapabilities } from "types/Admin";
+import { AccountSummary, AdminCapabilities, ManagedAdminList } from "types/Admin";
 
-const calendarParts = (date: Date, calendar: "persian" | "islamic") => {
-  const parts = new Intl.DateTimeFormat(`en-US-u-ca-${calendar}`, { month: "numeric", day: "numeric" }).formatToParts(date);
-  return {
-    month: Number(parts.find((item) => item.type === "month")?.value || 0),
-    day: Number(parts.find((item) => item.type === "day")?.value || 0),
-  };
-};
+const fa = (value: number) => Number(value || 0).toLocaleString("fa-IR");
+const credit = (value: number | null | undefined) => value == null ? "نامحدود" : Number(value).toLocaleString("fa-IR");
 
-const iranHoliday = (date: Date) => {
-  if (date.getDay() === 5) return "تعطیل هفتگی جمعه";
-  const solar = calendarParts(date, "persian");
-  const fixed: Record<string, string> = {
-    "1/1": "نوروز", "1/2": "نوروز", "1/3": "نوروز", "1/4": "نوروز",
-    "1/12": "روز جمهوری اسلامی", "1/13": "روز طبیعت", "3/14": "رحلت امام خمینی",
-    "3/15": "قیام پانزده خرداد", "11/22": "پیروزی انقلاب اسلامی", "12/29": "ملی‌شدن صنعت نفت",
-  };
-  if (fixed[`${solar.month}/${solar.day}`]) return fixed[`${solar.month}/${solar.day}`];
-  const lunar = calendarParts(date, "islamic");
-  const religious: Record<string, string> = {
-    "1/9": "تاسوعا", "1/10": "عاشورا", "2/20": "اربعین", "2/28": "رحلت پیامبر",
-    "2/30": "شهادت امام رضا", "3/17": "میلاد پیامبر", "6/3": "شهادت حضرت فاطمه",
-    "7/13": "میلاد امام علی", "7/27": "مبعث", "8/15": "نیمه شعبان",
-    "9/21": "شهادت امام علی", "10/1": "عید فطر", "10/2": "تعطیل عید فطر",
-    "12/10": "عید قربان", "12/18": "عید غدیر",
-  };
-  return religious[`${lunar.month}/${lunar.day}`] || null;
-};
+const Metric: FC<{ label: string; value: string; hint?: string; tone?: string }> = ({ label, value, hint, tone }) => (
+  <Card
+    p={{ base: 4, md: 5 }}
+    minH="118px"
+    bg="var(--panel-surface)"
+    color="inherit"
+    borderWidth="1px"
+    borderColor="var(--panel-border)"
+    borderRadius="16px"
+    boxShadow="var(--shadow-panel)"
+  >
+    <Text color="var(--panel-text-muted)" fontSize="12px" fontWeight="700">{label}</Text>
+    <Text mt={2} color={tone || "var(--panel-text)"} fontSize={{ base: "2xl", md: "3xl" }} fontWeight="900" sx={{ fontVariantNumeric: "tabular-nums" }}>
+      {value}
+    </Text>
+    {hint && <Text mt={2} color="var(--panel-text-muted)" fontSize="11px">{hint}</Text>}
+  </Card>
+);
 
 export const Dashboard: FC = () => {
   const { userData, getUserIsSuccess } = useGetUser();
   const isOwner = userData.role === "OWNER" || userData.is_sudo;
-  const adminCreate = useDisclosure();
-  const planCreate = useDisclosure();
-  const desktopUsersVisible = useBreakpointValue({ base: false, md: true }) ?? false;
-  const [mobileUsersOpen, setMobileUsersOpen] = useState(true);
-  const today = new Date();
-  const holiday = iranHoliday(today);
 
-  const capabilities = useQuery<AdminCapabilities, Error>(
-    ["admin-capabilities", userData.username],
-    () => fetch("/admin/capabilities"),
-    { enabled: getUserIsSuccess }
-  );
   const account = useQuery<AccountSummary, Error>(
     ["account-summary", userData.username],
     () => fetch("/account/summary"),
-    { enabled: getUserIsSuccess }
+    { enabled: getUserIsSuccess && !isOwner, refetchInterval: 30000 }
+  );
+  const capabilities = useQuery<AdminCapabilities, Error>(
+    ["admin-capabilities", userData.username],
+    () => fetch("/admin/capabilities"),
+    { enabled: getUserIsSuccess && !isOwner, refetchInterval: 30000 }
+  );
+  const managedAdmins = useQuery<ManagedAdminList, Error>(
+    ["dashboard-admin-overview", userData.username],
+    () => fetch("/admin-management?offset=0&limit=100"),
+    { enabled: getUserIsSuccess && isOwner, refetchInterval: 30000 }
   );
 
-  const accountActive = account.data?.account_status === "ACTIVE";
-  const canCreateAdmin = Boolean(accountActive && capabilities.data?.can_create_admins);
-  const canCreatePlan = Boolean(accountActive && (account.data?.role === "OWNER" || account.data?.can_manage_plans));
+  const admins = managedAdmins.data?.admins || [];
+  const activeAdmins = admins.filter((item) => item.account_status === "ACTIVE").length;
+  const suspendedAdmins = admins.filter((item) => item.account_status === "SUSPENDED").length;
+  const disabledAdmins = admins.filter((item) => item.account_status === "DISABLED").length;
+  const walletOnPage = admins.reduce((sum, item) => sum + Number(item.policy.money_balance_toman || 0), 0);
+  const planManagers = admins.filter((item) => item.can_manage_plans).length;
+  const childManagers = admins.filter((item) => item.can_create_admins).length;
+  const adminSampleHint = (managedAdmins.data?.total || 0) > admins.length ? "در ۱۰۰ ادمین اخیر" : "در همه ادمین‌ها";
 
-  useEffect(() => {
-    useDashboard.getState().refetchUsers();
-    fetchInbounds();
-  }, []);
+  const accountData = account.data;
+  const quota = capabilities.data?.quota;
+  const trialRemaining = accountData ? Math.max(Number(accountData.trial_quota || 0) - Number(accountData.trials_used || 0), 0) : 0;
 
   return (
     <AppShell>
-      <Stack spacing={3}>
+      <Stack spacing={5}>
         <Card
-          as="header"
-          px={{ base: 3.5, md: 4 }}
-          py={3}
+          px={{ base: 4, md: 5 }}
+          py={{ base: 4, md: 5 }}
           bg="linear-gradient(145deg, var(--panel-surface), var(--panel-nested))"
           color="inherit"
           borderWidth="1px"
           borderColor="var(--panel-border)"
-          borderRadius="12px"
+          borderRadius="18px"
+          boxShadow="var(--shadow-panel)"
         >
-          <HStack justify="space-between" align="center" gap={4} flexWrap="wrap">
+          <HStack justify="space-between" align="start" gap={4} flexWrap="wrap">
             <Box minW={0}>
-              <Text as="h1" fontSize={{ base: "xl", md: "2xl" }} fontWeight="850" letterSpacing="-0.035em">
+              <Text color="var(--panel-accent)" fontSize="11px" fontWeight="900">داشبورد</Text>
+              <Text as="h1" mt={1} fontSize={{ base: "2xl", md: "3xl" }} fontWeight="900" letterSpacing="-0.04em">
                 خوش آمدی، <Text as="span" dir="ltr">{userData.username}</Text>
               </Text>
+              <Text mt={2} color="var(--panel-text-muted)" fontSize="sm">
+                {isOwner
+                  ? "نمای مدیریتی ادمین‌ها؛ وضعیت، اعتبار و دسترسی‌های عملیاتی در یک نگاه."
+                  : "خلاصه وضعیت حساب، اعتبار و ظرفیت‌های قابل استفاده شما."}
+              </Text>
             </Box>
-            <HStack spacing={2} flexWrap="wrap" justify="end">
-              {canCreateAdmin && (
-                <Button size="sm" h="34px" variant="outline" borderColor="var(--panel-border)" onClick={adminCreate.onOpen}>
-                  ساخت ادمین
-                </Button>
-              )}
-              {canCreatePlan && (
-                <Button size="sm" h="34px" variant="outline" borderColor="var(--panel-border)" onClick={planCreate.onOpen}>
-                  ساخت پلن
-                </Button>
-              )}
-              <Badge colorScheme="green" px={2.5} py={1.5} borderRadius="full" fontSize="10px">سیستم در حال اجرا</Badge>
-              <Badge colorScheme={holiday ? "orange" : "green"} px={2} py={1} borderRadius="full" fontSize="9px">
-                {holiday || "روز کاری"}
+            {!isOwner && accountData && (
+              <Badge
+                colorScheme={accountData.account_status === "ACTIVE" ? "green" : accountData.account_status === "SUSPENDED" ? "orange" : "red"}
+                px={3}
+                py={1.5}
+                borderRadius="full"
+                fontSize="11px"
+              >
+                {accountData.account_status === "ACTIVE" ? "حساب فعال" : accountData.account_status === "SUSPENDED" ? "حساب فریز" : "حساب غیرفعال"}
               </Badge>
-              <Text color="var(--panel-text-body)" fontSize="11px" fontWeight="700">
-                {today.toLocaleDateString("fa-IR-u-ca-persian", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
-              </Text>
-              <Text dir="ltr" color="var(--panel-accent)" fontSize="11px" fontWeight="800">
-                {today.toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit", hour12: false })}
-              </Text>
-            </HStack>
+            )}
           </HStack>
         </Card>
 
-        <DashboardOverviewCompact />
-
-        <Box as="section" aria-labelledby="user-operations-title">
-          <Card
-            bg="var(--panel-surface)"
-            color="inherit"
-            borderWidth="1px"
-            borderColor="var(--panel-border)"
-            borderRadius="14px"
-            boxShadow="var(--shadow-panel)"
-            overflow="hidden"
-          >
-            <Stack px={{ base: 3, md: 4 }} pt={3.5} spacing={2.5}>
-              <HStack justify="space-between" align="start" gap={3} flexWrap="wrap">
-                <Box flex="1" minW={0}>
-                  <Text color="var(--panel-accent)" fontSize="10px" fontWeight="800">کاربران</Text>
-                  <Text id="user-operations-title" as="h2" mt={0.5} fontSize="lg" fontWeight="850">
-                    مدیریت کاربران
-                  </Text>
-                  <Text mt={1} color="var(--panel-text-muted)" fontSize="11px">
-                    اطلاعات مهم، وضعیت، مصرف و عملیات هر کاربر بدون باز کردن پنجره اضافی.
-                  </Text>
-                </Box>
-                <Button
-                  display={{ base: "inline-flex", md: "none" }}
-                  size="sm"
-                  variant="ghost"
-                  aria-expanded={mobileUsersOpen}
-                  onClick={() => setMobileUsersOpen((value) => !value)}
-                >
-                  {mobileUsersOpen ? "بستن کاربران" : "نمایش کاربران"}
-                </Button>
-              </HStack>
-
-              <Box pt={2.5} borderTopWidth="1px" borderColor="var(--panel-border)">
-                <UserManagementControls />
-              </Box>
-            </Stack>
-
-            <Collapse in={desktopUsersVisible || mobileUsersOpen} animateOpacity={false}>
-              <FiltersCompact />
-              <Box px={{ base: 3, md: 4 }} pb={4}>
-                <UsersTablePro />
-              </Box>
-            </Collapse>
-          </Card>
-        </Box>
+        {isOwner ? (
+          managedAdmins.isLoading ? (
+            <Skeleton height="310px" borderRadius="18px" />
+          ) : (
+            <SimpleGrid columns={{ base: 1, sm: 2, xl: 3 }} gap={4}>
+              <Metric label="کل ادمین‌ها" value={fa(managedAdmins.data?.total || 0)} hint="بدون حساب Owner" tone="var(--panel-accent)" />
+              <Metric label="ادمین فعال" value={fa(activeAdmins)} hint={adminSampleHint} tone="var(--panel-success)" />
+              <Metric label="ادمین فریز" value={fa(suspendedAdmins)} hint={adminSampleHint} tone="var(--panel-warning)" />
+              <Metric label="ادمین غیرفعال" value={fa(disabledAdmins)} hint={adminSampleHint} tone="var(--panel-danger)" />
+              <Metric label="موجودی ادمین‌ها" value={`${fa(walletOnPage)} تومان`} hint={adminSampleHint} />
+              <Metric label="مدیر پلن" value={fa(planManagers)} hint={adminSampleHint} />
+              <Metric label="مجاز به ساخت ادمین" value={fa(childManagers)} hint={adminSampleHint} />
+            </SimpleGrid>
+          )
+        ) : account.isLoading || capabilities.isLoading || !accountData ? (
+          <Skeleton height="310px" borderRadius="18px" />
+        ) : (
+          <SimpleGrid columns={{ base: 1, sm: 2, xl: 4 }} gap={4}>
+            <Metric label="اعتبار مالی" value={`${fa(accountData.money_balance_toman)} تومان`} hint="موجودی قابل استفاده حساب" tone="var(--panel-accent)" />
+            <Metric label="سقف اعتبار" value={credit(quota?.credit_limit)} hint="سقف تخصیص‌یافته به حساب" />
+            <Metric label="اعتبار مصرف‌شده" value={credit(quota?.credit_used)} hint="مصرف ثبت‌شده حساب" tone="var(--panel-warning)" />
+            <Metric label="مانده اعتبار" value={credit(quota?.credit_remaining)} hint="اعتبار قابل استفاده باقی‌مانده" tone="var(--panel-success)" />
+            <Metric label="کاربران من" value={fa(accountData.own_users)} hint="کاربران مستقیم این حساب" />
+            <Metric label="کاربران زیرمجموعه" value={fa(accountData.subtree_users)} hint="کل کاربران در محدوده شما" />
+            <Metric label="سهمیه تست باقی‌مانده" value={fa(trialRemaining)} hint={`از ${fa(accountData.trial_quota)} سهمیه`} />
+            <Metric label="ظرفیت ساخت ادمین" value={credit(accountData.admin_creation_remaining)} hint="ظرفیت باقی‌مانده برای زیرمجموعه" />
+          </SimpleGrid>
+        )}
       </Stack>
-
-      <UserDialog />
-      <AdminFormDrawer isOpen={adminCreate.isOpen} admin={null} onClose={adminCreate.onClose} />
-      <PlanCreateModal isOpen={planCreate.isOpen} isOwner={isOwner} onClose={planCreate.onClose} />
-      <DeleteUserModal />
-      <QRCodeDialog />
-      <ResetUserUsageModal />
-      <RevokeSubscriptionModal />
     </AppShell>
   );
 };

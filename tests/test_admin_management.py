@@ -87,6 +87,33 @@ def test_management_list_is_stable_and_counted(session):
     assert [admin.username for admin in admins] == ["middle", "alpha"]
 
 
+def test_management_list_excludes_current_admin_from_count_and_page(session):
+    actor = crud.create_admin(
+        session,
+        AdminCreate(username="actor", password="secret", is_sudo=False),
+    )
+    for username in ("child-a", "child-b"):
+        crud.create_admin(
+            session,
+            AdminCreate(username=username, password="secret", is_sudo=False),
+        )
+
+    admins, total = crud.get_admins_with_count(
+        session,
+        offset=0,
+        limit=20,
+        exclude_admin_id=actor.id,
+    )
+    legacy_admins = crud.get_admins(
+        session,
+        exclude_admin_id=actor.id,
+    )
+
+    assert total == 2
+    assert {admin.username for admin in admins} == {"child-a", "child-b"}
+    assert all(admin.id != actor.id for admin in legacy_admins)
+
+
 def test_policy_rejects_negative_or_unknown_volume_rules():
     with pytest.raises(ValidationError):
         MarzhelpAdminPolicy(user_limit=-1)

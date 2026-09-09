@@ -48,6 +48,7 @@ const LogoutIcon = chakra(ArrowLeftOnRectangleIcon, iconProps);
 const HostsIcon = chakra(LinkIcon, iconProps);
 const NodesIcon = chakra(SquaresPlusIcon, iconProps);
 const NodesUsageIcon = chakra(ChartPieIcon, iconProps);
+const DashboardNavIcon = chakra(ChartPieIcon, iconProps);
 const UsersNavIcon = chakra(UsersIcon, iconProps);
 const AdminsNavIcon = chakra(UserGroupIcon, iconProps);
 const AuditNavIcon = chakra(ClipboardDocumentListIcon, iconProps);
@@ -110,12 +111,13 @@ export const Header: FC = () => {
   const showSidebarBrand = Boolean(sidebarLogo || showSidebarName);
   useEffect(() => updateThemeColor(colorMode), [colorMode]);
   useEffect(() => { setMobileMenuOpen(false); }, [location.pathname]);
+  const isDashboardPage = location.pathname === "/";
+  const isUsersPage = location.pathname.startsWith("/users");
   const isAdminsPage = location.pathname.startsWith("/admins");
   const isAuditPage = location.pathname.startsWith("/audit-logs");
   const isDeviceLimitPage = location.pathname.startsWith("/device-limits");
   const isPlansPage = location.pathname.startsWith("/plans");
   const isSettingsPage = location.pathname.startsWith("/settings");
-  const isUsersPage = !isAdminsPage && !isAuditPage && !isDeviceLimitPage && !isPlansPage && !isSettingsPage;
   const logout = async () => {
     try {
       await fetch("/admin/logout", { method: "POST" });
@@ -179,6 +181,18 @@ export const Header: FC = () => {
         <Button
           as={Link}
           to="/"
+          size="md"
+          variant={isDashboardPage ? "solid" : "ghost"}
+          colorScheme={isDashboardPage ? "primary" : "gray"}
+          color={isDashboardPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"}
+          _hover={isDashboardPage ? undefined : { bg: "var(--panel-row-hover)", color: "var(--panel-text)" }}
+          leftIcon={<DashboardNavIcon />}
+          justifyContent="flex-start"
+          aria-current={isDashboardPage ? "page" : undefined}
+        >داشبورد</Button>
+        <Button
+          as={Link}
+          to="/users/"
           size="md"
           variant={isUsersPage ? "solid" : "ghost"}
           colorScheme={isUsersPage ? "primary" : "gray"}
@@ -248,7 +262,8 @@ export const Header: FC = () => {
       </Collapse>
 
       <SimpleGrid as="nav" aria-label="ناوبری اصلی دسکتاپ" display={{ base: "none", lg: "grid" }} columns={1} spacing={2}>
-        <Button as={Link} to="/" size="md" variant={isUsersPage ? "solid" : "ghost"} colorScheme={isUsersPage ? "primary" : "gray"} color={isUsersPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<UsersNavIcon />} justifyContent="flex-start" aria-current={isUsersPage ? "page" : undefined}>{t("users")}</Button>
+        <Button as={Link} to="/" size="md" variant={isDashboardPage ? "solid" : "ghost"} colorScheme={isDashboardPage ? "primary" : "gray"} color={isDashboardPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<DashboardNavIcon />} justifyContent="flex-start" aria-current={isDashboardPage ? "page" : undefined}>داشبورد</Button>
+        <Button as={Link} to="/users/" size="md" variant={isUsersPage ? "solid" : "ghost"} colorScheme={isUsersPage ? "primary" : "gray"} color={isUsersPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<UsersNavIcon />} justifyContent="flex-start" aria-current={isUsersPage ? "page" : undefined}>{t("users")}</Button>
         <Button hidden={!canAccessPlans} as={Link} to="/plans/" size="md" variant={isPlansPage ? "solid" : "ghost"} colorScheme={isPlansPage ? "primary" : "gray"} color={isPlansPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<PlansNavIcon />} justifyContent="flex-start" aria-current={isPlansPage ? "page" : undefined}>Plans</Button>
         {canManage && <Button as={Link} to="/admins/" size="md" variant={isAdminsPage ? "solid" : "ghost"} colorScheme={isAdminsPage ? "primary" : "gray"} color={isAdminsPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<AdminsNavIcon />} justifyContent="flex-start" aria-current={isAdminsPage ? "page" : undefined}>{t("admins.nav")}</Button>}
         {isOwner && <Button as={Link} to="/device-limits/" size="md" variant={isDeviceLimitPage ? "solid" : "ghost"} colorScheme={isDeviceLimitPage ? "primary" : "gray"} color={isDeviceLimitPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<DeviceLimitNavIcon />} justifyContent="flex-start" aria-current={isDeviceLimitPage ? "page" : undefined}>{t("deviceLimit.nav")}</Button>}
