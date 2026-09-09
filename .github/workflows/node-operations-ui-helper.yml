@@ -1,0 +1,736 @@
+name: Temporary Node Operations UI Builder
+
+on:
+  push:
+    branches:
+      - codex/node-operations-ui-build
+
+permissions:
+  contents: write
+
+jobs:
+  build-ui:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: app/dashboard/package-lock.json
+      - name: Apply surgical frontend patch
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one anchor, found {count}: {old[:100]!r}")
+              p.write_text(text.replace(old, new, 1))
+
+          def replace_count(path, old, new, expected):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != expected:
+                  raise SystemExit(f"{path}: expected {expected} anchors, found {count}: {old[:100]!r}")
+              p.write_text(text.replace(old, new))
+
+          workspace = "app/dashboard/src/components/NodesManagementWorkspace.tsx"
+
+          replace_once(
+              workspace,
+              '''type NodeRow = {
+            key: string;
+            name: string;
+            node: NodeType | null;
+            bandwidth?: NodeBandwidthEntry;
+            status: Status;
+            editable: boolean;
+          };
+
+          type StatusFilter = "all" | "connected" | "connecting" | "disabled" | "error";''',
+              '''type NodeTrafficAverage = {
+            uplink_bytes: number;
+            downlink_bytes: number;
+            sample_seconds: number;
+            sample_count: number;
+            uplink_bps: number;
+            downlink_bps: number;
+            total_bps: number;
+          };
+
+          type NodeOperationsEntry = {
+            node_id: number;
+            node_name: string;
+            status: Status;
+            operational_state: string;
+            message: string | null;
+            xray_version: string | null;
+            last_status_change: string | null;
+            live: NodeBandwidthEntry;
+            average_1h: NodeTrafficAverage;
+            average_24h: NodeTrafficAverage;
+          };
+
+          type NodesOperationsResponse = {
+            nodes: NodeOperationsEntry[];
+          };
+
+          type NodeTrafficPoint = {
+            bucket_start: string;
+            uplink_bps: number;
+            downlink_bps: number;
+            total_bps: number;
+            sample_seconds: number;
+            sample_count: number;
+          };
+
+          type NodeTrafficHistoryResponse = {
+            node_id: number;
+            window_minutes: number;
+            points: NodeTrafficPoint[];
+          };
+
+          type NodeEventEntry = {
+            id: number;
+            occurred_at: string;
+            received_at: string;
+            event_type: string;
+            severity: string;
+            reason_code: string | null;
+            trigger_reason: string | null;
+            root_cause: string | null;
+            source: string;
+            message: string | null;
+            previous_state: string | null;
+            new_state: string | null;
+            reconnect_mode: string | null;
+            reconnect_attempt: number | null;
+            reconnect_result: string | null;
+            downtime_seconds: number | null;
+            runtime_version: string | null;
+            metadata: unknown;
+          };
+
+          type NodeEventsResponse = {
+            node_id: number;
+            events: NodeEventEntry[];
+            total: number;
+            offset: number;
+            limit: number;
+          };
+
+          type NodeRow = {
+            key: string;
+            name: string;
+            node: NodeType | null;
+            bandwidth?: NodeBandwidthEntry;
+            operation?: NodeOperationsEntry;
+            status: Status;
+            editable: boolean;
+          };
+
+          type StatusFilter = "all" | "connected" | "connecting" | "disabled" | "error";
+          type SortMode = "name" | "status" | "traffic" | "avg_1h" | "avg_24h";'''
+          )
+
+          replace_once(
+              workspace,
+              '''const Sparkline: FC<{ values: number[] }> = ({ values }) => {''',
+              '''const Sparkline: FC<{ values: number[]; label?: string }> = ({ values, label = "روند زنده ترافیک" }) => {'''
+          )
+          replace_once(
+              workspace,
+              '''<svg viewBox="0 0 100 32" width="100%" height="34" role="img" aria-label="روند زنده ترافیک">''',
+              '''<svg viewBox="0 0 100 32" width="100%" height="34" role="img" aria-label={label}>'''
+          )
+
+          replace_once(
+              workspace,
+              '''const SummaryCard: FC<{''',
+              '''const operationalStateLabel = (state?: string) => {
+            if (state === "healthy") return "سالم";
+            if (state === "degraded") return "افت کیفیت";
+            if (state === "reconnecting") return "اتصال مجدد";
+            if (state === "offline") return "آفلاین";
+            if (state === "disabled") return "غیرفعال";
+            return state || "نامشخص";
+          };
+
+          const operationalStateScheme = (state?: string) => {
+            if (state === "healthy") return "green";
+            if (state === "degraded") return "orange";
+            if (state === "reconnecting") return "yellow";
+            if (state === "disabled") return "gray";
+            return "red";
+          };
+
+          const severityScheme = (severity?: string) => {
+            if (severity === "error" || severity === "critical") return "red";
+            if (severity === "warning") return "orange";
+            if (severity === "info") return "blue";
+            return "gray";
+          };
+
+          const downtimeLabel = (seconds?: number | null) => {
+            if (seconds == null || !Number.isFinite(seconds)) return null;
+            if (seconds < 60) return `${new Intl.NumberFormat("fa-IR", { maximumFractionDigits: 0 }).format(seconds)} ثانیه`;
+            if (seconds < 3600) return `${new Intl.NumberFormat("fa-IR", { maximumFractionDigits: 0 }).format(seconds / 60)} دقیقه`;
+            return `${new Intl.NumberFormat("fa-IR", { maximumFractionDigits: 1 }).format(seconds / 3600)} ساعت`;
+          };
+
+          const SummaryCard: FC<{'''
+          )
+
+          replace_once(
+              workspace,
+              '''export const NodesManagementWorkspace: FC = () => {''',
+              '''const NodeOperationalDetail: FC<{ row: NodeRow }> = ({ row }) => {
+            const nodeId = row.node?.id;
+            const historyQuery = useQuery<NodeTrafficHistoryResponse>({
+              queryKey: ["node-operations-history", nodeId],
+              queryFn: () => fetch(`/node/${nodeId}/operations/history?minutes=1440&max_points=120`),
+              enabled: Boolean(nodeId),
+              refetchOnWindowFocus: false,
+              staleTime: 30_000,
+            });
+            const eventsQuery = useQuery<NodeEventsResponse>({
+              queryKey: ["node-operations-events", nodeId],
+              queryFn: () => fetch(`/node/${nodeId}/events?offset=0&limit=50`),
+              enabled: Boolean(nodeId),
+              refetchInterval: 15_000,
+              refetchOnWindowFocus: false,
+              staleTime: 10_000,
+            });
+            const operation = row.operation;
+            const points = historyQuery.data?.points || [];
+            const events = eventsQuery.data?.events || [];
+
+            return (
+              <Box borderWidth="1px" borderColor="var(--panel-border)" borderRadius="14px" bg="var(--panel-surface)" p={4}>
+                <HStack justify="space-between" align="start" gap={3}>
+                  <Box minW={0}>
+                    <Text color="var(--panel-accent)" fontSize="xs" fontWeight="800">عملیات و تله‌متری</Text>
+                    <Text mt={1} fontSize="lg" fontWeight="900">{row.name}</Text>
+                    <Text mt={1} fontSize="xs" color="var(--panel-text-muted)">
+                      میانگین‌های پایدار، تاریخچه ۲۴ ساعت و رخدادهای sanitize‌شده
+                    </Text>
+                  </Box>
+                  <Badge colorScheme={operationalStateScheme(operation?.operational_state)}>
+                    {operationalStateLabel(operation?.operational_state)}
+                  </Badge>
+                </HStack>
+
+                {operation?.message && (
+                  <Alert mt={3} status={operation.operational_state === "healthy" ? "info" : "warning"} borderRadius="10px" alignItems="start">
+                    <AlertIcon mt={0.5} />
+                    <AlertDescription fontSize="xs">{operation.message}</AlertDescription>
+                  </Alert>
+                )}
+
+                <Grid mt={3} templateColumns="repeat(2, minmax(0, 1fr))" gap={2}>
+                  <SummaryCard
+                    label="میانگین ۱ ساعت"
+                    value={formatRate(operation?.average_1h.total_bps)}
+                    hint={`${new Intl.NumberFormat("fa-IR").format(operation?.average_1h.sample_count || 0)} نمونه پایدار`}
+                    accent="#38bdf8"
+                  />
+                  <SummaryCard
+                    label="میانگین ۲۴ ساعت"
+                    value={formatRate(operation?.average_24h.total_bps)}
+                    hint={`${new Intl.NumberFormat("fa-IR").format(operation?.average_24h.sample_count || 0)} نمونه پایدار`}
+                    accent="#818cf8"
+                  />
+                  <SummaryCard label="نسخه Xray" value={operation?.xray_version || "—"} hint="گزارش‌شده توسط نود" />
+                  <SummaryCard label="آخرین تغییر وضعیت" value={sampledAtLabel(operation?.last_status_change)} hint={operation?.status || row.status} />
+                </Grid>
+
+                <Box mt={3} p={3} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px" bg="var(--panel-nested)">
+                  <HStack justify="space-between" mb={2}>
+                    <Box>
+                      <Text fontSize="sm" fontWeight="800">تاریخچه ترافیک ۲۴ ساعت</Text>
+                      <Text fontSize="xs" color="var(--panel-text-muted)">داده persisted و downsample‌شده؛ بدون polling جدید Xray</Text>
+                    </Box>
+                    <Badge variant="outline">{new Intl.NumberFormat("fa-IR").format(points.length)} نقطه</Badge>
+                  </HStack>
+                  {historyQuery.isLoading ? (
+                    <Skeleton height="54px" borderRadius="8px" />
+                  ) : historyQuery.isError ? (
+                    <Alert status="warning" borderRadius="8px"><AlertIcon /><AlertDescription fontSize="xs">تاریخچه ترافیک در دسترس نیست.</AlertDescription></Alert>
+                  ) : points.length ? (
+                    <Box color="cyan.300">
+                      <Sparkline values={points.map((point) => point.total_bps)} label="روند ترافیک ۲۴ ساعت" />
+                      <HStack justify="space-between" mt={1}>
+                        <Text fontSize="10px" color="var(--panel-text-muted)">{sampledAtLabel(points[0]?.bucket_start)}</Text>
+                        <Text fontSize="10px" color="var(--panel-text-muted)">{sampledAtLabel(points[points.length - 1]?.bucket_start)}</Text>
+                      </HStack>
+                    </Box>
+                  ) : (
+                    <Text fontSize="xs" color="var(--panel-text-muted)">هنوز نمونه persisted برای این بازه ثبت نشده است.</Text>
+                  )}
+                </Box>
+
+                <Box mt={3} p={3} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px" bg="var(--panel-nested)">
+                  <HStack justify="space-between" mb={2}>
+                    <Box>
+                      <Text fontSize="sm" fontWeight="800">رخدادهای اخیر</Text>
+                      <Text fontSize="xs" color="var(--panel-text-muted)">Timeline تشخیصی sanitize‌شده</Text>
+                    </Box>
+                    <Badge variant="outline">{new Intl.NumberFormat("fa-IR").format(eventsQuery.data?.total || 0)}</Badge>
+                  </HStack>
+                  {eventsQuery.isLoading ? (
+                    <Stack spacing={2}>{[0, 1, 2].map((item) => <Skeleton key={item} height="54px" borderRadius="8px" />)}</Stack>
+                  ) : eventsQuery.isError ? (
+                    <Alert status="warning" borderRadius="8px"><AlertIcon /><AlertDescription fontSize="xs">Timeline رخدادها در دسترس نیست.</AlertDescription></Alert>
+                  ) : events.length ? (
+                    <VStack align="stretch" spacing={2}>
+                      {events.slice(0, 8).map((event) => (
+                        <Box key={event.id} p={2.5} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="9px">
+                          <HStack justify="space-between" align="start" gap={2}>
+                            <HStack spacing={2} minW={0}>
+                              <Badge colorScheme={severityScheme(event.severity)}>{event.severity}</Badge>
+                              <Text fontSize="xs" fontWeight="800" dir="ltr" noOfLines={1}>{event.event_type}</Text>
+                            </HStack>
+                            <Text fontSize="10px" color="var(--panel-text-muted)" whiteSpace="nowrap">{sampledAtLabel(event.occurred_at)}</Text>
+                          </HStack>
+                          {(event.previous_state || event.new_state) && (
+                            <Text mt={1} fontSize="xs" color="var(--panel-text-muted)" dir="ltr" textAlign="start">
+                              {event.previous_state || "—"} → {event.new_state || "—"}
+                            </Text>
+                          )}
+                          {(event.reconnect_mode || event.reconnect_attempt != null || event.reconnect_result) && (
+                            <Text mt={1} fontSize="xs" color="var(--panel-text-muted)" dir="ltr" textAlign="start">
+                              reconnect: {event.reconnect_mode || "—"} · attempt {event.reconnect_attempt ?? "—"} · {event.reconnect_result || "—"}
+                            </Text>
+                          )}
+                          {(event.root_cause || event.trigger_reason || downtimeLabel(event.downtime_seconds)) && (
+                            <Text mt={1} fontSize="xs" color="var(--panel-text-muted)">
+                              {[event.trigger_reason, event.root_cause, downtimeLabel(event.downtime_seconds) ? `قطعی ${downtimeLabel(event.downtime_seconds)}` : null].filter(Boolean).join(" · ")}
+                            </Text>
+                          )}
+                          {event.message && <Text mt={1} fontSize="xs">{event.message}</Text>}
+                        </Box>
+                      ))}
+                    </VStack>
+                  ) : (
+                    <Text fontSize="xs" color="var(--panel-text-muted)">رخدادی برای این نود ثبت نشده است.</Text>
+                  )}
+                </Box>
+              </Box>
+            );
+          };
+
+          export const NodesManagementWorkspace: FC = () => {'''
+          )
+
+          replace_once(
+              workspace,
+              '''  const bandwidth = useQuery<BandwidthResponse>({
+            queryKey: ["nodes-live-bandwidth"],
+            queryFn: () => fetch("/nodes/bandwidth"),
+            refetchInterval: 5_000,
+            refetchOnWindowFocus: false,
+            staleTime: 3_000,
+          });''',
+              '''  const bandwidth = useQuery<BandwidthResponse>({
+            queryKey: ["nodes-live-bandwidth"],
+            queryFn: () => fetch("/nodes/bandwidth"),
+            refetchInterval: 5_000,
+            refetchOnWindowFocus: false,
+            staleTime: 3_000,
+          });
+            const operations = useQuery<NodesOperationsResponse>({
+              queryKey: ["nodes-operations"],
+              queryFn: () => fetch("/nodes/operations"),
+              refetchInterval: 10_000,
+              refetchOnWindowFocus: false,
+              staleTime: 5_000,
+            });'''
+          )
+          replace_once(
+              workspace,
+              '''  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");''',
+              '''  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+            const [sortMode, setSortMode] = useState<SortMode>("status");'''
+          )
+
+          replace_once(
+              workspace,
+              '''        queryClient.invalidateQueries(["nodes-live-bandwidth"]);
+                onSaved();''',
+              '''        queryClient.invalidateQueries(["nodes-live-bandwidth"]);
+                queryClient.invalidateQueries(["nodes-operations"]);
+                onSaved();'''
+          )
+          replace_once(
+              workspace,
+              '''        queryClient.invalidateQueries(FetchNodesQueryKey);
+              },
+              onError: (error) => {''',
+              '''        queryClient.invalidateQueries(FetchNodesQueryKey);
+                queryClient.invalidateQueries(["nodes-operations"]);
+              },
+              onError: (error) => {'''
+          )
+
+          old_rows = '''  const rows = useMemo<NodeRow[]>(() => {
+            const bandwidthById = new Map<string, NodeBandwidthEntry>();
+            (bandwidth.data?.nodes || []).forEach((item) => {
+              bandwidthById.set(item.node_id == null ? "master" : String(item.node_id), item);
+            });
+
+            const result: NodeRow[] = [];
+            const masterBandwidth = bandwidthById.get("master");
+            if (masterBandwidth) {
+              result.push({
+                key: "master",
+                name: masterBandwidth.node_name || "Master",
+                node: null,
+                bandwidth: masterBandwidth,
+                status: bandwidthStateToStatus(masterBandwidth.state),
+                editable: false,
+              });
+            }
+
+            (nodes || []).forEach((node) => {
+              const key = String(node.id);
+              const nodeBandwidth = bandwidthById.get(key);
+              result.push({
+                key,
+                name: node.name,
+                node,
+                bandwidth: nodeBandwidth,
+                status: node.status || bandwidthStateToStatus(nodeBandwidth?.state),
+                editable: true,
+              });
+            });
+            return result;
+          }, [bandwidth.data?.nodes, nodes]);'''
+          new_rows = '''  const rows = useMemo<NodeRow[]>(() => {
+            const bandwidthById = new Map<string, NodeBandwidthEntry>();
+            (bandwidth.data?.nodes || []).forEach((item) => {
+              bandwidthById.set(item.node_id == null ? "master" : String(item.node_id), item);
+            });
+            const operationsById = new Map<string, NodeOperationsEntry>();
+            (operations.data?.nodes || []).forEach((item) => {
+              operationsById.set(String(item.node_id), item);
+            });
+
+            const result: NodeRow[] = [];
+            const masterBandwidth = bandwidthById.get("master");
+            if (masterBandwidth) {
+              result.push({
+                key: "master",
+                name: masterBandwidth.node_name || "Master",
+                node: null,
+                bandwidth: masterBandwidth,
+                status: bandwidthStateToStatus(masterBandwidth.state),
+                editable: false,
+              });
+            }
+
+            (nodes || []).forEach((node) => {
+              const key = String(node.id);
+              const operation = operationsById.get(key);
+              const nodeBandwidth = operation?.live || bandwidthById.get(key);
+              result.push({
+                key,
+                name: node.name,
+                node,
+                bandwidth: nodeBandwidth,
+                operation,
+                status: operation?.status || node.status || bandwidthStateToStatus(nodeBandwidth?.state),
+                editable: true,
+              });
+            });
+            return result;
+          }, [bandwidth.data?.nodes, nodes, operations.data?.nodes]);'''
+          replace_once(workspace, old_rows, new_rows)
+
+          old_filter = '''  const filteredRows = useMemo(() => {
+            const needle = search.trim().toLowerCase();
+            return rows.filter((row) => {
+              const matchesSearch =
+                !needle ||
+                row.name.toLowerCase().includes(needle) ||
+                row.node?.address?.toLowerCase().includes(needle);
+              const matchesStatus = statusFilter === "all" || row.status === statusFilter;
+              return matchesSearch && matchesStatus;
+            });
+          }, [rows, search, statusFilter]);
+
+          useEffect(() => setPage(1), [search, statusFilter, pageSize]);'''
+          new_filter = '''  const filteredRows = useMemo(() => {
+            const needle = search.trim().toLowerCase();
+            const filtered = rows.filter((row) => {
+              const matchesSearch =
+                !needle ||
+                row.name.toLowerCase().includes(needle) ||
+                row.node?.address?.toLowerCase().includes(needle);
+              const matchesStatus = statusFilter === "all" || row.status === statusFilter;
+              return matchesSearch && matchesStatus;
+            });
+            return filtered.sort((left, right) => {
+              if (sortMode === "name") return left.name.localeCompare(right.name);
+              if (sortMode === "status") {
+                return (left.operation?.operational_state || left.status).localeCompare(
+                  right.operation?.operational_state || right.status
+                );
+              }
+              const metric = (row: NodeRow) => {
+                if (sortMode === "traffic") return row.bandwidth?.total_bps || 0;
+                if (sortMode === "avg_1h") return row.operation?.average_1h.total_bps || 0;
+                return row.operation?.average_24h.total_bps || 0;
+              };
+              return metric(right) - metric(left);
+            });
+          }, [rows, search, sortMode, statusFilter]);
+
+          useEffect(() => setPage(1), [search, statusFilter, sortMode, pageSize]);'''
+          replace_once(workspace, old_filter, new_filter)
+
+          replace_once(
+              workspace,
+              '''              وضعیت، ترافیک زنده و تنظیمات هر نود را از یک نمای فشرده مدیریت کنید.''',
+              '''              وضعیت عملیاتی، ترافیک زنده، میانگین‌های پایدار، تاریخچه رخداد و تنظیمات هر نود را از یک نما مدیریت کنید.'''
+          )
+
+          old_controls = '''              <HStack mt={3} gap={2}>
+                <Box position="relative" flex="1" minW="190px">
+                  <Box position="absolute" insetInlineStart="10px" top="50%" transform="translateY(-50%)" color="var(--panel-text-muted)" zIndex={1}>
+                    <MagnifyingGlassIcon width={17} />
+                  </Box>
+                  <Input
+                    size="sm"
+                    ps="34px"
+                    placeholder="جستجو در نام نود یا آدرس..."
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                  />
+                </Box>
+                <Tooltip label="به‌روزرسانی اطلاعات">
+                  <IconButton
+                    aria-label="به‌روزرسانی نودها"
+                    size="sm"
+                    variant="outline"
+                    icon={<ArrowPathIcon width={17} />}
+                    onClick={() => {
+                      bandwidth.refetch();
+                    }}
+                    isLoading={bandwidth.isFetching}
+                  />
+                </Tooltip>
+              </HStack>'''
+          new_controls = '''              <HStack mt={3} gap={2} flexWrap="wrap">
+                <Box position="relative" flex="1" minW="190px">
+                  <Box position="absolute" insetInlineStart="10px" top="50%" transform="translateY(-50%)" color="var(--panel-text-muted)" zIndex={1}>
+                    <MagnifyingGlassIcon width={17} />
+                  </Box>
+                  <Input
+                    size="sm"
+                    ps="34px"
+                    placeholder="جستجو در نام نود یا آدرس..."
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                  />
+                </Box>
+                <Select size="sm" w={{ base: "full", sm: "190px" }} value={sortMode} onChange={(event) => setSortMode(event.target.value as SortMode)}>
+                  <option value="status">مرتب‌سازی: وضعیت عملیاتی</option>
+                  <option value="traffic">ترافیک لحظه‌ای</option>
+                  <option value="avg_1h">میانگین ۱ ساعت</option>
+                  <option value="avg_24h">میانگین ۲۴ ساعت</option>
+                  <option value="name">نام نود</option>
+                </Select>
+                <Tooltip label="به‌روزرسانی اطلاعات">
+                  <IconButton
+                    aria-label="به‌روزرسانی نودها"
+                    size="sm"
+                    variant="outline"
+                    icon={<ArrowPathIcon width={17} />}
+                    onClick={() => {
+                      bandwidth.refetch();
+                      operations.refetch();
+                    }}
+                    isLoading={bandwidth.isFetching || operations.isFetching}
+                  />
+                </Tooltip>
+              </HStack>'''
+          replace_once(workspace, old_controls, new_controls)
+
+          replace_once(workspace, '''<Box minW="790px">''', '''<Box minW="1080px">''')
+          old_columns = '''templateColumns="minmax(170px, 1.35fr) minmax(105px, .8fr) minmax(105px, .8fr) minmax(120px, .9fr) minmax(135px, 1fr) minmax(90px, .65fr)"'''
+          new_columns = '''templateColumns="minmax(170px, 1.3fr) minmax(95px, .7fr) minmax(95px, .7fr) minmax(105px, .78fr) minmax(105px, .78fr) minmax(120px, .9fr) minmax(135px, 1fr) minmax(90px, .65fr)"'''
+          replace_count(workspace, old_columns, new_columns, 2)
+          replace_once(
+              workspace,
+              '''                  <Text fontSize="xs" fontWeight="800" color="var(--panel-text-muted)">آپلود</Text>
+                  <Text fontSize="xs" fontWeight="800" color="var(--panel-text-muted)">آخرین نمونه</Text>''',
+              '''                  <Text fontSize="xs" fontWeight="800" color="var(--panel-text-muted)">آپلود</Text>
+                  <Text fontSize="xs" fontWeight="800" color="var(--panel-text-muted)">میانگین ۱س</Text>
+                  <Text fontSize="xs" fontWeight="800" color="var(--panel-text-muted)">میانگین ۲۴س</Text>
+                  <Text fontSize="xs" fontWeight="800" color="var(--panel-text-muted)">آخرین نمونه</Text>'''
+          )
+          replace_once(
+              workspace,
+              '''                            <NodeModalStatusBadge status={row.status} compact />''',
+              '''                            <NodeModalStatusBadge status={row.status} compact />
+                            {row.operation && (
+                              <Badge colorScheme={operationalStateScheme(row.operation.operational_state)} variant="subtle">
+                                {operationalStateLabel(row.operation.operational_state)}
+                              </Badge>
+                            )}'''
+          )
+          replace_once(
+              workspace,
+              '''                        <Text fontSize="sm" fontWeight="800" dir="ltr" textAlign="start">{formatRate(row.bandwidth?.uplink_bps)}</Text>
+                        <Box>''',
+              '''                        <Text fontSize="sm" fontWeight="800" dir="ltr" textAlign="start">{formatRate(row.bandwidth?.uplink_bps)}</Text>
+                        <Text fontSize="sm" fontWeight="800" dir="ltr" textAlign="start">{formatRate(row.operation?.average_1h.total_bps)}</Text>
+                        <Text fontSize="sm" fontWeight="800" dir="ltr" textAlign="start">{formatRate(row.operation?.average_24h.total_bps)}</Text>
+                        <Box>'''
+          )
+
+          replace_once(
+              workspace,
+              '''          ) : selected?.editable && selected.node ? (
+            <NodeEditor node={selected.node} bandwidth={selected.bandwidth} isNew={false} onSaved={() => undefined} />
+          ) : selected ? (''',
+              '''          ) : selected?.editable && selected.node ? (
+            <Stack spacing={3}>
+              <NodeEditor node={selected.node} bandwidth={selected.bandwidth} isNew={false} onSaved={() => undefined} />
+              <NodeOperationalDetail row={selected} />
+            </Stack>
+          ) : selected ? ('''
+          )
+
+          header = "app/dashboard/src/components/Header.tsx"
+          replace_once(header, '''const NodesUsageIcon = chakra(ChartPieIcon, iconProps);\n''', '''''')
+          replace_once(
+              header,
+              '''  const { onEditingHosts, onEditingNodes, onShowingNodesUsage } = useDashboard();''',
+              '''  const { onEditingHosts, onEditingNodes } = useDashboard();'''
+          )
+          replace_once(
+              header,
+              '''            <ActionButton icon={<NodesUsageIcon />} label={t("header.nodesUsage")} onClick={() => onShowingNodesUsage(true)} />\n''',
+              ''''''
+          )
+
+          app_shell = "app/dashboard/src/components/AppShell.tsx"
+          replace_once(app_shell, '''import { NodesUsage } from "./NodesUsage";\n''', '''''')
+          replace_once(app_shell, '''          <NodesUsage />\n''', '''''')
+
+          contracts = "app/dashboard/scripts/test-stage1-ui-contracts.cjs"
+          replace_once(
+              contracts,
+              '''const adminsPage = read("src/pages/admins/AdminsPage.tsx");''',
+              '''const adminsPage = read("src/pages/admins/AdminsPage.tsx");
+          const nodesWorkspace = read("src/components/NodesManagementWorkspace.tsx");'''
+          )
+          replace_once(
+              contracts,
+              '''for (const modal of ["<CoreSettingsModal />", "<HostsDialog />", "<NodesDialog />", "<NodesUsage />"]) {
+            assert.ok(appShell.includes(modal), `AppShell must keep ${modal} globally mounted`);
+          }
+          assert.ok(appShell.includes("{isOwner && ("), "global infrastructure modals must remain Owner-gated");''',
+              '''for (const modal of ["<CoreSettingsModal />", "<HostsDialog />", "<NodesDialog />"]) {
+            assert.ok(appShell.includes(modal), `AppShell must keep ${modal} globally mounted`);
+          }
+          assert.ok(appShell.includes("{isOwner && ("), "global infrastructure modals must remain Owner-gated");
+          assert.ok(!appShell.includes("<NodesUsage />"), "Separate Nodes Usage modal must be removed after unified Node Operations is functional");
+          assert.ok(!header.includes("onShowingNodesUsage"), "Navigation must not expose the redundant Nodes Usage action");
+          assert.ok(nodesWorkspace.includes('fetch("/nodes/operations")'), "Unified Node Operations workspace must consume the operations summary endpoint");
+          assert.ok(nodesWorkspace.includes("/operations/history?minutes=1440&max_points=120"), "Unified Node Operations workspace must lazy-load bounded persisted history");
+          assert.ok(nodesWorkspace.includes("/events?offset=0&limit=50"), "Unified Node Operations workspace must lazy-load the sanitized event timeline");
+          assert.ok(nodesWorkspace.includes("میانگین ۱ ساعت") && nodesWorkspace.includes("میانگین ۲۴ ساعت"), "Unified Node Operations workspace must expose durable 1h/24h averages");
+          assert.ok(nodesWorkspace.includes("sortMode"), "Unified Node Operations workspace must expose deterministic sorting");'''
+          )
+
+          state = "docs/CODEX/STATE.md"
+          replace_once(
+              state,
+              '''AUDIT, PERSISTENCE, AUTHORITATIVE TRAFFIC COLLECTOR, STRUCTURED RUNTIME V2 EVENTS, AND RECONNECT OBSERVABILITY ARE VERIFIED. ADDITIVE NODE OPERATIONS READ API IS IMPLEMENTED IN THE CHECKPOINT COMMIT CONTAINING THIS FILE; CI FOR THAT API MILESTONE MUST BE VERIFIED NEXT.''',
+              '''AUDIT, PERSISTENCE, AUTHORITATIVE TRAFFIC COLLECTOR, STRUCTURED RUNTIME V2 EVENTS, RECONNECT OBSERVABILITY, AND THE ADDITIVE NODE OPERATIONS READ API ARE VERIFIED. UNIFIED NODE OPERATIONS FRONTEND SOURCE, STAGE-1 CONTRACTS, AND COMMITTED DASHBOARD BUILD ARE IMPLEMENTED IN THE CHECKPOINT COMMIT CONTAINING THIS FILE; FEATURE-BRANCH PR CI FOR THIS FRONTEND MILESTONE MUST BE VERIFIED NEXT.'''
+          )
+          replace_once(
+              state,
+              '''## Additive Node Operations Read API: Implemented, CI Pending''',
+              '''## Additive Node Operations Read API: Verified'''
+          )
+          replace_once(
+              state,
+              '''No additional reset-counter polling, Node network requests, Plan/Access Group changes, Admin-accounting changes, or release/version changes are part of this API milestone.''',
+              '''No additional reset-counter polling, Node network requests, Plan/Access Group changes, Admin-accounting changes, or release/version changes are part of this API milestone.
+
+          - CI `34348897348`: completed / success on commit `312dc9e27f5ccfcf8953eea545a301603f09e879`, including MySQL 8.0, MySQL 26.7.0, dashboard build/parity, installer/image runtime, and Panel-to-Node mTLS.
+
+          ## Unified Node Operations Frontend: Implemented, CI Pending
+
+          - Existing `NodesManagementWorkspace` now consumes `/nodes/operations` while preserving the existing live-bandwidth surface for the local Master aggregate.
+          - Per-node rows expose live traffic plus persisted 1h/24h averages, operational-state detail and deterministic sorting.
+          - Selecting an editable Node lazy-loads bounded 24h persisted history and the sanitized event timeline; no new Xray polling is introduced.
+          - The redundant separate `NodesUsage` modal/action is removed from AppShell/navigation only; backend `/nodes/usage` remains for compatibility.
+          - Stage-1 UI contracts now protect the unified workspace and the removal of the redundant Usage UI action.
+          - Dashboard source build and committed build output are generated together on the temporary isolated build branch before this checkpoint is copied to the feature branch.'''
+          )
+          replace_once(
+              state,
+              '''`tests/test_node_operations_api.py`''',
+              '''`app/dashboard/scripts/test-stage1-ui-contracts.cjs`'''
+          )
+          replace_once(
+              state,
+              '''On resume, fetch and review this file first, then verify branch HEAD and the CI run attached to the checkpoint commit containing this state file before editing more production code.''',
+              '''On resume, fetch and review this file first, then verify branch HEAD and the frontend CI run attached to the checkpoint commit containing this state file before editing more production code.'''
+          )
+          old_next = '''1. Verify CI for the additive Node Operations API checkpoint to completion.
+          2. If it fails, inspect the exact failing job/log and fix only that regression; update this state at the failure/fix boundary.
+          3. If it succeeds, mark the API milestone verified.
+          4. Re-discover and fetch the exact unified frontend `NodesManagementWorkspace` path from the current tree.
+          5. Update the existing Node workspace to consume `/nodes/operations`, lazy-load persisted history/events for the details surface, add real 1h/24h averages/sorting/operational detail, and remove the separate Nodes Usage UI action only after the unified surface is functional. Keep the backend `/nodes/usage` route for compatibility.
+          6. Verify dashboard source build and committed build parity before moving to installer `doctor`/diagnostics.
+          7. Then add installer `doctor`/diagnostics, docs and final full regression/CI gates.'''
+          new_next = '''1. Verify feature-branch PR CI for the unified Node Operations frontend checkpoint to completion, including Stage-1 UI contracts and committed dashboard build parity.
+          2. If it fails, inspect the exact failing job/log and fix only that regression; update this state at the failure/fix boundary.
+          3. If it succeeds, mark the frontend milestone verified.
+          4. Then add installer `doctor`/diagnostics using the existing Node certificate/runtime ownership model; do not redesign credentials or transport.
+          5. Add focused diagnostics/docs tests and update this state.
+          6. Run final full regression/CI gates before presenting the feature for merge. Do not tag/release/publish unless explicitly requested.'''
+          replace_once(state, old_next, new_next)
+          PY
+      - name: Install dashboard dependencies
+        working-directory: app/dashboard
+        run: npm ci
+      - name: Verify Stage 1 UI contracts
+        working-directory: app/dashboard
+        run: node scripts/test-stage1-ui-contracts.cjs
+      - name: Build dashboard and committed parity candidate
+        working-directory: app/dashboard
+        run: VITE_BASE_API=/api/ npm run build
+      - name: Verify generated dashboard output and diff hygiene
+        shell: bash
+        run: |
+          test -f app/dashboard/build/index.html
+          test -f app/dashboard/build/404.html
+          git diff --check
+          git status --short
+      - name: Commit generated source and build
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/dashboard/src/components/NodesManagementWorkspace.tsx \
+                  app/dashboard/src/components/Header.tsx \
+                  app/dashboard/src/components/AppShell.tsx \
+                  app/dashboard/scripts/test-stage1-ui-contracts.cjs \
+                  docs/CODEX/STATE.md \
+                  app/dashboard/build
+          git diff --cached --check
+          git commit -m "feat: unify Node Operations workspace"
+          git push
