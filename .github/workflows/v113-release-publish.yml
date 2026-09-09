@@ -49,3 +49,5 @@ jobs:
         run: |
           set -Eeuo pipefail
           gh workflow run build.yml --ref main -f git_ref=v1.1.3 -f image_tag=v1.1.3 -f tests_only=false
+
+# armed
