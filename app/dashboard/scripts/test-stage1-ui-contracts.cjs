@@ -17,6 +17,7 @@ const adminForm = read("src/components/AdminFormDrawer.tsx");
 const userDialog = read("src/components/UserDialog.tsx");
 const createUserFromPlan = read("src/components/CreateUserFromPlan.tsx");
 const adminsPage = read("src/pages/admins/AdminsPage.tsx");
+const nodesWorkspace = read("src/components/NodesManagementWorkspace.tsx");
 
 // Dashboard and Users must remain distinct surfaces.
 assert.ok(router.includes('path: "/users/"'), "Users must have a dedicated route");
@@ -87,10 +88,18 @@ assert.ok(adminsPage.includes("مانده اعتبار یا ترافیک مان�
 assert.ok(adminsPage.includes("فقط ادمین دارای زیرمجموعه فعال"), "Admin deletion must keep the child-Admin blocker visible");
 
 // Keep the already-correct global infrastructure modal architecture from regressing.
-for (const modal of ["<CoreSettingsModal />", "<HostsDialog />", "<NodesDialog />", "<NodesUsage />"]) {
+for (const modal of ["<CoreSettingsModal />", "<HostsDialog />", "<NodesDialog />"]) {
   assert.ok(appShell.includes(modal), `AppShell must keep ${modal} globally mounted`);
 }
 assert.ok(appShell.includes("{isOwner && ("), "global infrastructure modals must remain Owner-gated");
+
+assert.ok(!appShell.includes("<NodesUsage />"), "Separate Nodes Usage modal must be removed after unified Node Operations is functional");
+assert.ok(!header.includes("onShowingNodesUsage"), "Navigation must not expose the redundant Nodes Usage action");
+assert.ok(nodesWorkspace.includes('fetch("/nodes/operations")'), "Unified Node Operations workspace must consume the operations summary endpoint");
+assert.ok(nodesWorkspace.includes("/operations/history?minutes=1440&max_points=120"), "Unified Node Operations workspace must lazy-load bounded persisted history");
+assert.ok(nodesWorkspace.includes("/events?offset=0&limit=50"), "Unified Node Operations workspace must lazy-load the sanitized event timeline");
+assert.ok(nodesWorkspace.includes("میانگین ۱ ساعت") && nodesWorkspace.includes("میانگین ۲۴ ساعت"), "Unified Node Operations workspace must expose durable 1h/24h averages");
+assert.ok(nodesWorkspace.includes("sortMode"), "Unified Node Operations workspace must expose deterministic sorting");
 
 // Global API errors must expose a stable code, actionable Persian text and context.
 const apiError = read("src/utils/apiError.ts");

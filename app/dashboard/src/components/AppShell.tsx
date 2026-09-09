@@ -6,7 +6,6 @@ import { Footer } from "./Footer";
 import { Header } from "./Header";
 import { HostsDialog } from "./HostsDialog";
 import { NodesDialog } from "./NodesModal";
-import { NodesUsage } from "./NodesUsage";
 
 export const AppShell: FC<PropsWithChildren> = ({ children }) => {
   const { userData, getUserIsPending } = useGetUser();
@@ -36,7 +35,6 @@ export const AppShell: FC<PropsWithChildren> = ({ children }) => {
         <>
           <HostsDialog />
           <NodesDialog />
-          <NodesUsage />
           <CoreSettingsModal />
         </>
       )}

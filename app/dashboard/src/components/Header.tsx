@@ -47,7 +47,6 @@ const CoreSettingsIcon = chakra(Cog6ToothIcon, iconProps);
 const LogoutIcon = chakra(ArrowLeftOnRectangleIcon, iconProps);
 const HostsIcon = chakra(LinkIcon, iconProps);
 const NodesIcon = chakra(SquaresPlusIcon, iconProps);
-const NodesUsageIcon = chakra(ChartPieIcon, iconProps);
 const DashboardNavIcon = chakra(ChartPieIcon, iconProps);
 const UsersNavIcon = chakra(UsersIcon, iconProps);
 const AdminsNavIcon = chakra(UserGroupIcon, iconProps);
@@ -100,7 +99,7 @@ export const Header: FC = () => {
   const canAccessPlans = isOwner || Boolean(
     account.data?.account_status === "ACTIVE" && account.data?.can_manage_plans
   );
-  const { onEditingHosts, onEditingNodes, onShowingNodesUsage } = useDashboard();
+  const { onEditingHosts, onEditingNodes } = useDashboard();
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
@@ -278,7 +277,6 @@ export const Header: FC = () => {
             <ActionButton icon={<CoreSettingsIcon />} label={t("core.title")} onClick={() => useDashboard.setState({ isEditingCore: true })} />
             <ActionButton icon={<HostsIcon />} label={t("header.hostSettings")} onClick={() => onEditingHosts(true)} />
             <ActionButton icon={<NodesIcon />} label={t("header.nodeSettings")} onClick={() => onEditingNodes(true)} />
-            <ActionButton icon={<NodesUsageIcon />} label={t("header.nodesUsage")} onClick={() => onShowingNodesUsage(true)} />
           </SimpleGrid>
         </Box>
       )}
