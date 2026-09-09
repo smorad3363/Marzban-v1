@@ -75,7 +75,11 @@ def test_delete_route_retires_admin_with_nonzero_accounting_state(tmp_path, monk
         monkeypatch.setattr(admin_router.admin_hierarchy, "role_code", lambda *_args, **_kwargs: "ADMIN")
         monkeypatch.setattr(admin_router.AuditLogService, "log", lambda *_args, **_kwargs: None)
         monkeypatch.setattr(admin_router.xray.config, "include_db_users", lambda: {})
-        monkeypatch.setattr(admin_router.xray.core, "started", False)
+
+        class _StoppedCore:
+            started = False
+
+        monkeypatch.setattr(admin_router.xray, "core", _StoppedCore())
         monkeypatch.setattr(admin_router.xray, "nodes", {})
 
         response = admin_router.remove_admin(
