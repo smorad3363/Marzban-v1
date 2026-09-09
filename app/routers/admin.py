@@ -364,20 +364,11 @@ def remove_admin(
                 "message_fa": "این ادمین زیرمجموعه دارد؛ ابتدا زیرمجموعه‌ها را جابه‌جا یا مدیریت کنید.",
             },
         )
-    settings = db.get(MarzhelpAdminSettings, dbadmin.id)
-    if settings and (
-        int(settings.delegated_traffic or 0) > 0
-        or int(settings.total_traffic or 0) > 0
-        or int(settings.money_balance_toman or 0) != 0
-        or admin_hierarchy.own_credit_spend(db, settings) > 0
-    ):
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "code": "admin_delete_credit_unsettled",
-                "message_fa": "اعتبار یا تعهد مالی این ادمین هنوز تسویه نشده است.",
-            },
-        )
+    # Financial and traffic counters are not retirement blockers. The Admin
+    # identity is tombstoned rather than physically deleted, so immutable ledger,
+    # audit, Plan and allocation history can safely retain their foreign keys.
+    # Active policy/access state is removed by crud.remove_admin after applying
+    # the selected owned-user strategy.
     # Immutable accounting/Audit rows intentionally keep their Admin foreign keys.
     # crud.remove_admin retires the account instead of deleting that identity row.
     target_id = dbadmin.id

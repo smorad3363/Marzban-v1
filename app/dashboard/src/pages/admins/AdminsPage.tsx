@@ -457,7 +457,7 @@ export const AdminsPage: FC = () => {
                 </Select>
                 <FormHelperText>{t(`admins.deleteStrategyHelp.${deleteStrategy}`)}</FormHelperText>
                 <Text mt={3} fontSize="xs" color="var(--panel-text-muted)">
-                  حذف فیزیکی فقط برای ادمین بدون زیرمجموعه، اعتبار تسویه‌نشده و سابقه حسابداری/Audit ممکن است؛ در غیر این صورت دلیل دقیق نمایش داده می‌شود و باید حساب را تعلیق یا غیرفعال کنید.
+                  حذف ادمین به‌صورت امن با بازنشسته‌سازی حساب انجام می‌شود؛ سابقه حسابداری و Audit حفظ می‌شود و مانده اعتبار یا ترافیک مانع حذف نیست. فقط ادمین دارای زیرمجموعه فعال باید ابتدا زیرمجموعه‌هایش را مدیریت کند.
                 </Text>
               </FormControl>
             </AlertDialogBody>
