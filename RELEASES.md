@@ -8,24 +8,24 @@ Every published release uses an immutable Git tag and permanent container tags:
 `latest` points only to the newest stable tagged release. Older version and SHA
 tags are never replaced.
 
-## Release target: v1.1.8
+## Release target: v1.1.9
 
-v1.1.8 is the next stable release target. Complete release notes are in
-`docs/RELEASE_NOTES_v1.1.8.md`.
+v1.1.9 is the next stable release target. Complete release notes are in
+`docs/RELEASE_NOTES_v1.1.9.md`.
 
-Update to v1.1.8 after publication:
-
-```bash
-marzban update --version v1.1.8
-```
-
-Fresh-install v1.1.8 with MySQL after publication:
+Update to v1.1.9 after publication:
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.1.8/scripts/marzban.sh)" @ install --version v1.1.8 --database mysql
+marzban update --version v1.1.9
 ```
 
-The existing `v1.0.9` and `v1.1.7` source tags remain immutable, and all previously published tags and releases remain unchanged. Preparing this target does not create or move any tag or container alias.
+Fresh-install v1.1.9 with MySQL after publication:
+
+```bash
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.1.9/scripts/marzban.sh)" @ install --version v1.1.9 --database mysql
+```
+
+The existing `v1.1.7` and `v1.1.8` source tags remain immutable, and all previously published tags and releases remain unchanged. Preparing this target does not create or move any tag or container alias.
 
 ## Release process
 
@@ -54,13 +54,13 @@ marzban update
 Update to an exact stable release:
 
 ```bash
-marzban update --version v1.0.8
+marzban update --version v1.1.9
 ```
 
 Fresh-install an exact release:
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.0.8/scripts/marzban.sh)" @ install --version v1.0.8 --database mysql
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.1.9/scripts/marzban.sh)" @ install --version v1.1.9 --database mysql
 ```
 
 ## Rollback
@@ -70,7 +70,7 @@ changes the application image only; it does not automatically downgrade database
 migrations.
 
 ```bash
-marzban rollback v1.0.8
+marzban rollback v1.1.8
 ```
 
 MySQL server downgrade is a separate operation and must use the physical backup
