@@ -15,6 +15,7 @@ MAX_RATE_INTERVAL_SECONDS = 120
 @dataclass(frozen=True)
 class BandwidthPoint:
     sampled_at: float
+    sample_seconds: float
     uplink_bps: float
     downlink_bps: float
 
@@ -64,6 +65,7 @@ class BandwidthStore:
 
             point = BandwidthPoint(
                 sampled_at=now,
+                sample_seconds=elapsed,
                 uplink_bps=max(0.0, float(uplink_bytes) * 8.0 / elapsed),
                 downlink_bps=max(0.0, float(downlink_bytes) * 8.0 / elapsed),
             )
