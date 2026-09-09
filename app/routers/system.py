@@ -1,4 +1,4 @@
-from typing import Dict, List, Union
+from typing import Dict, List, Literal, Union
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 
@@ -20,6 +20,7 @@ router = APIRouter(tags=["System"], prefix="/api", responses={401: responses._40
 @router.get("/dashboard/overview", response_model=DashboardOverview)
 def get_dashboard_overview(
     timezone_offset_minutes: int = 0,
+    traffic_range: Literal["24h", "7d", "30d"] = "24h",
     db: Session = Depends(get_db),
     admin: Admin = Depends(Admin.get_current),
 ):
@@ -31,6 +32,7 @@ def get_dashboard_overview(
         db,
         dbadmin or admin,
         timezone_offset_minutes=timezone_offset_minutes,
+        traffic_range=traffic_range,
     )
 
 
@@ -275,11 +277,13 @@ def modify_hosts(
 )
 def host_update_impact(
     modified_hosts: Dict[str, List[ProxyHost]],
-    db: Session = Depends(get_db),
-    admin: Admin = Depends(Admin.check_sudo_admin),
+    db: Session = Depends(get_db), admin: Admin = Depends(Admin.check_sudo_admin),
 ):
     """Preview Access Group and active-User impact without mutating data."""
     for inbound_tag in modified_hosts:
         if inbound_tag not in xray.config.inbounds_by_tag:
             raise HTTPException(status_code=400, detail=f"Inbound {inbound_tag} doesn't exist")
-    return analyze_host_update(db, modified_hosts)
+    impact = analyze_host_update(db, modified_hosts)
+    if impact.invalid_access_group_ids:
+        raise HTTPException(status_code=409, detail={"error_code": "host_change_would_invalidate_access_group", "message": "این تغییر حداقل یک Access Group را بدون Host معتبر باقی می‌گذارد.", "impact": impact.model_dump()})
+    return impact
