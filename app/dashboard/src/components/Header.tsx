@@ -33,7 +33,7 @@ import { resetDashboardState, useDashboard } from "contexts/DashboardContext";
 import useGetUser from "hooks/useGetUser";
 import { useBranding } from "hooks/useBranding";
 import { FC, ReactElement, useEffect, useState } from "react";
-import { useQuery } from "react-query";
+import { useQuery, useQueryClient } from "react-query";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { fetch } from "service/http";
@@ -83,6 +83,7 @@ export const Header: FC = () => {
   const { userData, getUserIsSuccess, getUserIsPending } = useGetUser();
   const { branding } = useBranding();
   const { colorMode, toggleColorMode } = useColorMode();
+  const queryClient = useQueryClient();
   const isOwner = !getUserIsPending && getUserIsSuccess && (userData.is_sudo || userData.role === "OWNER");
   const capabilities = useQuery<AdminCapabilities, Error>(
     ["admin-capabilities", userData.username],
@@ -120,8 +121,9 @@ export const Header: FC = () => {
       await fetch("/admin/logout", { method: "POST" });
     } finally {
       removeAuthToken();
+      queryClient.clear();
       resetDashboardState();
-      navigate("/login/");
+      navigate("/login/", { replace: true });
     }
   };
   return (
