@@ -31,25 +31,32 @@ On any interruption:
   - Reused hierarchy/inbound restrictions, the existing 24h Online definition, and centralized notification thresholds.
   - Added focused hierarchy-scoping coverage in `tests/test_user_summary.py`.
   - Added responsive `UserSummaryCards` and integrated it into the dedicated Users page without removing existing operations.
-  - PR #41 verification: Stage 1 UI contracts SUCCESS; authenticated-autofill contract SUCCESS; TypeScript type-check + production dashboard build SUCCESS; backend regression suite SUCCESS on MySQL 26.7.0 and the MySQL 8.0 regression step SUCCESS.
+- Checkpoint `UMV3-02` — scoped management list + real advanced filters + bounded current-Plan metadata: SOURCE COMPLETE; MIRRORED CI VERIFICATION PARTIAL.
+  - Added `/api/users/management` while preserving the full existing User row payload, pagination, sort semantics, hierarchy scope, inbound scope, usage redaction, and authorization behavior.
+  - Added server-side Plan/current-assignment, without-Plan, Trial, Attention, expiry, usage, device-limit, unlimited-traffic, and inactivity filters using only real database state.
+  - Current Plan metadata is resolved for the bounded visible page from the latest immutable `UserPlanAssignment`; no per-row Plan requests were introduced.
+  - Refactored the toolbar to compact Admin/Plan/Sort controls and smart filter chips while preserving Create User/Create From Plan/account restrictions and debounced search.
+  - Added focused `tests/test_user_management_query.py` coverage for hierarchy scope, latest Plan assignment, no-Plan/Trial and attention/smart filters.
+  - PR #41 source verification at head `d50d2f9f2a8322d7086fea3b06f807d29b51ab1f`: Stage 1 UI contracts SUCCESS; authenticated-autofill contract SUCCESS; TypeScript type-check + production dashboard build SUCCESS; MySQL 26.7.0 backend regression/migrations/Stage 8-11/backup/rollback SUCCESS; installer/runtime/Panel-to-Node checks SUCCESS.
+  - The mirrored MySQL 8.0 job was still running its backend regression suite at the last checkpoint poll. Re-check it on resume before claiming both database tracks green.
   - Dashboard parity currently fails only because generated `app/dashboard/build/**` has not yet been refreshed on the feature branch. Do not treat that expected generated-output delta as a source/build failure. Refresh committed build assets once source UI work settles, then require parity green before final review/merge.
 
 ### CURRENT FILES
 
 Before continuing after interruption, re-open these files and review their current branch versions:
 
-- `app/routers/user_summary.py` — completed summary endpoint; do not change its scope semantics casually.
-- `app/routers/__init__.py` — currently registers the new summary router.
-- `app/dashboard/src/components/UserSummaryCards.tsx` — completed four-card summary source.
-- `app/dashboard/src/pages/Users.tsx` — summary integrated; next toolbar/table work builds around this page.
-- `app/db/models.py` — authoritative User, DeviceLimitUserState, AdminUserPlan, UserPlanAssignment fields audited for the next filter/plan metadata work.
-- `app/db/crud.py` — authoritative existing User search/sort/hierarchy/inbound query behavior; reuse semantics rather than weakening them.
-- `app/dashboard/src/contexts/DashboardContext.tsx` — next list/filter state integration point.
-- `app/dashboard/src/components/FiltersCompact.tsx` — next compact toolbar/smart-filter integration point.
+- `app/utils/user_management.py` — authoritative new scoped filter/query service; preserve its hierarchy/inbound scope behavior.
+- `app/routers/user_management.py` — dedicated management list contract and pagination/filter validation.
+- `app/dashboard/src/contexts/DashboardContext.tsx` — management endpoint/filter state and bounded `plan_meta` integration.
+- `app/dashboard/src/components/FiltersCompact.tsx` — compact toolbar/smart filters; source compiles successfully.
+- `tests/test_user_management_query.py` — focused current-filter coverage.
+- `app/dashboard/src/components/UsersTablePro.tsx` — NEXT implementation target; current branch version was re-opened after UMV3-02 and still contains the wide legacy table plus all existing actions.
+- `app/dashboard/src/components/UserDeviceLimit.tsx` — existing lazy Device modal; preserve lazy Device loading and sudo/Owner action semantics.
+- `app/dashboard/src/types/Audit.ts` and `app/dashboard/src/types/DeviceLimit.ts` — existing typed lazy-data contracts for the upcoming Drawer.
 
 ### NEXT EXACT TASK
 
-Implement checkpoint `UMV3-02`: add a pagination-safe, authorization-scoped Users management list/filter contract for the dedicated Users page and refactor the toolbar around it. Preserve the current User row payload and all existing actions, but add real server-side Plan/Admin/Attention/smart filters (only where supported by real data), a bounded per-page Plan metadata map from `UserPlanAssignment`, and compact responsive controls. Do not perform per-user Plan/Device/Audit requests. Keep Plan as commercial metadata only and do not change Access Group/network semantics. Add focused tests for Owner/Admin scope, pagination, Plan/no-Plan, Trial, expiry/usage/device/attention filters, then run frontend type/build and backend regression before advancing to compact table + Drawer.
+Implement checkpoint `UMV3-03`: compact the Users table to the requested management columns and add a real User Details Drawer without removing any existing action. Use bounded `plan_meta` for the current Plan column, use only real `online_at` for last activity, move secondary row details into the Drawer, keep Device and Audit data lazy, and preserve QR/copy/edit/delete/renew/enable-disable/reset/revoke/audit/device operations. Update traffic warning visual thresholds to 80% warning / 95% danger. Keep the current selection behavior and prepare the bulk controls for the later sticky-bottom pass. Before marking `UMV3-03` complete, re-check the pending MySQL 8.0 result from `UMV3-02`, then run frontend type/build and focused backend regression for any new backend work (if none, do not invent backend changes).
 
 ## Current State: v1.1.8 released
 
