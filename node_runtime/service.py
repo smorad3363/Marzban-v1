@@ -67,7 +67,13 @@ def create_app(
             "protocol": "marzban-node-v2",
             "protocol_version": 2,
             "runtime_version": settings.runtime_version,
-            "capabilities": ["control_v1", "event_ack_v1", "client_ip_direct_v1"],
+            "event_stream_id": spool.stream_id,
+            "capabilities": [
+                "control_v1",
+                "event_ack_v1",
+                "client_ip_direct_v1",
+                "structured_events_v1",
+            ],
         }
 
     @app.post("/")
@@ -85,6 +91,13 @@ def create_app(
             state["session_id"] = uuid4()
             state["peer_ip"] = remote
             session_id = state["session_id"]
+        try:
+            spool.append(
+                "runtime.session.connected",
+                {"severity": "info", "reason_code": "panel_connected"},
+            )
+        except Exception:
+            pass
         return status_payload(session_id=session_id)
 
     @app.post("/ping")
@@ -123,6 +136,13 @@ def create_app(
         with state_lock:
             state["session_id"] = None
             state["peer_ip"] = None
+        try:
+            spool.append(
+                "runtime.session.disconnected",
+                {"severity": "info", "reason_code": "panel_disconnected"},
+            )
+        except Exception:
+            pass
         return status_payload()
 
     @app.post("/v2/events")

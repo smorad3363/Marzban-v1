@@ -7,6 +7,7 @@ import threading
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Mapping
+from uuid import uuid4
 
 
 _CONSUMER_RE = re.compile(r"^[A-Za-z0-9._:-]{1,64}$")
@@ -54,6 +55,26 @@ class EventSpool:
             db.execute(
                 "INSERT OR IGNORE INTO runtime_meta(key, value) VALUES('dropped_events_total', 0)"
             )
+            stream = db.execute(
+                "SELECT value FROM runtime_meta WHERE key='event_stream_id'"
+            ).fetchone()
+            if stream is None:
+                db.execute(
+                    "INSERT INTO runtime_meta(key, value) VALUES('event_stream_id', ?)",
+                    (uuid4().hex,),
+                )
+
+    @property
+    def stream_id(self) -> str:
+        """Stable identity for this spool lifetime, used for replay dedupe."""
+
+        with self._lock, self._connect() as db:
+            row = db.execute(
+                "SELECT value FROM runtime_meta WHERE key='event_stream_id'"
+            ).fetchone()
+        if row is None or not str(row[0]).strip():
+            raise RuntimeError("event stream identity is unavailable")
+        return str(row[0]).strip()[:64]
 
     def append(self, event_type: str, payload: Mapping[str, Any]) -> int:
         if not isinstance(event_type, str) or not event_type or len(event_type) > 96:

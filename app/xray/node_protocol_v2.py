@@ -9,10 +9,12 @@ PROTOCOL_VERSION = 2
 CAP_CONTROL_V1 = "control_v1"
 CAP_EVENT_ACK_V1 = "event_ack_v1"
 CAP_CLIENT_IP_DIRECT_V1 = "client_ip_direct_v1"
+CAP_STRUCTURED_EVENTS_V1 = "structured_events_v1"
 KNOWN_CAPABILITIES = frozenset({
     CAP_CONTROL_V1,
     CAP_EVENT_ACK_V1,
     CAP_CLIENT_IP_DIRECT_V1,
+    CAP_STRUCTURED_EVENTS_V1,
 })
 REQUIRED_CAPABILITIES = frozenset({CAP_CONTROL_V1, CAP_EVENT_ACK_V1})
 MAX_CAPABILITIES = 64
@@ -29,6 +31,7 @@ class RuntimeHandshake:
     protocol_version: int
     runtime_version: str
     capabilities: frozenset[str]
+    event_stream_id: str | None = None
 
     @property
     def negotiated_capabilities(self) -> frozenset[str]:
@@ -41,6 +44,13 @@ class RuntimeHandshake:
     @property
     def supports_direct_client_ip(self) -> bool:
         return CAP_CLIENT_IP_DIRECT_V1 in self.negotiated_capabilities
+
+    @property
+    def supports_structured_events(self) -> bool:
+        return (
+            CAP_STRUCTURED_EVENTS_V1 in self.negotiated_capabilities
+            and bool(self.event_stream_id)
+        )
 
 
 @dataclass(frozen=True)
@@ -74,11 +84,27 @@ def parse_runtime_handshake(value: Any) -> RuntimeHandshake:
         if not isinstance(capability, str) or not capability or len(capability) > 64:
             raise RuntimeProtocolError("capability names must be non-empty strings")
         capabilities.add(capability)
+
+    raw_stream_id = data.get("event_stream_id")
+    if raw_stream_id is not None:
+        if (
+            not isinstance(raw_stream_id, str)
+            or not raw_stream_id.strip()
+            or len(raw_stream_id.strip()) > 64
+        ):
+            raise RuntimeProtocolError(
+                "event_stream_id must be a non-empty string up to 64 characters"
+            )
+        event_stream_id = raw_stream_id.strip()
+    else:
+        event_stream_id = None
+
     result = RuntimeHandshake(
         protocol=PROTOCOL_NAME,
         protocol_version=PROTOCOL_VERSION,
         runtime_version=runtime_version.strip(),
         capabilities=frozenset(capabilities),
+        event_stream_id=event_stream_id,
     )
     if not result.supports_reliable_events:
         raise RuntimeProtocolError("node runtime is missing required v2 capabilities")

@@ -1,3 +1,4 @@
+import logging
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
@@ -6,12 +7,13 @@ from typing import Union
 
 from sqlalchemy import and_, bindparam, insert, select, update
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError, OperationalError
+from sqlalchemy.exc import IntegrityError, OperationalError, SQLAlchemyError
 from sqlalchemy.sql.dml import Insert
 
 from app import scheduler, xray
 from app.db import GetDB
 from app.db.models import Admin, NodeUsage, NodeUserUsage, System, User
+from app.db.node_operations import record_traffic_bucket
 from app.utils import money_billing
 from app.utils.bandwidth import bandwidth_store
 from config import (
@@ -22,6 +24,9 @@ from config import (
 )
 from xray_api import XRay as XRayAPI
 from xray_api import exc as xray_exc
+
+
+logger = logging.getLogger(__name__)
 
 
 def _worker_count(instance_count: int) -> int:
@@ -155,6 +160,23 @@ def _aggregate_link_bytes(params: list[dict]) -> tuple[int, int]:
     return uplink, downlink
 
 
+def _persist_node_operations_traffic(samples: list[dict]) -> None:
+    """Persist derived telemetry after legacy reset-counter accounting is safe."""
+
+    if not samples:
+        return
+    try:
+        with GetDB() as db:
+            for sample in samples:
+                record_traffic_bucket(db, **sample)
+            db.commit()
+    except SQLAlchemyError:
+        # Node Operations history must never turn an already-reset Xray counter
+        # into an accounting regression. Legacy System/NodeUsage writes happen
+        # first; telemetry persistence is isolated and retried on later samples.
+        logger.exception("Failed to persist Node Operations traffic telemetry")
+
+
 def record_user_usages():
     api_instances = {None: xray.api}
     usage_coefficient = {None: 1}
@@ -236,6 +258,7 @@ def record_node_usages():
     total_up = 0
     total_down = 0
     successful_params: dict[int | None, list[dict]] = {}
+    traffic_samples: list[dict] = []
     for node_id, params in api_params.items():
         if params is None:
             continue
@@ -243,23 +266,38 @@ def record_node_usages():
         uplink, downlink = _aggregate_link_bytes(params)
         total_up += uplink
         total_down += downlink
-        bandwidth_store.observe(node_id, uplink, downlink)
+        point = bandwidth_store.observe(node_id, uplink, downlink)
+        if (
+            node_id is not None
+            and point is not None
+            and not DISABLE_RECORDING_NODE_USAGE
+        ):
+            traffic_samples.append(
+                {
+                    "node_id": node_id,
+                    "sampled_at": datetime.utcfromtimestamp(point.sampled_at),
+                    "uplink_bytes": uplink,
+                    "downlink_bytes": downlink,
+                    "sample_seconds": point.sample_seconds,
+                }
+            )
 
-    if not (total_up or total_down):
-        return
+    # Preserve legacy accounting order after Xray reset=True collection. New
+    # telemetry is persisted only after these writes so a telemetry failure can
+    # never discard already-reset accounting deltas.
+    if total_up or total_down:
+        with GetDB() as db:
+            stmt = update(System).values(
+                uplink=System.uplink + total_up,
+                downlink=System.downlink + total_down
+            )
+            safe_execute(db, stmt)
 
-    with GetDB() as db:
-        stmt = update(System).values(
-            uplink=System.uplink + total_up,
-            downlink=System.downlink + total_down
-        )
-        safe_execute(db, stmt)
+        if not DISABLE_RECORDING_NODE_USAGE:
+            for node_id, params in successful_params.items():
+                record_node_stats(params, node_id)
 
-    if DISABLE_RECORDING_NODE_USAGE:
-        return
-
-    for node_id, params in successful_params.items():
-        record_node_stats(params, node_id)
+    _persist_node_operations_traffic(traffic_samples)
 
 
 scheduler.add_job(record_user_usages, 'interval',

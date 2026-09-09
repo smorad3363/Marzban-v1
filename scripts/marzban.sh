@@ -2551,6 +2551,304 @@ node_status_command() {
     echo "Source revision: ${revision:-unavailable}"
 }
 
+
+node_doctor_pass() {
+    NODE_DOCTOR_PASSED=$((NODE_DOCTOR_PASSED + 1))
+    colorized_echo green "[PASS] $1"
+}
+
+node_doctor_warn() {
+    NODE_DOCTOR_WARNINGS=$((NODE_DOCTOR_WARNINGS + 1))
+    colorized_echo yellow "[WARN] $1"
+}
+
+node_doctor_fail() {
+    NODE_DOCTOR_FAILURES=$((NODE_DOCTOR_FAILURES + 1))
+    colorized_echo red "[FAIL] $1"
+}
+
+node_doctor_detect_compose() {
+    if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+        COMPOSE='docker compose'
+        return 0
+    fi
+    if command -v docker-compose >/dev/null 2>&1 && docker-compose version >/dev/null 2>&1; then
+        COMPOSE='docker-compose'
+        return 0
+    fi
+    return 1
+}
+
+node_doctor_check_private_mode() {
+    local path="$1"
+    local label="$2"
+    local mode=""
+    mode=$(stat -c '%a' "$path" 2>/dev/null || true)
+    if [ -z "$mode" ]; then
+        node_doctor_warn "$label permissions could not be inspected."
+        return 0
+    fi
+    if [ "${mode: -2}" = "00" ]; then
+        node_doctor_pass "$label is not readable or writable by group/others (mode $mode)."
+    else
+        node_doctor_fail "$label is exposed to group/others (mode $mode)."
+    fi
+}
+
+node_doctor_check_expected_mode() {
+    local path="$1"
+    local label="$2"
+    local mode=""
+    mode=$(stat -c '%a' "$path" 2>/dev/null || true)
+    if [ -z "$mode" ]; then
+        node_doctor_warn "$label permissions could not be inspected."
+    elif [ "$mode" = "600" ] || [ "$mode" = "400" ]; then
+        node_doctor_pass "$label permissions are restricted (mode $mode)."
+    else
+        node_doctor_warn "$label uses mode $mode; installer-managed files normally use 600."
+    fi
+}
+
+node_doctor_command() {
+    if [ "$#" -gt 0 ]; then
+        if [ "$#" -eq 1 ] && { [ "$1" = "-h" ] || [ "$1" = "--help" ]; }; then
+            echo "Usage: marzban node doctor"
+            echo "Runs local, non-mutating Node readiness and integrity diagnostics."
+            return 0
+        fi
+        colorized_echo red "Usage: marzban node doctor"
+        return 1
+    fi
+
+    check_running_as_root
+    NODE_DOCTOR_PASSED=0
+    NODE_DOCTOR_WARNINGS=0
+    NODE_DOCTOR_FAILURES=0
+
+    local server_cert_file="$NODE_DATA_DIR/ssl_cert.pem"
+    local server_key_file="$NODE_DATA_DIR/ssl_key.pem"
+    local event_db_file="$NODE_DATA_DIR/events.sqlite3"
+    local service_port=""
+    local api_port=""
+    local event_max_rows=""
+    local configured_image=""
+    local runtime_version=""
+    local cli_version=""
+    local stored_revision=""
+    local container_id=""
+    local state=""
+    local health=""
+    local running_image=""
+    local image_id=""
+    local running_revision=""
+    local compose_ready="false"
+
+    colorized_echo cyan "Marzban Node doctor (local diagnostics; no configuration is changed)"
+
+    if [ -f "$NODE_COMPOSE_FILE" ]; then
+        node_doctor_pass "Node compose file exists: $NODE_COMPOSE_FILE"
+        node_doctor_check_expected_mode "$NODE_COMPOSE_FILE" "Node compose file"
+    else
+        node_doctor_fail "Node compose file is missing: $NODE_COMPOSE_FILE"
+    fi
+
+    if [ -f "$NODE_ENV_FILE" ]; then
+        node_doctor_pass "Node environment file exists: $NODE_ENV_FILE"
+        node_doctor_check_private_mode "$NODE_ENV_FILE" "Node environment file"
+    else
+        node_doctor_fail "Node environment file is missing: $NODE_ENV_FILE"
+    fi
+
+    if command -v openssl >/dev/null 2>&1; then
+        node_doctor_pass "OpenSSL is available."
+        if [ -f "$NODE_CLIENT_CERT_FILE" ]; then
+            if openssl x509 -in "$NODE_CLIENT_CERT_FILE" -noout >/dev/null 2>&1; then
+                node_doctor_pass "Stored panel client certificate is valid X.509 PEM."
+                if openssl x509 -checkend 0 -noout -in "$NODE_CLIENT_CERT_FILE" >/dev/null 2>&1; then
+                    node_doctor_pass "Stored panel client certificate is not expired."
+                    if ! openssl x509 -checkend 604800 -noout -in "$NODE_CLIENT_CERT_FILE" >/dev/null 2>&1; then
+                        node_doctor_warn "Stored panel client certificate expires within 7 days."
+                    fi
+                else
+                    node_doctor_fail "Stored panel client certificate is expired."
+                fi
+            else
+                node_doctor_fail "Stored panel client certificate is not valid X.509 PEM."
+            fi
+            node_doctor_check_expected_mode "$NODE_CLIENT_CERT_FILE" "Stored panel client certificate"
+        else
+            node_doctor_fail "Stored panel client certificate is missing: $NODE_CLIENT_CERT_FILE"
+        fi
+
+        if [ -f "$server_cert_file" ]; then
+            if openssl x509 -in "$server_cert_file" -noout >/dev/null 2>&1; then
+                node_doctor_pass "Node server certificate is valid X.509 PEM."
+                if openssl x509 -checkend 0 -noout -in "$server_cert_file" >/dev/null 2>&1; then
+                    node_doctor_pass "Node server certificate is not expired."
+                else
+                    node_doctor_fail "Node server certificate is expired."
+                fi
+            else
+                node_doctor_fail "Node server certificate is not valid X.509 PEM."
+            fi
+        else
+            node_doctor_fail "Node server certificate is missing: $server_cert_file"
+        fi
+
+        if [ -f "$server_key_file" ]; then
+            if openssl pkey -in "$server_key_file" -check -noout >/dev/null 2>&1; then
+                node_doctor_pass "Node server private key is valid."
+            else
+                node_doctor_fail "Node server private key is invalid."
+            fi
+            node_doctor_check_private_mode "$server_key_file" "Node server private key"
+        else
+            node_doctor_fail "Node server private key is missing: $server_key_file"
+        fi
+    else
+        node_doctor_fail "OpenSSL is unavailable; certificate diagnostics cannot run."
+    fi
+
+    if [ -f "$event_db_file" ]; then
+        node_doctor_pass "Node event spool exists: $event_db_file"
+    else
+        node_doctor_warn "Node event spool is not present yet: $event_db_file"
+    fi
+
+    if [ -f "$NODE_ENV_FILE" ]; then
+        service_port=$(node_env_value NODE_RUNTIME_PORT 62050)
+        api_port=$(node_env_value XRAY_API_PORT 62051)
+        event_max_rows=$(node_env_value EVENT_MAX_ROWS 20000)
+        configured_image=$(node_env_value MARZBAN_NODE_IMAGE "")
+        runtime_version=$(node_env_value NODE_RUNTIME_VERSION "")
+
+        if node_validate_port "$service_port" "NODE_RUNTIME_PORT" >/dev/null 2>&1; then
+            node_doctor_pass "Node service port is valid: $service_port"
+        else
+            node_doctor_fail "Node service port is invalid."
+        fi
+        if node_validate_port "$api_port" "XRAY_API_PORT" >/dev/null 2>&1; then
+            node_doctor_pass "Xray API port is valid: $api_port"
+        else
+            node_doctor_fail "Xray API port is invalid."
+        fi
+        if [ "$service_port" = "$api_port" ]; then
+            node_doctor_fail "Node service and Xray API ports must differ."
+        else
+            node_doctor_pass "Node service and Xray API ports are distinct."
+        fi
+        if node_validate_event_rows "$event_max_rows" >/dev/null 2>&1; then
+            node_doctor_pass "Event retention row limit is valid: $event_max_rows"
+        else
+            node_doctor_fail "Event retention row limit is invalid."
+        fi
+        if [ -n "$configured_image" ]; then
+            node_doctor_pass "Configured Node image is present: $configured_image"
+        else
+            node_doctor_fail "MARZBAN_NODE_IMAGE is missing from the Node environment file."
+        fi
+        if [ -n "$runtime_version" ]; then
+            node_doctor_pass "Configured runtime version is present: $runtime_version"
+        else
+            node_doctor_fail "NODE_RUNTIME_VERSION is missing from the Node environment file."
+        fi
+    fi
+
+    if [ -f "$NODE_CLI_VERSION_FILE" ]; then
+        cli_version=$(tr -d '[:space:]' < "$NODE_CLI_VERSION_FILE")
+        if [ -n "$cli_version" ]; then
+            node_doctor_pass "Node CLI version marker is present: $cli_version"
+            if [ -n "$runtime_version" ] && [ "$cli_version" != "$runtime_version" ]; then
+                node_doctor_fail "Node CLI version ($cli_version) differs from runtime version ($runtime_version)."
+            fi
+        else
+            node_doctor_warn "Node CLI version marker is empty."
+        fi
+    else
+        node_doctor_warn "Node CLI version marker is missing: $NODE_CLI_VERSION_FILE"
+    fi
+
+    if [ -f "$NODE_RELEASE_REVISION_FILE" ]; then
+        stored_revision=$(tr -d '[:space:]' < "$NODE_RELEASE_REVISION_FILE")
+        if [[ "$stored_revision" =~ ^[0-9a-f]{40}$ ]]; then
+            node_doctor_pass "Stored release revision marker is valid."
+        else
+            node_doctor_fail "Stored release revision marker is invalid."
+        fi
+    else
+        node_doctor_warn "Stored release revision marker is missing: $NODE_RELEASE_REVISION_FILE"
+    fi
+
+    if command -v docker >/dev/null 2>&1; then
+        node_doctor_pass "Docker CLI is available."
+    else
+        node_doctor_fail "Docker CLI is unavailable."
+    fi
+
+    if node_doctor_detect_compose; then
+        compose_ready="true"
+        node_doctor_pass "Docker Compose is available."
+        if [ -f "$NODE_COMPOSE_FILE" ] && [ -f "$NODE_ENV_FILE" ]; then
+            if node_compose config >/dev/null 2>&1; then
+                node_doctor_pass "Node compose configuration renders successfully."
+            else
+                node_doctor_fail "Node compose configuration does not render successfully."
+            fi
+        fi
+    else
+        node_doctor_fail "Docker Compose is unavailable."
+    fi
+
+    if [ "$compose_ready" = "true" ] && [ -f "$NODE_COMPOSE_FILE" ] && [ -f "$NODE_ENV_FILE" ]; then
+        container_id=$(node_service_container 2>/dev/null || true)
+        if [ -z "$container_id" ]; then
+            node_doctor_fail "Marzban Node container is not running."
+        else
+            node_doctor_pass "Marzban Node container exists."
+            state=$(docker inspect --format '{{.State.Status}}' "$container_id" 2>/dev/null || true)
+            health=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "$container_id" 2>/dev/null || true)
+            if [ "$state" = "running" ]; then
+                node_doctor_pass "Marzban Node container state is running."
+            else
+                node_doctor_fail "Marzban Node container state is ${state:-unknown}."
+            fi
+            if [ "$health" = "healthy" ]; then
+                node_doctor_pass "Marzban Node container health is healthy."
+            elif [ -z "$health" ]; then
+                node_doctor_warn "Marzban Node container health status is unavailable."
+            else
+                node_doctor_fail "Marzban Node container health is $health."
+            fi
+
+            running_image=$(docker inspect --format '{{.Config.Image}}' "$container_id" 2>/dev/null || true)
+            if [ -n "$configured_image" ] && [ "$running_image" = "$configured_image" ]; then
+                node_doctor_pass "Running Node image matches configured image."
+            elif [ -n "$configured_image" ]; then
+                node_doctor_fail "Running Node image (${running_image:-unavailable}) differs from configured image ($configured_image)."
+            else
+                node_doctor_warn "Running image comparison was skipped because the configured image is unavailable."
+            fi
+
+            image_id=$(docker inspect --format '{{.Image}}' "$container_id" 2>/dev/null || true)
+            if [ -n "$image_id" ]; then
+                running_revision=$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "$image_id" 2>/dev/null || true)
+            fi
+            if [ -n "$stored_revision" ] && [ -n "$running_revision" ]; then
+                if [ "$stored_revision" = "$running_revision" ]; then
+                    node_doctor_pass "Running image source revision matches the stored release revision."
+                else
+                    node_doctor_fail "Running image source revision differs from the stored release revision."
+                fi
+            elif [ -n "$stored_revision" ]; then
+                node_doctor_warn "Running image source revision label is unavailable."
+            fi
+        fi
+    fi
+
+    echo "Node doctor summary: ${NODE_DOCTOR_PASSED} passed, ${NODE_DOCTOR_WARNINGS} warnings, ${NODE_DOCTOR_FAILURES} failures."
+    [ "$NODE_DOCTOR_FAILURES" -eq 0 ]
+}
+
 node_logs_command() {
     local follow="true"
     while [ "$#" -gt 0 ]; do
@@ -2579,13 +2877,14 @@ node_command() {
         install) node_install_command "$@" ;;
         update) node_update_command "$@" ;;
         status) node_status_command "$@" ;;
+        doctor) node_doctor_command "$@" ;;
         logs) node_logs_command "$@" ;;
         help|-h|--help)
-            echo "Usage: marzban node <install|update|status|logs> [options]"
+            echo "Usage: marzban node <install|update|status|doctor|logs> [options]"
             ;;
         *)
             colorized_echo red "Unknown node command: $action"
-            echo "Usage: marzban node <install|update|status|logs> [options]"
+            echo "Usage: marzban node <install|update|status|doctor|logs> [options]"
             return 1
             ;;
     esac

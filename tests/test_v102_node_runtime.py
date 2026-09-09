@@ -113,7 +113,10 @@ def test_runtime_api_requires_session_and_persists_ack_cursor(tmp_path):
         "after_id": 0,
         "limit": 100,
     })
-    assert [item["id"] for item in response.json()["events"]] == [first, second]
+    events = response.json()["events"]
+    log_events = [item for item in events if item["type"] == "xray.log"]
+    assert [item["id"] for item in log_events] == [first, second]
+    assert any(item["type"] == "runtime.session.connected" for item in events)
     assert client.post("/v2/events/ack", json={
         "session_id": session_id,
         "consumer_id": "device-limit",
