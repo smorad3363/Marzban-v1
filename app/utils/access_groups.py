@@ -173,6 +173,24 @@ def _validated_network_scope(
     return inbounds, hosts, nodes
 
 
+def _require_admin_network_scope(
+    db: Session,
+    inbounds: set[str],
+    admin_id: int,
+) -> None:
+    """Keep existing bindings inside the owning Admin's inbound ceiling."""
+    settings = db.get(MarzhelpAdminSettings, admin_id)
+    if settings is None:
+        raise admin_hierarchy.HierarchyError("policy_missing", "Administrator policy is missing")
+    if not settings.all_inbounds:
+        forbidden = inbounds - set(settings.allowed_inbounds or [])
+        if forbidden:
+            raise admin_hierarchy.HierarchyError(
+                "access_group_scope_forbidden",
+                f"Access Group exceeds Admin scope: {sorted(forbidden)}",
+            )
+
+
 def validated_scope(
     db: Session,
     group_id: int,
@@ -186,16 +204,7 @@ def validated_scope(
         )
     _require_group_access(db, group, admin_id)
     inbounds, hosts, nodes = _validated_network_scope(db, group_id)
-    settings = db.get(MarzhelpAdminSettings, admin_id)
-    if settings is None:
-        raise admin_hierarchy.HierarchyError("policy_missing", "Administrator policy is missing")
-    if not settings.all_inbounds:
-        forbidden = inbounds - set(settings.allowed_inbounds or [])
-        if forbidden:
-            raise admin_hierarchy.HierarchyError(
-                "access_group_scope_forbidden",
-                f"Access Group exceeds Admin scope: {sorted(forbidden)}",
-            )
+    _require_admin_network_scope(db, inbounds, admin_id)
     return inbounds, hosts, nodes
 
 def network_options(db: Session, actor: Admin) -> list[dict]:
@@ -380,6 +389,13 @@ def update(db: Session, actor: Admin, group: AccessGroup, values: AccessGroupInp
 
     for user in users:
         # This is maintenance of an existing binding, not a new selection.
+        # Permission revocation is intentionally ignored, but the owning Admin's
+        # inbound ceiling remains fail-closed.
+        if user.admin_id is None:
+            raise admin_hierarchy.HierarchyError(
+                "access_group_owner_missing", "Access Group users require an administrator owner"
+            )
+        _require_admin_network_scope(db, inbounds, user.admin_id)
         _apply_network_to_user(db, user, inbounds)
         user.access_group_id = group.id
     db.commit()
@@ -406,7 +422,10 @@ def host_scope(db: Session, user: User) -> dict[str, set[int]] | None:
     if getattr(user, "access_group_id", None) is None:
         return None
     try:
-        _, hosts, _ = _validated_network_scope(db, user.access_group_id)
+        inbounds, hosts, _ = _validated_network_scope(db, user.access_group_id)
+        if user.admin_id is None:
+            return {}
+        _require_admin_network_scope(db, inbounds, user.admin_id)
     except admin_hierarchy.HierarchyError:
         return {}
     return hosts
@@ -497,6 +516,7 @@ def host_scopes(
             and set(hosts) == inbounds
             and all(hosts.get(tag) for tag in inbounds)
             and inbounds <= configured
+            and inbounds <= allowed
             and all(
                 active_hosts.get(host_id) == tag
                 for tag, ids in hosts.items()
@@ -589,8 +609,13 @@ def propagate_host_changes(
 
         for user in users:
             # Host maintenance resyncs an existing binding; it is not a new
-            # Access Group selection, so Admin authorization is intentionally
-            # not re-evaluated here. Network validity is still fail-closed.
+            # Access Group selection, so permission is intentionally not
+            # re-evaluated. The owning Admin's inbound ceiling still applies.
+            if user.admin_id is None:
+                raise admin_hierarchy.HierarchyError(
+                    "access_group_owner_missing", "Access Group users require an administrator owner"
+                )
+            _require_admin_network_scope(db, inbounds, user.admin_id)
             _apply_network_to_user(db, user, inbounds)
             user.access_group_id = group_id
             synced.append(user.id)

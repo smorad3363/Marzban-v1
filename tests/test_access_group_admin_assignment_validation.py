@@ -273,3 +273,26 @@ def test_revoking_admin_permission_preserves_existing_user_binding(db):
     with pytest.raises(admin_hierarchy.HierarchyError) as raised:
         access_groups._require_group_access(session, group, target.id)
     assert raised.value.code == "access_group_forbidden"
+
+
+def test_revoked_binding_still_obeys_admin_network_ceiling(db):
+    session, _, target, group = db
+    access_groups._replace_admin_access(session, group, _values(group, [target.id]))
+    user = User(
+        username="existing-binding-ceiling",
+        admin_id=target.id,
+        access_group_id=group.id,
+        status=UserStatus.active,
+    )
+    session.add(user)
+    session.commit()
+
+    access_groups._replace_admin_access(session, group, _values(group, []))
+    settings = session.get(MarzhelpAdminSettings, target.id)
+    settings.all_inbounds = False
+    session.commit()
+
+    assert user.access_group_id == group.id
+    with pytest.raises(admin_hierarchy.HierarchyError) as raised:
+        access_groups._require_admin_network_scope(session, {INBOUND}, target.id)
+    assert raised.value.code == "access_group_scope_forbidden"
