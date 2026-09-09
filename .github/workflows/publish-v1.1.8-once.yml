@@ -1,0 +1,65 @@
+name: Publish v1.1.8 once
+
+on:
+  push:
+    branches:
+      - ops/publish-v1.1.8
+    paths:
+      - .github/workflows/publish-v1.1.8-once.yml
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      TARGET_SHA: 87f4cb431f96632a0b8aa23932a625d342280fd0
+      VERSION_TAG: v1.1.8
+    steps:
+      - name: Checkout exact protected-main source
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Verify immutable release source and surfaces
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse HEAD)" = "${TARGET_SHA}"
+          test "$(tr -d '[:space:]' < VERSION)" = "1.1.8"
+          grep -Fx '__version__ = "1.1.8"' app/__init__.py
+          grep -Fx 'CLI_RELEASE_VERSION="v1.1.8"' scripts/marzban.sh
+          grep -Fq 'ghcr.io/smorad3363/marzban-v1:v1.1.8' docker-compose.yml
+          test -s docs/RELEASE_NOTES_v1.1.8.md
+          if git ls-remote --exit-code --tags origin "refs/tags/${VERSION_TAG}" >/dev/null 2>&1; then
+            echo "${VERSION_TAG} already exists; refusing to recreate or move it." >&2
+            exit 1
+          fi
+
+      - name: Create exact immutable tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+            -f ref="refs/tags/${VERSION_TAG}" \
+            -f sha="${TARGET_SHA}"
+          resolved="$(git ls-remote origin "refs/tags/${VERSION_TAG}" | awk '{print $1}')"
+          test "${resolved}" = "${TARGET_SHA}"
+
+      - name: Dispatch canonical Release workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          gh workflow run build.yml \
+            --repo "${GITHUB_REPOSITORY}" \
+            --ref main \
+            -f git_ref="${VERSION_TAG}" \
+            -f image_tag="${VERSION_TAG}" \
+            -f tests_only=false
