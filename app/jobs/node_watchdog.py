@@ -1,3 +1,4 @@
+import random
 from html import escape
 from time import time
 
@@ -12,6 +13,27 @@ fail_count = {}
 next_try = {}
 last_remind = {}
 outage_notified = set()
+
+
+def reconnect_backoff_seconds(
+    check_interval: int,
+    attempts: int,
+    backoff_cap: int,
+    *,
+    jitter_factor: float | None = None,
+) -> int:
+    """Existing exponential backoff with bounded downward jitter."""
+
+    base = min(
+        int(check_interval) * (2 ** min(max(1, int(attempts)), 20)),
+        int(backoff_cap),
+    )
+    factor = random.uniform(0.85, 1.0) if jitter_factor is None else float(jitter_factor)
+    factor = max(0.85, min(1.0, factor))
+    return max(
+        int(check_interval),
+        min(int(backoff_cap), max(1, int(round(base * factor)))),
+    )
 
 
 def notify(settings, message: str) -> None:
@@ -62,8 +84,9 @@ def node_watchdog() -> None:
 
             attempts = fail_count.get(node_id, 0) + 1
             fail_count[node_id] = attempts
-            backoff = min(
-                settings.check_interval * (2 ** min(attempts, 20)),
+            backoff = reconnect_backoff_seconds(
+                settings.check_interval,
+                attempts,
                 settings.backoff_cap,
             )
             next_try[node_id] = now + backoff
@@ -77,7 +100,12 @@ def node_watchdog() -> None:
                 )
                 outage_notified.add(node_id)
 
-            xray.operations.connect_node(node_id)
+            xray.operations.connect_node(
+                node_id,
+                reconnect_mode="automatic",
+                trigger_reason=f"watchdog_{status.value}",
+                reconnect_attempt=attempts,
+            )
 
             if attempts > 3 and now - last_remind.get(node_id, 0) >= settings.remind_every:
                 notify(

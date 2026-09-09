@@ -350,7 +350,13 @@ def reconnect_node(
 ):
     """Trigger a reconnection for the specified node. Only accessible to sudo admins."""
     bandwidth_store.forget(dbnode.id)
-    bg.add_task(xray.operations.connect_node, node_id=dbnode.id)
+    bg.add_task(
+        xray.operations.connect_node,
+        node_id=dbnode.id,
+        reconnect_mode="manual",
+        trigger_reason="admin_request",
+        reconnect_attempt=1,
+    )
     AuditLogService.log(
         db,
         admin,
