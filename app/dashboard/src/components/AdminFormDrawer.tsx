@@ -341,7 +341,7 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
                       </Button>
                     ))}
                   </SimpleGrid>
-                  {mode === "USER_CREDIT" && <FormHelperText>حساب «سقف اکانت» طبق قرارداد Backend همیشه فقط با پلن کار می‌کند.</FormHelperText>}
+                  {mode === "USER_CREDIT" && <Text mt={1} color="var(--panel-text-muted)" fontSize="xs">حساب «سقف اکانت» طبق قرارداد Backend همیشه فقط با پلن کار می‌کند.</Text>}
                 </Box>
 
                 <SimpleGrid mt={4} pt={4} borderTopWidth="1px" borderColor="var(--panel-border)" columns={{ base: 1, lg: 2 }} gap={3}>
