@@ -1,0 +1,60 @@
+name: Trigger v1.1.3 repair builder
+
+on:
+  push:
+    branches: [release/v1.1.3]
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-build:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repair branch
+        uses: actions/checkout@v4
+        with:
+          ref: release/v1.1.3
+          fetch-depth: 0
+
+      - name: Execute reviewed repair program
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          source = Path('.github/workflows/patch-v1.1.3-branch.yml').read_text()
+          block = source.split("python - <<'PY'\n", 1)[1].split("\n          PY", 1)[0]
+          program = "\n".join(line[10:] if line.startswith("          ") else line for line in block.splitlines())
+          exec(compile(program, 'v1.1.3-repair', 'exec'))
+          PY
+          python -m compileall -q app
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: app/dashboard/package-lock.json
+
+      - name: Regenerate committed dashboard build
+        shell: bash
+        working-directory: app/dashboard
+        run: |
+          set -Eeuo pipefail
+          npm ci
+          npm run test:v1.1.3
+          VITE_BASE_API=/api/ npm run build
+          cp build/index.html build/404.html
+
+      - name: Commit repaired source and build
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app tests
+          git diff --cached --check
+          git commit -m "fix: repair admin deletion and plan access regressions"
+          git push origin HEAD:release/v1.1.3
