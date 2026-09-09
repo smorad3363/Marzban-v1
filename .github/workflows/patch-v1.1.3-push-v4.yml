@@ -102,6 +102,11 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/test-v1.1.3-regressions.cjs')
+          path.write_text(path.read_text().replace('\\n', '\n'))
+          PY
           npm ci
           npm run test:v1.1.3
           VITE_BASE_API=/api/ npm run build
