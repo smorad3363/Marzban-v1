@@ -48,6 +48,16 @@ export type UsageReset = {
   reset_at: string;
 };
 
+export type UserPlanMeta = {
+  plan_id: number;
+  plan_name: string;
+  version_id: number;
+  version_number: number;
+  is_trial: boolean;
+  operation_type: string;
+  assigned_at: string;
+};
+
 export type User = {
   id: number;
   proxies: ProxyType;

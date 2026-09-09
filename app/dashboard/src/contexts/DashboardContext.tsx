@@ -1,6 +1,6 @@
 import { StatisticsQueryKey } from "components/Statistics";
 import { fetch } from "service/http";
-import { User, UserCreate } from "types/User";
+import { User, UserCreate, UserPlanMeta } from "types/User";
 import { getAuthToken } from "utils/authStorage";
 import { queryClient } from "utils/react-query";
 import { getUsersPerPageLimitSize } from "utils/userPreferenceStorage";
@@ -14,6 +14,15 @@ export type FilterType = {
   sort: string;
   admin?: string;
   status?: "active" | "disabled" | "limited" | "expired" | "on_hold";
+  plan_id?: number;
+  without_plan?: boolean;
+  trial?: boolean;
+  attention?: boolean;
+  expires_within_days?: number;
+  usage_percent_min?: number;
+  has_device_limit?: boolean;
+  unlimited_traffic?: boolean;
+  inactive_hours?: number;
 };
 export type ProtocolType = "vmess" | "vless" | "trojan" | "shadowsocks";
 
@@ -42,6 +51,7 @@ type DashboardStateType = {
     page: number;
     page_size: number;
     pages: number;
+    plan_meta: Record<string, UserPlanMeta | null>;
   };
   inbounds: Inbounds;
   loading: boolean;
@@ -78,14 +88,19 @@ type DashboardStateType = {
 type UsersPage = DashboardStateType["users"];
 let latestUsersRequest = 0;
 
+const invalidateUserAggregates = () => {
+  queryClient.invalidateQueries(StatisticsQueryKey);
+  queryClient.invalidateQueries(["users-summary"]);
+};
+
 const fetchUsers = (query: FilterType): Promise<UsersPage> => {
   const authToken = getAuthToken();
   const requestId = ++latestUsersRequest;
-  for (const key in query) {
-    if (!query[key as keyof FilterType]) delete query[key as keyof FilterType];
-  }
+  const requestQuery = Object.fromEntries(
+    Object.entries(query).filter(([, value]) => value !== undefined && value !== null && value !== "" && value !== false)
+  );
   useDashboard.setState({ loading: true });
-  return fetch("/users", { query })
+  return fetch("/users/management", { query: requestQuery })
     .then((users) => {
       if (getAuthToken() === authToken && requestId === latestUsersRequest) {
         useDashboard.setState({ users });
@@ -130,6 +145,7 @@ export const useDashboard = create(
       page: 1,
       page_size: getUsersPerPageLimitSize(),
       pages: 0,
+      plan_meta: {},
     },
     loading: true,
     isResetingAllUsage: false,
@@ -152,6 +168,7 @@ export const useDashboard = create(
       return fetch(`/users/reset`, { method: "POST" }).then(() => {
         get().onResetAllUsage(false);
         get().refetchUsers();
+        invalidateUserAggregates();
       });
     },
     onResetAllUsage: (isResetingAllUsage) => set({ isResetingAllUsage }),
@@ -179,14 +196,14 @@ export const useDashboard = create(
       return fetch(`/user/${user.username}`, { method: "DELETE" }).then(() => {
         set({ deletingUser: null });
         get().refetchUsers();
-        queryClient.invalidateQueries(StatisticsQueryKey);
+        invalidateUserAggregates();
       });
     },
     createUser: (body: UserCreate) => {
       return fetch<User>(`/user`, { method: "POST", body }).then((createdUser) => {
         set({ editingUser: null });
         get().refetchUsers();
-        queryClient.invalidateQueries(StatisticsQueryKey);
+        invalidateUserAggregates();
         return createdUser;
       });
     },
@@ -195,15 +212,15 @@ export const useDashboard = create(
         () => {
           get().onEditingUser(null);
           get().refetchUsers();
+          invalidateUserAggregates();
         }
       );
     },
     fetchUserUsage: (body: User, query: FilterUsageType) => {
-      for (const key in query) {
-        if (!query[key as keyof FilterUsageType])
-          delete query[key as keyof FilterUsageType];
-      }
-      return fetch(`/user/${body.username}/usage`, { method: "GET", query });
+      const requestQuery = Object.fromEntries(
+        Object.entries(query).filter(([, value]) => value !== undefined && value !== null && value !== "")
+      );
+      return fetch(`/user/${body.username}/usage`, { method: "GET", query: requestQuery });
     },
     onEditingHosts: (isEditingHosts: boolean) => {
       set({ isEditingHosts });
@@ -222,6 +239,7 @@ export const useDashboard = create(
         () => {
           set({ resetUsageUser: null });
           get().refetchUsers();
+          invalidateUserAggregates();
         }
       );
     },
@@ -244,7 +262,14 @@ export const resetDashboardState = () => {
     isCreatingNewUser: false,
     QRcodeLinks: null,
     subscribeUrl: null,
-    users: { users: [], total: 0, page: 1, page_size: getUsersPerPageLimitSize(), pages: 0 },
+    users: {
+      users: [],
+      total: 0,
+      page: 1,
+      page_size: getUsersPerPageLimitSize(),
+      pages: 0,
+      plan_meta: {},
+    },
     loading: true,
     isResetingAllUsage: false,
     isEditingHosts: false,

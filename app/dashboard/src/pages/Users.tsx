@@ -15,6 +15,7 @@ import { QRCodeDialog } from "components/QRCodeDialog";
 import { ResetUserUsageModal } from "components/ResetUserUsageModal";
 import { RevokeSubscriptionModal } from "components/RevokeSubscriptionModal";
 import { UserDialog } from "components/UserDialog";
+import { UserSummaryCards } from "components/UserSummaryCards";
 import { UsersTablePro } from "components/UsersTablePro";
 import { fetchInbounds, useDashboard } from "contexts/DashboardContext";
 import { FC, useEffect, useState } from "react";
@@ -46,9 +47,11 @@ export const Users: FC = () => {
             مدیریت کاربران
           </Text>
           <Text mt={2} color="var(--panel-text-muted)" fontSize="sm">
-            ساخت، جست‌وجو، فیلتر و عملیات کاربران در فضای مستقل از داشبورد.
+            جستجو، فیلتر و مدیریت کاربران بدون شلوغی
           </Text>
         </Card>
+
+        <UserSummaryCards />
 
         <Box as="section" aria-labelledby="user-operations-title">
           <Card

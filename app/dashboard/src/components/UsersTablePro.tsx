@@ -3,14 +3,13 @@ import {
   Box,
   Button,
   Checkbox,
+  HStack,
+  IconButton,
   Menu,
   MenuButton,
   MenuDivider,
   MenuItem,
   MenuList,
-  Progress,
-  HStack,
-  IconButton,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -18,6 +17,7 @@ import {
   ModalFooter,
   ModalHeader,
   ModalOverlay,
+  Progress,
   Select,
   Stack,
   Table,
@@ -29,9 +29,9 @@ import {
   Thead,
   Tooltip,
   Tr,
+  chakra,
   useDisclosure,
   useToast,
-  chakra,
 } from "@chakra-ui/react";
 import {
   ArrowPathIcon,
@@ -58,8 +58,9 @@ import { User, UserCreate } from "types/User";
 import { localizedApiError } from "utils/apiError";
 import { formatBytes } from "utils/formatByte";
 import { BulkUserActions } from "./BulkUserActions";
-import { UserDeviceLimit } from "./UserDeviceLimit";
 import { Pagination } from "./Pagination";
+import { UserDetailsDrawer } from "./UserDetailsDrawer";
+import { UserDeviceLimit } from "./UserDeviceLimit";
 
 const CopyIcon = chakra(ClipboardDocumentIcon, { baseStyle: { w: 4, h: 4 } });
 const QRIcon = chakra(QrCodeIcon, { baseStyle: { w: 4, h: 4 } });
@@ -84,11 +85,16 @@ const statusMeta: Record<User["status"], { label: string; color: string; bg: str
   error: { label: "خطا", color: "var(--panel-danger)", bg: "var(--panel-danger-soft)", border: "var(--panel-danger-border)", dot: "var(--panel-danger)" },
 };
 
-const fmtDateTime = (value: string | null | undefined) => {
-  if (!value) return "—";
+const parseUtc = (value: string | null | undefined) => {
+  if (!value) return null;
   const normalized = /(?:Z|[+-]\d\d:\d\d)$/.test(value) ? value : `${value}Z`;
   const date = new Date(normalized);
-  if (Number.isNaN(date.getTime())) return "—";
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const fmtDateTime = (value: string | null | undefined) => {
+  const date = parseUtc(value);
+  if (!date) return "—";
   return new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
     timeZone: "Asia/Tehran",
     year: "numeric",
@@ -110,25 +116,44 @@ const fmtExpire = (value: number | null) => {
   }).format(new Date(value * 1000));
 };
 
+const relativeActivity = (value: string | null | undefined) => {
+  const date = parseUtc(value);
+  if (!date) return "بدون فعالیت";
+  const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+  if (seconds < 60) return "همین الآن";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes.toLocaleString("fa-IR")} دقیقه پیش`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours.toLocaleString("fa-IR")} ساعت پیش`;
+  const days = Math.floor(hours / 24);
+  return `${days.toLocaleString("fa-IR")} روز پیش`;
+};
+
+const relativeExpiry = (value: number | null) => {
+  if (!value) return "نامحدود";
+  const seconds = value - Math.floor(Date.now() / 1000);
+  const days = Math.ceil(Math.abs(seconds) / 86400);
+  if (seconds <= 0) return days <= 1 ? "منقضی" : `${days.toLocaleString("fa-IR")} روز از انقضا گذشته`;
+  if (days <= 1) return "کمتر از یک روز";
+  return `${days.toLocaleString("fa-IR")} روز مانده`;
+};
+
 const UsageCell: FC<{ user: User }> = ({ user }) => {
   const used = user.used_traffic ?? 0;
   const unlimited = !user.data_limit;
   const percent = unlimited ? 0 : Math.min(100, Math.max(0, (used / Math.max(user.data_limit || 1, 1)) * 100));
-  const color = percent >= 90 ? "var(--panel-danger)" : percent >= 70 ? "var(--panel-warning)" : "var(--panel-success)";
+  const color = percent >= 95 ? "var(--panel-danger)" : percent >= 80 ? "var(--panel-warning)" : "var(--panel-success)";
   return (
-    <Stack spacing={1.5} minW={0} w="full">
+    <Stack spacing={1.25} minW={0} w="full">
       <HStack justify="space-between" spacing={2} minW={0}>
         <Text dir="ltr" textAlign="start" fontSize="10px" fontWeight="800" noOfLines={1} sx={{ unicodeBidi: "isolate" }}>
           {String(formatBytes(used))} / {user.data_limit ? String(formatBytes(user.data_limit)) : "∞"}
         </Text>
-        {unlimited ? (
-          <Box px={2} py={0.5} borderWidth="1px" borderColor="var(--panel-accent-border)" borderRadius="full" color="var(--panel-accent)" fontSize="11px" fontWeight="900">∞</Box>
-        ) : (
-          <Text color="var(--panel-text-muted)" fontSize="9px">{Math.round(percent)}٪</Text>
-        )}
+        <Text flexShrink={0} color={unlimited ? "var(--panel-accent)" : color} fontSize="9px" fontWeight="850">
+          {unlimited ? "∞" : `${Math.round(percent)}٪`}
+        </Text>
       </HStack>
       {!unlimited && <Progress value={percent} h="4px" borderRadius="full" bg="var(--panel-nested)" sx={{ "& > div": { background: color } }} />}
-      <Text color="var(--panel-text-muted)" fontSize="9px">مصرف داده</Text>
     </Stack>
   );
 };
@@ -136,19 +161,18 @@ const UsageCell: FC<{ user: User }> = ({ user }) => {
 const StatusPill: FC<{ status: User["status"] }> = ({ status }) => {
   const meta = statusMeta[status];
   return (
-    <HStack w="fit-content" spacing={1.5} px={2.5} py={1.25} borderRadius="full" bg={meta.bg} borderWidth="1px" borderColor={meta.border}>
+    <HStack w="fit-content" spacing={1.5} px={2.5} py={1} borderRadius="full" bg={meta.bg} borderWidth="1px" borderColor={meta.border}>
       <Box boxSize="6px" borderRadius="full" bg={meta.dot} />
       <Text color={meta.color} fontSize="10px" fontWeight="750">{meta.label}</Text>
     </HStack>
   );
 };
 
-const Action: FC<{ label: string; icon: React.ReactElement; onClick: () => void; tone?: "blue" | "green" | "yellow" | "red" | "gray"; disabled?: boolean }> = ({ label, icon, onClick, tone = "gray", disabled }) => {
+const Action: FC<{ label: string; icon: React.ReactElement; onClick: () => void; tone?: "blue" | "green" | "red" | "gray"; disabled?: boolean }> = ({ label, icon, onClick, tone = "gray", disabled }) => {
   const palettes = {
     gray: { color: "var(--panel-text-muted)", bg: "var(--panel-muted-soft)", border: "var(--panel-border)" },
     blue: { color: "var(--panel-accent)", bg: "var(--panel-accent-soft)", border: "var(--panel-accent-border)" },
     green: { color: "var(--panel-success)", bg: "var(--panel-success-soft)", border: "var(--panel-success-border)" },
-    yellow: { color: "var(--panel-warning)", bg: "var(--panel-warning-soft)", border: "var(--panel-warning-border)" },
     red: { color: "var(--panel-danger)", bg: "var(--panel-danger-soft)", border: "var(--panel-danger-border)" },
   } as const;
   const palette = palettes[tone];
@@ -158,19 +182,17 @@ const Action: FC<{ label: string; icon: React.ReactElement; onClick: () => void;
         aria-label={label}
         icon={icon}
         size="xs"
-        minW="32px"
-        w="32px"
-        h="32px"
-        borderRadius="12px"
+        minW="30px"
+        w="30px"
+        h="30px"
+        borderRadius="10px"
         color={palette.color}
         bg={palette.bg}
         borderWidth="1px"
         borderColor={palette.border}
         isDisabled={disabled}
         onClick={onClick}
-        transition="transform .14s ease, background .14s ease"
         _hover={{ transform: "translateY(-1px)", bg: palette.bg }}
-        _active={{ transform: "translateY(0)" }}
       />
     </Tooltip>
   );
@@ -179,7 +201,7 @@ const Action: FC<{ label: string; icon: React.ReactElement; onClick: () => void;
 export const UsersTablePro: FC = () => {
   const {
     filters,
-    users: { users },
+    users: { users, plan_meta },
     onEditingUser,
     onDeletingUser,
     setQRCode,
@@ -202,9 +224,19 @@ export const UsersTablePro: FC = () => {
   const [busyUsername, setBusyUsername] = useState<string | null>(null);
   const [renewalUser, setRenewalUser] = useState<User | null>(null);
   const [renewalPlanId, setRenewalPlanId] = useState("");
+  const [drawerUsername, setDrawerUsername] = useState<string | null>(null);
   const renewalRequest = useRef<{ key: string; id: string } | null>(null);
 
   const plans = useQuery<UserPlan[], Error>("user-plans", () => fetch("/user-plans"), { enabled: renewalModal.isOpen });
+  const drawerUser = drawerUsername ? users.find((user) => user.username === drawerUsername) || null : null;
+  const drawerPlanMeta = drawerUser ? plan_meta[drawerUser.username] || null : null;
+
+  const openRenewal = (user: User) => {
+    renewalRequest.current = null;
+    setRenewalUser(user);
+    setRenewalPlanId("");
+    renewalModal.onOpen();
+  };
 
   const renew = useMutation(
     ({ user, planId }: { user: User; planId: number }) => {
@@ -219,6 +251,7 @@ export const UsersTablePro: FC = () => {
       onSuccess: () => {
         refetchUsers();
         queryClient.invalidateQueries("account-summary");
+        queryClient.invalidateQueries(["users-summary"]);
         renewalModal.onClose();
         setRenewalUser(null);
         setRenewalPlanId("");
@@ -240,6 +273,12 @@ export const UsersTablePro: FC = () => {
       return next;
     });
   }, [users]);
+
+  useEffect(() => {
+    if (drawerUsername && !users.some((user) => user.username === drawerUsername)) {
+      setDrawerUsername(null);
+    }
+  }, [drawerUsername, users]);
 
   const selectedUsers = useMemo(() => Array.from(selectedMap.values()), [selectedMap]);
   const allVisibleSelected = users.length > 0 && users.every((user) => selectedMap.has(user.username));
@@ -269,6 +308,11 @@ export const UsersTablePro: FC = () => {
     } catch {
       toast({ title: "کپی لینک انجام نشد", status: "error", duration: 2200 });
     }
+  };
+
+  const showQr = (user: User) => {
+    setQRCode(user.links);
+    setSubLink(user.subscription_url);
   };
 
   const toggleStatus = async (user: User) => {
@@ -332,7 +376,12 @@ export const UsersTablePro: FC = () => {
   }
 
   return (
-    <Box dir={i18n.dir()} w="full" minW={0}>
+    <Box
+      dir={i18n.dir()}
+      w="full"
+      minW={0}
+      pb={selectedUsers.length > 0 ? { base: "104px", md: "88px" } : 0}
+    >
       <Box borderWidth="1px" borderColor="var(--panel-border)" borderRadius="16px" bg="var(--panel-surface)" boxShadow="var(--shadow-panel)" overflow="hidden">
         {!readOnly && (
           <Box
@@ -367,7 +416,7 @@ export const UsersTablePro: FC = () => {
         )}
 
         <Text
-          display={{ base: "block", lg: "none" }}
+          display={{ base: "block", md: "none" }}
           px={3}
           py={2}
           color="var(--panel-text-muted)"
@@ -377,97 +426,119 @@ export const UsersTablePro: FC = () => {
           fontSize="10px"
           lineHeight="1.6"
         >
-          برای دیدن همه جزئیات و عملیات، جدول را به صورت افقی بکشید.
+          برای جزئیات روی نام کاربر بزنید؛ جدول در موبایل افقی پیمایش می‌شود.
         </Text>
 
         <TableContainer
           overflowX="auto"
           overscrollBehaviorX="contain"
           tabIndex={0}
-          aria-label="جدول کاربران؛ برای مشاهده ستون‌های بیشتر به صورت افقی پیمایش کنید"
-          sx={{
-            WebkitOverflowScrolling: "touch",
-            scrollbarGutter: "stable",
-          }}
+          aria-label="جدول کاربران"
+          sx={{ WebkitOverflowScrolling: "touch", scrollbarGutter: "stable" }}
         >
-          <Table size="sm" w="full" minW="1500px" sx={{ tableLayout: "fixed", "th, td": { borderBottom: "0 !important", px: 3.5, py: 3, overflow: "hidden" }, "th": { whiteSpace: "nowrap", overflowWrap: "normal", wordBreak: "keep-all", lineHeight: 1.45, fontWeight: 600, color: "var(--panel-text-muted)" } }}>
+          <Table
+            size="sm"
+            w="full"
+            minW={isOwner ? "1220px" : "1100px"}
+            sx={{
+              tableLayout: "fixed",
+              "th, td": { borderBottom: "1px solid var(--panel-border) !important", px: 3, py: 2.5, overflow: "hidden" },
+              "tbody tr:last-of-type td": { borderBottom: "0 !important" },
+              th: { whiteSpace: "nowrap", fontWeight: 700, color: "var(--panel-text-muted)", fontSize: "10px" },
+              "tbody tr:hover": { background: "var(--panel-row-hover)" },
+            }}
+          >
             <Thead bg="var(--panel-nested)">
               <Tr>
-                {!readOnly && <Th w="36px"><Checkbox isChecked={allVisibleSelected} onChange={(event) => toggleAllVisible(event.target.checked)} colorScheme="primary" /></Th>}
-                <Th w="34px" textAlign="center">#</Th>
-                <Th>کاربر</Th>
-                <Th>وضعیت</Th>
-                <Th>مصرف ترافیک</Th>
-                <Th>پلن بعدی</Th>
-                <Th>انقضا</Th>
-                <Th>تاریخ ایجاد</Th>
-                <Th>ادمین</Th>
-                <Th>آخرین فعالیت</Th>
-                <Th>کلاینت / نسخه</Th>
-                <Th>بازنشانی</Th>
-                <Th>توضیحات</Th>
-                <Th w="190px" textAlign="end">عملیات</Th>
+                {!readOnly && <Th w="38px"><Checkbox isChecked={allVisibleSelected} onChange={(event) => toggleAllVisible(event.target.checked)} colorScheme="primary" /></Th>}
+                <Th w="38px" textAlign="center">#</Th>
+                <Th w="190px">کاربر</Th>
+                <Th w="105px">وضعیت</Th>
+                <Th w="150px">پلن</Th>
+                <Th w="190px">مصرف</Th>
+                <Th w="145px">انقضا</Th>
+                <Th w="105px">دستگاه</Th>
+                <Th w="145px">آخرین فعالیت</Th>
+                {isOwner && <Th w="120px">ادمین</Th>}
+                <Th w="154px" textAlign="end">عملیات</Th>
               </Tr>
             </Thead>
             <Tbody>
               {users.map((user, index) => {
                 const busy = busyUsername === user.username;
-                const nextPlan = user.next_plan;
+                const planMeta = plan_meta[user.username] || null;
+                const deviceWarned = Boolean(user.device_limit_state && user.device_limit_state.penalty_status !== "clear");
                 return (
                   <Tr
                     key={user.username}
-                    data-selected={selectedMap.has(user.username) ? "true" : undefined}
-                    data-disabled={user.status === "disabled" ? "true" : undefined}
-                    transition="opacity .14s ease"
+                    opacity={user.status === "disabled" ? 0.72 : 1}
+                    bg={selectedMap.has(user.username) ? "var(--panel-accent-soft)" : undefined}
                   >
                     {!readOnly && <Td><Checkbox isChecked={selectedMap.has(user.username)} onChange={(event) => setSelected(user, event.target.checked)} colorScheme="primary" /></Td>}
-                    <Td textAlign="center" fontWeight="800">{((filters.offset || 0) + index + 1).toLocaleString("fa-IR")}</Td>
+                    <Td textAlign="center" color="var(--panel-text-muted)" fontSize="10px" fontWeight="800">{((filters.offset || 0) + index + 1).toLocaleString("fa-IR")}</Td>
                     <Td>
-                      <HStack spacing={2.5}>
-                        <Box w="32px" h="32px" display="grid" placeItems="center" borderRadius="full" bg="var(--panel-accent-soft)" color="var(--panel-accent)" fontWeight="900" flexShrink={0}>
+                      <HStack spacing={2.5} minW={0}>
+                        <Box w="30px" h="30px" display="grid" placeItems="center" borderRadius="full" bg="var(--panel-accent-soft)" color="var(--panel-accent)" fontSize="11px" fontWeight="900" flexShrink={0}>
                           {user.username.slice(0, 1).toUpperCase()}
                         </Box>
                         <Box minW={0}>
-                          <Text dir="ltr" textAlign="start" color="var(--panel-accent)" fontSize="12px" fontWeight="850" noOfLines={1} sx={{ unicodeBidi: "isolate" }}>{user.username}</Text>
-                          <Text mt={1} color="var(--panel-text-muted)" fontSize="9px">سقف اتصال: {user.concurrent_user_limit ?? "∞"}</Text>
+                          <Button
+                            variant="link"
+                            h="auto"
+                            minW={0}
+                            maxW="full"
+                            color="var(--panel-accent)"
+                            fontSize="11px"
+                            fontWeight="900"
+                            justifyContent="flex-start"
+                            onClick={() => setDrawerUsername(user.username)}
+                          >
+                            <Text dir="ltr" textAlign="start" noOfLines={1} sx={{ unicodeBidi: "isolate" }}>{user.username}</Text>
+                          </Button>
+                          <Text mt={0.5} color="var(--panel-text-muted)" fontSize="9px" noOfLines={1}>{user.note || "بدون توضیح"}</Text>
                         </Box>
                       </HStack>
                     </Td>
                     <Td><StatusPill status={user.status} /></Td>
+                    <Td>
+                      {planMeta ? (
+                        <Stack spacing={0.5}>
+                          <HStack spacing={1.5} minW={0}>
+                            <Text fontSize="10px" fontWeight="850" noOfLines={1}>{planMeta.plan_name}</Text>
+                            {planMeta.is_trial && <Badge colorScheme="yellow" variant="subtle" fontSize="8px">آزمایشی</Badge>}
+                          </HStack>
+                          <Text color="var(--panel-text-muted)" fontSize="8px">نسخه {planMeta.version_number.toLocaleString("fa-IR")}</Text>
+                        </Stack>
+                      ) : <Text color="var(--panel-text-muted)" fontSize="10px">بدون پلن</Text>}
+                    </Td>
                     <Td><UsageCell user={user} /></Td>
                     <Td>
-                      {nextPlan ? (
+                      <Tooltip label={fmtExpire(user.expire)} hasArrow>
                         <Stack spacing={0.5}>
-                          <Badge w="fit-content" colorScheme="primary" variant="outline" textTransform="none" fontSize="9px">{nextPlan.data_limit ? String(formatBytes(nextPlan.data_limit)) : "نامحدود"}</Badge>
-                          <Text color="var(--panel-text-muted)" fontSize="9px">{nextPlan.expire ? fmtExpire(nextPlan.expire) : "بدون انقضا"}</Text>
+                          <Text fontSize="10px" fontWeight="800" color={user.status === "expired" ? "var(--panel-danger)" : "var(--panel-text-body)"}>{relativeExpiry(user.expire)}</Text>
+                          <Text color="var(--panel-text-muted)" fontSize="8px">{fmtExpire(user.expire)}</Text>
                         </Stack>
-                      ) : <Text color="var(--panel-text-muted)" fontSize="10px">تنظیم نشده</Text>}
-                    </Td>
-                    <Td><Text fontSize="11px" fontWeight="700">{fmtExpire(user.expire)}</Text></Td>
-                    <Td><Text fontSize="10px" lineHeight="1.6">{fmtDateTime(user.created_at)}</Text></Td>
-                    <Td><Text dir="ltr" textAlign="start" fontSize="11px" fontWeight="800" sx={{ unicodeBidi: "isolate" }}>{user.admin?.username || "—"}</Text></Td>
-                    <Td>
-                      <Text fontSize="10px" lineHeight="1.6">{fmtDateTime(user.online_at)}</Text>
-                      <Text mt={1} color={user.online_at ? "var(--panel-success)" : "var(--panel-text-muted)"} fontSize="9px">{user.online_at ? "دارای فعالیت" : "بدون فعالیت ثبت‌شده"}</Text>
-                    </Td>
-                    <Td>
-                      <Tooltip label={user.sub_last_user_agent || "—"} hasArrow>
-                        <Text dir="ltr" textAlign="start" fontSize="10px" noOfLines={2} overflowWrap="anywhere" sx={{ unicodeBidi: "isolate" }}>{user.sub_last_user_agent || "—"}</Text>
                       </Tooltip>
                     </Td>
                     <Td>
-                      <Text fontSize="12px" fontWeight="850">{(user.reset_history?.length || 0).toLocaleString("fa-IR")}</Text>
-                      <Text color="var(--panel-text-muted)" fontSize="9px">مرتبه</Text>
+                      <HStack spacing={1.5}>
+                        <Text dir="ltr" fontSize="10px" fontWeight="850" sx={{ unicodeBidi: "isolate" }}>{user.concurrent_user_limit ?? "∞"}</Text>
+                        {deviceWarned && <Box boxSize="6px" borderRadius="full" bg="var(--panel-warning)" title="هشدار دستگاه" />}
+                        {!readOnly && isOwner && user.concurrent_user_limit != null && <UserDeviceLimit user={user} compact />}
+                      </HStack>
                     </Td>
                     <Td>
-                      <Tooltip label={user.note || "—"} hasArrow>
-                        <Text fontSize="10px" noOfLines={2} color={user.note ? "var(--panel-text-body)" : "var(--panel-text-muted)"}>{user.note || "—"}</Text>
+                      <Tooltip label={fmtDateTime(user.online_at)} hasArrow>
+                        <Stack spacing={0.5}>
+                          <Text fontSize="10px" fontWeight="750">{relativeActivity(user.online_at)}</Text>
+                          <Text color="var(--panel-text-muted)" fontSize="8px">{fmtDateTime(user.online_at)}</Text>
+                        </Stack>
                       </Tooltip>
                     </Td>
+                    {isOwner && <Td><Text dir="ltr" textAlign="start" fontSize="10px" fontWeight="800" noOfLines={1} sx={{ unicodeBidi: "isolate" }}>{user.admin?.username || "—"}</Text></Td>}
                     <Td textAlign="end">
-                      <HStack justify="end" gap={1.5} dir="ltr" maxW="full">
+                      <HStack justify="end" gap={1} dir="ltr" maxW="full">
                         <Action label="کپی لینک اشتراک" icon={<CopyIcon />} onClick={() => copySubscription(user)} tone="green" />
-                        {!readOnly && isOwner && <UserDeviceLimit user={user} compact />}
                         {!readOnly && <Action label="ویرایش" icon={<EditIcon />} onClick={() => onEditingUser(user)} tone="blue" disabled={busy} />}
                         {!readOnly && <Action label="حذف کاربر" icon={<DeleteIcon />} onClick={() => onDeletingUser(user)} tone="red" disabled={busy} />}
                         <Menu placement="bottom-end" isLazy>
@@ -476,10 +547,10 @@ export const UsersTablePro: FC = () => {
                             aria-label="عملیات بیشتر"
                             icon={<MoreIcon />}
                             size="xs"
-                            minW="32px"
-                            w="32px"
-                            h="32px"
-                            borderRadius="12px"
+                            minW="30px"
+                            w="30px"
+                            h="30px"
+                            borderRadius="10px"
                             color="var(--panel-text-body)"
                             bg="var(--panel-nested)"
                             borderWidth="1px"
@@ -487,10 +558,11 @@ export const UsersTablePro: FC = () => {
                             _hover={{ bg: "var(--panel-row-hover)" }}
                           />
                           <MenuList dir="rtl" minW="210px" bg="var(--panel-surface)" borderColor="var(--panel-border)" borderRadius="14px" boxShadow="var(--shadow-elevated)" py={1.5}>
-                            <MenuItem icon={<QRIcon />} onClick={() => { setQRCode(user.links); setSubLink(user.subscription_url); }}>QR Code</MenuItem>
+                            <MenuItem onClick={() => setDrawerUsername(user.username)}>جزئیات کاربر</MenuItem>
+                            <MenuItem icon={<QRIcon />} onClick={() => showQr(user)}>QR Code</MenuItem>
                             <MenuItem icon={<AuditIcon />} onClick={() => navigate(`/audit-logs/?search=${encodeURIComponent(user.username)}`)}>گزارش فعالیت</MenuItem>
                             {!readOnly && <MenuDivider borderColor="var(--panel-border)" />}
-                            {!readOnly && <MenuItem icon={<RenewIcon />} isDisabled={busy} onClick={() => { renewalRequest.current = null; setRenewalUser(user); setRenewalPlanId(""); renewalModal.onOpen(); }}>تمدید با پلن</MenuItem>}
+                            {!readOnly && <MenuItem icon={<RenewIcon />} isDisabled={busy} onClick={() => openRenewal(user)}>تمدید با پلن</MenuItem>}
                             {!readOnly && <MenuItem icon={user.status === "disabled" ? <PlayActionIcon /> : <PauseActionIcon />} isDisabled={busy} onClick={() => toggleStatus(user)}>{user.status === "disabled" ? "فعال‌سازی" : "غیرفعال‌سازی"}</MenuItem>}
                             {!readOnly && <MenuItem icon={<ResetIcon />} isDisabled={busy} onClick={() => resetUsage(user)}>بازنشانی مصرف</MenuItem>}
                             {!readOnly && <MenuItem icon={<RevokeIcon />} isDisabled={busy} onClick={() => revoke(user)}>ابطال لینک اشتراک</MenuItem>}
@@ -507,6 +579,22 @@ export const UsersTablePro: FC = () => {
       </Box>
 
       <Pagination />
+
+      <UserDetailsDrawer
+        user={drawerUser}
+        planMeta={drawerPlanMeta}
+        isOpen={Boolean(drawerUser)}
+        onClose={() => setDrawerUsername(null)}
+        readOnly={readOnly}
+        canViewDevices={isOwner}
+        onEdit={(user) => { setDrawerUsername(null); onEditingUser(user); }}
+        onDelete={(user) => { setDrawerUsername(null); onDeletingUser(user); }}
+        onRenew={(user) => { setDrawerUsername(null); openRenewal(user); }}
+        onToggleStatus={toggleStatus}
+        onResetUsage={resetUsage}
+        onRevokeSubscription={revoke}
+        onShowQr={showQr}
+      />
 
       <Modal
         isOpen={renewalModal.isOpen}
