@@ -1,0 +1,55 @@
+name: Tag and Dispatch v1.1.9 Once
+
+on:
+  push:
+    branches:
+      - release/tag-v1.1.9-once
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  tag-and-dispatch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: v1.1.9
+      EXPECTED_RELEASE_SHA: 14e5c9032e5f94f783f34bde391bba318a6de925
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: release/tag-v1.1.9-once
+          fetch-depth: 0
+
+      - name: Verify exact release source and create immutable tag
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git fetch origin main --tags
+          target="$(git rev-parse HEAD^)"
+          test "${target}" = "${EXPECTED_RELEASE_SHA}"
+          test "$(git rev-parse origin/main)" = "${EXPECTED_RELEASE_SHA}"
+          if git rev-parse -q --verify "refs/tags/${RELEASE_TAG}" >/dev/null; then
+            echo "${RELEASE_TAG} already exists; refusing to move or recreate it" >&2
+            exit 1
+          fi
+          version_text="$(git show "${target}:VERSION" | tr -d '[:space:]')"
+          test "${RELEASE_TAG}" = "v${version_text}"
+          git show "${target}:app/__init__.py" | grep -Fx "__version__ = \"${version_text}\""
+          git show "${target}:scripts/marzban.sh" | grep -Fx "CLI_RELEASE_VERSION=\"${RELEASE_TAG}\""
+          git show "${target}:docker-compose.yml" | grep -Fq "ghcr.io/smorad3363/marzban-v1:${RELEASE_TAG}"
+          git cat-file -e "${target}:docs/RELEASE_NOTES_${RELEASE_TAG}.md"
+          git tag "${RELEASE_TAG}" "${target}"
+          git push origin "refs/tags/${RELEASE_TAG}"
+
+      - name: Dispatch canonical Release workflow
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          gh workflow run build.yml \
+            --ref main \
+            -f git_ref="${RELEASE_TAG}" \
+            -f image_tag="${RELEASE_TAG}" \
+            -f tests_only=false
