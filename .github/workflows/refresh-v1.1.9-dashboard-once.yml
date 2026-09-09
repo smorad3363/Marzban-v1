@@ -1,0 +1,68 @@
+name: Refresh v1.1.9 Dashboard Once
+
+on:
+  push:
+    branches:
+      - release/v1.1.9
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: release/v1.1.9
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: app/dashboard/package-lock.json
+
+      - name: Install dashboard dependencies
+        working-directory: app/dashboard
+        run: npm ci
+
+      - name: Verify Stage 1 UI contracts
+        run: bash app/tests/dashboard_ui_contract.sh
+
+      - name: Build dashboard from source
+        working-directory: app/dashboard
+        run: npm run build
+
+      - name: Verify dashboard build output
+        run: bash app/tests/dashboard_build_contract.sh
+
+      - name: Commit refreshed production dashboard
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          rm .github/workflows/refresh-v1.1.9-dashboard-once.yml
+
+          # Release preparation must stay scoped to generated dashboard output plus
+          # removal of this one-time helper.
+          unexpected="$(git status --porcelain | awk '{print $2}' | grep -v '^app/dashboard/build/' | grep -v '^.github/workflows/refresh-v1.1.9-dashboard-once.yml$' || true)"
+          if [ -n "$unexpected" ]; then
+            printf 'unexpected changed paths:\n%s\n' "$unexpected" >&2
+            exit 1
+          fi
+
+          test "$(tr -d '[:space:]' < VERSION)" = "1.1.9"
+          grep -Fx '__version__ = "1.1.9"' app/__init__.py
+          grep -Fx 'CLI_RELEASE_VERSION="v1.1.9"' scripts/marzban.sh
+          grep -Fq 'ghcr.io/smorad3363/marzban-v1:v1.1.9' docker-compose.yml
+          test -s docs/RELEASE_NOTES_v1.1.9.md
+
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A app/dashboard/build .github/workflows/refresh-v1.1.9-dashboard-once.yml
+          if git diff --cached --quiet; then
+            echo 'dashboard build was already in parity; removing helper only'
+          fi
+          git commit -m 'chore: refresh v1.1.9 dashboard build'
+          git push origin HEAD:release/v1.1.9
