@@ -1,12 +1,15 @@
 # V1 Continuation State
 
-## Active Task: v1.1.8 Dashboard Owner/Admin V2 release candidate
+## Current State: v1.1.8 released
 
-- Working branch: `feat/dashboard-owner-admin-v2`
-- Pull request: `#39`
-- Base/main SHA at task start: `e8f9ce09c7939c15a2fbdeae858ba990d79db846`
-- Immutable prior release: `v1.1.7` MUST remain at `c0775a624b7081f794b492e4596bbc484aa6be02`; never move/recreate it.
-- Target release: `v1.1.8`.
+- Release task: Dashboard Owner/Admin V2 + `v1.1.8` publication.
+- Pull request `#39` was squash-merged into `main`.
+- Reviewed PR head: `d901376ec73c65da9d1aeed73b382ebf440f5630`.
+- Release/main commit: `87f4cb431f96632a0b8aa23932a625d342280fd0`.
+- Immutable release tag `v1.1.8` resolves to `87f4cb431f96632a0b8aa23932a625d342280fd0`.
+- Immutable prior tag `v1.1.7` remains unchanged at `c0775a624b7081f794b492e4596bbc484aa6be02`.
+- GitHub Release `Marzban v1.1.8` is published.
+- The temporary feature branch `feat/dashboard-owner-admin-v2` is no longer present after merge.
 
 ## Completed Product Work
 
@@ -17,44 +20,42 @@
 - Admin sees no Owner-only Node/Admin summary and receives no billing-mode distribution from Dashboard overview.
 - Admin credit UI remains generic and does not disclose accounting-model basis.
 - Users remains the dedicated management surface.
-- `host_update_impact` unrelated behavior was restored to the `main` baseline during self-review.
-- UTC timestamp parsing, current-activity semantics, status legend, and legacy Admin counting were corrected during final self-review.
-- Version surfaces, `RELEASES.md`, and `docs/RELEASE_NOTES_v1.1.8.md` are prepared for `v1.1.8`.
-- Canonical Release workflow verifies both Stage 1 UI and authenticated-autofill contracts.
-- All one-time release-preparation scripts/workflows have been removed from the net PR diff.
+- `host_update_impact` unrelated behavior was restored to the original `main` baseline during self-review.
+- UTC timestamp parsing, current-activity semantics, status legend, legacy Admin counting, and `aria-live="polite"` regression were corrected before merge.
+- Release surfaces are `1.1.8` / `v1.1.8`, including `VERSION`, `app/__init__.py`, `scripts/marzban.sh`, `docker-compose.yml`, `RELEASES.md`, and `docs/RELEASE_NOTES_v1.1.8.md`.
+- Canonical Release workflow verifies Stage 1 UI and authenticated-autofill contracts and committed dashboard parity.
+- All one-time release-preparation helpers were removed before merge.
 
-## Validation History
+## Final Verification
 
-- One earlier final-candidate CI run exposed a missing `aria-live="polite"`; fixed. Its backend result was otherwise 448 passed, 1 skipped, 3 deselected.
-- One later installer contract run exposed stale `RELEASES.md` target metadata; fixed by setting release target/install/update references to `v1.1.8` while keeping prior tags immutable.
-- Targeted release-preparation validation passed Python compilation, Stage 1 UI contract, authenticated-autofill contract, TypeScript/production dashboard build, release-surface checks, and canonical build regeneration.
-- A fresh full PR CI run on the final HEAD is still required before merge.
+Final PR head `d901376ec73c65da9d1aeed73b382ebf440f5630`:
+
+- `CI Checkpoints` run 225: SUCCESS.
+- `Dashboard UI Contracts` run 140: SUCCESS.
+- `Branch Hygiene` run 79: SUCCESS.
+- Required MySQL 8.0 and MySQL 26.7.0 backend, migration/partial-DDL, Stage 8-11, backup/restore, rollback, installer/compose/runtime, dashboard parity, and Panel-to-Node mTLS gates were reported green on the final candidate.
+
+Release commit/tag `87f4cb431f96632a0b8aa23932a625d342280fd0`:
+
+- Release workflow run 94 (`34390109398`): SUCCESS.
+- Immutable source/tag, main ancestry, version surfaces, and release notes verification: SUCCESS.
+- Stage 1 dashboard contract and authenticated-autofill contract: SUCCESS.
+- Production dashboard build and committed parity: SUCCESS.
+- Multi-architecture image build/publish for `linux/amd64` and `linux/arm64`: SUCCESS.
+- Anonymous/runtime published-image verification: SUCCESS, including source revision, dashboard runtime content, CLI/node runtime content, MySQL `26.7.0`, and `latest` revision matching the release source.
+- GitHub Release creation: SUCCESS.
 
 ## Non-regression Invariants
 
-- Preserve Node Operations V2, one authoritative reset-counter collector, safe Admin retirement, Plan permissions, Access Group semantics, Owner unrestricted behavior, and Panel-to-Node mTLS.
-- `v1.1.7` is immutable and must never be moved/recreated.
-- `v1.1.8` may be tagged only from the final reviewed squash-merge commit on `main` after all required CI gates are green.
-
-## Last Work File
-
-`RELEASES.md`
-
-## Last Work Section
-
-Final release metadata contract: `Release target: v1.1.8`, matching notes/install/update references, while existing `v1.1.7` remains immutable.
-
-## NEXT EXACT TASK
-
-1. Treat the current branch HEAD after this checkpoint as the final PR candidate and run both `CI Checkpoints` and `Dashboard UI Contracts` to completion.
-2. If any gate fails, inspect the exact failing job/step and fix only its root cause; regenerate committed dashboard build only if dashboard source changes.
-3. Re-review the final PR diff for scope/security/unrelated changes; verify one-time helpers are absent and `main`/`v1.1.7` have not moved.
-4. Mark PR #39 ready and squash-merge only the exact verified head.
-5. Verify the squash commit on `main`, post-merge CI, and all release surfaces (`VERSION`, `app/__init__.py`, `scripts/marzban.sh`, `docker-compose.yml`, `RELEASES.md`, `docs/RELEASE_NOTES_v1.1.8.md`).
-6. Verify `v1.1.8` does not already exist, then create it at the exact verified release commit on `main` without moving any existing tag.
-7. Wait for the canonical `Release` workflow to succeed, including dashboard contracts/parity, multi-arch GHCR publish, anonymous/runtime image verification, and GitHub Release creation.
-8. Confirm tag SHA, GitHub Release, `ghcr.io/smorad3363/marzban-v1:v1.1.8`, `latest`, and release workflow source SHA all match the verified release commit.
+- Preserve Node Operations V2 and the single authoritative reset-counter collector.
+- Preserve safe Admin retirement/delete behavior.
+- Preserve Plan permissions and Access Group semantics.
+- Preserve Owner unrestricted behavior and Admin backend scope/billing confidentiality.
+- Preserve installer and Panel-to-Node mTLS architecture.
+- Never move or recreate published tags, especially `v1.1.7` and `v1.1.8`.
 
 ## Recovery Rule
 
-When work resumes, fetch this file, fetch/review `Last Work File`, verify PR/main/tag/release state, then continue from the first incomplete `NEXT EXACT TASK` item. If `v1.1.8` already exists, never recreate or move it; verify publication instead.
+`v1.1.8` is complete. Do not repeat the Dashboard V2 release work and do not move/recreate `v1.1.8`.
+
+For the next task, start from the actual current `main`, read this state file, identify the new requested scope, and follow the repository engineering contract with the smallest correct change. If future work advances `main`, treat `87f4cb431f96632a0b8aa23932a625d342280fd0` as the immutable `v1.1.8` release source rather than assuming the latest `main` is the release commit.
