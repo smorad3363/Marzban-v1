@@ -37,33 +37,42 @@ On any interruption:
   - Current Plan metadata is resolved for the bounded visible page from the latest immutable `UserPlanAssignment`; no per-row Plan requests were introduced.
   - Refactored the toolbar to compact Admin/Plan/Sort controls and smart filter chips while preserving Create User/Create From Plan/account restrictions and debounced search.
   - Added focused `tests/test_user_management_query.py` coverage for hierarchy scope, latest Plan assignment, no-Plan/Trial and attention/smart filters.
-- Checkpoint `UMV3-03` — compact Users table + real User Details Drawer: COMPLETE at source/build level.
+- Checkpoint `UMV3-03` — compact Users table + real User Details Drawer: COMPLETE.
   - Replaced the legacy 1500px detail-heavy table with compact management columns: User, Status, current Plan, Usage, Expiry, Device, Last Activity, Owner-only Admin, and Operations.
   - Current Plan uses the bounded `plan_meta` map; no per-row Plan request was added.
   - Last Activity uses only the real `online_at` value and does not conflate it with User status.
   - Added `UserDetailsDrawer` with Overview, Subscription, optional Devices, and Activity/Audit tabs.
   - Device and Audit requests are lazy and fire only after the relevant Drawer tab is opened; existing Device modal semantics remain available to Owner.
   - Preserved QR/copy/edit/delete/renew/enable-disable/reset/revoke/audit/device operations and cross-page selection behavior.
-  - Traffic warning visuals now use 80% warning and 95% danger.
+  - Traffic warning visuals use 80% warning and 95% danger.
   - Updated the Stage 1 Users contract to require the compact table/Drawer architecture while preserving horizontal-scroll fallback and all actions.
-  - Verification on head `8947a39b2830889707e0b14b17d9668351fcadf5`: Stage 1 UI contracts SUCCESS; authenticated-autofill contract SUCCESS; TypeScript + production dashboard build SUCCESS; MySQL 8.0 backend/migration/Stage 8-11/backup/rollback SUCCESS; MySQL 26.7.0 backend/migration/Stage 8-11/backup/rollback SUCCESS; installer/runtime/Panel-to-Node checks SUCCESS.
-  - Dashboard jobs fail only at committed build parity because `app/dashboard/build/**` has intentionally not yet been refreshed. Source/build checks are green. Refresh generated build assets after the final responsive/bulk pass, then require parity green before review/merge.
+- Checkpoint `UMV3-04` — sticky bulk UX + responsive Users management pass: COMPLETE at source/generated-build level.
+  - Existing checked-user bulk behavior, target-scope preview, retry, cleanup, authorization, and cross-page selection semantics were preserved.
+  - When a selection exists, the bulk controls now become a compact sticky bottom action surface with safe-area spacing, desktop sidebar-aware centering, and horizontal action scrolling on narrow screens.
+  - `UsersTablePro` reserves bottom content space while the sticky bar is active so pagination/table content is not covered.
+  - The Admin/Plan/Sort row, smart-filter chips, creation/status controls, and search layout now remain usable on mobile/tablet through bounded horizontal scrolling and responsive wrapping instead of squeezing controls.
+  - Stage 1 UI contracts now require the sticky selection surface, narrow-screen action scrolling, reserved table space, compact table/Drawer, lazy Device/Audit, and all existing row operations.
+  - Self-review caught a parent `first-of-type` style rule that would have overridden the fixed bar border/background; the sticky Flex is now isolated inside its own wrapper so the premium surface styling survives the table container rule.
+  - Source verification after the self-review fix: Stage 1 UI contracts SUCCESS, authenticated-autofill SUCCESS, TypeScript + production dashboard build SUCCESS; the only source-run failure was the expected stale committed-build parity before regeneration.
+  - Final generated dashboard assets were rebuilt from the corrected source and committed at `4aa90c48e90acd2f391e9a9ccf12818dc61857a2`.
+  - The temporary build-refresh workflow was removed immediately after the generated assets were committed; no one-time helper is intended to remain in the final branch.
+  - Full final-head PR gates are intentionally the next verification step; do not claim merge readiness until dashboard parity, both MySQL tracks, installer/runtime, and branch diff/hygiene are rechecked on the actual final head.
 
 ### CURRENT FILES
 
 Before continuing after interruption, re-open these files and review their current branch versions:
 
-- `app/dashboard/src/components/BulkUserActions.tsx` — NEXT implementation target; preserve all bulk job, selected-user, cleanup, preview, retry, and scope semantics while moving selected-state UX to a sticky bottom action bar.
-- `app/dashboard/src/components/UsersTablePro.tsx` — compact table + Drawer integration; preserve cross-page selection and all row actions.
-- `app/dashboard/src/components/UserDetailsDrawer.tsx` — completed lazy Drawer; preserve lazy Device/Audit loading.
-- `app/dashboard/src/components/FiltersCompact.tsx` — compact toolbar/smart filters; include in responsive/mobile polish only, without changing server filter semantics.
-- `app/dashboard/src/pages/Users.tsx` — dedicated Users surface composition.
-- `app/dashboard/scripts/test-stage1-ui-contracts.cjs` — current Users management source contract.
-- `app/dashboard/build/**` — generated assets are intentionally stale until source UI settles; refresh only after `UMV3-04` source is verified.
+- `app/dashboard/src/components/BulkUserActions.tsx` — completed sticky selection bar; verify no regression in bulk semantics and wrapper isolation.
+- `app/dashboard/src/components/UsersTablePro.tsx` — compact table, reserved sticky-bar space, cross-page selection and Drawer integration.
+- `app/dashboard/src/components/UserDetailsDrawer.tsx` — lazy Device/Audit details surface.
+- `app/dashboard/src/components/FiltersCompact.tsx` — responsive toolbar and smart-filter controls.
+- `app/dashboard/scripts/test-stage1-ui-contracts.cjs` — source contract for compact table/Drawer/sticky bulk UX.
+- `app/dashboard/build/**` — regenerated from the corrected final source; final parity must still be confirmed on the actual final head.
+- `docs/CODEX/STATE.md` — this checkpoint; if interrupted, compare it against the actual branch head before doing anything else.
 
 ### NEXT EXACT TASK
 
-Implement checkpoint `UMV3-04`: finish the bulk UX and responsive pass. When one or more visible/cross-page users are selected, present the existing bulk actions as a compact sticky-bottom action bar without changing bulk target semantics, preview, retry, cleanup, or authorization behavior. Preserve Select All and cross-page selection visibility, ensure the bar does not cover pagination/content, and keep controls usable on narrow mobile/tablet widths. Polish the Users toolbar/table/Drawer responsive behavior against the requested premium management reference without removing columns or operations. Update the Stage 1 contract for the sticky bulk UX, run frontend type/build, then refresh committed `app/dashboard/build/**` exactly once and require dashboard parity green. No backend change is expected; if no backend code changes, do not invent backend work.
+Implement checkpoint `UMV3-05`: perform final PR readiness review only. Re-open the current final branch files above, compare `feat/users-management-v3` against current `main`, confirm the temporary build-refresh workflow is absent, inspect the PR diff for unrelated changes, and wait for/verify the final-head `Dashboard UI Contracts` and `CI Checkpoints`. Require committed dashboard parity green, MySQL 8.0 and 26.7.0 backend/migration/Stage 8-11/backup/rollback green, installer/runtime/Panel-to-Node checks green, and no source/build regression. If a real failure appears, fix only that failure and re-run the relevant gates. Do not merge, tag, publish, or release without a separate explicit instruction.
 
 ## Current State: v1.1.8 released
 
