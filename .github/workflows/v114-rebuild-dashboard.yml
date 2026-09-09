@@ -38,3 +38,5 @@ jobs:
           fi
           git commit -m 'build: regenerate dashboard for v1.1.4'
           git push origin HEAD:release/v1.1.4
+
+# armed
