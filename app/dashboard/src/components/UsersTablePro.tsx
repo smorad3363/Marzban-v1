@@ -376,7 +376,12 @@ export const UsersTablePro: FC = () => {
   }
 
   return (
-    <Box dir={i18n.dir()} w="full" minW={0}>
+    <Box
+      dir={i18n.dir()}
+      w="full"
+      minW={0}
+      pb={selectedUsers.length > 0 ? { base: "104px", md: "88px" } : 0}
+    >
       <Box borderWidth="1px" borderColor="var(--panel-border)" borderRadius="16px" bg="var(--panel-surface)" boxShadow="var(--shadow-panel)" overflow="hidden">
         {!readOnly && (
           <Box
@@ -424,7 +429,13 @@ export const UsersTablePro: FC = () => {
           برای جزئیات روی نام کاربر بزنید؛ جدول در موبایل افقی پیمایش می‌شود.
         </Text>
 
-        <TableContainer overflowX="auto" overscrollBehaviorX="contain" tabIndex={0} aria-label="جدول کاربران">
+        <TableContainer
+          overflowX="auto"
+          overscrollBehaviorX="contain"
+          tabIndex={0}
+          aria-label="جدول کاربران"
+          sx={{ WebkitOverflowScrolling: "touch", scrollbarGutter: "stable" }}
+        >
           <Table
             size="sm"
             w="full"
