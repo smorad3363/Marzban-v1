@@ -29,14 +29,15 @@ jobs:
         run: npm ci
 
       - name: Verify Stage 1 UI contracts
-        run: bash app/tests/dashboard_ui_contract.sh
+        working-directory: app/dashboard
+        run: node scripts/test-stage1-ui-contracts.cjs
 
       - name: Build dashboard from source
         working-directory: app/dashboard
-        run: npm run build
+        run: VITE_BASE_API=/api/ npm run build
 
       - name: Verify dashboard build output
-        run: bash app/tests/dashboard_build_contract.sh
+        run: test -f app/dashboard/build/index.html && test -f app/dashboard/build/404.html
 
       - name: Commit refreshed production dashboard
         shell: bash
@@ -61,8 +62,5 @@ jobs:
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add -A app/dashboard/build .github/workflows/refresh-v1.1.9-dashboard-once.yml
-          if git diff --cached --quiet; then
-            echo 'dashboard build was already in parity; removing helper only'
-          fi
           git commit -m 'chore: refresh v1.1.9 dashboard build'
           git push origin HEAD:release/v1.1.9
