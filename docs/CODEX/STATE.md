@@ -4,6 +4,7 @@
 
 - Requested task: redesign the dedicated Users management surface to match the supplied premium dark/black-gold reference while preserving all existing business logic, permissions, pagination, billing/account restrictions, Plan/Access Group semantics, bulk operations, device limits, audit, renewal, subscription actions, and responsive behavior.
 - Working branch: `feat/users-management-v3`.
+- Draft PR: `#41` (`feat: redesign users management surface`).
 - Branch base: current `main` at `aeb1f0c90f79dca627bfd78c77082dc9486d8df0` (`docs: checkpoint completed v1.1.8 release (#40)`).
 - Immutable released source remains `v1.1.8` at `87f4cb431f96632a0b8aa23932a625d342280fd0`; never move or recreate that tag.
 - Initial audit completed against the real current User routes/models, hierarchy scoping, device-limit routes, bulk-job API, audit API, Plan services, Users page, filters, table, dialogs, and dashboard state.
@@ -25,18 +26,30 @@ On any interruption:
 ### Current Checkpoint
 
 - Checkpoint `UMV3-00` — branch/bootstrap and architecture audit: COMPLETE.
-- No runtime implementation has been claimed complete yet.
+- Checkpoint `UMV3-01` — scoped summary aggregate + four compact Summary Cards: COMPLETE at source level.
+  - Added `/api/users/summary` with real scoped counts for total, 24h-online, near-expiry, and high-usage users.
+  - Reused hierarchy/inbound restrictions, the existing 24h Online definition, and centralized notification thresholds.
+  - Added focused hierarchy-scoping coverage in `tests/test_user_summary.py`.
+  - Added responsive `UserSummaryCards` and integrated it into the dedicated Users page without removing existing operations.
+  - PR #41 verification: Stage 1 UI contracts SUCCESS; authenticated-autofill contract SUCCESS; TypeScript type-check + production dashboard build SUCCESS; backend regression suite SUCCESS on MySQL 26.7.0 and the MySQL 8.0 regression step SUCCESS.
+  - Dashboard parity currently fails only because generated `app/dashboard/build/**` has not yet been refreshed on the feature branch. Do not treat that expected generated-output delta as a source/build failure. Refresh committed build assets once source UI work settles, then require parity green before final review/merge.
 
 ### CURRENT FILES
 
-- `app/routers/user_summary.py` — next backend aggregate route to add.
-- `app/routers/__init__.py` — register the aggregate route.
-- `app/dashboard/src/components/UserSummaryCards.tsx` — next compact four-card summary component.
-- `app/dashboard/src/pages/Users.tsx` — integrate the summary component without collapsing existing User management components.
+Before continuing after interruption, re-open these files and review their current branch versions:
+
+- `app/routers/user_summary.py` — completed summary endpoint; do not change its scope semantics casually.
+- `app/routers/__init__.py` — currently registers the new summary router.
+- `app/dashboard/src/components/UserSummaryCards.tsx` — completed four-card summary source.
+- `app/dashboard/src/pages/Users.tsx` — summary integrated; next toolbar/table work builds around this page.
+- `app/db/models.py` — authoritative User, DeviceLimitUserState, AdminUserPlan, UserPlanAssignment fields audited for the next filter/plan metadata work.
+- `app/db/crud.py` — authoritative existing User search/sort/hierarchy/inbound query behavior; reuse semantics rather than weakening them.
+- `app/dashboard/src/contexts/DashboardContext.tsx` — next list/filter state integration point.
+- `app/dashboard/src/components/FiltersCompact.tsx` — next compact toolbar/smart-filter integration point.
 
 ### NEXT EXACT TASK
 
-Implement checkpoint `UMV3-01`: add a lightweight, authorization-scoped `/api/users/summary` aggregate that reuses the current Online definition and centralized notification thresholds, then add the four compact Summary Cards to the Users page. Keep the endpoint independent from row pagination, avoid N+1 queries, preserve Owner/Admin scope and inbound permissions, and verify backend/frontend contracts before advancing to toolbar/filter work.
+Implement checkpoint `UMV3-02`: add a pagination-safe, authorization-scoped Users management list/filter contract for the dedicated Users page and refactor the toolbar around it. Preserve the current User row payload and all existing actions, but add real server-side Plan/Admin/Attention/smart filters (only where supported by real data), a bounded per-page Plan metadata map from `UserPlanAssignment`, and compact responsive controls. Do not perform per-user Plan/Device/Audit requests. Keep Plan as commercial metadata only and do not change Access Group/network semantics. Add focused tests for Owner/Admin scope, pagination, Plan/no-Plan, Trial, expiry/usage/device/attention filters, then run frontend type/build and backend regression before advancing to compact table + Drawer.
 
 ## Current State: v1.1.8 released
 
