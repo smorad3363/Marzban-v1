@@ -21,21 +21,28 @@ jobs:
           from pathlib import Path
 
           path = Path('.github/workflows/node-operations-ui-helper.yml')
-          text = path.read_text()
+          lines = path.read_text().splitlines()
 
-          old_condition = "    if: github.actor != 'github-actions[bot]'"
-          new_condition = "    if: github.event.head_commit.message != 'feat: unify Node Operations workspace'"
-          if text.count(old_condition) != 1:
-              raise SystemExit('unexpected helper job condition')
-          text = text.replace(old_condition, new_condition, 1)
+          condition_hits = 0
+          old_arg_hits = 0
+          new_arg_hits = 0
+          for index, line in enumerate(lines):
+              if line == "    if: github.actor != 'github-actions[bot]'":
+                  lines[index] = "    if: github.event.head_commit.message != 'feat: unify Node Operations workspace'"
+                  condition_hits += 1
+              stripped = line.strip()
+              if stripped == '"  bandwidth?: NodeBandwidthEntry;",':
+                  prefix = line[:len(line) - len(line.lstrip())]
+                  lines[index] = prefix + '"  node: NodeType | null;\\n  bandwidth?: NodeBandwidthEntry;\\n  status: Status;",'
+                  old_arg_hits += 1
+              elif stripped == '"  bandwidth?: NodeBandwidthEntry;\\n  operation?: NodeOperationsEntry;"':
+                  prefix = line[:len(line) - len(line.lstrip())]
+                  lines[index] = prefix + '"  node: NodeType | null;\\n  bandwidth?: NodeBandwidthEntry;\\n  operation?: NodeOperationsEntry;\\n  status: Status;"'
+                  new_arg_hits += 1
 
-          old_anchor = '''              "  bandwidth?: NodeBandwidthEntry;",
-              "  bandwidth?: NodeBandwidthEntry;\\n  operation?: NodeOperationsEntry;"'''
-          new_anchor = '''              "  node: NodeType | null;\\n  bandwidth?: NodeBandwidthEntry;\\n  status: Status;",
-              "  node: NodeType | null;\\n  bandwidth?: NodeBandwidthEntry;\\n  operation?: NodeOperationsEntry;\\n  status: Status;"'''
-          if text.count(old_anchor) != 1:
-              raise SystemExit('unexpected NodeRow bandwidth anchor')
-          path.write_text(text.replace(old_anchor, new_anchor, 1))
+          if (condition_hits, old_arg_hits, new_arg_hits) != (1, 1, 1):
+              raise SystemExit(f'unexpected helper anchors: condition={condition_hits} old={old_arg_hits} new={new_arg_hits}')
+          path.write_text('\n'.join(lines) + '\n')
           PY
           git diff --check
       - name: Commit repair
