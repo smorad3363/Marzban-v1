@@ -64,7 +64,7 @@ def test_dashboard_aggregate_week_boundary_modes_and_fixed_query_count(db):
     # Tehran Monday 00:00 is Sunday 20:30 UTC. These straddle that exact boundary.
     db.add_all([
         User(username="before", admin_id=owner.id, status=UserStatus.disabled, created_at=datetime(2026, 8, 16, 20, 29), used_traffic=3, data_limit=10),
-        User(username="current", admin_id=seat.id, status=UserStatus.active, created_at=datetime(2026, 8, 16, 20, 30), online_at=datetime(2026, 8, 23, 10), used_traffic=7, data_limit=20),
+        User(username="current", admin_id=seat.id, status=UserStatus.active, created_at=datetime(2026, 8, 16, 20, 30), online_at=datetime(2026, 8, 23, 11, 59, 30), used_traffic=7, data_limit=20),
     ])
     db.commit()
     count = 0
@@ -76,13 +76,14 @@ def test_dashboard_aggregate_week_boundary_modes_and_fixed_query_count(db):
         db, owner, timezone_offset_minutes=210, now=datetime(2026, 8, 23, 12, tzinfo=timezone.utc)
     )
     sa.event.remove(db.get_bind(), "before_cursor_execute", counted)
-    # Three aggregate statements plus bounded authorization/policy lookups; this
-    # count is independent of the number of visible users and Admins.
-    assert count <= 7
+    # Dashboard V2 adds bounded traffic/attention/top/recent/node/admin aggregates.
+    # The statement count remains fixed and independent of visible user/Admin cardinality.
+    assert count <= 18
     assert result.total_users == 2
     assert result.active_users == 1
     assert result.disabled_users == 1
     assert result.online_users == 1
+    assert result.online_window_seconds >= 60
     assert result.current_used_traffic == 10
     assert result.allocated_quota == 30
     assert result.new_users.current == 1
