@@ -1,5 +1,43 @@
 # V1 Continuation State
 
+## Active Work: Users Management V3 — IN PROGRESS
+
+- Requested task: redesign the dedicated Users management surface to match the supplied premium dark/black-gold reference while preserving all existing business logic, permissions, pagination, billing/account restrictions, Plan/Access Group semantics, bulk operations, device limits, audit, renewal, subscription actions, and responsive behavior.
+- Working branch: `feat/users-management-v3`.
+- Branch base: current `main` at `aeb1f0c90f79dca627bfd78c77082dc9486d8df0` (`docs: checkpoint completed v1.1.8 release (#40)`).
+- Immutable released source remains `v1.1.8` at `87f4cb431f96632a0b8aa23932a625d342280fd0`; never move or recreate that tag.
+- Initial audit completed against the real current User routes/models, hierarchy scoping, device-limit routes, bulk-job API, audit API, Plan services, Users page, filters, table, dialogs, and dashboard state.
+- Confirmed existing backend Online definition used by `/api/system`: `crud.count_online_users(..., 24, ...)`; User status and online activity must remain distinct concepts.
+- Confirmed notification configuration already provides centralized attention thresholds via `NOTIFY_DAYS_LEFT` and `NOTIFY_REACHED_USAGE_PERCENT`.
+- Confirmed list search is server-side over username/note and hierarchy/inbound scope is enforced in the database query.
+- Confirmed expensive Device/Audit details can remain lazy and must not become per-row N+1 requests.
+
+### Recovery / Resume Rule for this task
+
+On any interruption:
+
+1. Read `AGENTS.md`, this file, and `docs/CODEX/V1_SCOPE.md`.
+2. Inspect the actual branch head and compare `feat/users-management-v3` against current `main`; never assume the previous chat completed the last edit.
+3. Re-open and review the exact file named in `CURRENT FILES` below before changing it again, plus the directly-related route/type/component it depends on.
+4. Re-check the last completed checkpoint and its diff/tests before continuing.
+5. Continue only from `NEXT EXACT TASK`; do not repeat completed release work and do not discard valid branch changes.
+
+### Current Checkpoint
+
+- Checkpoint `UMV3-00` — branch/bootstrap and architecture audit: COMPLETE.
+- No runtime implementation has been claimed complete yet.
+
+### CURRENT FILES
+
+- `app/routers/user_summary.py` — next backend aggregate route to add.
+- `app/routers/__init__.py` — register the aggregate route.
+- `app/dashboard/src/components/UserSummaryCards.tsx` — next compact four-card summary component.
+- `app/dashboard/src/pages/Users.tsx` — integrate the summary component without collapsing existing User management components.
+
+### NEXT EXACT TASK
+
+Implement checkpoint `UMV3-01`: add a lightweight, authorization-scoped `/api/users/summary` aggregate that reuses the current Online definition and centralized notification thresholds, then add the four compact Summary Cards to the Users page. Keep the endpoint independent from row pagination, avoid N+1 queries, preserve Owner/Admin scope and inbound permissions, and verify backend/frontend contracts before advancing to toolbar/filter work.
+
 ## Current State: v1.1.8 released
 
 - Release task: Dashboard Owner/Admin V2 + `v1.1.8` publication.
