@@ -1,10 +1,10 @@
 # V1 Continuation State
 
-## Active Work: Users Management V3 — IN PROGRESS
+## Active Work: Users Management V3 — REVIEW FIX APPLIED / FINAL GATES PENDING
 
 - Requested task: redesign the dedicated Users management surface to match the supplied premium dark/black-gold reference while preserving all existing business logic, permissions, pagination, billing/account restrictions, Plan/Access Group semantics, bulk operations, device limits, audit, renewal, subscription actions, and responsive behavior.
 - Working branch: `feat/users-management-v3`.
-- Draft PR: `#41` (`feat: redesign users management surface`).
+- Pull request: `#41` (`feat: redesign users management surface`), Ready for Review; do not merge from a generic “continue” instruction.
 - Branch base: current `main` at `aeb1f0c90f79dca627bfd78c77082dc9486d8df0` (`docs: checkpoint completed v1.1.8 release (#40)`).
 - Immutable released source remains `v1.1.8` at `87f4cb431f96632a0b8aa23932a625d342280fd0`; never move or recreate that tag.
 - Initial audit completed against the real current User routes/models, hierarchy scoping, device-limit routes, bulk-job API, audit API, Plan services, Users page, filters, table, dialogs, and dashboard state.
@@ -46,33 +46,38 @@ On any interruption:
   - Preserved QR/copy/edit/delete/renew/enable-disable/reset/revoke/audit/device operations and cross-page selection behavior.
   - Traffic warning visuals use 80% warning and 95% danger.
   - Updated the Stage 1 Users contract to require the compact table/Drawer architecture while preserving horizontal-scroll fallback and all actions.
-- Checkpoint `UMV3-04` — sticky bulk UX + responsive Users management pass: COMPLETE at source/generated-build level.
+- Checkpoint `UMV3-04` — sticky bulk UX + responsive Users management pass: COMPLETE.
   - Existing checked-user bulk behavior, target-scope preview, retry, cleanup, authorization, and cross-page selection semantics were preserved.
-  - When a selection exists, the bulk controls now become a compact sticky bottom action surface with safe-area spacing, desktop sidebar-aware centering, and horizontal action scrolling on narrow screens.
+  - When a selection exists, the bulk controls become a compact sticky bottom action surface with safe-area spacing, desktop sidebar-aware centering, and horizontal action scrolling on narrow screens.
   - `UsersTablePro` reserves bottom content space while the sticky bar is active so pagination/table content is not covered.
-  - The Admin/Plan/Sort row, smart-filter chips, creation/status controls, and search layout now remain usable on mobile/tablet through bounded horizontal scrolling and responsive wrapping instead of squeezing controls.
-  - Stage 1 UI contracts now require the sticky selection surface, narrow-screen action scrolling, reserved table space, compact table/Drawer, lazy Device/Audit, and all existing row operations.
-  - Self-review caught a parent `first-of-type` style rule that would have overridden the fixed bar border/background; the sticky Flex is now isolated inside its own wrapper so the premium surface styling survives the table container rule.
-  - Source verification after the self-review fix: Stage 1 UI contracts SUCCESS, authenticated-autofill SUCCESS, TypeScript + production dashboard build SUCCESS; the only source-run failure was the expected stale committed-build parity before regeneration.
-  - Final generated dashboard assets were rebuilt from the corrected source and committed at `4aa90c48e90acd2f391e9a9ccf12818dc61857a2`.
-  - The temporary build-refresh workflow was removed immediately after the generated assets were committed; no one-time helper is intended to remain in the final branch.
-  - Full final-head PR gates are intentionally the next verification step; do not claim merge readiness until dashboard parity, both MySQL tracks, installer/runtime, and branch diff/hygiene are rechecked on the actual final head.
+  - The Admin/Plan/Sort row, smart-filter chips, creation/status controls, and search layout remain usable on mobile/tablet through bounded horizontal scrolling and responsive wrapping instead of squeezing controls.
+  - Stage 1 UI contracts require the sticky selection surface, narrow-screen action scrolling, reserved table space, compact table/Drawer, lazy Device/Audit, and all existing row operations.
+  - Self-review caught a parent `first-of-type` style rule that would have overridden the fixed bar border/background; the sticky Flex is isolated inside its own wrapper.
+- Checkpoint `UMV3-05` — final PR review/fix pass: SOURCE REVIEW COMPLETE; FINAL GATES PENDING ON THIS CHECKPOINT HEAD.
+  - PR #41 was moved from Draft to Ready for Review only after the original full gate set was green.
+  - CodeRabbit completed a manual review and posted exactly one actionable finding: summary request failure was visually indistinguishable from a real count of zero.
+  - The finding was verified against current source and fixed minimally in commit `7bc4cf5bfda2a4f7060f57633522f1ccac6f3e3b`: summary cards render `—` when `/api/users/summary` fails without cached data, while preserving skeleton loading and real numeric zeros on successful responses.
+  - The production dashboard build was regenerated from that corrected source in commit `2b46acf3a76fb1e87398454f75db4cf517539b90`.
+  - The one-time build-refresh workflow was removed again in commit `616c3fa742b09b9c53228a99948aa07bbf0fc2d3`; no temporary helper is intended to remain in the final branch.
+  - The CodeRabbit thread was replied to with the fix/build commits and resolved.
+  - Do not claim final merge readiness until the final-head `Dashboard UI Contracts` and `CI Checkpoints` runs are green after this checkpoint/state commit.
 
 ### CURRENT FILES
 
 Before continuing after interruption, re-open these files and review their current branch versions:
 
+- `app/dashboard/src/components/UserSummaryCards.tsx` — CodeRabbit review fix; failed summary requests must render an unknown state, never fake zero metrics.
 - `app/dashboard/src/components/BulkUserActions.tsx` — completed sticky selection bar; verify no regression in bulk semantics and wrapper isolation.
 - `app/dashboard/src/components/UsersTablePro.tsx` — compact table, reserved sticky-bar space, cross-page selection and Drawer integration.
 - `app/dashboard/src/components/UserDetailsDrawer.tsx` — lazy Device/Audit details surface.
 - `app/dashboard/src/components/FiltersCompact.tsx` — responsive toolbar and smart-filter controls.
 - `app/dashboard/scripts/test-stage1-ui-contracts.cjs` — source contract for compact table/Drawer/sticky bulk UX.
-- `app/dashboard/build/**` — regenerated from the corrected final source; final parity must still be confirmed on the actual final head.
+- `app/dashboard/build/**` — regenerated after the CodeRabbit source fix; committed parity must be verified by final gates.
 - `docs/CODEX/STATE.md` — this checkpoint; if interrupted, compare it against the actual branch head before doing anything else.
 
 ### NEXT EXACT TASK
 
-Implement checkpoint `UMV3-05`: perform final PR readiness review only. Re-open the current final branch files above, compare `feat/users-management-v3` against current `main`, confirm the temporary build-refresh workflow is absent, inspect the PR diff for unrelated changes, and wait for/verify the final-head `Dashboard UI Contracts` and `CI Checkpoints`. Require committed dashboard parity green, MySQL 8.0 and 26.7.0 backend/migration/Stage 8-11/backup/rollback green, installer/runtime/Panel-to-Node checks green, and no source/build regression. If a real failure appears, fix only that failure and re-run the relevant gates. Do not merge, tag, publish, or release without a separate explicit instruction.
+Wait for and inspect the final-head `Dashboard UI Contracts` and `CI Checkpoints` triggered after this checkpoint. Require Stage 1/authenticated-autofill/typecheck/build/committed parity green, MySQL 8.0 and 26.7.0 backend/migration/Stage 8-11/backup/rollback green, installer/runtime/Panel-to-Node checks green, and no new unresolved review threads. If a real failure appears, reopen the exact failing file and fix only that failure, regenerate build assets if source UI changed, remove any helper, and re-run the relevant gates. If all gates are green, stop at PR-ready state and wait for a separate explicit merge instruction. Do not merge, tag, publish, or release from a generic “continue” instruction.
 
 ## Current State: v1.1.8 released
 
