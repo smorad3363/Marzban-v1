@@ -77,6 +77,7 @@ const StatusButton: FC<{
       fontSize="11px"
       fontWeight="750"
       whiteSpace="nowrap"
+      flexShrink={0}
       onClick={onClick}
       transition="transform .14s ease, border-color .14s ease, background .14s ease"
       _hover={{ transform: "translateY(-1px)", borderColor: palette.border, color: palette.color }}
@@ -105,6 +106,7 @@ const FilterChip: FC<{
     fontSize="10px"
     fontWeight="800"
     whiteSpace="nowrap"
+    flexShrink={0}
     aria-pressed={active}
     isDisabled={disabled}
     onClick={onClick}
@@ -188,8 +190,17 @@ export const UserManagementControls: FC = () => {
   });
 
   return (
-    <Stack dir={i18n.dir()} spacing={2.5} w="full">
-      <Flex w="full" minW={0} align="center" gap={2} wrap="wrap">
+    <Stack dir={i18n.dir()} spacing={2.5} w="full" minW={0}>
+      <Flex
+        w="full"
+        minW={0}
+        align="center"
+        gap={2}
+        flexWrap={{ base: "nowrap", lg: "wrap" }}
+        overflowX={{ base: "auto", lg: "visible" }}
+        pb={{ base: 1, lg: 0 }}
+        sx={{ scrollbarWidth: "thin" }}
+      >
         {canManageAdmins && (
           <Select
             aria-label="فیلتر ادمین"
@@ -197,7 +208,8 @@ export const UserManagementControls: FC = () => {
             onChange={changeAdmin}
             size="sm"
             h="36px"
-            w={{ base: "full", sm: "170px" }}
+            w="170px"
+            flexShrink={0}
             borderRadius="12px"
             fontSize="11px"
             fontWeight="700"
@@ -215,7 +227,8 @@ export const UserManagementControls: FC = () => {
           onChange={changePlan}
           size="sm"
           h="36px"
-          w={{ base: "full", sm: "190px" }}
+          w="190px"
+          flexShrink={0}
           borderRadius="12px"
           fontSize="11px"
           fontWeight="700"
@@ -235,7 +248,8 @@ export const UserManagementControls: FC = () => {
           onChange={(event) => onFilterChange({ sort: event.target.value, offset: 0 })}
           size="sm"
           h="36px"
-          w={{ base: "full", sm: "175px" }}
+          w="175px"
+          flexShrink={0}
           borderRadius="12px"
           fontSize="11px"
           fontWeight="700"
@@ -246,75 +260,84 @@ export const UserManagementControls: FC = () => {
             <option key={option.value} value={option.value}>{option.label}</option>
           ))}
         </Select>
-
-        <HStack spacing={1.5} flexWrap="wrap" flex="1" minW={0}>
-          <HStack spacing={1} color="var(--panel-text-muted)" flexShrink={0}>
-            <FilterIcon />
-            <Text fontSize="10px" fontWeight="800">فیلتر هوشمند</Text>
-          </HStack>
-          <FilterChip
-            active={Boolean(filters.attention)}
-            label="نیازمند توجه"
-            onClick={() => onFilterChange({ attention: filters.attention ? undefined : true, offset: 0 })}
-          />
-          <FilterChip
-            active={Boolean(filters.expires_within_days)}
-            label={summary.data ? `انقضا ≤ ${summary.data.expiring_within_days.toLocaleString("fa-IR")} روز` : "نزدیک انقضا"}
-            disabled={!summary.data}
-            onClick={() => onFilterChange({
-              expires_within_days: filters.expires_within_days ? undefined : summary.data?.expiring_within_days,
-              offset: 0,
-            })}
-          />
-          <FilterChip
-            active={Boolean(filters.usage_percent_min)}
-            label={summary.data ? `مصرف ≥ ${summary.data.high_usage_threshold_percent.toLocaleString("fa-IR")}٪` : "مصرف بالا"}
-            disabled={!summary.data}
-            onClick={() => onFilterChange({
-              usage_percent_min: filters.usage_percent_min ? undefined : summary.data?.high_usage_threshold_percent,
-              offset: 0,
-            })}
-          />
-          <FilterChip
-            active={Boolean(filters.has_device_limit)}
-            label="محدودیت دستگاه"
-            onClick={() => onFilterChange({ has_device_limit: filters.has_device_limit ? undefined : true, offset: 0 })}
-          />
-          <FilterChip
-            active={Boolean(filters.unlimited_traffic)}
-            label="ترافیک نامحدود"
-            onClick={() => onFilterChange({ unlimited_traffic: filters.unlimited_traffic ? undefined : true, offset: 0 })}
-          />
-          <FilterChip
-            active={Boolean(filters.trial)}
-            label="آزمایشی"
-            onClick={() => onFilterChange({
-              trial: filters.trial ? undefined : true,
-              without_plan: filters.trial ? filters.without_plan : undefined,
-              offset: 0,
-            })}
-          />
-          <FilterChip
-            active={Boolean(filters.inactive_hours)}
-            label="بدون فعالیت ۷ روز"
-            onClick={() => onFilterChange({ inactive_hours: filters.inactive_hours ? undefined : 24 * 7, offset: 0 })}
-          />
-          {advancedActive && (
-            <Button
-              size="xs"
-              h="30px"
-              px={2.5}
-              variant="ghost"
-              color="var(--panel-text-muted)"
-              leftIcon={<ClearIcon />}
-              onClick={clearAdvanced}
-              fontSize="10px"
-            >
-              پاک کردن
-            </Button>
-          )}
-        </HStack>
       </Flex>
+
+      <HStack
+        spacing={1.5}
+        w="full"
+        minW={0}
+        overflowX={{ base: "auto", xl: "visible" }}
+        flexWrap={{ base: "nowrap", xl: "wrap" }}
+        pb={{ base: 1, xl: 0 }}
+        sx={{ scrollbarWidth: "thin" }}
+      >
+        <HStack spacing={1} color="var(--panel-text-muted)" flexShrink={0}>
+          <FilterIcon />
+          <Text fontSize="10px" fontWeight="800" whiteSpace="nowrap">فیلتر هوشمند</Text>
+        </HStack>
+        <FilterChip
+          active={Boolean(filters.attention)}
+          label="نیازمند توجه"
+          onClick={() => onFilterChange({ attention: filters.attention ? undefined : true, offset: 0 })}
+        />
+        <FilterChip
+          active={Boolean(filters.expires_within_days)}
+          label={summary.data ? `انقضا ≤ ${summary.data.expiring_within_days.toLocaleString("fa-IR")} روز` : "نزدیک انقضا"}
+          disabled={!summary.data}
+          onClick={() => onFilterChange({
+            expires_within_days: filters.expires_within_days ? undefined : summary.data?.expiring_within_days,
+            offset: 0,
+          })}
+        />
+        <FilterChip
+          active={Boolean(filters.usage_percent_min)}
+          label={summary.data ? `مصرف ≥ ${summary.data.high_usage_threshold_percent.toLocaleString("fa-IR")}٪` : "مصرف بالا"}
+          disabled={!summary.data}
+          onClick={() => onFilterChange({
+            usage_percent_min: filters.usage_percent_min ? undefined : summary.data?.high_usage_threshold_percent,
+            offset: 0,
+          })}
+        />
+        <FilterChip
+          active={Boolean(filters.has_device_limit)}
+          label="محدودیت دستگاه"
+          onClick={() => onFilterChange({ has_device_limit: filters.has_device_limit ? undefined : true, offset: 0 })}
+        />
+        <FilterChip
+          active={Boolean(filters.unlimited_traffic)}
+          label="ترافیک نامحدود"
+          onClick={() => onFilterChange({ unlimited_traffic: filters.unlimited_traffic ? undefined : true, offset: 0 })}
+        />
+        <FilterChip
+          active={Boolean(filters.trial)}
+          label="آزمایشی"
+          onClick={() => onFilterChange({
+            trial: filters.trial ? undefined : true,
+            without_plan: filters.trial ? filters.without_plan : undefined,
+            offset: 0,
+          })}
+        />
+        <FilterChip
+          active={Boolean(filters.inactive_hours)}
+          label="بدون فعالیت ۷ روز"
+          onClick={() => onFilterChange({ inactive_hours: filters.inactive_hours ? undefined : 24 * 7, offset: 0 })}
+        />
+        {advancedActive && (
+          <Button
+            size="xs"
+            h="30px"
+            px={2.5}
+            flexShrink={0}
+            variant="ghost"
+            color="var(--panel-text-muted)"
+            leftIcon={<ClearIcon />}
+            onClick={clearAdvanced}
+            fontSize="10px"
+          >
+            پاک کردن
+          </Button>
+        )}
+      </HStack>
     </Stack>
   );
 };
@@ -338,14 +361,24 @@ export const FiltersCompact: FC = () => {
     onFilterChange({ status: value, offset: 0 });
 
   return (
-    <Stack dir={i18n.dir()} spacing={2.5} px={{ base: 3, md: 4 }} pt={2.5} pb={3}>
+    <Stack dir={i18n.dir()} spacing={2.5} px={{ base: 3, md: 4 }} pt={2.5} pb={3} minW={0}>
       <Flex align="center" gap={2} wrap="wrap" w="full" minW={0}>
-        <HStack spacing={1.5} flexWrap="wrap" flexShrink={0}>
+        <HStack
+          spacing={1.5}
+          w={{ base: "full", md: "auto" }}
+          minW={0}
+          overflowX={{ base: "auto", md: "visible" }}
+          flexWrap="nowrap"
+          flexShrink={0}
+          pb={{ base: 1, md: 0 }}
+          sx={{ scrollbarWidth: "thin" }}
+        >
           {accountActive && account.data?.billing_mode !== "USER_CREDIT" && ["FREE_FORM", "FORM_ONLY", "BOTH"].includes(account.data?.user_creation_mode || "") && (
             <Button
               size="sm"
               h="38px"
               px={4}
+              flexShrink={0}
               colorScheme="primary"
               color="var(--panel-accent-contrast)"
               leftIcon={<AddIcon />}
@@ -361,6 +394,7 @@ export const FiltersCompact: FC = () => {
               size="sm"
               h="38px"
               px={4}
+              flexShrink={0}
               colorScheme="primary"
               color="var(--panel-accent-contrast)"
               leftIcon={<AddIcon />}
@@ -378,6 +412,7 @@ export const FiltersCompact: FC = () => {
             minW="38px"
             w="38px"
             h="38px"
+            flexShrink={0}
             variant="outline"
             borderColor="var(--panel-border)"
             onClick={refetchUsers}
@@ -386,7 +421,16 @@ export const FiltersCompact: FC = () => {
           />
         </HStack>
 
-        <HStack spacing={1.5} flexWrap="wrap" flex="0 1 auto">
+        <HStack
+          spacing={1.5}
+          w={{ base: "full", lg: "auto" }}
+          minW={0}
+          overflowX={{ base: "auto", lg: "visible" }}
+          flexWrap={{ base: "nowrap", lg: "wrap" }}
+          flex="0 1 auto"
+          pb={{ base: 1, lg: 0 }}
+          sx={{ scrollbarWidth: "thin" }}
+        >
           <StatusButton active={!filters.status} label="همه" onClick={() => setStatus(undefined)} />
           <StatusButton active={filters.status === "active"} label="فعال" tone="green" onClick={() => setStatus("active")} />
           <StatusButton active={filters.status === "disabled"} label="غیرفعال" tone="gray" onClick={() => setStatus("disabled")} />
