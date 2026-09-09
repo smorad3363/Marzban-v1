@@ -9,6 +9,7 @@
 - Exclude the authenticated Admin/Owner identity from Admin list responses at the backend query/count layer, so self rows do not consume pagination or appear in Admin management lists.
 - Keep Owner/Admin hierarchy permissions, Admin deletion/retirement behavior from v1.1.5, Plan permissions, and existing Access Group ownership/network-access behavior unchanged.
 - Add regression coverage for Admin-list self exclusion and Stage 1 UI contracts for the Dashboard/Users split and hidden commercial-mode labels.
+- This release introduces no new database migration; existing v1.1.5 account, billing, Plan, Access Group, audit, and retirement data remain compatible.
 
 ## Upgrade
 
