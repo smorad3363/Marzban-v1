@@ -65,6 +65,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
       onClick,
       error,
       clearable = false,
+      autoComplete = type === "password" ? "new-password" : "off",
       ...props
     },
     ref
@@ -81,6 +82,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     const { size = "md" } = props;
     const Component = type == "number" ? NumberInputField : ChakraInput;
     const Wrapper = type == "number" ? NumberInput : React.Fragment;
+    const credentialAutofillAllowed = autoComplete === "username" || autoComplete === "current-password";
     const wrapperProps =
       type == "number"
         ? {
@@ -136,6 +138,10 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
               className={classNames(className)}
               type={type == "number" ? "text" : type}
               inputMode={type == "number" ? "decimal" : undefined}
+              autoComplete={autoComplete}
+              data-lpignore={credentialAutofillAllowed ? undefined : "true"}
+              data-1p-ignore={credentialAutofillAllowed ? undefined : "true"}
+              data-bwignore={credentialAutofillAllowed ? undefined : "true"}
               placeholder={placeholder}
               onChange={onChange}
               onBlur={onBlur}
