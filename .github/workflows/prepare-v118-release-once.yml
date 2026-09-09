@@ -1,0 +1,403 @@
+name: Prepare v1.1.8 release candidate once
+
+on:
+  push:
+    branches:
+      - feat/dashboard-owner-admin-v2
+    paths:
+      - .github/workflows/prepare-v118-release-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/dashboard-owner-admin-v2
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: app/dashboard/package-lock.json
+
+      - name: Apply release-candidate review fixes and metadata
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              file = Path(path)
+              text = file.read_text(encoding="utf-8")
+              assert text.count(old) == 1, f"expected one marker in {path}: {old[:80]!r}"
+              file.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          dashboard = Path("app/dashboard/src/components/DashboardOverview.tsx")
+          text = dashboard.read_text(encoding="utf-8")
+          old = 'const toman = (value: number | null | undefined) => value == null ? "نامحدود" : `${fa(value)} تومان`;\n\nconst formatTraffic'
+          new = '''const toman = (value: number | null | undefined) => value == null ? "نامحدود" : `${fa(value)} تومان`;
+          const credit = (value: number | null | undefined) => value == null ? "نامحدود" : fa(Number(value));
+          const parseUtcDate = (value: string) => new Date(/(?:Z|[+-]\\d\\d:\\d\\d)$/.test(value) ? value : `${value}Z`);
+
+          const formatTraffic'''
+          assert text.count(old) == 1
+          text = text.replace(old, new, 1)
+          text = text.replace('const timestamp = new Date(value).getTime();', 'const timestamp = parseUtcDate(value).getTime();', 1)
+          text = text.replace('x: new Date(point.timestamp).getTime()', 'x: parseUtcDate(point.timestamp).getTime()', 1)
+          old = '''  const onlinePercent = data.active_users > 0 ? Math.min(100, (data.online_users / data.active_users) * 100) : 0;
+            const statusItems = [
+              { label: "فعال", value: data.active_users, color: "#2fd788" },
+              { label: "منقضی", value: data.expired_users, color: "#ef5d67" },
+              { label: "غیرفعال", value: data.disabled_users, color: "#748094" },
+              { label: "در انتظار", value: data.on_hold_users + data.limited_users, color: "#d7ad54" },
+            ];'''
+          new = '''  const statusItems = [
+              { label: "فعال", value: data.active_users, color: "#2fd788" },
+              { label: "منقضی", value: data.expired_users, color: "#ef5d67" },
+              { label: "غیرفعال", value: data.disabled_users, color: "#748094" },
+              { label: "در انتظار", value: data.on_hold_users, color: "#d7ad54" },
+              { label: "محدود", value: data.limited_users, color: "#9b7ad8" },
+            ];'''
+          assert old in text
+          text = text.replace(old, new, 1)
+          text = text.replace('hint={`${fa(Math.round(onlinePercent))}٪ از کاربران فعال`}', 'hint={`فعالیت ثبت‌شده در ${fa(data.online_window_seconds)} ثانیه اخیر`}', 1)
+          text = text.replace('quota?.credit_limit == null ? "نامحدود" : formatTraffic(quota.credit_limit)', 'credit(quota?.credit_limit)', 1)
+          text = text.replace('quota ? formatTraffic(quota.credit_used) : "—"', 'quota ? credit(quota.credit_used) : "—"', 1)
+          text = text.replace('>مانده ظرفیت</Text><Text fontSize="sm" fontWeight="850">{quota?.credit_remaining == null ? "نامحدود" : formatTraffic(quota.credit_remaining)}</Text>', '>مانده اعتبار</Text><Text fontSize="sm" fontWeight="850">{credit(quota?.credit_remaining)}</Text>', 1)
+          assert 'onlinePercent' not in text
+          assert 'new Date(point.timestamp)' not in text
+          dashboard.write_text(text, encoding="utf-8")
+
+          metrics = Path("app/utils/dashboard_metrics.py")
+          text = metrics.read_text(encoding="utf-8")
+          text = text.replace('    AdminAccountStatus,\n', '', 1)
+          old = '''def _owner_admin_summary(db: Session, actor: Admin) -> DashboardAdminSummary:
+              rows = (
+                  db.query(AdminAccountStatus.code, func.count(Admin.id))
+                  .join(MarzhelpAdminSettings, MarzhelpAdminSettings.admin_id == Admin.id)
+                  .join(AdminAccountStatus, AdminAccountStatus.id == MarzhelpAdminSettings.account_status_id)
+                  .filter(Admin.id != actor.id, Admin.deleted_at.is_(None))
+                  .group_by(AdminAccountStatus.code)
+                  .all()
+              )
+              counts = {str(code): int(count) for code, count in rows}
+              return DashboardAdminSummary(
+                  total=sum(counts.values()),
+                  active=counts.get(admin_hierarchy.ACTIVE, 0),
+                  suspended=counts.get(admin_hierarchy.SUSPENDED, 0),
+                  disabled=counts.get(admin_hierarchy.DISABLED, 0),
+              )
+          '''
+          new = '''def _owner_admin_summary(db: Session, actor: Admin) -> DashboardAdminSummary:
+              status_expression = case(
+                  (
+                      MarzhelpAdminSettings.account_status_id
+                      == admin_hierarchy.ACCOUNT_STATUS_IDS[admin_hierarchy.SUSPENDED],
+                      admin_hierarchy.SUSPENDED,
+                  ),
+                  (
+                      MarzhelpAdminSettings.account_status_id
+                      == admin_hierarchy.ACCOUNT_STATUS_IDS[admin_hierarchy.DISABLED],
+                      admin_hierarchy.DISABLED,
+                  ),
+                  else_=admin_hierarchy.ACTIVE,
+              )
+              rows = (
+                  db.query(status_expression.label("status"), func.count(Admin.id))
+                  .outerjoin(MarzhelpAdminSettings, MarzhelpAdminSettings.admin_id == Admin.id)
+                  .filter(Admin.id != actor.id, Admin.deleted_at.is_(None))
+                  .group_by(status_expression)
+                  .all()
+              )
+              counts = {str(code): int(count) for code, count in rows}
+              return DashboardAdminSummary(
+                  total=sum(counts.values()),
+                  active=counts.get(admin_hierarchy.ACTIVE, 0),
+                  suspended=counts.get(admin_hierarchy.SUSPENDED, 0),
+                  disabled=counts.get(admin_hierarchy.DISABLED, 0),
+              )
+          '''
+          assert old in text
+          text = text.replace(old, new, 1)
+          old = '''    mode_expression = func.coalesce(MarzhelpAdminSettings.billing_mode, BillingMode.LEGACY_COMPAT.value)
+              admin_rows = (
+                  _visible_admins(db, actor, hierarchy_on=hierarchy_on, actor_is_owner=actor_is_owner)
+                  .join(MarzhelpAdminSettings, MarzhelpAdminSettings.admin_id == Admin.id)
+                  .with_entities(mode_expression.label("mode"), func.count(Admin.id))
+                  .group_by(mode_expression)
+                  .all()
+              )
+              admin_counts = {str(mode): int(count) for mode, count in admin_rows}
+
+              user_rows = (
+                  _visible_users(
+                      db,
+                      actor,
+                      hierarchy_on=hierarchy_on,
+                      actor_is_owner=actor_is_owner,
+                      allowed_inbounds=allowed_inbounds,
+                  )
+                  .join(MarzhelpAdminSettings, MarzhelpAdminSettings.admin_id == User.admin_id)
+                  .with_entities(
+                      mode_expression.label("mode"),
+                      func.count(User.id),
+                      func.coalesce(func.sum(case((User.status == UserStatus.active, 1), else_=0)), 0),
+                      func.coalesce(func.sum(User.used_traffic), 0),
+                      func.coalesce(func.sum(User.data_limit), 0),
+                  )
+                  .group_by(mode_expression)
+                  .all()
+              )
+              user_by_mode = {
+                  str(mode): (int(count), int(active), int(used), int(allocated))
+                  for mode, count, active, used, allocated in user_rows
+              }
+          '''
+          new = '''    admin_counts: dict[str, int] = {}
+              user_by_mode: dict[str, tuple[int, int, int, int]] = {}
+              if actor_is_owner:
+                  mode_expression = func.coalesce(
+                      MarzhelpAdminSettings.billing_mode,
+                      BillingMode.LEGACY_COMPAT.value,
+                  )
+                  admin_rows = (
+                      _visible_admins(db, actor, hierarchy_on=hierarchy_on, actor_is_owner=True)
+                      .join(MarzhelpAdminSettings, MarzhelpAdminSettings.admin_id == Admin.id)
+                      .with_entities(mode_expression.label("mode"), func.count(Admin.id))
+                      .group_by(mode_expression)
+                      .all()
+                  )
+                  admin_counts = {str(mode): int(count) for mode, count in admin_rows}
+
+                  user_rows = (
+                      _visible_users(
+                          db,
+                          actor,
+                          hierarchy_on=hierarchy_on,
+                          actor_is_owner=True,
+                          allowed_inbounds=allowed_inbounds,
+                      )
+                      .join(MarzhelpAdminSettings, MarzhelpAdminSettings.admin_id == User.admin_id)
+                      .with_entities(
+                          mode_expression.label("mode"),
+                          func.count(User.id),
+                          func.coalesce(func.sum(case((User.status == UserStatus.active, 1), else_=0)), 0),
+                          func.coalesce(func.sum(User.used_traffic), 0),
+                          func.coalesce(func.sum(User.data_limit), 0),
+                      )
+                      .group_by(mode_expression)
+                      .all()
+                  )
+                  user_by_mode = {
+                      str(mode): (int(count), int(active), int(used), int(allocated))
+                      for mode, count, active, used, allocated in user_rows
+                  }
+          '''
+          assert old in text
+          text = text.replace(old, new, 1)
+          old = '''        billing_modes=[
+                  DashboardBillingModeMetric(
+                      billing_mode=mode,
+                      admin_count=admin_counts.get(mode, 0),
+                      user_count=user_by_mode.get(mode, (0, 0, 0, 0))[0],
+                      active_users=user_by_mode.get(mode, (0, 0, 0, 0))[1],
+                      current_used_traffic=(
+                          user_by_mode.get(mode, (0, 0, 0, 0))[2] if usage_visible else None
+                      ),
+                      allocated_quota=user_by_mode.get(mode, (0, 0, 0, 0))[3],
+                  )
+                  for mode in MODES
+              ],'''
+          new = '''        billing_modes=(
+                  [
+                      DashboardBillingModeMetric(
+                          billing_mode=mode,
+                          admin_count=admin_counts.get(mode, 0),
+                          user_count=user_by_mode.get(mode, (0, 0, 0, 0))[0],
+                          active_users=user_by_mode.get(mode, (0, 0, 0, 0))[1],
+                          current_used_traffic=user_by_mode.get(mode, (0, 0, 0, 0))[2],
+                          allocated_quota=user_by_mode.get(mode, (0, 0, 0, 0))[3],
+                      )
+                      for mode in MODES
+                  ]
+                  if actor_is_owner
+                  else []
+              ),'''
+          assert old in text
+          text = text.replace(old, new, 1)
+          metrics.write_text(text, encoding="utf-8")
+
+          tests = Path("tests/test_dashboard_owner_admin_v2.py")
+          text = tests.read_text(encoding="utf-8")
+          marker = '        assert result.admin_summary is None\n'
+          assert text.count(marker) == 1
+          text = text.replace(marker, marker + '        assert result.billing_modes == []\n', 1)
+          text = text.replace(
+              '        suspended_admin = Admin(username="suspended-admin", hashed_password="x")\n        db.add_all([owner, active_admin, suspended_admin])',
+              '        suspended_admin = Admin(username="suspended-admin", hashed_password="x")\n        legacy_admin = Admin(username="legacy-admin", hashed_password="x")\n        db.add_all([owner, active_admin, suspended_admin, legacy_admin])',
+              1,
+          )
+          text = text.replace('        assert result.admin_summary.total == 2\n        assert result.admin_summary.active == 1', '        assert result.admin_summary.total == 3\n        assert result.admin_summary.active == 2', 1)
+          tests.write_text(text, encoding="utf-8")
+
+          replace_once("VERSION", "1.1.7\n", "1.1.8\n")
+          replace_once("app/__init__.py", '__version__ = "1.1.7"', '__version__ = "1.1.8"')
+          replace_once("scripts/marzban.sh", 'CLI_RELEASE_VERSION="v1.1.7"', 'CLI_RELEASE_VERSION="v1.1.8"')
+          replace_once("docker-compose.yml", 'image: ghcr.io/smorad3363/marzban-v1:v1.1.7', 'image: ghcr.io/smorad3363/marzban-v1:v1.1.8')
+
+          release_workflow = Path(".github/workflows/build.yml")
+          text = release_workflow.read_text(encoding="utf-8")
+          old = '''      - name: Verify canonical dashboard UX contract
+                  working-directory: app/dashboard
+                  run: node scripts/test-stage1-ui-contracts.cjs
+          '''
+          new = '''      - name: Verify canonical dashboard UX contracts
+                  working-directory: app/dashboard
+                  run: |
+                    node scripts/test-stage1-ui-contracts.cjs
+                    node scripts/test-autofill-contract.cjs
+          '''
+          assert old in text
+          release_workflow.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          Path("docs/RELEASE_NOTES_v1.1.8.md").write_text('''# Marzban v1.1.8
+
+## Highlights
+
+- Redesign the Dashboard as separate role-aware Owner and Admin operational views backed only by real scoped backend aggregates; the dedicated Users page remains the full user-management surface.
+- Add real 24-hour, 7-day, and 30-day user-traffic history from the existing authoritative usage collector, current-activity counts, status distribution, attention signals, top consumers, and recent-user summaries without adding a second Xray polling path.
+- Add Owner-only compact Node and Admin summaries while keeping Admin data restricted to its authorized user scope in the backend.
+- Keep Admin credit presentation generic and avoid exposing billing-model basis; Owner remains unrestricted.
+- Prevent saved login credentials from autofilling authenticated/non-login inputs, including dynamically mounted Chakra portals, while preserving username/current-password autofill on the Login page.
+- Extend Dashboard UI contracts, backend authorization/scope tests, and the canonical Release workflow so the autofill invariant and committed dashboard parity are verified before publication.
+- Preserve Node Operations V2, safe Admin retirement, Plan permissions, Access Group semantics, and existing installer/mTLS architecture.
+
+## Upgrade
+
+```bash
+marzban update --version v1.1.8
+```
+
+## Fresh install
+
+```bash
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.1.8/scripts/marzban.sh)" @ install --version v1.1.8 --database mysql
+```
+
+## Node Runtime
+
+Use the same immutable release when installing or updating the built-in Node Runtime:
+
+```bash
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.1.8/scripts/marzban.sh)" @ install-script v1.1.8
+sudo marzban node install --version v1.1.8
+```
+
+For an existing Node installation:
+
+```bash
+sudo marzban node update --version v1.1.8
+sudo marzban node doctor
+```
+
+## Validation
+
+- Dashboard Stage 1 contracts, authenticated-autofill contract, TypeScript production build, output verification, and committed dashboard parity must pass on the final release source.
+- Backend regression, authorization/scope coverage, migrations/partial-DDL recovery, Stage 8-11 evidence, backup/restore, and v4.8.0 rollback compatibility must pass against MySQL 8.0 and MySQL 26.7.0.
+- Installer syntax/contracts, panel compose, built-in Node compose, MySQL 8.0 logical dump -> 26.7.0 restore, release-image runtime, and Panel-to-Node mTLS contracts must pass before publication.
+- The immutable `v1.1.8` tag must resolve to the exact reviewed release commit on `main`; publication must not move or recreate it.
+- The canonical Release workflow must publish and anonymously verify multi-architecture `linux/amd64` and `linux/arm64` GHCR images and create the GitHub Release from this file.
+''', encoding="utf-8")
+
+          Path("docs/CODEX/STATE.md").write_text('''# V1 Continuation State
+
+## Active Task: v1.1.8 Dashboard Owner/Admin V2 release candidate
+
+- Working branch: `feat/dashboard-owner-admin-v2`
+- Pull request: `#39`
+- Base/main SHA at task start: `e8f9ce09c7939c15a2fbdeae858ba990d79db846`
+- Immutable prior release: `v1.1.7` MUST remain at `c0775a624b7081f794b492e4596bbc484aa6be02`.
+- Target release: `v1.1.8`.
+
+## Completed Product Work
+
+- Credential autofill is suppressed throughout authenticated UI and Chakra portals; Login retains `username` / `current-password` autofill.
+- Owner/Admin Dashboard V2 uses `/api/dashboard/overview` with backend-enforced role/scope.
+- Real traffic history comes from existing `NodeUserUsage`; no additional Xray reset-counter poller exists.
+- Attention, top consumers, recent users, current activity, status distribution, Owner Node summary, and Owner Admin summary are real database aggregates.
+- Admin sees no Owner-only Node/Admin summary and receives no billing-mode distribution from Dashboard overview.
+- Admin credit UI remains generic and does not disclose accounting-model basis.
+- Users remains the dedicated management surface.
+- Dashboard source/build parity is regenerated from source.
+- `host_update_impact` unrelated behavior was restored to the `main` baseline during self-review.
+- Version surfaces and release notes are prepared for `v1.1.8`; canonical Release workflow also verifies the authenticated-autofill contract.
+
+## Non-regression Invariants
+
+- Preserve Node Operations V2, one authoritative reset-counter collector, safe Admin retirement, Plan permissions, Access Group semantics, Owner unrestricted behavior, and Panel-to-Node mTLS.
+- `v1.1.7` is immutable and must never be moved/recreated.
+- `v1.1.8` may be tagged only from the final reviewed merge commit on `main` after all required CI gates are green.
+
+## Last Work File
+
+`app/dashboard/src/components/DashboardOverview.tsx`
+
+## Last Work Section
+
+Final release-candidate self-review: UTC timestamp handling, generic Admin credit presentation, accurate status legend/current-activity hint, legacy-safe Owner Admin summary, and Admin billing-mode privacy.
+
+## NEXT EXACT TASK
+
+1. Remove the one-time release-preparation workflow from the feature branch.
+2. Verify the resulting clean PR #39 HEAD and run both `CI Checkpoints` and `Dashboard UI Contracts` to completion.
+3. If any gate fails, inspect the exact failing job/step and fix only its root cause; regenerate committed dashboard build if dashboard source changes.
+4. Re-review the final PR diff for scope/security/unrelated changes and verify `main` has not moved.
+5. Mark PR #39 ready and merge only the verified head.
+6. Verify post-merge `main` CI and all release surfaces (`VERSION`, `app/__init__.py`, `scripts/marzban.sh`, `docker-compose.yml`, `docs/RELEASE_NOTES_v1.1.8.md`).
+7. Create immutable tag `v1.1.8` at the exact verified release commit on `main`.
+8. Wait for the canonical `Release` workflow to succeed, including dashboard contracts/parity, multi-arch GHCR publish, anonymous/runtime image verification, and GitHub Release creation.
+9. Confirm tag SHA, GitHub Release, `ghcr.io/smorad3363/marzban-v1:v1.1.8`, `latest`, and release workflow source SHA all match.
+
+## Recovery Rule
+
+When work resumes, fetch this file, fetch/review `Last Work File`, verify PR/main/tag/release state, then continue from the first incomplete `NEXT EXACT TASK` item. If `v1.1.8` already exists, never recreate or move it; verify publication instead.
+''', encoding="utf-8")
+          PY
+
+      - name: Compile reviewed Python surfaces
+        run: python -m compileall -q app/routers/system.py app/utils/dashboard_metrics.py app/models/system.py tests/test_dashboard_owner_admin_v2.py
+
+      - name: Install dashboard dependencies
+        working-directory: app/dashboard
+        run: npm ci
+
+      - name: Verify dashboard contracts
+        working-directory: app/dashboard
+        run: |
+          node scripts/test-stage1-ui-contracts.cjs
+          node scripts/test-autofill-contract.cjs
+
+      - name: Build canonical dashboard
+        working-directory: app/dashboard
+        run: VITE_BASE_API=/api/ npm run build
+
+      - name: Verify release surfaces and commit candidate
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(tr -d '[:space:]' < VERSION)" = "1.1.8"
+          grep -Fx '__version__ = "1.1.8"' app/__init__.py
+          grep -Fx 'CLI_RELEASE_VERSION="v1.1.8"' scripts/marzban.sh
+          grep -Fq 'ghcr.io/smorad3363/marzban-v1:v1.1.8' docker-compose.yml
+          test -s docs/RELEASE_NOTES_v1.1.8.md
+          git add -A
+          git diff --cached --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "release: prepare v1.1.8 candidate"
+          git push origin HEAD:feat/dashboard-owner-admin-v2
