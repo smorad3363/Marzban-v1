@@ -7,6 +7,7 @@ on:
     paths:
       - "app/dashboard/src/**"
       - "app/dashboard/scripts/test-stage1-ui-contracts.cjs"
+      - "app/dashboard/scripts/test-autofill-contract.cjs"
       - "app/dashboard/build/**"
       - ".github/workflows/dashboard-ui-contracts.yml"
   pull_request:
@@ -15,6 +16,7 @@ on:
     paths:
       - "app/dashboard/src/**"
       - "app/dashboard/scripts/test-stage1-ui-contracts.cjs"
+      - "app/dashboard/scripts/test-autofill-contract.cjs"
       - "app/dashboard/build/**"
       - ".github/workflows/dashboard-ui-contracts.yml"
   workflow_dispatch:
@@ -44,6 +46,10 @@ jobs:
       - name: Verify Stage 1 UI contracts
         working-directory: app/dashboard
         run: node scripts/test-stage1-ui-contracts.cjs
+
+      - name: Verify authenticated autofill contract
+        working-directory: app/dashboard
+        run: node scripts/test-autofill-contract.cjs
 
       - name: Type-check and build dashboard
         working-directory: app/dashboard
