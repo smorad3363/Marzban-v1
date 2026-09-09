@@ -355,10 +355,9 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
                   {mode === "USER_CREDIT" && <Text mt={1} color="var(--panel-text-muted)" fontSize="xs">حساب «سقف اکانت» طبق قرارداد Backend همیشه فقط با پلن کار می‌کند.</Text>}
                 </Box>
 
-                {normalizedCreationMode !== "FORM_ONLY" && (
-                  <Box mt={4} pt={4} borderTopWidth="1px" borderColor="var(--panel-border)">
-                    <Text fontSize="sm" fontWeight="800">دسترسی پلن</Text>
-                    <Text mt={1} color="var(--panel-text-muted)" fontSize="xs">دسته‌بندی‌هایی را انتخاب کنید که پلن‌هایشان برای این ادمین در ساخت کاربر قابل مشاهده باشد.</Text>
+                <Box mt={4} pt={4} borderTopWidth="1px" borderColor="var(--panel-border)">
+                  <Text fontSize="sm" fontWeight="800">دسترسی پلن</Text>
+                  <Text mt={1} color="var(--panel-text-muted)" fontSize="xs">دسته‌بندی‌هایی را انتخاب کنید که پلن‌هایشان برای این ادمین قابل مشاهده باشد. در حالت «فقط فرم دلخواه»، این دسترسی فقط فهرست پلن‌ها را فراهم می‌کند و اجازه ساخت کاربر از پلن را فعال نمی‌کند.</Text>
                     {categoriesQuery.isLoading ? <Skeleton mt={2} h="52px" borderRadius="10px" /> : categoriesQuery.isError ? (
                       <Alert mt={2} status="error" borderRadius="10px"><AlertIcon />دسته‌بندی‌های پلن بارگذاری نشد.</Alert>
                     ) : (
@@ -373,8 +372,7 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
                     {!categoriesQuery.isLoading && !categoriesQuery.isError && (categoriesQuery.data || []).length === 0 && (
                       <Alert mt={2} status="warning" borderRadius="10px"><AlertIcon />ابتدا در بخش پلن‌ها یک دسته‌بندی و پلن فعال بسازید.</Alert>
                     )}
-                  </Box>
-                )}
+                </Box>
 
                 <SimpleGrid mt={4} pt={4} borderTopWidth="1px" borderColor="var(--panel-border)" columns={{ base: 1, lg: 2 }} gap={3}>
                   {mode !== "USED_TRAFFIC" && <HStack justify="space-between" p={3} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="10px"><Box><Text fontSize="sm" fontWeight="700">اجازه مدیریت پلن</Text><Text color="var(--panel-text-muted)" fontSize="xs">ساخت و ویرایش پلن با مجوز والد.</Text></Box><Switch isChecked={form.can_manage_plans} isDisabled={!capabilitiesQuery.data?.can_delegate_plan_management} onChange={(e) => setField("can_manage_plans", e.target.checked)} /></HStack>}
