@@ -25,7 +25,7 @@ Fresh-install v1.1.7 with MySQL after publication:
 sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.1.7/scripts/marzban.sh)" @ install --version v1.1.7 --database mysql
 ```
 
-The existing `v1.1.6` source tag remains immutable, and all previously published tags and releases remain unchanged. Preparing this target does not create or move any tag or container alias.
+The existing `v1.0.9` and `v1.1.6` source tags remain immutable, and all previously published tags and releases remain unchanged. Preparing this target does not create or move any tag or container alias.
 
 ## Release process
 
