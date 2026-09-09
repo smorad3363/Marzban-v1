@@ -74,16 +74,89 @@ type BandwidthResponse = {
   total_nodes: number;
 };
 
+type NodeTrafficAverage = {
+  uplink_bytes: number;
+  downlink_bytes: number;
+  sample_seconds: number;
+  sample_count: number;
+  uplink_bps: number;
+  downlink_bps: number;
+  total_bps: number;
+};
+
+type NodeOperationsEntry = {
+  node_id: number;
+  node_name: string;
+  status: Status;
+  operational_state: string;
+  message: string | null;
+  xray_version: string | null;
+  last_status_change: string | null;
+  live: NodeBandwidthEntry;
+  average_1h: NodeTrafficAverage;
+  average_24h: NodeTrafficAverage;
+};
+
+type NodesOperationsResponse = {
+  nodes: NodeOperationsEntry[];
+};
+
+type NodeTrafficPoint = {
+  bucket_start: string;
+  uplink_bps: number;
+  downlink_bps: number;
+  total_bps: number;
+  sample_seconds: number;
+  sample_count: number;
+};
+
+type NodeTrafficHistoryResponse = {
+  node_id: number;
+  window_minutes: number;
+  points: NodeTrafficPoint[];
+};
+
+type NodeEventEntry = {
+  id: number;
+  occurred_at: string;
+  received_at: string;
+  event_type: string;
+  severity: string;
+  reason_code: string | null;
+  trigger_reason: string | null;
+  root_cause: string | null;
+  source: string;
+  message: string | null;
+  previous_state: string | null;
+  new_state: string | null;
+  reconnect_mode: string | null;
+  reconnect_attempt: number | null;
+  reconnect_result: string | null;
+  downtime_seconds: number | null;
+  runtime_version: string | null;
+  metadata: unknown;
+};
+
+type NodeEventsResponse = {
+  node_id: number;
+  events: NodeEventEntry[];
+  total: number;
+  offset: number;
+  limit: number;
+};
+
 type NodeRow = {
   key: string;
   name: string;
   node: NodeType | null;
   bandwidth?: NodeBandwidthEntry;
+  operation?: NodeOperationsEntry;
   status: Status;
   editable: boolean;
 };
 
 type StatusFilter = "all" | "connected" | "connecting" | "disabled" | "error";
+type SortMode = "name" | "status" | "traffic" | "avg_1h" | "avg_24h";
 
 const formatRate = (value?: number | null) => {
   const safe = Number.isFinite(value) && Number(value) > 0 ? Number(value) : 0;
@@ -129,7 +202,7 @@ const sampledAtLabel = (value?: string | null) => {
   }).format(date);
 };
 
-const Sparkline: FC<{ values: number[] }> = ({ values }) => {
+const Sparkline: FC<{ values: number[]; label?: string }> = ({ values, label = "روند زنده ترافیک" }) => {
   const normalized = values.length > 1 ? values : [0, ...(values.length ? values : [0])];
   const max = Math.max(...normalized, 1);
   const min = Math.min(...normalized, 0);
@@ -143,7 +216,7 @@ const Sparkline: FC<{ values: number[] }> = ({ values }) => {
     .join(" ");
 
   return (
-    <svg viewBox="0 0 100 32" width="100%" height="34" role="img" aria-label="روند زنده ترافیک">
+    <svg viewBox="0 0 100 32" width="100%" height="34" role="img" aria-label={label}>
       <polyline
         points={points}
         fill="none"
@@ -155,6 +228,37 @@ const Sparkline: FC<{ values: number[] }> = ({ values }) => {
       />
     </svg>
   );
+};
+
+const operationalStateLabel = (state?: string) => {
+  if (state === "healthy") return "سالم";
+  if (state === "degraded") return "افت کیفیت";
+  if (state === "reconnecting") return "اتصال مجدد";
+  if (state === "offline") return "آفلاین";
+  if (state === "disabled") return "غیرفعال";
+  return state || "نامشخص";
+};
+
+const operationalStateScheme = (state?: string) => {
+  if (state === "healthy") return "green";
+  if (state === "degraded") return "orange";
+  if (state === "reconnecting") return "yellow";
+  if (state === "disabled") return "gray";
+  return "red";
+};
+
+const severityScheme = (severity?: string) => {
+  if (severity === "error" || severity === "critical") return "red";
+  if (severity === "warning") return "orange";
+  if (severity === "info") return "blue";
+  return "gray";
+};
+
+const downtimeLabel = (seconds?: number | null) => {
+  if (seconds == null || !Number.isFinite(seconds)) return null;
+  if (seconds < 60) return `${new Intl.NumberFormat("fa-IR", { maximumFractionDigits: 0 }).format(seconds)} ثانیه`;
+  if (seconds < 3600) return `${new Intl.NumberFormat("fa-IR", { maximumFractionDigits: 0 }).format(seconds / 60)} دقیقه`;
+  return `${new Intl.NumberFormat("fa-IR", { maximumFractionDigits: 1 }).format(seconds / 3600)} ساعت`;
 };
 
 const SummaryCard: FC<{
@@ -664,6 +768,141 @@ const NodeEditor: FC<{
   );
 };
 
+const NodeOperationalDetail: FC<{ row: NodeRow }> = ({ row }) => {
+  const nodeId = row.node?.id;
+  const historyQuery = useQuery<NodeTrafficHistoryResponse>({
+    queryKey: ["node-operations-history", nodeId],
+    queryFn: () => fetch(`/node/${nodeId}/operations/history?minutes=1440&max_points=120`),
+    enabled: Boolean(nodeId),
+    refetchOnWindowFocus: false,
+    staleTime: 30_000,
+  });
+  const eventsQuery = useQuery<NodeEventsResponse>({
+    queryKey: ["node-operations-events", nodeId],
+    queryFn: () => fetch(`/node/${nodeId}/events?offset=0&limit=50`),
+    enabled: Boolean(nodeId),
+    refetchInterval: 15_000,
+    refetchOnWindowFocus: false,
+    staleTime: 10_000,
+  });
+  const operation = row.operation;
+  const points = historyQuery.data?.points || [];
+  const events = eventsQuery.data?.events || [];
+
+  return (
+    <Box borderWidth="1px" borderColor="var(--panel-border)" borderRadius="14px" bg="var(--panel-surface)" p={4}>
+      <HStack justify="space-between" align="start" gap={3}>
+        <Box minW={0}>
+          <Text color="var(--panel-accent)" fontSize="xs" fontWeight="800">عملیات و تله‌متری</Text>
+          <Text mt={1} fontSize="lg" fontWeight="900">{row.name}</Text>
+          <Text mt={1} fontSize="xs" color="var(--panel-text-muted)">
+            میانگین‌های پایدار، تاریخچه ۲۴ ساعت و رخدادهای sanitize‌شده
+          </Text>
+        </Box>
+        <Badge colorScheme={operationalStateScheme(operation?.operational_state)}>
+          {operationalStateLabel(operation?.operational_state)}
+        </Badge>
+      </HStack>
+
+      {operation?.message && (
+        <Alert mt={3} status={operation.operational_state === "healthy" ? "info" : "warning"} borderRadius="10px" alignItems="start">
+          <AlertIcon mt={0.5} />
+          <AlertDescription fontSize="xs">{operation.message}</AlertDescription>
+        </Alert>
+      )}
+
+      <Grid mt={3} templateColumns="repeat(2, minmax(0, 1fr))" gap={2}>
+        <SummaryCard
+          label="میانگین ۱ ساعت"
+          value={formatRate(operation?.average_1h.total_bps)}
+          hint={`${new Intl.NumberFormat("fa-IR").format(operation?.average_1h.sample_count || 0)} نمونه پایدار`}
+          accent="#38bdf8"
+        />
+        <SummaryCard
+          label="میانگین ۲۴ ساعت"
+          value={formatRate(operation?.average_24h.total_bps)}
+          hint={`${new Intl.NumberFormat("fa-IR").format(operation?.average_24h.sample_count || 0)} نمونه پایدار`}
+          accent="#818cf8"
+        />
+        <SummaryCard label="نسخه Xray" value={operation?.xray_version || "—"} hint="گزارش‌شده توسط نود" />
+        <SummaryCard label="آخرین تغییر وضعیت" value={sampledAtLabel(operation?.last_status_change)} hint={operation?.status || row.status} />
+      </Grid>
+
+      <Box mt={3} p={3} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px" bg="var(--panel-nested)">
+        <HStack justify="space-between" mb={2}>
+          <Box>
+            <Text fontSize="sm" fontWeight="800">تاریخچه ترافیک ۲۴ ساعت</Text>
+            <Text fontSize="xs" color="var(--panel-text-muted)">داده persisted و downsample‌شده؛ بدون polling جدید Xray</Text>
+          </Box>
+          <Badge variant="outline">{new Intl.NumberFormat("fa-IR").format(points.length)} نقطه</Badge>
+        </HStack>
+        {historyQuery.isLoading ? (
+          <Skeleton height="54px" borderRadius="8px" />
+        ) : historyQuery.isError ? (
+          <Alert status="warning" borderRadius="8px"><AlertIcon /><AlertDescription fontSize="xs">تاریخچه ترافیک در دسترس نیست.</AlertDescription></Alert>
+        ) : points.length ? (
+          <Box color="cyan.300">
+            <Sparkline values={points.map((point) => point.total_bps)} label="روند ترافیک ۲۴ ساعت" />
+            <HStack justify="space-between" mt={1}>
+              <Text fontSize="10px" color="var(--panel-text-muted)">{sampledAtLabel(points[0]?.bucket_start)}</Text>
+              <Text fontSize="10px" color="var(--panel-text-muted)">{sampledAtLabel(points[points.length - 1]?.bucket_start)}</Text>
+            </HStack>
+          </Box>
+        ) : (
+          <Text fontSize="xs" color="var(--panel-text-muted)">هنوز نمونه persisted برای این بازه ثبت نشده است.</Text>
+        )}
+      </Box>
+
+      <Box mt={3} p={3} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px" bg="var(--panel-nested)">
+        <HStack justify="space-between" mb={2}>
+          <Box>
+            <Text fontSize="sm" fontWeight="800">رخدادهای اخیر</Text>
+            <Text fontSize="xs" color="var(--panel-text-muted)">Timeline تشخیصی sanitize‌شده</Text>
+          </Box>
+          <Badge variant="outline">{new Intl.NumberFormat("fa-IR").format(eventsQuery.data?.total || 0)}</Badge>
+        </HStack>
+        {eventsQuery.isLoading ? (
+          <Stack spacing={2}>{[0, 1, 2].map((item) => <Skeleton key={item} height="54px" borderRadius="8px" />)}</Stack>
+        ) : eventsQuery.isError ? (
+          <Alert status="warning" borderRadius="8px"><AlertIcon /><AlertDescription fontSize="xs">Timeline رخدادها در دسترس نیست.</AlertDescription></Alert>
+        ) : events.length ? (
+          <VStack align="stretch" spacing={2}>
+            {events.slice(0, 8).map((event) => (
+              <Box key={event.id} p={2.5} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="9px">
+                <HStack justify="space-between" align="start" gap={2}>
+                  <HStack spacing={2} minW={0}>
+                    <Badge colorScheme={severityScheme(event.severity)}>{event.severity}</Badge>
+                    <Text fontSize="xs" fontWeight="800" dir="ltr" noOfLines={1}>{event.event_type}</Text>
+                  </HStack>
+                  <Text fontSize="10px" color="var(--panel-text-muted)" whiteSpace="nowrap">{sampledAtLabel(event.occurred_at)}</Text>
+                </HStack>
+                {(event.previous_state || event.new_state) && (
+                  <Text mt={1} fontSize="xs" color="var(--panel-text-muted)" dir="ltr" textAlign="start">
+                    {event.previous_state || "—"} → {event.new_state || "—"}
+                  </Text>
+                )}
+                {(event.reconnect_mode || event.reconnect_attempt != null || event.reconnect_result) && (
+                  <Text mt={1} fontSize="xs" color="var(--panel-text-muted)" dir="ltr" textAlign="start">
+                    reconnect: {event.reconnect_mode || "—"} · attempt {event.reconnect_attempt ?? "—"} · {event.reconnect_result || "—"}
+                  </Text>
+                )}
+                {(event.root_cause || event.trigger_reason || downtimeLabel(event.downtime_seconds)) && (
+                  <Text mt={1} fontSize="xs" color="var(--panel-text-muted)">
+                    {[event.trigger_reason, event.root_cause, downtimeLabel(event.downtime_seconds) ? `قطعی ${downtimeLabel(event.downtime_seconds)}` : null].filter(Boolean).join(" · ")}
+                  </Text>
+                )}
+                {event.message && <Text mt={1} fontSize="xs">{event.message}</Text>}
+              </Box>
+            ))}
+          </VStack>
+        ) : (
+          <Text fontSize="xs" color="var(--panel-text-muted)">رخدادی برای این نود ثبت نشده است.</Text>
+        )}
+      </Box>
+    </Box>
+  );
+};
+
 export const NodesManagementWorkspace: FC = () => {
   const { data: nodes, isLoading } = useNodesQuery();
   const bandwidth = useQuery<BandwidthResponse>({
@@ -673,8 +912,16 @@ export const NodesManagementWorkspace: FC = () => {
     refetchOnWindowFocus: false,
     staleTime: 3_000,
   });
+  const operations = useQuery<NodesOperationsResponse>({
+    queryKey: ["nodes-operations"],
+    queryFn: () => fetch("/nodes/operations"),
+    refetchInterval: 10_000,
+    refetchOnWindowFocus: false,
+    staleTime: 5_000,
+  });
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [sortMode, setSortMode] = useState<SortMode>("status");
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -698,6 +945,10 @@ export const NodesManagementWorkspace: FC = () => {
       bandwidthById.set(item.node_id == null ? "master" : String(item.node_id), item);
     });
 
+    const operationsById = new Map<string, NodeOperationsEntry>();
+    (operations.data?.nodes || []).forEach((item) => {
+      operationsById.set(String(item.node_id), item);
+    });
     const result: NodeRow[] = [];
     const masterBandwidth = bandwidthById.get("master");
     if (masterBandwidth) {
@@ -713,18 +964,20 @@ export const NodesManagementWorkspace: FC = () => {
 
     (nodes || []).forEach((node) => {
       const key = String(node.id);
-      const nodeBandwidth = bandwidthById.get(key);
+      const operation = operationsById.get(key);
+    const nodeBandwidth = operation?.live || bandwidthById.get(key);
       result.push({
         key,
         name: node.name,
         node,
         bandwidth: nodeBandwidth,
-        status: node.status || bandwidthStateToStatus(nodeBandwidth?.state),
+      operation,
+        status: operation?.status || node.status || bandwidthStateToStatus(nodeBandwidth?.state),
         editable: true,
       });
     });
     return result;
-  }, [bandwidth.data?.nodes, nodes]);
+  }, [bandwidth.data?.nodes, nodes, operations.data?.nodes]);
 
   useEffect(() => {
     if (selectedKey === "new") return;
@@ -759,11 +1012,28 @@ export const NodesManagementWorkspace: FC = () => {
     });
   }, [rows, search, statusFilter]);
 
-  useEffect(() => setPage(1), [search, statusFilter, pageSize]);
+  const sortedRows = useMemo(() => {
+    return [...filteredRows].sort((left, right) => {
+      if (sortMode === "name") return left.name.localeCompare(right.name);
+      if (sortMode === "status") {
+        return (left.operation?.operational_state || left.status).localeCompare(
+          right.operation?.operational_state || right.status
+        );
+      }
+      const metric = (row: NodeRow) => {
+        if (sortMode === "traffic") return row.bandwidth?.total_bps || 0;
+        if (sortMode === "avg_1h") return row.operation?.average_1h.total_bps || 0;
+        return row.operation?.average_24h.total_bps || 0;
+      };
+      return metric(right) - metric(left);
+    });
+  }, [filteredRows, sortMode]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+  useEffect(() => setPage(1), [search, statusFilter, sortMode, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
   const safePage = Math.min(page, totalPages);
-  const visibleRows = filteredRows.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const visibleRows = sortedRows.slice((safePage - 1) * pageSize, safePage * pageSize);
   const selected = selectedKey === "new" ? null : rows.find((row) => row.key === selectedKey) || null;
 
   const filterButtons: Array<{ key: StatusFilter; label: string; scheme: string; count: number }> = [
@@ -788,7 +1058,7 @@ export const NodesManagementWorkspace: FC = () => {
             <Text color="var(--panel-accent)" fontSize="xs" fontWeight="800">زیرساخت</Text>
             <Text mt={1} fontSize={{ base: "xl", md: "2xl" }} fontWeight="900">مدیریت گره‌ها</Text>
             <Text mt={1} fontSize="sm" color="var(--panel-text-muted)">
-              وضعیت، ترافیک زنده و تنظیمات هر نود را از یک نمای فشرده مدیریت کنید.
+              وضعیت عملیاتی، ترافیک زنده، میانگین‌های پایدار، تاریخچه رخداد و تنظیمات هر نود را از یک نما مدیریت کنید.
             </Text>
           </Box>
           <Button
@@ -858,6 +1128,18 @@ export const NodesManagementWorkspace: FC = () => {
                     onChange={(event) => setSearch(event.target.value)}
                   />
                 </Box>
+                <Select
+                  size="sm"
+                  w={{ base: "full", sm: "190px" }}
+                  value={sortMode}
+                  onChange={(event) => setSortMode(event.target.value as SortMode)}
+                >
+                  <option value="status">مرتب‌سازی: وضعیت عملیاتی</option>
+                  <option value="traffic">ترافیک لحظه‌ای</option>
+                  <option value="avg_1h">میانگین ۱ ساعت</option>
+                  <option value="avg_24h">میانگین ۲۴ ساعت</option>
+                  <option value="name">نام نود</option>
+                </Select>
                 <Tooltip label="به‌روزرسانی اطلاعات">
                   <IconButton
                     aria-label="به‌روزرسانی نودها"
@@ -866,8 +1148,9 @@ export const NodesManagementWorkspace: FC = () => {
                     icon={<ArrowPathIcon width={17} />}
                     onClick={() => {
                       bandwidth.refetch();
+                      operations.refetch();
                     }}
-                    isLoading={bandwidth.isFetching}
+                    isLoading={bandwidth.isFetching || operations.isFetching}
                   />
                 </Tooltip>
               </HStack>
@@ -925,6 +1208,11 @@ export const NodesManagementWorkspace: FC = () => {
                           <HStack spacing={2} minW={0}>
                             <Text fontWeight="900" noOfLines={1} dir="ltr">{row.name}</Text>
                             <NodeModalStatusBadge status={row.status} compact />
+                            {row.operation && (
+                              <Badge colorScheme={operationalStateScheme(row.operation.operational_state)} variant="subtle">
+                                {operationalStateLabel(row.operation.operational_state)}
+                              </Badge>
+                            )}
                           </HStack>
                           <Text mt={1} fontSize="xs" color="var(--panel-text-muted)" noOfLines={1} dir="ltr" textAlign="start">
                             {row.node?.address || (row.key === "master" ? "Local core" : "—")}
@@ -965,7 +1253,7 @@ export const NodesManagementWorkspace: FC = () => {
               </HStack>
               <HStack>
                 <Text fontSize="xs" color="var(--panel-text-muted)">
-                  نمایش {new Intl.NumberFormat("fa-IR").format(filteredRows.length ? (safePage - 1) * pageSize + 1 : 0)} تا {new Intl.NumberFormat("fa-IR").format(Math.min(safePage * pageSize, filteredRows.length))} از {new Intl.NumberFormat("fa-IR").format(filteredRows.length)} گره
+                  نمایش {new Intl.NumberFormat("fa-IR").format(sortedRows.length ? (safePage - 1) * pageSize + 1 : 0)} تا {new Intl.NumberFormat("fa-IR").format(Math.min(safePage * pageSize, sortedRows.length))} از {new Intl.NumberFormat("fa-IR").format(sortedRows.length)} گره
                 </Text>
                 <Select size="sm" w="74px" value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
                   <option value={10}>10</option>
@@ -983,7 +1271,10 @@ export const NodesManagementWorkspace: FC = () => {
           {selectedKey === "new" ? (
             <NodeEditor node={null} isNew bandwidth={undefined} onSaved={() => setSelectedKey(null)} />
           ) : selected?.editable && selected.node ? (
-            <NodeEditor node={selected.node} bandwidth={selected.bandwidth} isNew={false} onSaved={() => undefined} />
+            <Stack spacing={3}>
+              <NodeEditor node={selected.node} bandwidth={selected.bandwidth} isNew={false} onSaved={() => undefined} />
+              <NodeOperationalDetail row={selected} />
+            </Stack>
           ) : selected ? (
             <Box borderWidth="1px" borderColor="var(--panel-border)" borderRadius="14px" bg="var(--panel-surface)" p={4}>
               <Text color="var(--panel-accent)" fontSize="xs" fontWeight="800">جزئیات گره سیستمی</Text>
