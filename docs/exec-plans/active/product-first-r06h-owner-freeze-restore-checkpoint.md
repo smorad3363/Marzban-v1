@@ -1,0 +1,40 @@
+# Product-first R06.h — read-only Owner freeze, emergency distinction and safe restore audit
+
+Date: 2026-09-19. Authority: supplied FINAL v3.1 Persian `ROADMAP-fa.md` B18–B20, R06/R09.d/R20/R21.a–b/R43. Previous [R06.g](product-first-r06g-trial-free-usage-checkpoint.md) separately read back and its one-doc diff/HEAD/absent CI observed. This is fourth of five expressly requested read-only substeps: only R06.h, not Product or release implementation.
+
+```yaml
+repo: smorad3363/Marzban-v1
+branch: docs/product-first-v3-1-r01-ledger
+source_sha_inspected: 5a2bebd94ded58191aa6a9e6a128bf640f60d077
+stage: R06
+stage_state: IN_PROGRESS_SPLIT_READ_ONLY
+completed_substeps: [R06.a, R06.b, R06.c, R06.d, R06.e, R06.f, R06.g, R06.h]
+completed_this_commit: R06.h
+next_exact_action_in_current_five_substep_request: 'Verify R06.h exact file, one-doc diff, HEAD and check-runs/status, then audit ONLY R06.i: actual database availability vs claimed nonuse, installed migration chain, clean/upgrade tests and data-preserving release safeguards. Separately checkpoint/verify and STOP; R07 not authorized this turn.'
+remaining_substeps: [R06.i]
+product_implementation: NOT_STARTED
+runtime_tests: NOT_RUN_SOURCE_AUDIT_ONLY
+local_worktree_or_external_uncommitted_state: UNKNOWN_NO_LOCAL_CHECKOUT
+ci_gate: NOT_VERIFIED
+release_gate: LOCKED_IMPLEMENTATION
+```
+
+## Contractually distinct operations
+
+- **Automatic B19 emergency at actual debt >= H**: freeze *Admin's* normal panel/API mutations while preserving login/dashboard/finances, Owner top-up/refunds, prior-paid automatic activation and settlement; stop new USED_TRAFFIC consumption as runtime permits. It is **not** an automatic freeze/disconnect of fully prepaid ALLOCATED_TRAFFIC/USER_CREDIT users. `I=0`, `H=0` and zero debt must not trigger emergency. Never erase late real debt beyond H; record incident.
+- **Explicit Owner B20 one-click bulk freeze**: Owner-only action selects target Admin plus ALL descendant Admins/users at all depths, snapshots members and prior states, persists a separate owner-event and disables actual services/disconnects every relevant Xray Node; track *each Node* attempt/outcome and retry idempotently until verified. DB `complete`, background task dispatch or core restart request alone is not acknowledged success.
+- **Matching Owner bulk unfreeze**: restore only users/admins whose state is still owned by that event AND independently eligible now (not expired, over quota, intentionally disabled, under another penalty/freeze or invalid Product/network); never add time/quota, reprice or debit. Partial failure must be recoverable with event/Node-level audit; top-up does not silently undo explicit Owner freeze. Restore emergency admin restriction only under valid financial state/D<=H and its own transition.
+
+## Pinned source findings and gaps
+
+| Source | Observed existing behavior | B19/B20 boundary |
+|---|---|---|
+| [`app/utils/admin_hierarchy.py`](../../../app/utils/admin_hierarchy.py) `_freeze_admin_once` | Captures complete descendant Admin IDs via `AdminHierarchy`, locks settings, records `AdminSuspensionEvent(operation_type='owner_freeze')` and per-Admin prior-state snapshots; walks active/on_hold users, records event-owned prior status and disables them, commits event `status='complete'`; replay fingerprint/idempotency and MySQL deadlock retry exist. **Authorization permits Owner OR authorized parent** in current legacy service, despite event name `owner_freeze`. | New B20 button/action must explicitly enforce Owner-only; inherited parent access is not implicit Owner authorization. Snapshot event survives retries; however `complete` here proves DB mutation, **not all-node disconnection**. Preserve historical helper routes if needed instead of silently changing V1. |
+| [`app/utils/admin_hierarchy.py`](../../../app/utils/admin_hierarchy.py) `unfreeze_admin` | Locks matched freeze event/rows; restores previous Admin status only when `suspension_event_id` still matches, and User status when snapshot marked `applied` and current User is `disabled`; marks `skipped_changed` otherwise. It does **not** recheck present-time expiry, traffic limit, Product/network validity, independent new penalty or user disable reason in inspected restore loop. | Eligibility/race guard missing for new Owner safe restore. A user disabled by a separate action after original freeze may still simply be `disabled`, which is insufficient proof that original freeze owns current state. Need event-scoped user lock/version and tests for changed status and other reasons. No implicit renewal, repurchase or rebilling. |
+| [`app/routers/admin_hierarchy.py`](../../../app/routers/admin_hierarchy.py) freeze/unfreeze endpoints | Existing `/admin-management/{username}/freeze` and `/unfreeze` call above helpers, audit their event IDs and use FastAPI background `_restart_runtime`; HTTP returns event status and restored counts immediately. Their `Admin.get_current` auth plus service permits authorized parent. | No per-node acknowledgment/failure, pause-until-verified, durable retry/outbox or atomic runtime state demonstrated by these inspected routes. User-visible success must distinguish DB state from Xray synced/partially failed. Owner-specific Product implementation should not advertise fully disconnected based on response alone. |
+| [`app/utils/money_billing.py`](../../../app/utils/money_billing.py), [`app/jobs/record_usages.py`](../../../app/jobs/record_usages.py), [`app/models/admin.py`](../../../app/models/admin.py) | Existing usage settlement marks `balance<=0` ACTIVE Admins and calls `suspend_admin(... include_subtree=True, reason_id=2)`, then worker restarts cores after DB commit; this also disables prepaid descendant users, rather than login-only emergency at actual H. Auth currently relies on ACTIVE/SUSPENDED/DISABLED account status and allows some suspended reads, not a distinct immutable-I/H `ADMIN_EMERGENCY_FROZEN` state. | Prevent zero-balance prepaid-user suspension; add separate automatic emergency state and permission guard across direct/bulk/API/jobs, with zero-I exceptions and Owner override safety. Do not implement B19 by invoking existing `owner_freeze`. Reconcile competing suspension events/ownership. |
+| [`app/xray/operations.py`](../../../app/xray/operations.py), [`app/utils/access_groups.py`](../../../app/utils/access_groups.py) | Restart triggers main and connected Node restarts; node restart catches/logs failures and disconnected Node may be deferred; existing Node scope itself has empty→unrestricted legacy semantics. | Distinct per-node attempt/result, offline Node retry, slot credential/session disconnect acknowledgment and no hidden unrestricted fallback mandatory for B20; no exact immediate success proof in current inspected code. |
+
+## Acceptance matrix, not run
+
+R21.a–b/R43 tests: deep nested Admin + two remote Nodes (one offline) + main core + two slots; Owner vs authorized parent; freeze idempotency/replay/conflict; DB commit followed by failed background restart => PARTIAL not success, retry until all nodes report results; explicit freeze persists after top-up/unfreeze of emergency. Restore only event-owned currently eligible users; expired/quota exhausted, independently disabled, changed Product/network and second freeze must not resurrect. Race freeze/delete/activate/pending/usage; previously prepaid active period and pending untouched financially; automatic H freezes only Admin dashboard, not prepaid users; `I=0,H=0,balance=0` not emergency. Tests NOT_RUN. No evidence of actual live disconnection, live DB values or successful new feature. Only new markdown checkpoint on docs branch; verify blob, one-file diff, branch/main and exact-SHA checks. No code, migration, VERSION, main, PR, merge, tag, release, workflow dispatch or deployment. Release LOCKED.
