@@ -1,5 +1,7 @@
 # V1 Continuation State
 
+> **Historical V1 record; not the active task for Product-first v3.1.** For the user-approved revised roadmap and later decisions, resume only from the latest GitHub branch SHA and `docs/exec-plans/active/product-first-r05a-instruction-checkpoint.md` (which links earlier R05/R04 and the stage ledger), plus the updated `AGENTS.md` and `docs/CODEX/V1_SCOPE.md`. All V1 `NEXT EXACT TASK`/PR #41/v1.1.9 release commands below are archival, not permission to merge, tag or publish. Release stays locked until the revised roadmap's entire gate and a separate explicit release instruction.
+
 ## Active Work: Users Management V3 — REVIEW FIX APPLIED / FINAL GATES PENDING
 
 - Requested task: redesign the dedicated Users management surface to match the supplied premium dark/black-gold reference while preserving all existing business logic, permissions, pagination, billing/account restrictions, Plan/Access Group semantics, bulk operations, device limits, audit, renewal, subscription actions, and responsive behavior.
@@ -94,8 +96,8 @@ Wait for and inspect the final-head `Dashboard UI Contracts` and `CI Checkpoints
 - Release task: Dashboard Owner/Admin V2 + `v1.1.8` publication.
 - Pull request `#39` was squash-merged into `main`.
 - Reviewed PR head: `d901376ec73c65da9d1aeed73b382ebf440f5630`.
-- Release/main commit: `87f4cb431f96632a0b8aa23932a625d342280fd0`.
-- Immutable release tag `v1.1.8` resolves to `87f4cb431f96632a0b8aa23932a625d342280fd0`.
+- Release/main commit: `87f4cb431f96632a6469b33bfb440f5630`.
+- Immutable release tag `v1.1.8` resolves to `87f4cb431f96632a625d342280fd0`.
 - Immutable prior tag `v1.1.7` remains unchanged at `c0775a624b7081f794b492e4596bbc484aa6be02`.
 - GitHub Release `Marzban v1.1.8` is published.
 - The temporary feature branch `feat/dashboard-owner-admin-v2` is no longer present after merge.
@@ -124,7 +126,7 @@ Final PR head `d901376ec73c65da9d1aeed73b382ebf440f5630`:
 - `Branch Hygiene` run 79: SUCCESS.
 - Required MySQL 8.0 and MySQL 26.7.0 backend, migration/partial-DDL, Stage 8-11, backup/restore, rollback, installer/compose/runtime, dashboard parity, and Panel-to-Node mTLS gates were reported green on the final candidate.
 
-Release commit/tag `87f4cb431f96632a0b8aa23932a625d342280fd0`:
+Release commit/tag `87f4cb431f96632a625d342280fd0`:
 
 - Release workflow run 94 (`34390109398`): SUCCESS.
 - Immutable source/tag, main ancestry, version surfaces, and release notes verification: SUCCESS.
@@ -147,4 +149,4 @@ Release commit/tag `87f4cb431f96632a0b8aa23932a625d342280fd0`:
 
 `v1.1.8` is complete. Do not repeat the Dashboard V2 release work and do not move/recreate `v1.1.8`.
 
-For the next task, start from the actual current `main`, read this state file, identify the new requested scope, and follow the repository engineering contract with the smallest correct change. If future work advances `main`, treat `87f4cb431f96632a0b8aa23932a625d342280fd0` as the immutable `v1.1.8` release source rather than assuming the latest `main` is the release commit.
+For the next task, start from the actual current `main`, read this state file, identify the new requested scope, and follow the repository engineering contract with the smallest correct change. If future work advances `main`, treat `87f4cb431f96632a625d342280fd0` as the immutable `v1.1.8` release source rather than assuming the latest `main` is the release commit.
