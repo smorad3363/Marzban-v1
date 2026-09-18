@@ -1,0 +1,52 @@
+# Product-first R06.c — read-only Toman, rounding and I/D/H semantics audit
+
+Date: 2026-09-19. Contract: authoritative FINAL v3.1 ZIP Persian `ROADMAP-fa.md` B05–B09, B14, B17–B20, R06, R09.a–i, R20, R22/R23 and explicit later decisions; previous [R06.b](product-first-r06b-byte-refund-checkpoint.md), [R06.a](product-first-r06a-time-semantics-checkpoint.md), [R04 financial evidence](product-first-r04-financial-checkpoint.md) and the amended [`AGENTS.md`](../../../AGENTS.md) were checked. The user **explicitly requested two substeps in this turn**; this is the first, R06.c, and authorizes only the separate subsequent R06.d audit after this commit is verified. Neither substep authorizes Product code or R07.
+
+## Recovery ledger
+
+```yaml
+repository: smorad3363/Marzban-v1
+branch: docs/product-first-v3-1-r01-ledger
+source_sha_inspected: 332d6da8f40621adf1484aaa755d5baad6d61be3
+main_sha_verified_before: 14e5c9032e5f94f783f34bde391bba318a6de925
+stage: R06
+stage_state: IN_PROGRESS_SPLIT_READ_ONLY
+completed_substeps: [R06.a, R06.b, R06.c]
+completed_this_checkpoint: R06.c
+substep_state: DONE_AUDIT_ONLY
+immediate_next_action_this_explicit_two_substep_turn: 'Reverify this R06.c commit, then perform ONLY R06.d: audit current Host/Inbound/Node/Access Group relationships, live Product-network propagation, archived and pending continuity, invalid-network fail-closed; write a separate R06.d checkpoint, verify commit/diff/checks and STOP.'
+next_user_continue_after_R06d: 'R06.e only: audit active-period and pending-reservation financial snapshots and activation consistency in a separate checkpoint; not R07.'
+product_implementation: NOT_STARTED
+source_changes: false
+migrations_or_version_changes: false
+runtime_tests: NOT_RUN_READ_ONLY_AUDIT
+local_worktree_status: UNKNOWN_NO_LOCAL_CHECKOUT
+other_machine_uncommitted_state: UNKNOWN
+ci_final_sha: NOT_VERIFIED
+release_gate: LOCKED_IMPLEMENTATION
+release_actions: []
+```
+
+R06.c is a unit/semantics audit, **not** a new monetary rule decision or implementation. R06.d–R06.i are NOT_STARTED at the point of this file's creation. Existing commercial V1 workflows and ledger remain historical and intact.
+
+## Contract arithmetic (binding requirements, not assertions about current implementation)
+
+1. One **whole-Toman Admin wallet**, shared by every mode and Product. `I = initial_funding_toman` must be snapshotted **once at Admin creation** along with actor, timestamp and transaction, even when exactly `I=0`; later grants/reclaims never change `I`, and no historic initial amount may be inferred from the current balance or cumulative top-ups. Price/rate/amount, mode, Owner's Product ID and paid-period/reservation identities require a separate durable transaction/snapshot. The existing legacy traffic/seat balances are preserved, not silently migrated or charged in the new flow.
+2. For nonnegative integer `I`, calculate **integer Toman** limits without binary floating point: `D_default = (I * 5) // 100`, `H = (I * 15) // 100`. Owner may set `D` precisely in `[0,H]` at creation and edit; reject negative/fractional/out-of-range values rather than clamp. For `I=0`, both remain 0 permanently regardless of top-ups. Examples: `I=0 => D/H=0/0`; `I=1 => 0/0`; `I=19 => 0/2`; `I=20 => 1/3`; `I=100 => 5/15`. Validate BigInteger limits before multiplication, changes, and postings.
+3. If `balance<0`, debt is `-balance` (not byte credit). For a **new optional paid purchase/reservation or outbound value transfer**, lock affected wallet rows and accept the **whole amount once** only if `balance_after >= -D` (therefore never cross `-H`, since `D<=H`); at `-D`, reject further positive spending, not zero-cost/non-spending operations. Reducing D below existing debt immediately restricts *new* spend without erasing historic liability. Prior-paid pending activation cannot debit again; Owner top-up, refund, settlement of already-incurred usage and safety operations are distinct and must not be blocked as new purchases. No second Admin byte debit.
+4. If `I>0`, Owner warning when `balance <= I/10`, implementable without rounding as `10*balance <= I`; separately signal transition into negative, reaching `-D`, and emergency `-H`, with rearm/dedupe across top-ups. If `I=0`, percentage warning is **undefined**; balance zero must not imply emergency freeze. In general, **zero balance is not automatically a reason to disconnect previously fully prepaid users**. Emergency is an Admin **login/dashboard-only** state tied to actual debt at H, separate from the explicit Owner subtree-user freeze. Small positive `I` yielding `H=0` also needs tests ensuring zero-debt balance is not misclassified as incurred debt.
+5. USED_TRAFFIC does not pre-debit a selected quota; settle only new real usage with durable User/period/rate snapshot and watermark, even if a late sample pushes balance below `-H`: record actual incurred debt once, incident and promptly fail-closed on new consumption within actual runtime capability. A reset-before-commit periodic Xray poll cannot guarantee a perfect stop at one byte. ALLOCATED_TRAFFIC and USER_CREDIT charge full amount exactly once at create/pending reservation, with no second charge at activation; fixed USER_CREDIT combinations must not multiply by traffic/product/duration again. Trial's exemption is audited later R06.g.
+
+## Inspected live source and precise gaps (pinned starting SHA)
+
+| Source | Observed code | Gap/implementation prerequisite |
+|---|---|---|
+| [`app/db/models.py`](../../../app/db/models.py) `MarzhelpAdminSettings`/`AdminMoneyTransaction`, [`c2f4 monetary migration`](../../../app/db/migrations/versions/c2f4a8d6e913_add_monetary_reseller_billing.py) | Money balance/rate/remainder and ledger signed integer/BigInteger Toman columns exist. The inspected settings, transaction and migration have no explicit immutable `initial_funding_toman`, editable `D`, computed/snapshotted `H`, monetary warning rearm or distinct emergency state; independent byte/seat credits still exist. | Additive state and historical compatibility needed in later R09/R20; never backfill I by guessing a balance, assume database empty, drop columns or report new rules as implemented. |
+| [`app/models/admin.py`](../../../app/models/admin.py), [`app/routers/admin.py`](../../../app/routers/admin.py), [`app/models/admin_hierarchy.py`](../../../app/models/admin_hierarchy.py) | `ManagedAdminCreate.initial_money_credit_toman` is >=0 (zero accepted as input), but create route calls `money_billing.transfer_money` **only if truthy** and audits a nonzero transfer; no persistent I=0 event/snapshot or D editor. Separate `HierarchyChildCreate.initial_credit` is legacy >=1 byte/seat resource, not initial Toman. Existing `MarzhelpAdminPolicy` exposes mutable money balance and a per-GiB legacy rate. | Distinguish input acceptance from actually captured immutable I at creation, including 0; do not mistake absence of a transfer for a durable zero snapshot. Define atomic creation/grant/actor/amount capture at future implementation. |
+| [`app/utils/owner_pricing.py`](../../../app/utils/owner_pricing.py), [`app/utils/money_billing.py`](../../../app/utils/money_billing.py) | V1 Form monetary quote uses `ceil(bytes * global_owner_price * duration_basis_points / (GiB*10000))`; preset float input becomes `round(multiplier*10000)`. USED_TRAFFIC settlement uses `divmod(remainder + admin_bytes*current_admin_price, GiB)` (integer floor plus carried numerator). Plan charges use stored whole-Toman plan/override prices. **These are different existing semantics**, neither the requested Product multiplier nor eight Product-keyed fixed prices. | No repository-wide single evidenced Product money-rounding convention. Preserve legacy formulas, use deterministic Decimal/integer math, specify per-operation rounding/carry and multiplication-order tests in R09.e–i **before** implementing new Product quotes; do not invent an already-approved rounding mode or retrospectively reprice paid periods. Default Product multiplier=1.00, positive finite; new multiplier rounding remains to be specified/tested. |
+| [`app/utils/money_billing.py`](../../../app/utils/money_billing.py) transfer, Plan, Form and settlement; [`app/jobs/record_usages.py`](../../../app/jobs/record_usages.py) | Outbound money transfer, Plan and Form purchase lock/check `balance_after >=0`, disallowing the B18 permitted D debt. Usage settlement can push negative without D/H and triggers `suspend_admin(include_subtree=True)` at `balance<=0`, with core restart in producer. Aggregation is per Admin, priced at mutable setting with hourly mutable ledger and no verified User/period watermark. | Centralized debit guard `>=-D`, exact amount and owner safety exceptions needed; distinguish automatic Admin emergency from explicit Owner user freeze; zero balance must not cut already-paid users; always record late real traffic, alert/fail-closed but do not claim exact-byte cutoff. See R09.a–d, R20, R22/R23, R21. |
+| [`tests/test_stage3_billing_modes.py`](../../../tests/test_stage3_billing_modes.py), [`tests/test_monetary_billing_migration.py`](../../../tests/test_monetary_billing_migration.py), prior [R04](product-first-r04-financial-checkpoint.md) | Prior tests cover V1 price floors, traffic-byte refunds and migration tokens, not executed on this turn. No R06.c runtime test run. | Later focused tests: `I={0,1,19,20,100}`, boundary whole-Toman rounding, `D=0/H`, D edits under debt, `balance={I, I/10,0,-D,-H}` with zero/small-I exceptions, purchase exact limit vs one Toman beyond, parallel purchases/transfers, initial-zero then top-up, sample past H, paid-pending activation while restricted, double debit/idempotency/ledger. |
+
+## Stop and verification contract
+
+`R06.c = DONE_AUDIT_ONLY`; this does not PASS financial acceptance. The only immediate authorized next work under this **specific** two-substep user instruction is R06.d in a **separate commit** after GitHub readback, source-vs-commit diff and HEAD/CI observation. Tests and live DB not run; environment has no local Git checkout and cannot inspect uncommitted work on another machine. No code, migration, VERSION, main, PR, merge, tag, release, workflow dispatch or deployment. Release remains LOCKED.
