@@ -18,11 +18,11 @@ worktree_status_at_start: UNKNOWN_NO_LOCAL_CLONE
 preexisting_changes: UNKNOWN_NO_LOCAL_WORKTREE
 files_modified_by_agent:
   - docs/exec-plans/active/reseller-billing-roadmap.md
-current_step: R01
+current_step: R01C
 current_substep: null
-state: DONE
+state: DONE_AUDIT_ONLY
 last_touched_file: docs/exec-plans/active/reseller-billing-roadmap.md
-last_touched_hunks: [initial_ledger]
+last_touched_hunks: [R01C_recovery, R01C_stage_register, R01C_safe_ci_audit]
 repo_instruction_conflict: UNRESOLVED_FOR_R05
 repo_instruction_resolution_evidence: 'User explicitly approved replacing Plan with Product in new product/business flows; whether active AGENTS.md/V1_SCOPE.md can be minimally edited is to be documented precisely in R05 before conflicting changes.'
 product_prerequisites: R07_R08_R09_PENDING
@@ -30,13 +30,14 @@ release_gate: LOCKED_IMPLEMENTATION
 user_test_confirmation: null
 final_release_sha: null
 release_actions_performed: []
-ci_gate: NOT_EVALUATED_FOR_NEW_PRODUCT_IMPLEMENTATION
+ci_gate: NOT_VERIFIED_NEW_PRODUCT_IMPLEMENTATION
+branch_protection_observation: 'main metadata protected=false; protection details returned 403; repo rulesets including parent rulesets empty; no required checks demonstrably enforced'
 last_step_github_check:
-  sha: null
-  status: UNKNOWN
-  source: 'R01C must determine stage-required checks on exact future SHA; past release checks are not evidence for new code.'
-next_exact_action: 'R01C: inspect actual branch/check protections and six workflow triggers; identify stage-required and final-required nonpublishing checks, record findings only; do not dispatch release.'
-recovery_action: 'Read this file on the actual branch, inspect live branch/main HEAD, status/diff if local checkout exists, and the most recent touched hunk before doing R01C.'
+  sha: 014abc104e4899961dfd8404954676b1522fb54d
+  status: NO_CHECK_RUNS_OR_STATUSES_FOR_R01_HEAD
+  source: 'GitHub exact-SHA check-runs/status and branch Actions run list, queried before R01C documentation commit; verify the new HEAD separately.'
+next_exact_action: 'R02: map the actual Owner/Admin billing-mode definitions, third-mode enum, admin-creation settings and legacy compatibility on the current branch SHA; record evidence without altering Product business code.'
+recovery_action: 'Fetch this file at branch HEAD and compare with main; confirm R01C docs-only diff, read the current hunk, check SHA-specific CI honestly, then execute only R02.'
 ```
 
 ## B. R00 observation / provenance (read-only, not implementation)
@@ -45,7 +46,7 @@ recovery_action: 'Read this file on the actual branch, inspect live branch/main 
 - Active instruction files actually found: [`AGENTS.md`](https://github.com/smorad3363/Marzban-v1/blob/main/AGENTS.md), [`docs/CODEX/V1_SCOPE.md`](https://github.com/smorad3363/Marzban-v1/blob/main/docs/CODEX/V1_SCOPE.md), [`docs/CODEX/STATE.md`](https://github.com/smorad3363/Marzban-v1/blob/main/docs/CODEX/STATE.md). The separately named `AGENTS(7).md` attachment is unavailable and was not assumed to have been read. The older `docs/legacy-v0/` is history only.
 - Conflict: `AGENTS.md` and `V1_SCOPE.md` say Plan owns commercial entitlement and Access Group owns network. New B01 contract says Product replaces Plan **in new flows**, with Owner-controlled inbound/host, multiplier, lifecycle and authorization. Preserve existing historical Plan records and migration compatibility; do not silently weaken Access Group authorization. User explicitly chose new Product behavior. R05 must reconcile exact instruction changes before conflicting product-code edits.
 - Actual code evidence: [`app/utils/admin_billing.py`](https://github.com/smorad3363/Marzban-v1/blob/main/app/utils/admin_billing.py) has USED_TRAFFIC / ALLOCATED_TRAFFIC / USER_CREDIT and also SEAT_CREDIT / LEGACY_COMPAT; model-three semantics remain R02/R06 work. [`app/utils/money_billing.py`](https://github.com/smorad3363/Marzban-v1/blob/main/app/utils/money_billing.py) contains monetary wallet charges, plan purchases, `charge_form_purchase` and `settle_used_traffic`; existing settlement uses real usage byte deltas, price per GiB, remainder, admin wallet deltas and hourly ledger buckets. The upstream usage producer / per-user watermark and retries have **not** yet been verified; do not label no-double-charge as tested. [`app/utils/access_groups.py`](https://github.com/smorad3363/Marzban-v1/blob/main/app/utils/access_groups.py) holds topology/access enforcement. [`app/utils/owner_pricing.py`](https://github.com/smorad3363/Marzban-v1/blob/main/app/utils/owner_pricing.py) holds legacy form pricing. Existing models and tests are present under `app/db/models.py`, `app/models/`, `app/db/migrations/versions/`, and `tests/`; applicability to Product remains unverified.
-- Workflow inventory observed: `.github/workflows/{branch-hygiene,build,checkpoints,dashboard-ui-contracts,validate-v1-installer,verify-v1-image}.yml`. `build.yml` publishes on version-tag push or manual dispatch, not a normal feature-branch push. `checkpoints.yml` targets PR/main, dashboard UI workflow has path filters, installer/image validation are manual, branch-hygiene targets merged PR/main. No rulesets were returned, and `main` metadata reports unprotected: **the release lock is a process rule, not a GitHub-enforced protection**. R01C must verify actual required checks and new-branch behavior, not assume old CI is green for new work.
+- Workflow inventory observed: `.github/workflows/{branch-hygiene,build,checkpoints,dashboard-ui-contracts,validate-v1-installer,verify-v1-image}.yml`. `build.yml` publishes on version-tag push or manual dispatch, not a normal feature-branch push. `checkpoints.yml` targets PR/main, dashboard UI workflow has path filters, installer/image validation are manual, branch-hygiene targets merged PR/main. No rulesets were returned, and `main` metadata reports unprotected: **the release lock is a process rule, not a GitHub-enforced protection**. R01C verified triggers and safe check strategy in section G.
 - Local `git clone`/`git status --short`/`git diff` cannot be checked here: no checked-out repository is present and shell DNS cannot resolve github.com; authenticated GitHub connector reads/writes remote refs only. Pre-existing uncommitted work on someone else's machine is therefore UNKNOWN, not clean. Remote branch `docs/product-first-v3-1-r01-ledger` was created from the exact main baseline after verifying its name did not exist. The ledger path did not exist on main.
 - R00 outcome: initial read-only reconnaissance completed with the above explicitly bounded UNKNOWN areas. No Product implementation or regression tests were run or asserted. The historical v1.1.9 work is not counted as any completed Product-first stage.
 
@@ -64,7 +65,7 @@ recovery_action: 'Read this file on the actual branch, inspect live branch/main 
 - Planned atomic substeps, only executed in their own future turns: `R07.a` Product model/migration/tests; `R07.b` Owner create/edit and inbound/host; `R07.c` archive/restore with historical references; `R07.d` disconnect old Plan commercial fields in new flows. `R08.a` authorization tests; `R08.b` all-mode policy; `R08.c` explicit admin-ID policy and UI. `R09.a` duration boundaries/traffic formulas; `R09.b` Owner Product multiplier; `R09.c` Admin base GiB pricing; `R09.d` independent eight-price seat table/API; `R09.e` historical snapshots/ledger tests. Split further if needed and never claim parent DONE until all substeps truly verified.
 - `R05` conflict gate: specific contradictory instructions at `AGENTS.md` (Plan owns entitlement), `docs/CODEX/V1_SCOPE.md` (Plan scope), and historic `docs/CODEX/STATE.md`; **business decision approved** in chat, but any edit to active repository instructions must first be scoped and its authority confirmed/documented in R05. Do not edit contradictory implementation before that. Missing `AGENTS(7).md` must not be fabricated.
 - Release contract: target `1.1.20` is **not** the current app version; leave VERSION, release notes/tag, GHCR, deployment, dispatch and published aliases alone. No merge into a publishing path. `LOCKED_IMPLEMENTATION` until all 47 stages including R45 and all substeps genuinely DONE, same-SHA CI verified, user explicitly reports their own test succeeded, and a distinct later release command is given. No implicit user-test approval.
-- At this docs-only R01 checkpoint: targeted product tests `NOT_RUN` (no product code changed); `git diff --check` on remote tree `NOT_AVAILABLE_NO_LOCAL_CLONE`; validate by readback and GitHub compare for the exact branch commit. GitHub status for baseline cannot be transferred to the new SHA. R01C must assess required vs optional checks and branch rules; do not run release workflows.
+- At R01C: targeted Product tests `NOT_RUN`; `git diff --check` `NOT_AVAILABLE_NO_LOCAL_CLONE`; GitHub exact-SHA check observations and safe-gate audit are in G. New Product implementation checks cannot be inherited from v1.1.9 or from a docs-only commit.
 
 ## E. Full stage register (47 permanent IDs)
 
@@ -73,8 +74,8 @@ recovery_action: 'Read this file on the actual branch, inspect live branch/main 
 | ID | Subject | Status | Evidence / next acceptance |
 |---|---|---|---|
 | R00 | Repository reconnaissance | DONE (bounded) | GitHub main/tag/AGENTS/STATE, workflow inventory, billing/access/models; uncommitted work UNKNOWN; see B. |
-| R01 | Durable execution ledger | DONE (docs-only) | This new file on isolated branch; readback/compare checkpoint required. |
-| R01C | Safe GitHub checks | PENDING | Inspect actual protection, required/optional CI, trigger safety; no publishing. |
+| R01 | Durable execution ledger | DONE (docs-only) | One added ledger file on isolated branch; confirmed readback and compare against main on exact R01 SHA. |
+| R01C | Safe GitHub checks | DONE (audit only) | Actual branch rules, triggers and gate matrix documented in G; checks are NOT_RUN and not enforced by GitHub. |
 | R02 | Billing-mode/owner map | PENDING | Inspect real third-mode enum, owner/admin create settings, legacy policy and related tests. |
 | R03 | Lifecycle map | PENDING | Trace create/edit/reserve/delete/activation/reset/job/UI routes and tests. |
 | R04 | Financial map | PENDING | Trace monetary debit/refund, watermark, price snapshot, rounding, ledger/transactions. |
@@ -123,8 +124,43 @@ recovery_action: 'Read this file on the actual branch, inspect live branch/main 
 ## F. Recovery checklist / exact next task
 
 1. Fetch this exact file and branch head, then compare it with `main`. Inspect any existing local working-tree status/diff if access becomes possible; do not assume clean based on GitHub.
-2. Confirm R01 docs-only commit/readback and branch diff: exactly one new ledger file, no product code, version, tag, workflow or release changes. If unexpected diff, mark `NEEDS_REVIEW` and stop.
-3. Execute **only R01C** in the next user turn: discover truly required GitHub checks and workflow triggers; distinguish stage and final gates; record unknown permissions/branch protection. If a test workflow is missing, plan isolated nonpublishing addition as its own future substep rather than editing it in the same turn.
-4. Then stop and request explicit continuation. Never equate successful historical v1.1.9 CI with new Product implementation tests.
+2. Confirm R01C documentation checkpoint: the only branch difference against `main` must remain this ledger; do not conflate uncommitted local status with a remote comparison. Review G and the last commit and check exact-SHA CI before starting R02.
+3. Execute **only R02** next turn: map actual billing-mode/Owner/Admin configuration and model-three semantics with file/line evidence. Do not edit implementation or run a release workflow as part of R02 reconnaissance.
+4. Stop at the end of R02 with a committed checkpoint and precise next stage, or explicitly report a blocker. Never equate successful historical v1.1.9 CI with new Product implementation tests.
 
-Last completed step: `R01` (ledger only). Next ID: `R01C`. No user test, release action, tag, merge or deployment authorized.
+Last completed step: `R01C` (safe-check audit; no CI run). Next ID: `R02`. No user test, release action, tag, merge or deployment authorized.
+
+## G. R01C — exact GitHub protections, workflow triggers and safe CI gates (2026-09-19)
+
+### G1. Direct observations at R01 head
+
+- `main` HEAD = `14e5c9032e5f94f783f34bde391bba318a6de925`; R01 branch HEAD = `014abc104e4899961dfd8404954676b1522fb54d`; GitHub compare reports exactly one added documentation file and no modifications to app/workflow/version. Confirm HEAD again after this R01C commit.
+- `GET /branches/main` has `protected: false`, `protection.enabled: false`, `required_status_checks.enforcement_level: off`, empty contexts/checks. `GET /rulesets?includes_parents=true` returned `[]`. Direct `GET /branches/main/protection` returned `403 Resource not accessible by integration`; do not assert all administrative policy details are known. **No enforced required check can be demonstrated on this connection**; treat review/check gates as human-controlled and do not merge automatically.
+- R01 SHA GitHub check-runs = `0`, commit statuses = `[]`, branch workflow-runs = `0`. This is `NOT_RUN`, not `PASS`; the CI history for `v1.1.9` is not transferable to this SHA. On final code SHA insist on actual run details and job conclusions, not an aggregate green badge with skipped backend.
+
+### G2. All six workflows as actually read at R01 SHA
+
+| Workflow | Automatic triggers | Safe pre-release usage and caution |
+|---|---|---|
+| `.github/workflows/checkpoints.yml` (`CI Checkpoints`) | `pull_request` targeting `main`; `push` to `main`; `workflow_dispatch`. No automatic feature-branch push. | Nonpublishing: permissions `contents:read`; on PR or manual dispatch runs backend MySQL `8.0` and `26.7.0`, migrations/Stage 8–11/backup/rollback, dashboard build/parity, packaging/8→26 restore, local-only image build/runtime, Panel-to-Node mTLS. On `main` push the backend job is deliberately SKIPPED; packaging PR/dispatch-only steps are SKIPPED. Therefore main-push success is insufficient for final release gate. |
+| `.github/workflows/dashboard-ui-contracts.yml` (`Dashboard UI Contracts`) | `pull_request` to `main` or `push` to `main` **only when** dashboard source/scripts/build or workflow path matches; `workflow_dispatch`. | Nonpublishing read-only workflow. Runs Stage 1 UI, authenticated-autofill, typecheck/build and committed bundle parity. Backend-only/docs-only PR does not automatically trigger it; for final gate obtain a head-SHA verified run when needed, or add a separately authorized nonpublishing gate later. |
+| `.github/workflows/build.yml` (`Release`) | `push` of `v*` tag except `v1.0.0`; manual `workflow_dispatch` defaults `git_ref: main`, `image_tag: latest`, `tests_only: false`. | **DANGEROUS/PUBLISHING**: writes content/packages, pushes GHCR multiarch images and tag/latest; for tagged ref may create a GitHub Release. `tests_only: true` skips entire publish job and does not provide a test substitute. Never dispatch this workflow for development, including a proposed testing-only invocation; do not create version tags. |
+| `.github/workflows/branch-hygiene.yml` (`Branch Hygiene`) | PR to `main` when closed; `push` to `main`. | Contents-write workflow automatically DELETES merged PR head branches from same repo (except two hardcoded names). Main push has a special old-commit-message cleanup path. Avoid merging working PR before explicit authorization and durable state; do not assume merged work branch survives. |
+| `.github/workflows/validate-v1-installer.yml` (`Validate published V1 installer`) | `workflow_dispatch` only, mandatory published digest/source SHA/release tag. | Nonpublishing validation but **post-publication** source/image validation; not a replacement for pre-release checks and not run now. |
+| `.github/workflows/verify-v1-image.yml` (`Verify published V1 image`) | `workflow_dispatch` only, mandatory digest/source SHA/release tag. | Nonpublishing verification of an already-published tagged image, manifest and runtime; not pre-release evidence and not run now. |
+
+### G3. Required project gates versus actually enforced GitHub settings
+
+1. **Docs-only / R01C:** prove remote compare changes only ledger; fetch commit and file readback; inspect check-runs/status on precise branch SHA. Running a product test for unchanged code is optional here; record `NOT_RUN`, never `PASS`.
+2. **Per Product-code stage before claiming DONE:** test exact touched behavior locally or under an explicitly nonpublishing test workflow, examine exact diff, migration or UI contract as appropriate, and write results into this ledger. `git diff --check` is `NOT_AVAILABLE` until a local worktree is accessible; do not claim it passed.
+3. **PR/integration:** only a nonmerged PR targeting main triggers full `CI Checkpoints` automatically. Require backend matrix both MySQL versions with all backend/migration/backup/rollback jobs genuinely `success`, dashboard build/parity and packaging including Docker and mTLS genuinely `success`, no failure/cancelled/skipped critical job. Inspect the tested commit identity: PR workflows may build a synthetic merge ref; a green result on that ref is not automatically a green result on exact source head.
+4. **Dashboard-specific gate:** require separate `Dashboard UI Contracts` Stage 1/autofill/typecheck/build/parity when dashboard changed and for final release readiness. Workflow path filters can omit backend/docs-only PRs. If no qualifying exact-head check exists, arrange a separately approved nonpublishing run or workflow update; do not substitute an old run, a skipped check, or a Release run.
+5. **Final project gate:** all 47 IDs/substeps DONE; current final source SHA verified; required nonpublishing checks on matching SHA/content all successful with no skipped mandatory matrix; migrations/backups/rollback/installer/Node/financial regression confirmed; check full baseline diff; user explicitly tests and approves, then gives a *different, explicit* release command. `main` has no demonstrated branch protection, so this is an operational lock until protection can be separately configured/verified. Never use the Release workflow as a test tool.
+6. **No configuration mutations during R01C:** no branch rules, workflow changes, PR, tag, release or dispatch performed. If stronger enforced CI or guaranteed exact-head checks are needed, plan a separate authorized isolated docs/workflow step; verify that any workflow addition cannot publish and runs on the intended SHA.
+
+### G4. R01C checkpoint test and evidence status
+
+- Readback target: this file on `docs/product-first-v3-1-r01-ledger`, blob previously `a35803665810a683ba118a85a135dbd72cadaa99`; after commit, verify full new blob and the comparison contains **only** this Markdown file, main unchanged.
+- Product test `NOT_RUN`; GitHub checks for prior `014abc104e4899961dfd8404954676b1522fb54d`: `0` check-runs / `[]` statuses / `0` branch workflow-runs. Check new documentation commit SHA separately; no passing CI claimed.
+- Evidence on fixed source revision: `.github/workflows/checkpoints.yml`, `dashboard-ui-contracts.yml`, `build.yml`, `branch-hygiene.yml`, `validate-v1-installer.yml`, `verify-v1-image.yml`; GitHub branch metadata, rulesets, failed protection access, exact-SHA check-runs and compare.
+- Resume at **R02** only after confirming this checkpoint; do not run or dispatch `Release`.
