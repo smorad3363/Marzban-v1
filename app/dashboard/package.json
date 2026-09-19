@@ -8,6 +8,7 @@
     "test:access-groups": "node scripts/test-access-groups.cjs",
     "test:admin-hierarchy": "node scripts/test-admin-hierarchy-authorization.cjs",
     "test:admin-ux": "node scripts/test-admin-ux.cjs",
+    "test:products": "node scripts/test-product-ui.cjs",
     "test:v1.1.2": "node scripts/test-v1.1.2-regressions.cjs",
     "test:v1.1.3": "node scripts/test-v1.1.3-regressions.cjs",
     "preview": "vite preview --port 3000",

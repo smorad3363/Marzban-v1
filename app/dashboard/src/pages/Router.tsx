@@ -13,6 +13,7 @@ import { Login } from "./Login";
 import { AuditLogs } from "./AuditLogs";
 import { DeviceLimits } from "./DeviceLimits";
 import { Plans } from "./Plans";
+import { Products } from "./Products";
 import { Settings } from "./Settings";
 
 const fetchAdminLoader = () => fetch("/admin", {
@@ -62,6 +63,7 @@ export const router = createHashRouter([
   { path: "/admins/", element: <Admins />, errorElement: <RouteError />, loader: fetchAdminLoader },
   { path: "/device-limits/", element: <DeviceLimits />, errorElement: <RouteError />, loader: fetchAdminLoader },
   { path: "/plans/", element: <PlanManagerOnly><Plans /></PlanManagerOnly>, errorElement: <RouteError />, loader: fetchAdminLoader },
+  { path: "/products/", element: <OwnerOnly><Products /></OwnerOnly>, errorElement: <RouteError />, loader: fetchAdminLoader },
   { path: "/settings/", element: <OwnerOnly><Settings /></OwnerOnly>, errorElement: <RouteError />, loader: fetchAdminLoader },
   { path: "/audit-logs/", element: <AuditLogs />, errorElement: <RouteError />, loader: fetchAdminLoader },
 ]);

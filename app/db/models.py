@@ -13,6 +13,7 @@ from sqlalchemy import (
     Enum,
     Float,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     Numeric,
@@ -644,6 +645,64 @@ class AccessGroup(Base):
     archived_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, nullable=False, default=utc_now_naive)
     updated_at = Column(DateTime, nullable=False, default=utc_now_naive, onupdate=utc_now_naive)
+
+
+class Product(Base):
+    """Owner-defined identity and live network policy for new Product flows."""
+
+    __tablename__ = "products"
+    __table_args__ = (
+        Index("ix_products_owner_active", "owner_admin_id", "archived_at", "id"),
+        UniqueConstraint("owner_admin_id", "name", name="uq_products_owner_name"),
+        CheckConstraint(
+            "traffic_price_multiplier > 0",
+            name="ck_products_traffic_price_multiplier_positive",
+        ),
+    )
+
+    id = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True)
+    owner_admin_id = Column(Integer, ForeignKey("admins.id", ondelete="RESTRICT"), nullable=False)
+    name = Column(String(128), nullable=False)
+    description = Column(String(512), nullable=True)
+    traffic_price_multiplier = Column(
+        Numeric(18, 6),
+        nullable=False,
+        default=1,
+        server_default="1",
+    )
+    archived_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=utc_now_naive)
+    updated_at = Column(DateTime, nullable=False, default=utc_now_naive, onupdate=utc_now_naive)
+
+
+class ProductInbound(Base):
+    __tablename__ = "product_inbounds"
+
+    product_id = Column(
+        BigInteger().with_variant(Integer, "sqlite"),
+        ForeignKey("products.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    inbound_tag = Column(String(256), primary_key=True)
+
+
+class ProductHost(Base):
+    __tablename__ = "product_hosts"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["product_id", "inbound_tag"],
+            ["product_inbounds.product_id", "product_inbounds.inbound_tag"],
+            ondelete="CASCADE",
+            name="fk_product_hosts_product_inbound",
+        ),
+        Index("ix_product_hosts_host_product", "host_id", "product_id"),
+    )
+
+    product_id = Column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True)
+    inbound_tag = Column(String(256), primary_key=True)
+    # Deliberately no FK to mutable ProxyHost rows. A missing/disabled Host must
+    # keep the Product identity intact and make runtime validation fail closed.
+    host_id = Column(Integer, primary_key=True)
 
 
 class AccessGroupInbound(Base):

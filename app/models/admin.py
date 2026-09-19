@@ -146,6 +146,8 @@ class Admin(BaseModel):
             return "account:read"
         if path.startswith("/api/user-plans"):
             return "plans:write" if write else "plans:read"
+        if path.startswith("/api/products"):
+            return "products:write" if write else "products:read"
         if path.startswith("/api/user") or path.startswith("/api/users"):
             return "users:write" if write else "users:read"
         if path.startswith("/api/admin-management") or path.startswith("/api/admins"):

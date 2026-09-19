@@ -82,6 +82,8 @@ ALLOWED_API_SCOPES = frozenset(
         "admins:read",
         "plans:read",
         "plans:write",
+        "products:read",
+        "products:write",
         "audit:read",
     }
 )

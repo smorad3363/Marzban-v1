@@ -202,6 +202,19 @@ export type AccessGroup = {
   active_user_count: number;
 };
 
+export type Product = {
+  id: number;
+  owner_admin_id: number;
+  name: string;
+  description: string | null;
+  traffic_price_multiplier: string | number;
+  inbounds: string[];
+  hosts: Record<string, number[]>;
+  archived_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type UserPlan = {
   id: number;
   owner_admin_id: number;
