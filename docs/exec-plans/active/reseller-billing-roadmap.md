@@ -26,11 +26,13 @@ files_modified_by_agent:
   - tests/test_product_catalog.py
   - tests/test_product_owner_lifecycle.py
   - docs/exec-plans/active/product-first-r07-completion-checkpoint.md
-current_step: R07
-current_substep: R07.d
-state: DONE_LOCAL_VERIFIED
-last_touched_file: docs/exec-plans/active/product-first-r07-completion-checkpoint.md
-last_touched_hunks: [R07_product_schema, R07_owner_api, R07_archive_restore, R07_owner_ui]
+  - tests/test_product_assignment_authorization.py
+  - docs/exec-plans/active/product-first-r08a-authorization-tests-checkpoint.md
+current_step: R08
+current_substep: R08.a
+state: IN_PROGRESS_RED_TESTS_COMPLETE
+last_touched_file: docs/exec-plans/active/product-first-r08a-authorization-tests-checkpoint.md
+last_touched_hunks: [R08a_product_assignment_authorization_tests]
 repo_instruction_conflict: RESOLVED_PRODUCT_FIRST_NEW_FLOWS
 repo_instruction_resolution_evidence: 'R05a amended AGENTS.md for Product-first new flows; on 2026-09-19 the user further confirmed fresh-install-only and accepted prior-data loss, now recorded without dropping still-referenced legacy tables prematurely.'
 product_prerequisites: R07_DONE_R08_R09_PENDING
@@ -38,14 +40,14 @@ release_gate: LOCKED_IMPLEMENTATION
 user_test_confirmation: null
 final_release_sha: null
 release_actions_performed: []
-ci_gate: LOCAL_R07_PASS_REMOTE_NOT_RUN
+ci_gate: R08A_EXPECTED_RED_LOCAL_REMOTE_NOT_RUN
 branch_protection_observation: 'main metadata protected=false; protection details returned 403; repo rulesets including parent rulesets empty; no required checks demonstrably enforced'
 last_step_github_check:
   sha: bd650070011151eb88c2e2c5e5db783b58ac96e8
   status: NO_CHECK_RUNS_OR_STATUSES_FOR_R01C_HEAD
   source: 'GitHub exact-SHA check-runs/status observed at previous R01C checkpoint; after this R02 docs commit, query checks on the new HEAD separately.'
-next_exact_action: 'R08.a: add Product assignment and authorization tests without changing main, VERSION, release workflows, tags, or deployment.'
-recovery_action: 'Fetch this branch at the R07 completion SHA, read product-first-r07-completion-checkpoint.md, confirm the four R07 commits and clean worktree, then start only R08.a.'
+next_exact_action: 'After separate user authorization, execute only R08.b: implement the minimum additive Product billing-mode access policy and shared fail-closed selection service required by the R08.a RED tests. Do not start R08.c.'
+recovery_action: 'Fetch the latest branch HEAD, read product-first-r08a-authorization-tests-checkpoint.md, confirm R08.a has 11 intentional RED tests and no production implementation, then wait for explicit R08.b authorization.'
 ```
 
 ## B. R00 observation / provenance (read-only, not implementation)
@@ -90,7 +92,7 @@ recovery_action: 'Fetch this branch at the R07 completion SHA, read product-firs
 | R05 | Product/network/UI and instruction conflict | DONE (audit/instruction) | Network ownership and UI paths audited; Product-first amendment recorded in R05/R05a. |
 | R06 | Units and semantics | DONE (audit/decisions) | R06.a–i checkpoints record time, byte, money, network, reservation, user-credit, Trial, freeze/restore, and migration decisions. |
 | R07 | Product model and Owner lifecycle | DONE (local verified) | R07.a–d: independent schema, owner-only API, safe archive/restore, Owner UI; disposable fresh-DB migration and 41 focused backend tests passed; see R07 completion checkpoint. |
-| R08 | Product assignment and authorization | PENDING | Complete R08.a–c; backend/UI tests for mode/admin grants and future admins. |
+| R08 | Product assignment and authorization | IN PROGRESS (R08.a RED tests DONE) | R08.a defines 11 backend authorization tests; R08.b mode policy and R08.c explicit-ID policy/UI remain pending. |
 | R09 | Product/admin/seat pricing | PENDING | Complete R09.a–e; formula boundaries, independent seat prices and historical ledger. |
 | R10 | Usage-mode creation tests | PENDING | Positive/unlimited user quota and arbitrary day tests; no upfront debit. |
 | R11 | Usage-mode backend | PENDING | Product-bound create, access, snapshot, no Plan in new path. |
@@ -133,10 +135,10 @@ recovery_action: 'Fetch this branch at the R07 completion SHA, read product-firs
 
 1. Fetch this exact branch head and read `product-first-r07-completion-checkpoint.md`; compare the R07 diff against its recorded pre-stage SHA.
 2. Confirm the four atomic R07 implementation commits plus the final test/checkpoint commit, and verify the worktree is clean before new work.
-3. Execute **only R08.a** next: Product-assignment and authorization tests. Fresh-install is the accepted deployment target, but do not drop still-referenced legacy tables until their runtime paths are replaced and a dedicated schema-cleanup test exists.
+3. R08.a RED tests are complete. After separate user authorization, execute **only R08.b**: minimal additive billing-mode Product assignment and shared fail-closed authorization. Fresh-install is the accepted deployment target, but do not drop still-referenced legacy tables until their runtime paths are replaced and a dedicated schema-cleanup test exists.
 4. Continue to keep `main`, VERSION, tags, release workflows, deployment, and publication untouched.
 
-Last completed step: `R07` (Product model and Owner lifecycle; locally verified). Next ID: `R08`. No user test, release action, tag, merge or deployment authorized.
+Last completed substep: `R08.a` (Product assignment and authorization RED tests). Next exact substep: `R08.b`, only after separate authorization. No user test, release action, tag, merge or deployment authorized.
 
 ## G. R01C — exact GitHub protections, workflow triggers and safe CI gates (2026-09-19)
 
