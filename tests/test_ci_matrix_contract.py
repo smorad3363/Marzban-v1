@@ -46,6 +46,8 @@ def test_checkpoint_matrix_keeps_migration_and_current_backup_checks():
     text = _read(CHECKPOINTS_WORKFLOW)
     assert "Verify MySQL migrations and partial-DDL recovery" in text
     assert "Verify backup checksum and restore" in text
+    # Both database versions remain supported for current-version data.
+    assert "Verify 8.0 logical dump and 26.7.0 restore" in text
 
 
 def test_dashboard_source_build_parity_is_enforced_in_permanent_workflows():

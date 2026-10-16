@@ -5,6 +5,8 @@ tags:
   - decisions
 ---
 
+> **Historical reference only.** This document records an earlier product or implementation stage. Its role names, version targets, resume commands and authorization rules are not current instructions. Start from [AGENTS](../../../AGENTS.md) and [current state](../../STATE.md); historical test results are not evidence for the current release.
+
 # Decisions
 
 - Final release upload accepts a complete ZIP or one ordered split set through the same canonical archive validator. New Telegram part filenames carry total count and full-archive SHA-256; legacy numeric suffixes remain supported only when the reconstructed ZIP/member checksums validate. Temporary normalization never modifies retained backups. Online restoration remains disabled; release recovery procedures must stop writers and preserve source data.
