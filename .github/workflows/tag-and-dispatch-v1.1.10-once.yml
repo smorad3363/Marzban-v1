@@ -1,0 +1,43 @@
+name: Tag and Dispatch v1.1.10 Once
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - docs/RELEASE_NOTES_v1.1.10.md
+permissions:
+  contents: write
+  actions: write
+jobs:
+  tag-and-dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify new immutable source and release surfaces
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(tr -d '[:space:]' < VERSION)" = "1.1.10"
+          grep -Fx '__version__ = "1.1.10"' app/__init__.py
+          grep -Fx 'CLI_RELEASE_VERSION="v1.1.10"' scripts/marzban.sh
+          grep -Fq 'ghcr.io/smorad3363/marzban-v1:v1.1.10' docker-compose.yml
+          test -s docs/RELEASE_NOTES_v1.1.10.md
+          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
+          git fetch --tags origin
+          if git show-ref --verify --quiet refs/tags/v1.1.10; then
+            echo 'Tag already exists: refusing to recreate or move v1.1.10' >&2
+            exit 1
+          fi
+      - name: Create tag once and start canonical Release workflow
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git tag -a v1.1.10 "${GITHUB_SHA}" -m 'Marzban v1.1.10 maintenance release'
+          git push origin refs/tags/v1.1.10
+          gh workflow run build.yml --ref main -f git_ref=v1.1.10 -f image_tag=v1.1.10 -f tests_only=false
