@@ -1,4 +1,4 @@
-V1 references: [PROJECT](docs/PROJECT.md) | [STATE](docs/STATE.md) | [ROADMAP](docs/ROADMAP.md) | [TESTING](docs/TESTING.md) | [RELEASE](docs/RELEASE.md). v1.1.10 remains a release candidate until published.
+V1 references: [PROJECT](docs/PROJECT.md) | [STATE](docs/STATE.md) | [ROADMAP](docs/ROADMAP.md) | [TESTING](docs/TESTING.md) | [RELEASE](docs/RELEASE.md). Latest verified release: [v1.1.10](https://github.com/smorad3363/Marzban-v1/releases/tag/v1.1.10) (2026-10-16).
 
 <p align="center">
   <a href="https://github.com/gozargah/marzban" target="_blank" rel="noopener noreferrer">
