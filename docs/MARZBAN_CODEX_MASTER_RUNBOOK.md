@@ -1,3 +1,5 @@
+> **Historical reference only.** This document records an earlier product or implementation stage. Its role names, version targets, resume commands and authorization rules are not current instructions. Start from [AGENTS](../AGENTS.md) and [current state](STATE.md); historical test results are not evidence for the current release.
+
 # Marzban v4.9.8 — Codex Master Runbook V3 Compact
 
 > **Purpose:** Single English handoff/runbook for staged Marzban work. It preserves the business requirements, blockers, invariants, test contract, current baseline, and execution ledger while minimizing repeated context.

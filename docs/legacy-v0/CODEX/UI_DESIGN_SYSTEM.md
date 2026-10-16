@@ -7,6 +7,8 @@ tags:
 status: implemented
 ---
 
+> **Historical reference only.** This document records an earlier product or implementation stage. Its role names, version targets, resume commands and authorization rules are not current instructions. Start from [AGENTS](../../../AGENTS.md) and [current state](../../STATE.md); historical test results are not evidence for the current release.
+
 # vNext UI Design System
 
 ## Direction

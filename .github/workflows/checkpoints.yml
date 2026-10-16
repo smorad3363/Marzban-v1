@@ -120,14 +120,6 @@ jobs:
           source_count="$(docker exec -e MYSQL_PWD=root-test-password "${mysql_container}" mysql --user=root --batch --skip-column-names -e 'SELECT COUNT(*) FROM marzban_test.admins')"
           restore_count="$(docker exec -e MYSQL_PWD=root-test-password "${mysql_container}" mysql --user=root --batch --skip-column-names -e 'SELECT COUNT(*) FROM marzban_restore.admins')"
           test "${source_count}" = "${restore_count}"
-      - name: Verify v4.8.0 application rollback compatibility
-        run: >-
-          docker run --rm
-          --add-host host.docker.internal:host-gateway
-          --env SQLALCHEMY_DATABASE_URL=mysql+pymysql://marzban:marzban-test-password@host.docker.internal:3306/marzban_test
-          --entrypoint python
-          ghcr.io/smorad3363/marzban:v4.8.0
-          -c "from app.db import engine; connection = engine.connect(); print(connection.exec_driver_sql('SELECT COUNT(*) FROM admins').scalar()); connection.close()"
 
   dashboard:
     name: dashboard build and parity

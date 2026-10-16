@@ -4,6 +4,8 @@ status: complete
 tags: [marzban-vnext, release]
 ---
 
+> **Historical reference only.** This document records an earlier product or implementation stage. Its role names, version targets, resume commands and authorization rules are not current instructions. Start from [AGENTS](../../../AGENTS.md) and [current state](../../STATE.md); historical test results are not evidence for the current release.
+
 # v5.2.0 operator handoff
 
 - Release commit: `2d8df17b526236c9980ade37d802531dbca0d06f`.

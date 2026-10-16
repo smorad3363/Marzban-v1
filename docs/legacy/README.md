@@ -15,16 +15,22 @@ workspace حذف شدند. این اسناد جایگزین اجرای آن پر
 
 - [مهندسی معکوس MarzHelp](MARZHELP_REVERSE_ENGINEERING.md)
 - [مهندسی معکوس V2IpLimit](V2IPLIMIT_REVERSE_ENGINEERING.md)
-- [ممیزی فایل‌های Marzban](MARZBAN_FILE_HYGIENE_AUDIT.md)
 
-## Runbook تاریخی
+## مرجع فعال و سوابق تاریخی
 
-- [MARZBAN_CODEX_MASTER_RUNBOOK_V2_ARCHIVE](MARZBAN_CODEX_MASTER_RUNBOOK_V2_ARCHIVE.md)
-  یک snapshot دقیق و فقط تاریخی با SHA256
-  `63F4D886F682769CF8964329EFA0ABB16BABB9D826CFA63B61BDB900930B38E5`
-  است؛ authoritative نیست و نباید برای اجرای Stageها استفاده شود.
-- تنها Runbook اجرایی و authoritative پروژه
-  `docs/MARZBAN_CODEX_MASTER_RUNBOOK.md` است.
+مرجع اجرای فعلی [AGENTS.md](../../AGENTS.md) و [وضعیت پروژه](../STATE.md) است.
+Runbookها، گزارش‌های review و تصمیم‌های نسخه‌های قبلی فقط سابقهٔ فنی هستند؛
+دستور ادامه، مجوز انتشار یا نتیجهٔ تست نسخهٔ فعلی محسوب نمی‌شوند.
+[snapshot تاریخی Runbook](MARZBAN_CODEX_MASTER_RUNBOOK_V2_ARCHIVE.md) بدون تغییر
+نسبت به `main@14e5c903` حفظ شده است. checksum نقل‌شده در README قدیمی
+با محتوای فعلی Git مطابقت نداشت و شاهد تمامیت این فایل محسوب نمی‌شود؛
+سابقهٔ Git مرجع مقایسه است. این snapshot مرجع اجرای فعلی نیست.
+
+گزارش ممیزی موقت ۲۰۲۶-۰۸-۲۲ حذف شده است: اندازهٔ cacheها و وضعیت working tree
+آن مربوط به محیطی قدیمی بود. نکات معتبر آن حفظ می‌شوند: قبل از پاک‌سازی، مالکیت
+فایل‌ها و تغییرات محلی را بررسی کنید؛ cache و خروجی build را با دادهٔ کاربر،
+کلیدها، migrationها و fixtureها یکی ندانید؛ پیش از build محلی، `.dockerignore`
+را برای جلوگیری از ورود فایل‌های حساس بررسی کنید. این دستور مجوز حذف داده نیست.
 
 ## مرز عملیاتی
 

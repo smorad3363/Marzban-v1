@@ -1,3 +1,5 @@
+V1 references: [PROJECT](docs/PROJECT.md) | [STATE](docs/STATE.md) | [ROADMAP](docs/ROADMAP.md) | [TESTING](docs/TESTING.md) | [RELEASE](docs/RELEASE.md). v1.1.10 remains a release candidate until published.
+
 <p align="center">
   <a href="https://github.com/gozargah/marzban" target="_blank" rel="noopener noreferrer">
     <picture>

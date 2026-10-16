@@ -1,15 +1,9 @@
-# V1 Execution Rules
+# V1 Active Execution Rules
 
-- Canonical repository: `smorad3363/Marzban-v1`; branch: `main`.
-- Immutable imported baseline: tag `baseline-v1-source`, commit `0c714b182bcfd52d8eb24f1b06aa4f3f14784cf1`.
-- Preserve the mature imported implementation. Make targeted, delta-only changes.
-- Treat `docs/legacy-v0/` as historical reference, never active instructions.
-- Active execution files: this file, `docs/CODEX/STATE.md`, and `docs/CODEX/V1_SCOPE.md`.
-- On resume, read only active execution files, `git status`, recent `git log`, and any current diff; continue from `NEXT EXACT TASK`.
-- Never discard valid uncommitted work automatically.
-- After each coherent checkpoint: run focused tests, update `docs/CODEX/STATE.md`, and commit.
-- Plan owns commercial entitlement only. Access Group owns Nodes, Inbounds, and Hosts.
-- Missing required Access Group must fail closed; never grant broad or legacy Plan network access as fallback.
-- Preserve existing Access Group implementation and historical migrations. Add forward migrations only when required.
-- Preserve installer/release integrity safeguards. Never force-push, move immutable tags, overwrite artifacts, publish secrets, or remove `baseline-v1-source`.
-- Before publication, complete required verification and compare the full diff with `baseline-v1-source`.
+Read in order: `AGENTS.md`, `docs/PROJECT.md`, `docs/STATE.md`, `docs/ROADMAP.md`, `docs/TESTING.md`, `docs/RELEASE.md`. Inspect actual git status, current main, open PRs, tags, Actions and releases before doing work. Preserve uncommitted work. Historic documents (including `docs/legacy-v0/`, old Admin roadmaps and runbooks) are **reference only**, not active instructions.
+
+Owner-approved: **fresh empty MySQL deployment**; no former operational users, reseller Admins or old data. No historic product migration/role backfill/old-release rollback test required. Keep fresh schema Alembic migration chain, current-version data retention, security, billing, authorization, concurrency, backup and restore tests.
+
+Invariant: Plan owns commercial entitlement; Access Group alone owns Nodes, Inbounds and Hosts. Missing necessary Access Group fails closed. Backend enforces Owner/Admin scope, preserves private billing, authoritative usage, current history, idempotent retries and Admin retirement. Preserve Node runtime and Panel-to-Node mTLS. Keep MySQL 8.0 and 26.7.0 matrix; don't change product features or runtime compatibility code under document cleanup.
+
+Each deletion requires KEEP/MERGE/DELETE classification and runtime/build/CI reference check. Preserve LICENSE, attribution, required build assets, fixtures and migrations. `VERIFIED` needs direct evidence, `DOCUMENTED` is a prior claim, `NOT VERIFIED` means incomplete; skipped != passed. Compare baseline tag `baseline-v1-source`, review secrets/diff, require final PR-head gates before merge and exact immutable patch tag. No force pushes, moved/reused tags, bypassed checks or production deployments.

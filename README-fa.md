@@ -1,3 +1,5 @@
+V1 references: [PROJECT](docs/PROJECT.md) | [STATE](docs/STATE.md) | [ROADMAP](docs/ROADMAP.md) | [TESTING](docs/TESTING.md) | [RELEASE](docs/RELEASE.md). v1.1.10 remains a release candidate until published.
+
 <p align="center">
   <a href="https://github.com/gozargah/marzban" target="_blank" rel="noopener noreferrer">
     <picture>
@@ -108,7 +110,7 @@
 
 این نسخه فقط از دیتابیس MySQL پشتیبانی می‌کند. برای نصب نسخه دقیق V1.0.3 از دستور زیر استفاده کنید:
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.0.7/scripts/marzban.sh)" @ install --version v1.0.7 --database mysql
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.1.10/scripts/marzban.sh)" @ install --version v1.1.10 --database mysql
 ```
 
 وقتی نصب تمام شد:
@@ -351,7 +353,7 @@ $ sudo docker-compose exec -it marzban bash
 از بخش **Nodes** در Master، Certificate نود را کپی کنید؛ کلید خصوصی پنل نباید روی نود قرار بگیرد. سپس دستور زیر را روی سرور نود اجرا کنید. نصب‌کننده خودش از شما می‌خواهد کل PEM را از `BEGIN CERTIFICATE` تا `END CERTIFICATE` paste کنید:
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.0.7/scripts/marzban.sh)" @ node install --version v1.0.7
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.1.10/scripts/marzban.sh)" @ node install --version v1.1.10
 ```
 
 برای نصب غیرتعاملی/اتوماتیک، گزینه `--client-cert-file /path/to/panel-client.crt` همچنان پشتیبانی می‌شود.
@@ -361,7 +363,7 @@ sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-
 ```bash
 marzban node status
 marzban node logs
-marzban node update --version v1.0.7
+marzban node update --version v1.1.10
 ```
 
 Node Runtime V2 از اعتبارسنجی سخت‌گیرانه گواهی، تحویل پایدار رویدادها و تشخیص IP بر اساس capability تأییدشده استفاده می‌کند. اگر پنل و نود روی یک سرور باشند، CLI نود در `/usr/local/bin/marzban-node` جدا نگه داشته می‌شود و آپدیت نود، CLI یا metadata نسخه پنل را بازنویسی نمی‌کند.
