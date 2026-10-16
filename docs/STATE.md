@@ -1,50 +1,39 @@
 # V1 Verified State — 2026-10-16
 
-Evidence: **VERIFIED** = direct GitHub evidence, **DOCUMENTED** = source claim, **NOT VERIFIED** = still needs testing.
+Evidence: **VERIFIED** = directly observed in GitHub/Actions; **DOCUMENTED** = a source statement; **NOT VERIFIED** = still needs qualification.
 
-- VERIFIED: main HEAD at review start `14e5c9032e5f94f783f34bde391bba318a6de925`.
-- VERIFIED: latest stable release `v1.1.9`, published 2026-09-09: https://github.com/smorad3363/Marzban-v1/releases/tag/v1.1.9 .
-- VERIFIED: PR #41 (Users Management V3) and PR #42 (release preparation) were merged. Former CODEX STATE incorrectly marked work as pending.
-- VERIFIED: Release run https://github.com/smorad3363/Marzban-v1/actions/runs/34407436988 succeeded. Dashboard UI Contracts run https://github.com/smorad3363/Marzban-v1/actions/runs/34407246187 succeeded.
-- VERIFIED: CI Checkpoints main-push run https://github.com/smorad3363/Marzban-v1/actions/runs/34407246190 concluded success, **but backend MySQL matrix was skipped** and package steps for image building, Node mTLS and upgrade were skipped. The push Branch Hygiene run was skipped. Skipped is not passed.
-- CONFIRMED OWNER SCOPE: fresh empty DB and no historical operational Users/Admins/data. See [PROJECT](PROJECT.md).
-- NOT VERIFIED: complete tests for pending maintenance v1.1.10, real fresh installation, image publication and restore. Do not claim v1.1.10 is released until GitHub confirms it.
+## Current verified release
 
-## File disposition review before deletion
+- **VERIFIED:** PR [#43](https://github.com/smorad3363/Marzban-v1/pull/43) merged into `main`, resulting in source/release commit `b09801ca922199b06eaf43938664544331328668`. Previous stable version was `v1.1.9`; this maintenance release is `v1.1.10`.
+- **VERIFIED:** annotated immutable `v1.1.10` tag points to `b09801ca922199b06eaf43938664544331328668`. [GitHub Release](https://github.com/smorad3363/Marzban-v1/releases/tag/v1.1.10) published 2026-10-16; canonical [Release workflow](https://github.com/smorad3363/Marzban-v1/actions/runs/38929559689) succeeded.
+- **VERIFIED:** published GHCR image `ghcr.io/smorad3363/marzban-v1@sha256:2b37aefc1b37a2e3f6c27489e69ca323f34e5aa3c00ff2e51c55c59361f5bb8f`, sourced from `b09801ca922199b06eaf43938664544331328668` with `linux/amd64` and `linux/arm64`; standalone [image verification](https://github.com/smorad3363/Marzban-v1/actions/runs/38931246448) **PASS**.
+- **VERIFIED:** the exact image/digest passed the disposable [fresh-install lab](https://github.com/smorad3363/Marzban-v1/actions/runs/38931250688), including MySQL bootstrapping, healthy version `v1.1.10`, first Owner creation and downgrade refusal (`FRESH_INSTALL_CREATE_OWNER_VERSION_PASS`). This was an isolated CI runner, **not a production deployment**.
+- **VERIFIED:** exact final PR head `95974c32ba5b6e53f636a6a458a8305af079c7ae` passed five required GitHub checks: backend on both MySQL 8.0 and 26.7.0, installer/panel/Node including mTLS and cross-version MySQL logical restore, dashboard build/parity, and dashboard UI contracts. [PR CI](https://github.com/smorad3363/Marzban-v1/actions/runs/38916527553) / [PR dashboard](https://github.com/smorad3363/Marzban-v1/actions/runs/38916527482).
+- **VERIFIED:** [main-push CI](https://github.com/smorad3363/Marzban-v1/actions/runs/38928817307) and [dashboard contracts](https://github.com/smorad3363/Marzban-v1/actions/runs/38928817447) succeeded. On the main-push event the backend matrix, image-build/mTLS and logical-restore substeps were **SKIPPED** (they are covered by the final-head PR runs, not by that push). The main-push Branch Hygiene job was also **SKIPPED**; skipped is not passed.
+- **VERIFIED:** temporary tag/verification dispatch branches were deleted. No live servers, external volumes or operational databases were changed for this release.
 
-| Files | Decision | Reason |
-| --- | --- | --- |
-| `docs/CODEX/STATE.md` | MERGE then DELETE | stale state; status and next task transferred here |
-| `docs/CODEX/V1_SCOPE.md` | MERGE then DELETE | stale v1.0.0; architecture and scope moved to PROJECT |
-| `docs/ADMIN_SIMPLIFICATION_HANDOFF_FA.md` | KEEP as labeled historical reference | contains unique financial/UI implementation rationale; stale resume directives are explicitly non-authoritative |
-| `docs/ADMIN_HIERARCHY_ROADMAP_FA.md`, `docs/MARZBAN_CODEX_MASTER_RUNBOOK.md` | KEEP as historical reference | unique stage-by-stage design and evidence; explicitly historical, not a second active execution contract |
-| `docs/legacy-v0/` and other `docs/legacy/` records | KEEP as labeled historical reference | imported architecture, decisions, review evidence, design and operator provenance; historical instructions are superseded by AGENTS |
-| `docs/legacy/MARZBAN_FILE_HYGIENE_AUDIT.md` | MERGE then DELETE | obsolete 2026-08-22 local cache/working-tree report; lasting preservation/build-context cautions moved to `docs/legacy/README.md`; only inbound document link updated, no runtime/build/test consumers |
-| `.github/workflows/tag-and-dispatch-v1.1.10-once.yml` | DELETE | temporary automatic main-push publisher; canonical tag/manual Release workflow already exists, and temporary helpers must not remain in the final tree |
-| `tests/release_upgrade_lab.sh` | DELETE after detaching caller | exclusively vNext v5.2.0 -> V1 historical product migration |
-| Existing backend tests and CI, MySQL 8.0 and 26.7.0 matrix | KEEP | current-version invariants and schema/bootstrap protections |
-| Alembic migrations, dashboard build, LICENSE, historical release notes | KEEP | required schema, runtime, licensing or release integrity |
+## Owner-approved scope
 
-## Current correction checkpoint
+Fresh deployment into a new empty MySQL database; no older live Users/Admins/data or historical product upgrades are required for this milestone. Preserve current-version migrations, security, Owner/Admin scope, financial privacy, authoritative usage, Plan-as-commerce, Access Group-as-network-authority, backup and restore, Panel/Node mTLS, retries/idempotency and concurrent accounting. See [PROJECT](PROJECT.md) and [TESTING](TESTING.md).
 
-- VERIFIED by native Git: PR #43 source was `d6bdeb6a55909982d802ff2c201492c98ae6ab2f` when this correction started; main remains `14e5c9032e5f94f783f34bde391bba318a6de925`. The working tree was clean before corrections. No `v1.1.10` tag existed at that check.
-- VERIFIED by source history: dashboard assets were rebuilt in `6991abb`; the dashboard refresh helper was removed in `1a3dd73`. A second one-time publishing helper was added in `d6bdeb6`; it is removed by this correction. Use the canonical Release workflow after final-head gates.
-- VERIFIED by workflow/source inspection: both supported MySQL engines are retained. The 8.0 logical dump/checksum -> 26.7.0 restore gate is restored because it protects newly created data across supported database engines, not just historical product upgrades. Historical vNext-to-V1 and v4.8.0 application rollback gates remain excluded.
-- Historical handoffs, runbooks and imported execution instructions now explicitly link to the active AGENTS/state documents and mark old commands and results as historical. Their unique technical context is retained; no new roadmap is introduced.
-- Access limitation: `gh api` requests are denied at the environment HTTPS proxy (CONNECT 403 for `api.github.com`). Native Git and public GitHub HTML reads work. Do not infer PR merge permission or completed publication from Git read access.
-- VERIFIED: correction commit `7a1a2b715a80430f77a3ccee0b3c4a501a9d1ec6` was pushed to the existing PR branch using native Git. This documentation follow-up corrects the old archive-checksum claim; the archived file remains byte-for-byte identical to main `14e5c903`.
-- NOT VERIFIED: CI on the final correction/documentation commit, final merge, `v1.1.10` publication, image digest/revision, and a fresh installation of the published release. Local and earlier CI results cannot replace final-head evidence.
+## File disposition and maintenance changes
 
-## Local validation of this correction
+| Files | Decision / evidence |
+| --- | --- |
+| `docs/CODEX/STATE.md`, `docs/CODEX/V1_SCOPE.md` | **MERGE then DELETE**: superseded by this STATE and PROJECT |
+| `docs/legacy/MARZBAN_FILE_HYGIENE_AUDIT.md` | **MERGE then DELETE**: lasting precautions moved into legacy README |
+| `tests/release_upgrade_lab.sh` | **DELETE**: vNext 5.2.0 -> historical V1 product-line upgrade only |
+| Historical v4.8.0 rollback CI check | **REMOVE**: historical application rollback outside owner-approved fresh-install scope |
+| Temporary one-off release workflow helpers | **DELETE**: canonical `.github/workflows/build.yml` remains the official publisher |
+| `docs/legacy-v0/`, unique historical runbooks and Admin design rationale | **KEEP** with explicit historical-only labels |
+| Alembic migrations, LICENSE, release assets, both current MySQL engines, security/accounting tests, backup/current DB restore, dashboard source/build | **KEEP** as necessary present-version functionality |
 
-- PASS: installer Bash syntax and `bash tests/test_installer_v1_contract.sh` (`INSTALLER_V1_CONTRACT_OK`).
-- PASS: `python -m pytest -q --disable-warnings tests/test_release_contract.py tests/test_ci_matrix_contract.py tests/test_node_deployment_contract.py tests/test_release_workflow_contract.py tests/test_release_workflow_fast_path.py` — 23 passed.
-- PASS: exact restored workflow shell block for logical dump/checksum/restore, executed on isolated MySQL 8.0 and 26.7.0 Docker volumes; checksum, target version and sentinel-content assertions succeeded (exit 0). Only the test's own containers/volumes were removed.
-- PASS: changed-document relative Markdown link targets and `git diff --check`. Version alignment is covered by the release contract tests.
-- The immutable `baseline-v1-source` tag was fetched and scoped changes compared. Full final release-source/baseline review and final-head remote gates remain required before publication.
+The previous incomplete state and historical handoffs were consolidated in PR #43; no new product capabilities or runtime refactor were introduced.
 
-This checkpoint supersedes the pre-PR-only status. A commit containing this document is not a release-completion claim.
+## Remaining qualification (NOT VERIFIED)
+
+The isolated installer demonstrates fresh bootstrap and first Owner; it does **not** independently certify the entire real-world Owner/Admin/User commercial lifecycle under traffic, Node restart/reconnect and device-limit workloads, full historical-current-version accounting scenarios or measured performance. These are future acceptance tasks, not evidence against the published release. Do not represent production deployment as completed.
 
 ## NEXT EXACT TASK
 
-Inspect all required jobs for the exact final commit of PR #43 after the pushed correction and documentation follow-up. Resolve access to the GitHub API if needed to inspect protected-branch requirements and merge the PR. Only after verified gates, merge through the PR and publish from the exact reviewed main commit via the canonical Release workflow; record the immutable tag, source SHA, image digest, fresh-install result and follow-up documentation commit. Do not merge or publish while required checks or access are unresolved.
+On a **separate disposable v1.1.10 installation**, exercise the complete Owner/Admin/User, credit/renewal, Plan versus Access Group, Node reconnect/device-policy and current-data backup/restore lifecycle; record actual success/fail evidence and any defects before proposing new features.
