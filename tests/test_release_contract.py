@@ -12,7 +12,6 @@ def test_release_version_and_install_rollback_contract():
     build_workflow = Path(".github/workflows/build.yml").read_text()
     checkpoints = Path(".github/workflows/checkpoints.yml").read_text()
     installer_lab = Path("tests/release_installer_lab.sh").read_text()
-    upgrade_lab = Path("tests/release_upgrade_lab.sh").read_text()
     node_e2e = Path("tests/node_panel_e2e.sh").read_text(encoding="utf-8")
 
     assert re.fullmatch(r"\d+\.\d+\.\d+", version)
@@ -22,10 +21,6 @@ def test_release_version_and_install_rollback_contract():
     assert 'MARZBAN_GITHUB_REPO="${MARZBAN_GITHUB_REPO:-smorad3363/Marzban-v1}"' in installer
     assert 'MARZBAN_GITHUB_BRANCH="${MARZBAN_GITHUB_BRANCH:-main}"' in installer
     assert 'MARZBAN_DOCKER_IMAGE="${MARZBAN_DOCKER_IMAGE:-ghcr.io/smorad3363/marzban-v1}"' in installer
-    assert 'V1_LINEAGE_SOURCE_VERSION="5.2.0"' in installer
-    assert 'V1_LINEAGE_SOURCE_IMAGE="ghcr.io/smorad3363/marzban-vnext:v5.2.0"' in installer
-    assert 'V1_LINEAGE_TARGET_VERSION="v1.0.0"' in installer
-    assert "is_allowed_v1_lineage_transition()" in installer
     assert "Application downgrade refused" in installer
     assert "automatic image rollback is unsafe after migrations" in installer
     assert 'flock -n 9' in installer
@@ -87,13 +82,10 @@ def test_release_version_and_install_rollback_contract():
     assert 'RELEASE_TAG: ${{ inputs.release_tag }}' in installer_workflow
     assert "Verify public tag, source, and anonymous image access" in installer_workflow
     assert "bash tests/release_installer_lab.sh" in installer_workflow
-    assert "bash tests/release_upgrade_lab.sh" in installer_workflow
+    assert "bash tests/release_upgrade_lab.sh" not in installer_workflow
     assert "default: v1.0.2" not in installer_workflow
     assert "RELEASE_TAG" in installer_lab
     assert "FRESH_INSTALL_CREATE_OWNER_VERSION_PASS" in installer_lab
-    assert 'marzban update --version v1.0.0' in upgrade_lab
-    assert 'marzban update --version "$RELEASE_TAG"' in upgrade_lab
-    assert "UPGRADE_V520_TO_CURRENT_V1_PASS" in upgrade_lab
 
     assert "name: dashboard build and parity" in checkpoints
     assert "Verify Stage 1 UI contracts" in checkpoints

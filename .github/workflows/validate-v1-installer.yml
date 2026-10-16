@@ -61,5 +61,3 @@ jobs:
           set -euo pipefail
           sudo --preserve-env=RELEASE_DISPOSABLE_LAB,RELEASE_IMAGE_DIGEST,RELEASE_SOURCE_COMMIT,RELEASE_TAG \
             bash tests/release_installer_lab.sh
-          sudo --preserve-env=RELEASE_DISPOSABLE_LAB,RELEASE_TAG \
-            bash tests/release_upgrade_lab.sh

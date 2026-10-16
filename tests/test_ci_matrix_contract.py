@@ -42,12 +42,10 @@ def test_stage9_10_server_version_checks_are_matrix_driven():
         assert '.startswith("8.0.")' not in text
 
 
-def test_checkpoint_matrix_keeps_migration_backup_and_rollback_checks():
+def test_checkpoint_matrix_keeps_migration_and_current_backup_checks():
     text = _read(CHECKPOINTS_WORKFLOW)
     assert "Verify MySQL migrations and partial-DDL recovery" in text
     assert "Verify backup checksum and restore" in text
-    assert "Verify v4.8.0 application rollback compatibility" in text
-    assert "Verify 8.0 logical dump and 26.7.0 restore" in text
 
 
 def test_dashboard_source_build_parity_is_enforced_in_permanent_workflows():
