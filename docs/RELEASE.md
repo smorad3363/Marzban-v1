@@ -1,14 +1,17 @@
 # V1 Release Procedure
 
-Previous verified stable tag: `v1.1.9`; proposed new maintenance tag: `v1.1.10` **only if unused and fully tested**.
+Latest **verified stable release**: [v1.1.10](https://github.com/smorad3363/Marzban-v1/releases/tag/v1.1.10), published 2026-10-16 from source `b09801ca922199b06eaf43938664544331328668`. The published digest and verification evidence are in [STATE](STATE.md).
 
-1. Verify exact main SHA, latest stable Releases and absence of proposed tag. Check release candidate diff for secrets, broken links, deletions, and immutable `baseline-v1-source` comparison.
-2. Synchronize `VERSION`, `app.__version__`, `scripts/marzban.sh` CLI release version, `docker-compose.yml` image, `RELEASES.md` and `docs/RELEASE_NOTES_vX.Y.Z.md`. Frontend workspace package version is independent.
-3. On PR, verify every backend MySQL matrix job, current migrations/backup, UI source+build parity, installer/Compose/image, Panel/Node mTLS and required branch checks; skipped is not passed.
-4. Only after verified gates merge. Tag the exact reviewed commit on `main`, never rewrite an existing tag. Official tag-triggered `.github/workflows/build.yml` publishes version and SHA GHCR images and GitHub Release; verify linux/amd64 + linux/arm64 manifests, digest, source revision, immutable tag and release notes.
-5. Use manual image verifier and disposable fresh-install verifier with exact digest/tag/SHA when supported. Never deploy into live server or erase existing data. If verification is blocked, do not claim completed publication. Follow with a separate docs/STATE.md commit for observed outcomes and release/doc commit IDs.
+For a **future** release:
+1. Verify exact `main` SHA, latest stable release, unused next patch tag, branch rules, baseline comparison and clean diff (including secrets, deletions and broken links).
+2. Synchronize `VERSION`, `app.__version__`, `scripts/marzban.sh`, `docker-compose.yml`, `RELEASES.md` and versioned release notes. Frontend workspace package version is independent.
+3. Before merge, inspect every required PR job on the exact final head: both MySQL matrix engines, migrations/current backup, dashboard source/build parity, installer/Compose/image and Panel/Node mTLS. **SKIPPED** is not **PASS**.
+4. Merge only after verified gates. Create a new immutable version tag on the exact reviewed main commit; do not move or reuse any tag. Use canonical `.github/workflows/build.yml` (tag event or official workflow dispatch) to publish GHCR version/SHA multiarch images and GitHub Release.
+5. Verify tag/source, `linux/amd64` and `linux/arm64`, OCI image digest/revision, anonymous pull and runtime. Dispatch `verify-v1-image.yml` and isolated `validate-v1-installer.yml` against the exact digest; record PASS/FAIL/SKIPPED and evidence in a separate documentation commit.
+6. Never deploy to live servers, alter external volumes, remove historical releases or rewrite tags as part of release verification.
 
-After verified v1.1.10 publication only:
+## Published v1.1.10 installation commands
+
 ```bash
 marzban update --version v1.1.10
 sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.1.10/scripts/marzban.sh)" @ install --version v1.1.10 --database mysql
