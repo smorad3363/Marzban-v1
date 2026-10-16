@@ -32,7 +32,8 @@ Evidence: **VERIFIED** = direct GitHub evidence, **DOCUMENTED** = source claim, 
 - VERIFIED by workflow/source inspection: both supported MySQL engines are retained. The 8.0 logical dump/checksum -> 26.7.0 restore gate is restored because it protects newly created data across supported database engines, not just historical product upgrades. Historical vNext-to-V1 and v4.8.0 application rollback gates remain excluded.
 - Historical handoffs, runbooks and imported execution instructions now explicitly link to the active AGENTS/state documents and mark old commands and results as historical. Their unique technical context is retained; no new roadmap is introduced.
 - Access limitation: `gh api` requests are denied at the environment HTTPS proxy (CONNECT 403 for `api.github.com`). Native Git and public GitHub HTML reads work. Do not infer PR merge permission or completed publication from Git read access.
-- NOT VERIFIED: CI on the forthcoming correction commit, final merge, `v1.1.10` publication, image digest/revision, and a fresh installation of the published release. Local and earlier CI results cannot replace final-head evidence.
+- VERIFIED: correction commit `7a1a2b715a80430f77a3ccee0b3c4a501a9d1ec6` was pushed to the existing PR branch using native Git. This documentation follow-up corrects the old archive-checksum claim; the archived file remains byte-for-byte identical to main `14e5c903`.
+- NOT VERIFIED: CI on the final correction/documentation commit, final merge, `v1.1.10` publication, image digest/revision, and a fresh installation of the published release. Local and earlier CI results cannot replace final-head evidence.
 
 ## Local validation of this correction
 
@@ -46,4 +47,4 @@ This checkpoint supersedes the pre-PR-only status. A commit containing this docu
 
 ## NEXT EXACT TASK
 
-Validate and push this correction on PR #43, then inspect all required jobs for its exact final commit. Resolve access to the GitHub API if needed to inspect protected-branch requirements and merge the PR. Only after verified gates, merge through the PR and publish from the exact reviewed main commit via the canonical Release workflow; record the immutable tag, source SHA, image digest, fresh-install result and follow-up documentation commit. Do not merge or publish while required checks or access are unresolved.
+Inspect all required jobs for the exact final commit of PR #43 after the pushed correction and documentation follow-up. Resolve access to the GitHub API if needed to inspect protected-branch requirements and merge the PR. Only after verified gates, merge through the PR and publish from the exact reviewed main commit via the canonical Release workflow; record the immutable tag, source SHA, image digest, fresh-install result and follow-up documentation commit. Do not merge or publish while required checks or access are unresolved.
