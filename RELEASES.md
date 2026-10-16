@@ -1,14 +1,11 @@
 # Marzban V1 — Immutable Releases
 
-Verified stable Release: [v1.1.9](https://github.com/smorad3363/Marzban-v1/releases/tag/v1.1.9) (2026-09-09).
+Current stable: v1.1.10. Latest **verified stable Release**: [v1.1.10](https://github.com/smorad3363/Marzban-v1/releases/tag/v1.1.10) (published 2026-10-16). Source commit: `b09801ca922199b06eaf43938664544331328668`.
 
-## Release target: v1.1.10 (NOT PUBLISHED)
+Release notes: [v1.1.10](docs/RELEASE_NOTES_v1.1.10.md).\n\nPublished multi-arch image: `ghcr.io/smorad3363/marzban-v1:v1.1.10`, digest `sha256:2b37aefc1b37a2e3f6c27489e69ca323f34e5aa3c00ff2e51c55c59361f5bb8f`. Both published-image verification and disposable fresh installation **PASS**; see [STATE](docs/STATE.md), [TESTING](docs/TESTING.md) and [RELEASE](docs/RELEASE.md).
 
-New maintenance patch candidate only. See `docs/RELEASE_NOTES_v1.1.10.md`, [STATE](docs/STATE.md) and [RELEASE](docs/RELEASE.md). Historic tags/images/Release notes (including v1.0.9, v1.1.7, v1.1.8, v1.1.9) remain unchanged; only successfully published stable release owns `latest`.
+Prior stable [v1.1.9](https://github.com/smorad3363/Marzban-v1/releases/tag/v1.1.9) and older tags/images (including historical v1.0.9, v1.1.7 and v1.1.8) remain unchanged. Immutable image names use `ghcr.io/smorad3363/marzban-v1:vX.Y.Z` and `ghcr.io/smorad3363/marzban-v1:sha-<short-source-sha>`.
 
-Immutable images: `ghcr.io/smorad3363/marzban-v1:vX.Y.Z` and `ghcr.io/smorad3363/marzban-v1:sha-<short-source-sha>`.
-
-After verified publication:
 ```bash
 marzban update --version v1.1.10
 sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.1.10/scripts/marzban.sh)" @ install --version v1.1.10 --database mysql
