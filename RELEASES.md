@@ -4,7 +4,7 @@ Verified stable Release: [v1.1.9](https://github.com/smorad3363/Marzban-v1/relea
 
 ## Release target: v1.1.10 (NOT PUBLISHED)
 
-New maintenance patch candidate only. See `docs/RELEASE_NOTES_v1.1.10.md`, [STATE](docs/STATE.md) and [RELEASE](docs/RELEASE.md). Historic tags/images/Release notes remain unchanged; only successfully published stable release owns `latest`.
+New maintenance patch candidate only. See `docs/RELEASE_NOTES_v1.1.10.md`, [STATE](docs/STATE.md) and [RELEASE](docs/RELEASE.md). Historic tags/images/Release notes (including v1.0.9, v1.1.7, v1.1.8, v1.1.9) remain unchanged; only successfully published stable release owns `latest`.
 
 Immutable images: `ghcr.io/smorad3363/marzban-v1:vX.Y.Z` and `ghcr.io/smorad3363/marzban-v1:sha-<short-source-sha>`.
 
