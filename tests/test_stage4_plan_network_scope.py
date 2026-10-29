@@ -618,3 +618,43 @@ def test_existing_api_inbound_has_string_listen_address():
     }, api_host="127.0.0.1", api_port=9111)
     assert config.get_inbound("API_INBOUND")["listen"] == "127.0.0.1"
     assert config.get_inbound("API_INBOUND")["port"] == 9111
+
+
+@pytest.mark.parametrize("billing_mode,creation_mode", [
+    ("USER_CREDIT", 2),
+    ("ALLOCATED_TRAFFIC", 1),
+])
+def test_paid_commercial_user_cannot_activate_unpaid_queued_renewal(
+    db, billing_mode, creation_mode,
+):
+    from app.db import crud
+    from app.db.models import NextPlan, User
+    from app.models.user import UserModify, NextPlanModel
+    from app.utils import marzhelp_policy
+
+    session, owner = db
+    settings = session.get(MarzhelpAdminSettings, owner.id)
+    settings.billing_mode = billing_mode
+    settings.user_creation_mode_id = creation_mode
+    settings.money_billing_enabled = True
+    settings.money_balance_toman = 0
+    user = User(
+        username="unpaid-queued-user",
+        admin_id=owner.id,
+        next_plan=NextPlan(data_limit=2048, expire=2100000000),
+    )
+    session.add(user)
+    session.commit()
+
+    with pytest.raises(marzhelp_policy.MarzhelpPolicyError) as error:
+        crud.update_user(
+            session, user,
+            UserModify(next_plan=NextPlanModel(data_limit=2048, expire=2100000000)),
+            actor=owner,
+        )
+    assert error.value.code == "queued_paid_renewal_forbidden"
+    session.rollback()
+
+    with pytest.raises(marzhelp_policy.MarzhelpPolicyError) as error:
+        marzhelp_policy.validate_next_plan_activation(session, user)
+    assert error.value.code == "queued_paid_renewal_forbidden"
