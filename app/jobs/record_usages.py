@@ -14,7 +14,7 @@ from app import scheduler, xray
 from app.db import GetDB
 from app.db.models import Admin, NodeUsage, NodeUserUsage, System, User
 from app.db.node_operations import record_traffic_bucket
-from app.utils import money_billing
+from app.utils import money_billing, usage_cursors
 from app.utils.bandwidth import bandwidth_store
 from config import (
     DISABLE_RECORDING_NODE_USAGE,
@@ -120,7 +120,7 @@ def record_node_stats(params: list[dict], node_id: Union[int, None]):
 def get_users_stats(api: XRayAPI):
     try:
         params = defaultdict(int)
-        for stat in filter(attrgetter('value'), api.get_users_stats(reset=True, timeout=30)):
+        for stat in filter(attrgetter('value'), api.get_users_stats(reset=False, timeout=30)):
             params[stat.name.split('.', 1)[0]] += stat.value
         params = list({"uid": uid, "value": value} for uid, value in params.items())
         return params
@@ -177,6 +177,31 @@ def _persist_node_operations_traffic(samples: list[dict]) -> None:
         logger.exception("Failed to persist Node Operations traffic telemetry")
 
 
+def get_user_counter_snapshot(api: XRayAPI):
+    """Poll non-destructive cumulative stats, with process-uptime identity."""
+    try:
+        # Do not read+reset counters: MySQL may be unavailable after polling.
+        from datetime import datetime as _datetime
+
+        system = api.get_sys_stats(timeout=10)
+        sampled_at = _datetime.utcnow()
+        accounts = defaultdict(dict)
+        for stat in api.get_users_stats(reset=False, timeout=30):
+            if stat.link not in ("uplink", "downlink"):
+                continue
+            if int(stat.value) < 0:
+                continue
+            accounts[stat.name][stat.link] = int(stat.value)
+        return {
+            "uptime": int(system.uptime),
+            "sampled_at": sampled_at,
+            "accounts": dict(accounts),
+        }
+    except xray_exc.XrayError:
+        logger.exception("Xray usage snapshot unavailable; counters remain unchanged")
+        return None
+
+
 def record_user_usages():
     api_instances = {None: xray.api}
     usage_coefficient = {None: 1}
@@ -187,50 +212,61 @@ def record_user_usages():
             usage_coefficient[node_id] = node.usage_coefficient
 
     with ThreadPoolExecutor(max_workers=_worker_count(len(api_instances))) as executor:
-        futures = {node_id: executor.submit(get_users_stats, api) for node_id, api in api_instances.items()}
-    api_params = {node_id: future.result() for node_id, future in futures.items()}
-
-    users_usage = aggregate_user_usages(api_params, usage_coefficient)
-    if not users_usage:
+        futures = {
+            node_id: executor.submit(get_user_counter_snapshot, api)
+            for node_id, api in api_instances.items()
+        }
+    snapshots = {node_id: future.result() for node_id, future in futures.items()}
+    if not any(snapshot is not None for snapshot in snapshots.values()):
         return
 
-    with GetDB() as db:
-        user_ids = [int(item["uid"]) for item in users_usage]
-        user_admin_map = dict(
-            db.query(User.id, User.admin_id).filter(User.id.in_(user_ids)).all()
-        )
-
-    admin_usage = defaultdict(int)
-    for user_usage in users_usage:
-        admin_id = user_admin_map.get(int(user_usage["uid"]))
-        if admin_id:
-            admin_usage[admin_id] += user_usage["value"]
-
-    with GetDB() as db:
-        stmt = update(User). \
-            where(User.id == bindparam('uid')). \
-            values(
-                used_traffic=User.used_traffic + bindparam('value'),
-                online_at=datetime.utcnow()
-        )
-
-        admin_data = [{"admin_id": admin_id, "value": value} for admin_id, value in admin_usage.items()]
-        admin_update_stmt = update(Admin). \
-            where(Admin.id == bindparam('admin_id')). \
-            values(users_usage=Admin.users_usage + bindparam('value'))
-        tries = 0
-        while True:
+    # Cursor checkpoints and all charged usage advance in ONE transaction.
+    # Failed commits leave Xray's non-reset counters untouched for the next poll.
+    tries = 0
+    while True:
+        with GetDB() as db:
             try:
-                db.connection().execute(stmt, users_usage)
-                if admin_data:
-                    db.connection().execute(admin_update_stmt, admin_data)
-                suspended_admin_ids = money_billing.settle_used_traffic(db, dict(admin_usage))
+                users_usage, per_node = usage_cursors.accumulate_snapshots(
+                    db, snapshots, usage_coefficient
+                )
+                suspended_admin_ids = set()
+                if users_usage:
+                    ids = [int(item["uid"]) for item in users_usage]
+                    admin_by_user = dict(
+                        db.query(User.id, User.admin_id).filter(User.id.in_(ids)).all()
+                    )
+                    admin_usage = defaultdict(int)
+                    for item in users_usage:
+                        admin_id = admin_by_user.get(int(item["uid"]))
+                        if admin_id is not None:
+                            admin_usage[admin_id] += item["value"]
+
+                    user_stmt = update(User).where(
+                        User.id == bindparam("uid")
+                    ).values(
+                        used_traffic=User.used_traffic + bindparam("value"),
+                        online_at=datetime.utcnow(),
+                    )
+                    db.connection().execute(user_stmt, users_usage)
+                    if admin_usage:
+                        admin_stmt = update(Admin).where(
+                            Admin.id == bindparam("admin_id")
+                        ).values(users_usage=Admin.users_usage + bindparam("value"))
+                        db.connection().execute(admin_stmt, [
+                            {"admin_id": admin_id, "value": amount}
+                            for admin_id, amount in admin_usage.items()
+                        ])
+                    suspended_admin_ids = money_billing.settle_used_traffic(
+                        db, dict(admin_usage)
+                    )
                 db.commit()
                 break
             except (OperationalError, IntegrityError) as err:
                 db.rollback()
                 mysql_code = getattr(getattr(err, "orig", None), "args", (None,))[0]
-                if tries < 3 and (isinstance(err, IntegrityError) or mysql_code in {1205, 1213}):
+                if tries < 3 and (
+                    isinstance(err, IntegrityError) or mysql_code in {1205, 1213}
+                ):
                     tries += 1
                     continue
                 raise
@@ -238,11 +274,12 @@ def record_user_usages():
     if suspended_admin_ids:
         xray.operations.restart_all_cores()
 
-    if DISABLE_RECORDING_NODE_USAGE:
-        return
-
-    for node_id, params in api_params.items():
-        record_user_stats(params, node_id, usage_coefficient[node_id])
+    if not DISABLE_RECORDING_NODE_USAGE:
+        # Historical per-node buckets are derived from the newly committed
+        # deltas; cumulative snapshots must never be written as hourly usage.
+        for node_id, items in per_node.items():
+            if items:
+                record_user_stats(items, node_id, 1)
 
 
 def record_node_usages():
