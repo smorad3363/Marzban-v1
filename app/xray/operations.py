@@ -69,8 +69,9 @@ def _replace_inbound_users(
 
 
 def add_user(dbuser: "DBUser"):
-    from app.utils.access_groups import user_node_scope
+    from app.utils.access_groups import user_inbound_scope, user_node_scope
     node_scope = user_node_scope(dbuser)
+    inbound_scope = user_inbound_scope(dbuser)
     user = UserResponse.model_validate(dbuser)
 
     slots = enabled_device_slots(dbuser)
@@ -82,6 +83,8 @@ def add_user(dbuser: "DBUser"):
 
     for proxy_type, inbound_tags in user.inbounds.items():
         for inbound_tag in inbound_tags:
+            if inbound_scope is not None and inbound_tag not in inbound_scope:
+                continue
             inbound = xray.config.inbounds_by_tag.get(inbound_tag, {})
             for slot_index, credentials in credential_sets:
                 proxy_settings = credentials.get(proxy_type.value)
@@ -168,8 +171,9 @@ def restart_all_cores(config=None):
 def update_user(dbuser: "DBUser"):
     """Atomically replace a user's slot accounts without restarting Xray."""
 
-    from app.utils.access_groups import user_node_scope
+    from app.utils.access_groups import user_inbound_scope, user_node_scope
     node_scope = user_node_scope(dbuser)
+    inbound_scope = user_inbound_scope(dbuser)
     user = UserResponse.model_validate(dbuser)
     all_emails = tuple({
         f"{dbuser.id}.{dbuser.username}",
@@ -190,6 +194,8 @@ def update_user(dbuser: "DBUser"):
     }
     for proxy_type, inbound_tags in user.inbounds.items():
         for inbound_tag in inbound_tags:
+            if inbound_scope is not None and inbound_tag not in inbound_scope:
+                continue
             inbound = xray.config.inbounds_by_tag.get(inbound_tag, {})
             for slot_index, credentials in credential_sets:
                 proxy_settings = credentials.get(proxy_type.value)
