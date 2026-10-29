@@ -344,7 +344,7 @@ def test_node_scope_filters_all_slots_and_preserves_source_config(db, monkeypatc
         yield session
     monkeypatch.setattr("app.db.GetDB", get_db)
     config = XRayConfig.__new__(XRayConfig)
-    config.update({"inbounds": [{"settings": {"clients": [
+    config.update({"inbounds": [{"tag": tag, "settings": {"clients": [
         {"email": f"{user.id}.node-scoped-user"}, {"email": f"{user.id}.node-scoped-user.slot2"},
         {"email": "static@example.test"},
     ]}}]})
@@ -523,3 +523,98 @@ def test_plan_response_batch_has_constant_query_count(db, monkeypatch):
 
     assert [response.name for response in responses] == ["batch-0", "batch-1", "batch-2"]
     assert len(statements) == 4
+
+
+def test_access_group_blocks_new_inbound_after_config_change(db, monkeypatch):
+    from app.db.models import User
+    from app.xray.config import XRayConfig
+    from contextlib import contextmanager
+
+    session, owner = db
+    tag, host, _ = _configure_network(session, monkeypatch)
+    group = access_groups.create(
+        session, owner, AccessGroupInput(
+            name="explicit inbound scope",
+            inbounds=[tag], hosts={tag: [host.id]},
+        ),
+    )
+    user = User(username="bound-user", admin_id=owner.id, access_group_id=group.id)
+    session.add(user)
+    session.commit()
+
+    @contextmanager
+    def get_db():
+        yield session
+
+    monkeypatch.setattr("app.db.GetDB", get_db)
+    assert access_groups.user_inbound_scope(user) == {tag}
+
+    new_tag = "newly-added-inbound"
+    configs = XRayConfig.__new__(XRayConfig)
+    configs.update({"inbounds": [
+        {"tag": tag, "settings": {"clients": [
+            {"email": f"{user.id}.bound-user"}, {"email": "static@example.test"},
+        ]}},
+        {"tag": new_tag, "settings": {"clients": [
+            {"email": f"{user.id}.bound-user"}, {"email": "static@example.test"},
+        ]}},
+    ]})
+    filtered = access_groups.filter_node_config(configs, None)
+    assert [c["email"] for c in filtered["inbounds"][0]["settings"]["clients"]] == [
+        f"{user.id}.bound-user", "static@example.test",
+    ]
+    assert [c["email"] for c in filtered["inbounds"][1]["settings"]["clients"]] == [
+        "static@example.test",
+    ]
+    assert len(configs["inbounds"][1]["settings"]["clients"]) == 2
+
+
+def test_note_only_edit_does_not_remove_scheduled_plan(db):
+    from app.db import crud
+    from app.db.models import NextPlan, User
+    from app.models.user import UserModify
+
+    session, owner = db
+    user = User(
+        username="scheduled-user",
+        admin_id=owner.id,
+        next_plan=NextPlan(data_limit=512, expire=2100000000, add_remaining_traffic=True),
+    )
+    session.add(user)
+    session.commit()
+
+    crud.update_user(session, user, UserModify(note="updated note"), actor=owner)
+    assert user.next_plan is not None
+    assert user.next_plan.data_limit == 512
+
+    crud.update_user(session, user, UserModify(next_plan=None), actor=owner)
+    assert user.next_plan is None
+
+
+def test_remaining_traffic_is_only_added_when_requested():
+    from types import SimpleNamespace
+    from app.utils.marzhelp_policy import resulting_next_plan_data_limit
+
+    plan = SimpleNamespace(data_limit=50, add_remaining_traffic=False)
+    user = SimpleNamespace(data_limit=100, used_traffic=30, next_plan=plan)
+    assert resulting_next_plan_data_limit(user) == 50
+
+    plan.add_remaining_traffic = True
+    assert resulting_next_plan_data_limit(user) == 120
+
+
+def test_existing_api_inbound_has_string_listen_address():
+    from app.xray.config import XRayConfig
+
+    config = XRayConfig({
+        "inbounds": [{
+            "tag": "API_INBOUND",
+            "protocol": "dokodemo-door",
+            "listen": "0.0.0.0",
+            "port": 1234,
+            "settings": {"address": "127.0.0.1"},
+        }],
+        "outbounds": [{"tag": "direct", "protocol": "freedom"}],
+    }, api_host="127.0.0.1", api_port=9111)
+    assert config.get_inbound("API_INBOUND")["listen"] == "127.0.0.1"
+    assert config.get_inbound("API_INBOUND")["port"] == 9111
