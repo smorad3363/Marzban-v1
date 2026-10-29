@@ -1172,6 +1172,19 @@ def consume_seat_renewal(
     )
 
 
+def _requires_explicit_plan_renewal(settings: MarzhelpAdminSettings) -> bool:
+    """Commercial queued plans must not bypass the paid Plan purchase path."""
+    mode = admin_billing.billing_mode(settings)
+    return (
+        settings.user_creation_mode_id == PLAN_ONLY_MODE_ID
+        or mode == admin_billing.BillingMode.USER_CREDIT
+        or (
+            bool(settings.money_billing_enabled)
+            and mode == admin_billing.BillingMode.ALLOCATED_TRAFFIC
+        )
+    )
+
+
 def validate_update(
     db: Session,
     dbuser: User,
@@ -1189,6 +1202,11 @@ def validate_update(
     validate_plan_only_direct_edit(db, dbuser, modify, actor=actor, operation=operation)
     renewal = operation == UserUpdateOperation.renew
     fields_set = getattr(modify, "model_fields_set", set())
+    if "next_plan" in fields_set and _requires_explicit_plan_renewal(settings):
+        raise MarzhelpPolicyError(
+            "queued_paid_renewal_forbidden",
+            "Commercial Plan renewals require an explicit paid Plan operation",
+        )
     expire_requested = "expire" in fields_set if fields_set else modify.expire is not None
     expiration_changed = expire_requested and (
         _effective_expire(modify.expire) != _effective_expire(dbuser.expire)
@@ -1388,6 +1406,11 @@ def validate_next_plan_activation(db: Session, dbuser: User) -> bool:
     if settings is None:
         return False
     _validate_account(settings)
+    if _requires_explicit_plan_renewal(settings):
+        raise MarzhelpPolicyError(
+            "queued_paid_renewal_forbidden",
+            "Queued renewal cannot bypass commercial Plan purchase and wallet debit",
+        )
     if admin_billing.billing_mode(settings) == admin_billing.BillingMode.SEAT_CREDIT:
         raise MarzhelpPolicyError(
             "seat_plan_renewal_required",
