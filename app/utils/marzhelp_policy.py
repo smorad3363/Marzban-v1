@@ -1371,7 +1371,7 @@ def record_renewal(db: Session, dbuser: User, quota_enforced: bool) -> None:
 
 def resulting_next_plan_data_limit(dbuser: User) -> int | None:
     remaining = 0
-    if not dbuser.next_plan.add_remaining_traffic:
+    if dbuser.next_plan.add_remaining_traffic:
         remaining = max(
             int(dbuser.data_limit or 0) - int(dbuser.used_traffic or 0),
             0,
