@@ -633,14 +633,20 @@ def test_paid_commercial_user_cannot_activate_unpaid_queued_renewal(
     from app.utils import marzhelp_policy
 
     session, owner = db
-    settings = session.get(MarzhelpAdminSettings, owner.id)
-    settings.billing_mode = billing_mode
-    settings.user_creation_mode_id = creation_mode
-    settings.money_billing_enabled = True
-    settings.money_balance_toman = 0
+    # Owner is exempt from the reseller policy by design. Exercise a child Admin.
+    child = Admin(username="billed-admin", hashed_password="x", is_sudo=False)
+    session.add(child)
+    session.flush()
+    session.add(MarzhelpAdminSettings(
+        admin_id=child.id,
+        billing_mode=billing_mode,
+        user_creation_mode_id=creation_mode,
+        money_billing_enabled=True,
+        money_balance_toman=0,
+    ))
     user = User(
         username="unpaid-queued-user",
-        admin_id=owner.id,
+        admin_id=child.id,
         next_plan=NextPlan(data_limit=2048, expire=2100000000),
     )
     session.add(user)
