@@ -17,7 +17,8 @@ def test_record_usage_retries_sqlalchemy_wrapped_lock_errors(monkeypatch, code):
         yield db
     monkeypatch.setattr(record_usages, "GetDB", get_db)
     monkeypatch.setattr(record_usages.xray, "nodes", {})
-    monkeypatch.setattr(record_usages, "get_users_stats", lambda _: [{"uid": "7", "value": 100}])
+    monkeypatch.setattr(record_usages, "get_user_counter_snapshot", lambda _: {"sampled_at": None, "uptime": 1, "accounts": {}})
+    monkeypatch.setattr(record_usages.usage_cursors, "accumulate_snapshots", lambda *_args, **_kwargs: ([{"uid": 7, "value": 100}], {None: []}))
     monkeypatch.setattr(record_usages, "DISABLE_RECORDING_NODE_USAGE", True)
     failure = OperationalError("UPDATE", {}, DriverOperationalError(code, "lock failure"))
     settle = Mock(side_effect=[failure, set()])
