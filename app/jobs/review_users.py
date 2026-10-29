@@ -7,7 +7,7 @@ from app import logger, scheduler, xray
 from app.db import (GetDB, get_notification_reminder, get_users,
                     start_user_expire, update_user_status, reset_user_by_next)
 from app.models.user import ReminderType, UserResponse, UserStatus
-from app.utils import report
+from app.utils import marzhelp_policy, report
 from app.utils.helpers import (calculate_expiration_days,
                                calculate_usage_percent)
 from config import (JOB_REVIEW_USERS_INTERVAL, NOTIFY_DAYS_LEFT,
@@ -60,16 +60,27 @@ def review():
             limited = user.data_limit and user.used_traffic >= user.data_limit
             expired = user.expire and user.expire <= now_ts
 
-            if (limited or expired) and user.next_plan is not None:
-                if user.next_plan is not None:
-
-                    if user.next_plan.fire_on_either:
-                        reset_user_by_next_report(db, user)
-                        continue
-
-                    elif limited and expired:
-                        reset_user_by_next_report(db, user)
-                        continue
+            if (
+                (limited or expired)
+                and user.next_plan is not None
+                and (user.next_plan.fire_on_either or (limited and expired))
+            ):
+                try:
+                    reset_user_by_next_report(db, user)
+                except marzhelp_policy.MarzhelpPolicyError as exc:
+                    if exc.code not in {
+                        "queued_paid_renewal_forbidden",
+                        "seat_plan_renewal_required",
+                    }:
+                        raise
+                    # Do not let an unpaid queued renewal prevent normal
+                    # limit/expiry enforcement for this or subsequent users.
+                    logger.warning(
+                        "Skipped unpaid queued renewal for user %s: %s",
+                        user.username, exc.code,
+                    )
+                else:
+                    continue
 
             if limited:
                 status = UserStatus.limited
