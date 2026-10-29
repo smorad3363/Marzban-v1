@@ -20,6 +20,7 @@ from app.db.models import (
     Node,
     ProxyHost,
     User,
+    UserPlanAssignment,
 )
 from app.models.admin_hierarchy import AccessGroupInput, AccessGroupResponse
 from app.models.user import UserStatus
@@ -549,9 +550,15 @@ def user_inbound_scope(user: User) -> set[str] | None:
     all Inbounds when an assigned group is missing, invalid, or exceeds Admin scope.
     """
     group_id = getattr(user, "access_group_id", None)
-    if group_id is None:
-        return None
     db = object_session(user)
+    if group_id is None:
+        # Legacy Form users may be unrestricted, but Plan users must have a group.
+        if db is None or user.id is None:
+            return set()
+        plan_bound = db.query(UserPlanAssignment.id).filter(
+            UserPlanAssignment.user_id == user.id
+        ).first()
+        return set() if plan_bound else None
     if db is None or user.admin_id is None:
         return set()
     try:
@@ -577,6 +584,12 @@ def filter_node_config(config, node_id: int | None):
             .filter(User.access_group_id.isnot(None))
             .all()
         )
+        # A Plan-assigned User without its required Access Group is denied.
+        ungrouped_plan_users = {
+            row[0] for row in db.query(UserPlanAssignment.user_id)
+            .join(User, User.id == UserPlanAssignment.user_id)
+            .filter(User.access_group_id.is_(None)).all()
+        }
         group_ids = sorted({row[2] for row in rows})
         scopes = {}
         for group_id in group_ids:
@@ -600,7 +613,7 @@ def filter_node_config(config, node_id: int | None):
                 admin_group_allowed[key] = False
 
     bound_users = {}
-    blocked = set()
+    blocked = set(ungrouped_plan_users)
     for user_id, admin_id, group_id, selected_node in rows:
         bound_users[user_id] = group_id
         scope = scopes.get(group_id)
