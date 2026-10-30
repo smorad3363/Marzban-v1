@@ -232,6 +232,7 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
     if (!validate()) return;
     const payload = {
       ...form,
+      plan_prices: undefined,
       role: "ADMIN" as const,
       user_creation_mode: normalizedCreationMode,
       can_manage_plans: mode === "USED_TRAFFIC" ? false : form.can_manage_plans,

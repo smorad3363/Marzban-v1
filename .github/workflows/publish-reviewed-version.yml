@@ -1,0 +1,72 @@
+name: Publish reviewed version
+on:
+  push:
+    branches: [main]
+    paths: [VERSION]
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: reviewed-release
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Require successful final PR head, create immutable tag and dispatch canonical publisher
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SOURCE_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          pr="$(gh api "repos/$REPO/commits/$SOURCE_SHA/pulls" --jq '[.[] | select(.merged_at != null and .base.ref == "main")][0].number')"
+          test -n "$pr" && test "$pr" != null
+          head="$(gh api "repos/$REPO/pulls/$pr" --jq .head.sha)"
+          gh api "repos/$REPO/commits/$head/check-runs" > checks.json
+          python - <<'PYCODE'
+          import json
+          checks = json.load(open('checks.json'))['check_runs']
+          required = ['backend checkpoints (mysql:8.0)', 'backend checkpoints (mysql:26.7.0)',
+                      'dashboard build and parity', 'installer, panel compose and node contracts',
+                      'dashboard contracts, build and parity']
+          for name in required:
+              matching = [c for c in checks if c['name'] == name]
+              assert matching and matching[0]['conclusion'] == 'success', name
+          PYCODE
+          tag="v$(tr -d '[:space:]' < VERSION)"
+          [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          # Creation fails if the immutable tag already exists; never update it.
+          object="$(gh api --method POST "repos/$REPO/git/tags" -f tag="$tag" -f message="Release $tag" -f object="$SOURCE_SHA" -f type=commit --jq .sha)"
+          gh api --method POST "repos/$REPO/git/refs" -f ref="refs/tags/$tag" -f sha="$object"
+          gh workflow run build.yml --repo "$REPO" --ref main -f git_ref="$tag" -f image_tag="$tag" -f tests_only=false
+          echo "RELEASE_TAG=$tag" >> "$GITHUB_ENV"
+      - name: Wait for canonical publication and dispatch independent image and installer validation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SOURCE_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          published=0
+          for attempt in $(seq 1 150); do
+            if gh release view "$RELEASE_TAG" --repo "$REPO" --json isDraft --jq '.isDraft == false' 2>/dev/null | grep -qx true; then
+              published=1
+              break
+            fi
+            sleep 15
+          done
+          test "$published" = 1
+          image="ghcr.io/${REPO,,}:$RELEASE_TAG"
+          digest="$(docker buildx imagetools inspect "$image" --format '{{.Manifest.Digest}}')"
+          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          for workflow in verify-v1-image.yml validate-v1-installer.yml; do
+            gh workflow run "$workflow" --repo "$REPO" --ref main -f digest="$digest" -f source_commit="$SOURCE_SHA" -f release_tag="$RELEASE_TAG"
+          done
+          echo "Published $RELEASE_TAG ($SOURCE_SHA); independent validation dispatched: $digest" >> "$GITHUB_STEP_SUMMARY"

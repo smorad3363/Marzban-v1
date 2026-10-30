@@ -683,8 +683,10 @@ def update_user(
             add_remaining_traffic=modify.next_plan.add_remaining_traffic,
             fire_on_either=modify.next_plan.fire_on_either,
         )
-    elif dbuser.next_plan is not None:
+    elif "next_plan" in modify.model_fields_set and dbuser.next_plan is not None:
+        # Omitted next_plan must not cancel a scheduled renewal.
         db.delete(dbuser.next_plan)
+        dbuser.next_plan = None
 
     dbuser.edit_at = datetime.utcnow()
 
@@ -707,6 +709,7 @@ def update_user(
 
 
 def reset_user_data_usage(db: Session, dbuser: User, commit: bool = True) -> User:
+    db.refresh(dbuser, with_for_update=True)
     """
     Resets the data usage of a user and logs the reset.
 
@@ -748,6 +751,8 @@ def reset_user_data_usage(db: Session, dbuser: User, commit: bool = True) -> Use
 
 
 def reset_user_by_next(db: Session, dbuser: User) -> User:
+    db.refresh(dbuser, with_for_update=True)
+    db.expire(dbuser, ["next_plan"])
     """
     Resets the data usage of a user based on next user.
 

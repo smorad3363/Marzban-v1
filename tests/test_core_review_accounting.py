@@ -11,13 +11,14 @@ from app.jobs import record_usages
 @pytest.mark.parametrize("code", [1205, 1213])
 def test_record_usage_retries_sqlalchemy_wrapped_lock_errors(monkeypatch, code):
     db = Mock()
-    db.query.return_value.filter.return_value.all.return_value = [(7, 9)]
+    db.query.return_value.filter.return_value.order_by.return_value.with_for_update.return_value.all.return_value = [(7, 9)]
     @contextmanager
     def get_db():
         yield db
     monkeypatch.setattr(record_usages, "GetDB", get_db)
     monkeypatch.setattr(record_usages.xray, "nodes", {})
-    monkeypatch.setattr(record_usages, "get_users_stats", lambda _: [{"uid": "7", "value": 100}])
+    monkeypatch.setattr(record_usages, "get_user_counter_snapshot", lambda _: {"sampled_at": None, "uptime": 1, "accounts": {}})
+    monkeypatch.setattr(record_usages.usage_cursors, "accumulate_snapshots", lambda *_args, **_kwargs: ([{"uid": 7, "value": 100}], {None: []}))
     monkeypatch.setattr(record_usages, "DISABLE_RECORDING_NODE_USAGE", True)
     failure = OperationalError("UPDATE", {}, DriverOperationalError(code, "lock failure"))
     settle = Mock(side_effect=[failure, set()])

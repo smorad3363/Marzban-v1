@@ -20,6 +20,7 @@ from app.db.models import (
     Node,
     ProxyHost,
     User,
+    UserPlanAssignment,
 )
 from app.models.admin_hierarchy import AccessGroupInput, AccessGroupResponse
 from app.models.user import UserStatus
@@ -303,7 +304,7 @@ def response(db: Session, group: AccessGroup) -> AccessGroupResponse:
     inbounds, hosts, nodes = _scope(db, group.id)
     active_count = (
         db.query(func.count(User.id))
-        .filter(User.access_group_id == group.id, User.status == UserStatus.active)
+        .filter(User.access_group_id == group.id, User.status.in_((UserStatus.active, UserStatus.on_hold)))
         .scalar()
         or 0
     )
@@ -380,7 +381,7 @@ def update(db: Session, actor: Admin, group: AccessGroup, values: AccessGroupInp
     db.flush()
     users = (
         db.query(User)
-        .filter(User.access_group_id == group.id, User.status == UserStatus.active)
+        .filter(User.access_group_id == group.id, User.status.in_((UserStatus.active, UserStatus.on_hold)))
         .order_by(User.id)
         .all()
     )
@@ -406,7 +407,7 @@ def archive(db: Session, actor: Admin, group: AccessGroup) -> None:
     _require_owner(db, actor)
     active_users = (
         db.query(func.count(User.id))
-        .filter(User.access_group_id == group.id, User.status == UserStatus.active)
+        .filter(User.access_group_id == group.id, User.status.in_((UserStatus.active, UserStatus.on_hold)))
         .scalar()
         or 0
     )
@@ -541,29 +542,107 @@ def user_node_scope(user: User) -> set[int] | None:
     return nodes or None
 
 
+
+def user_inbound_scope(user: User) -> set[str] | None:
+    """Return the allowed current Inbound tags of an existing group binding.
+
+    None means a legacy/form user without an Access Group; an empty set denies
+    all Inbounds when an assigned group is missing, invalid, or exceeds Admin scope.
+    """
+    group_id = getattr(user, "access_group_id", None)
+    db = object_session(user)
+    if group_id is None:
+        # Legacy Form users may be unrestricted, but Plan users must have a group.
+        if db is None or user.id is None:
+            return set()
+        plan_bound = db.query(UserPlanAssignment.id).filter(
+            UserPlanAssignment.user_id == user.id
+        ).first()
+        return set() if plan_bound else None
+    if db is None or user.admin_id is None:
+        return set()
+    try:
+        inbounds, _, _ = _validated_network_scope(db, group_id)
+        _require_admin_network_scope(db, inbounds, user.admin_id)
+    except admin_hierarchy.HierarchyError:
+        return set()
+    return inbounds
+
+
 def filter_node_config(config, node_id: int | None):
-    """Filter all device-slot credentials on startup/reconnect, not just API adds."""
+    """Enforce bound Access Group Inbounds and Nodes on every core start/reconnect.
+
+    An explicit group binding is an allowlist, not a snapshot of exclusions.
+    In particular, newly configured Inbounds never grant access implicitly.
+    """
     from app.db import GetDB
 
     with GetDB() as db:
-        rows = db.query(User.id, AccessGroup.archived_at, AccessGroupNode.node_id).join(
-            AccessGroup, User.access_group_id == AccessGroup.id
-        ).outerjoin(AccessGroupNode, AccessGroupNode.access_group_id == AccessGroup.id).all()
-    scopes = {}
-    archived = set()
-    for user_id, archived_at, selected_node in rows:
-        if archived_at is not None:
-            archived.add(user_id)
-        if selected_node is not None:
-            scopes.setdefault(user_id, set()).add(selected_node)
-    blocked = archived | {user_id for user_id, nodes in scopes.items() if node_id not in nodes}
+        rows = (
+            db.query(User.id, User.admin_id, User.access_group_id, AccessGroupNode.node_id)
+            .outerjoin(AccessGroupNode, AccessGroupNode.access_group_id == User.access_group_id)
+            .filter(User.access_group_id.isnot(None))
+            .all()
+        )
+        # A Plan-assigned User without its required Access Group is denied.
+        ungrouped_plan_users = {
+            row[0] for row in db.query(UserPlanAssignment.user_id)
+            .join(User, User.id == UserPlanAssignment.user_id)
+            .filter(User.access_group_id.is_(None)).all()
+        }
+        group_ids = sorted({row[2] for row in rows})
+        scopes = {}
+        for group_id in group_ids:
+            try:
+                scopes[group_id] = _validated_network_scope(db, group_id)
+            except admin_hierarchy.HierarchyError:
+                scopes[group_id] = None
+        admin_group_allowed = {}
+        for _, admin_id, group_id, _ in rows:
+            key = (admin_id, group_id)
+            if key in admin_group_allowed:
+                continue
+            inbounds = scopes.get(group_id)
+            if inbounds is None or admin_id is None:
+                admin_group_allowed[key] = False
+                continue
+            try:
+                _require_admin_network_scope(db, inbounds[0], admin_id)
+                admin_group_allowed[key] = True
+            except admin_hierarchy.HierarchyError:
+                admin_group_allowed[key] = False
+
+    bound_users = {}
+    blocked = set(ungrouped_plan_users)
+    for user_id, admin_id, group_id, selected_node in rows:
+        bound_users[user_id] = group_id
+        scope = scopes.get(group_id)
+        if scope is None or not admin_group_allowed.get((admin_id, group_id), False):
+            blocked.add(user_id)
+        elif scope[2] and node_id not in scope[2]:
+            blocked.add(user_id)
+
     result = config.copy()
     for inbound in result.get("inbounds", []):
+        tag = inbound.get("tag")
         settings = inbound.get("settings", {})
-        if "clients" in settings:
-            settings["clients"] = [client for client in settings["clients"]
-                                   if not (str(client.get("email", "")).split(".", 1)[0].isdigit()
-                                           and int(str(client["email"]).split(".", 1)[0]) in blocked)]
+        if "clients" not in settings:
+            continue
+        filtered = []
+        for client in settings["clients"]:
+            prefix = str(client.get("email", "")).split(".", 1)[0]
+            if not prefix.isdigit():
+                filtered.append(client)
+                continue
+            user_id = int(prefix)
+            group_id = bound_users.get(user_id)
+            if user_id in blocked or (
+                group_id is not None
+                and (scopes.get(group_id) is None or tag not in scopes[group_id][0])
+            ):
+                continue
+            filtered.append(client)
+        settings["clients"] = filtered
     return result
 
 
@@ -600,7 +679,7 @@ def propagate_host_changes(
             )
         users = (
             db.query(User)
-            .filter(User.access_group_id == group_id, User.status == UserStatus.active)
+            .filter(User.access_group_id == group_id, User.status.in_((UserStatus.active, UserStatus.on_hold)))
             .order_by(User.id)
             .all()
         )

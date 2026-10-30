@@ -397,7 +397,11 @@ def test_restricted_raw_endpoint_rejects_protected_network_and_device_fields(db,
 def test_restricted_raw_endpoint_creates_from_simple_fields(db, monkeypatch, billing_mode):
     session, _ = db
     tag, _ = _network(session, monkeypatch)
-    admin, _ = _admin(session, f"simple-{billing_mode.lower()}", billing_mode=billing_mode)
+    admin, settings = _admin(session, f"simple-{billing_mode.lower()}", billing_mode=billing_mode)
+    from datetime import datetime, timezone
+    from app.db.models import OwnerDurationPreset
+    session.add(OwnerDurationPreset(duration_days=30, multiplier_basis_points=10000, enabled=True))
+    settings.money_balance_toman = 10000
     session.get(AdminHierarchySettings, 1).enabled = True
     session.commit()
     request = Request(
@@ -414,7 +418,7 @@ def test_restricted_raw_endpoint_creates_from_simple_fields(db, monkeypatch, bil
         UserCreate(
             username="simple-customer",
             data_limit=2048,
-            expire=2_000_000_000,
+            expire=int(datetime.now(timezone.utc).timestamp()) + 30 * 86400,
             note="description",
         ),
         BackgroundTasks(),

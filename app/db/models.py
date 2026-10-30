@@ -1592,6 +1592,24 @@ class NodeWatchdogSettings(Base):
     remind_every = Column(Integer, nullable=False, default=1800)
 
 
+
+class XrayUserUsageCursor(Base):
+    """Durable non-resetting Xray usage watermark per node and account.
+
+    The watermark and commercial usage are committed in the same transaction.
+    A failed database commit leaves both unchanged for a subsequent retry.
+    """
+
+    __tablename__ = "xray_user_usage_cursors"
+
+    node_key = Column(String(64), primary_key=True)
+    account_name = Column(String(191), primary_key=True)
+    uplink = Column(BigInteger, nullable=False, default=0)
+    downlink = Column(BigInteger, nullable=False, default=0)
+    uptime_seconds = Column(BigInteger, nullable=False, default=0)
+    sampled_at = Column(DateTime, nullable=False)
+
+
 class NodeUserUsage(Base):
     __tablename__ = "node_user_usages"
     __table_args__ = (

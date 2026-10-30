@@ -111,6 +111,11 @@ def validate_plan_only_direct_edit(
         changed.add("expire")
     if "concurrent_user_limit" in fields_set and getattr(modify, "concurrent_user_limit", None) != dbuser.concurrent_user_limit:
         changed.add("concurrent_user_limit")
+    for field in ("on_hold_expire_duration", "data_limit_reset_strategy"):
+        if field in fields_set and getattr(modify, field, None) != getattr(dbuser, field, None):
+            changed.add(field)
+    if "status" in fields_set and getattr(modify, "status", None) == "on_hold" and dbuser.status != "on_hold":
+        changed.add("status")
     if not changed:
         return
     target_settings = _settings(db, dbuser.admin_id)
@@ -1172,6 +1177,19 @@ def consume_seat_renewal(
     )
 
 
+def _requires_explicit_plan_renewal(settings: MarzhelpAdminSettings) -> bool:
+    """Commercial queued plans must not bypass the paid Plan purchase path."""
+    mode = admin_billing.billing_mode(settings)
+    return (
+        settings.user_creation_mode_id == PLAN_ONLY_MODE_ID
+        or mode == admin_billing.BillingMode.USER_CREDIT
+        or (
+            bool(settings.money_billing_enabled)
+            and mode == admin_billing.BillingMode.ALLOCATED_TRAFFIC
+        )
+    )
+
+
 def validate_update(
     db: Session,
     dbuser: User,
@@ -1189,6 +1207,11 @@ def validate_update(
     validate_plan_only_direct_edit(db, dbuser, modify, actor=actor, operation=operation)
     renewal = operation == UserUpdateOperation.renew
     fields_set = getattr(modify, "model_fields_set", set())
+    if "next_plan" in fields_set and _requires_explicit_plan_renewal(settings):
+        raise MarzhelpPolicyError(
+            "queued_paid_renewal_forbidden",
+            "Commercial Plan renewals require an explicit paid Plan operation",
+        )
     expire_requested = "expire" in fields_set if fields_set else modify.expire is not None
     expiration_changed = expire_requested and (
         _effective_expire(modify.expire) != _effective_expire(dbuser.expire)
@@ -1371,7 +1394,7 @@ def record_renewal(db: Session, dbuser: User, quota_enforced: bool) -> None:
 
 def resulting_next_plan_data_limit(dbuser: User) -> int | None:
     remaining = 0
-    if not dbuser.next_plan.add_remaining_traffic:
+    if dbuser.next_plan.add_remaining_traffic:
         remaining = max(
             int(dbuser.data_limit or 0) - int(dbuser.used_traffic or 0),
             0,
@@ -1388,6 +1411,11 @@ def validate_next_plan_activation(db: Session, dbuser: User) -> bool:
     if settings is None:
         return False
     _validate_account(settings)
+    if _requires_explicit_plan_renewal(settings):
+        raise MarzhelpPolicyError(
+            "queued_paid_renewal_forbidden",
+            "Queued renewal cannot bypass commercial Plan purchase and wallet debit",
+        )
     if admin_billing.billing_mode(settings) == admin_billing.BillingMode.SEAT_CREDIT:
         raise MarzhelpPolicyError(
             "seat_plan_renewal_required",

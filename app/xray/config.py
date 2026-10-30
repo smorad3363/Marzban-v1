@@ -64,8 +64,8 @@ class XRayConfig(dict):
     def _apply_api(self):
         api_inbound = self.get_inbound("API_INBOUND")
         if api_inbound:
+            # Xray inbound listen is an address string, not a nested mapping.
             api_inbound["listen"] = self.api_host
-            api_inbound["listen"]["address"] = self.api_host
             api_inbound["port"] = self.api_port
             return
 

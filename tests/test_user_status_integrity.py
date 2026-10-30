@@ -362,3 +362,35 @@ def test_active_next_plan_without_plan_fails_before_reset(db, monkeypatch):
     assert exc_info.value.status_code == 404
     assert user.status == UserStatus.disabled
     assert background.tasks == []
+
+
+def test_unpaid_queued_renewal_does_not_skip_limit_enforcement(db, monkeypatch):
+    admin = _admin(db)
+    user = _user(db, admin, "queued-should-limit", UserStatus.active)
+    user.data_limit = 1024
+    user.used_traffic = 4096
+    user.next_plan = NextPlan(data_limit=2048, expire=2100000000, fire_on_either=True)
+    db.commit()
+
+    @contextmanager
+    def current_db():
+        yield db
+
+    removed = []
+
+    def deny_unpaid(*_args, **_kwargs):
+        raise MarzhelpPolicyError(
+            "queued_paid_renewal_forbidden", "Commercial renewal must purchase a Plan"
+        )
+
+    monkeypatch.setattr(review_users, "GetDB", current_db)
+    monkeypatch.setattr(review_users, "reset_user_by_next_report", deny_unpaid)
+    monkeypatch.setattr(review_users.xray.operations, "remove_user", lambda item: removed.append(item.id))
+    monkeypatch.setattr(review_users.report, "status_change", lambda **_kwargs: None)
+
+    review_users.review()
+
+    db.refresh(user)
+    assert user.status == UserStatus.limited
+    assert user.next_plan is not None
+    assert removed == [user.id]

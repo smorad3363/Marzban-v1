@@ -82,7 +82,7 @@ def add_user(
         settings = db.get(MarzhelpAdminSettings, dbadmin.id)
         billing_mode = admin_billing.billing_mode(settings) if settings is not None else None
         if (
-            billing_mode == admin_billing.BillingMode.USER_CREDIT
+            billing_mode in {admin_billing.BillingMode.USER_CREDIT, admin_billing.BillingMode.SEAT_CREDIT}
             or not admin_hierarchy.allows_form_creation(settings)
         ):
             raise HTTPException(
