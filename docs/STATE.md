@@ -1,3 +1,18 @@
+# Verified v1.1.12 — 2026-10-31 (Asia/Tehran)
+
+- Published immutable v1.1.12 from source c0cecb7e6a6e8f24b4dce1b700898605584c0785.
+- PR #47 final head 42bf12753510e6f6292beacc8f7d425c738b6371 passed all five checks: MySQL 8.0 and 26.7.0, dashboard parity, dashboard UI contracts and installer/Panel-to-Node mTLS. CI runs 41128317563 and 41128317565.
+- Canonical Release run 41128832488 SUCCESS; multi-platform image digest sha256:8f0bf9aba1bc0115b2d574221242bfde4125aeb85d409e206417e5e2f4bc7048.
+- Independent image verification 41129141677 SUCCESS. Fresh empty installer/Owner/version lab 41129144982 SUCCESS (FRESH_INSTALL_CREATE_OWNER_VERSION_PASS v1.1.12).
+- Main push CI/UI runs succeeded; Branch Hygiene was SKIPPED, not passed. Required backend and mTLS evidence is the final PR-head run above.
+- User-authorized fresh server updated using marzban update --version v1.1.12, EXIT 0 and exact digest/source integrity verified. A prior dashboard-only hotfix was retained in an offline backup and superseded by the official image.
+- Browser reproduced the original undefined.port failure opening Hosts from Plans. Hotfix verification confirmed independent Inbound loading, successful-save notification, invalid-form notification and visibility of active default Host #1. The Host database ID and enabled state remained unchanged.
+- Permanent scripts/install.sh and marzban update resolve the latest stable Release. No release tags were moved or reused.
+
+Real traffic/load and the full commercial lifecycle remain NOT VERIFIED. Volatile Xray counter loss during simultaneous database outage and core reset remains documented in v1.1.11; this UI patch does not change accounting semantics.
+
+## Earlier evidence (historical)
+
 # V1 release candidate — 2026-10-30
 
 Release target: v1.1.11. Unified PR #45 includes commercial renewal enforcement,
