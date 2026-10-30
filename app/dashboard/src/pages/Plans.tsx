@@ -286,7 +286,7 @@ export const Plans: FC = () => {
             <Text color="var(--panel-text-body)" mt={2} lineHeight="1.9">مدیریت و ایجاد پلن‌های اشتراک، دسته‌بندی‌ها و امکانات کاربران</Text>
           </Box>
           <HStack spacing={2.5} flexWrap="wrap" position="relative">
-            {account.data?.role === "OWNER" && <Button as="a" href="#access-groups" minH="46px" px={5} variant="outline" borderColor="var(--panel-border)" color="var(--panel-text)" bg="rgba(255,255,255,.015)" _hover={{ borderColor: "var(--panel-accent-border)", bg: "var(--panel-accent-soft)", color: "var(--panel-accent)" }}>گروه‌های دسترسی</Button>}
+            {account.data?.role === "OWNER" && <Button onClick={() => document.getElementById("access-groups")?.scrollIntoView({ behavior: "smooth", block: "start" })} minH="46px" px={5} variant="outline" borderColor="var(--panel-border)" color="var(--panel-text)" bg="rgba(255,255,255,.015)" _hover={{ borderColor: "var(--panel-accent-border)", bg: "var(--panel-accent-soft)", color: "var(--panel-accent)" }}>گروه‌های دسترسی</Button>}
             {canManage && <Button minH="46px" px={5} bg="var(--panel-accent)" color="var(--panel-accent-contrast)" leftIcon={<Icon as={PlusIcon} boxSize="18px" />} onClick={openCreate} isDisabled={(categories.data || []).length === 0} _hover={{ transform: "translateY(-1px)", filter: "brightness(1.05)", boxShadow: "0 12px 30px var(--panel-accent-soft)" }} _active={{ transform: "translateY(0)" }}>پلن جدید</Button>}
           </HStack>
         </Stack>
