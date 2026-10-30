@@ -1,3 +1,21 @@
+# V1 release candidate — 2026-10-30
+
+Release target: v1.1.11. Unified PR #45 includes commercial renewal enforcement,
+Access Group runtime scope, API listener, durable non-reset usage cursors, clock
+jump safety, atomic node user history, seat creation guard and Admin price safety.
+Three formerly deselected regressions are reenabled with valid pricing fixtures.
+Permanent installer: scripts/install.sh -> official installer -> latest published
+stable version, with version-specific image/configuration/CLI.
+
+Previous published stable remains v1.1.10 until canonical release succeeds.
+Final PR-head MySQL 8.0/26.7.0, dashboard parity, installer and mTLS evidence must
+be checked before merge. Real traffic, load, full lifecycle and independent
+restart/restore qualification remain NOT VERIFIED. Volatile Xray counters may
+lose unsampled traffic during simultaneous database outage and Xray reset.
+No live server or production database has been changed.
+
+## Previous publication evidence (v1.1.10)
+
 # V1 Verified State — 2026-10-16
 
 Evidence: **VERIFIED** = directly observed in GitHub/Actions; **DOCUMENTED** = a source statement; **NOT VERIFIED** = still needs qualification.

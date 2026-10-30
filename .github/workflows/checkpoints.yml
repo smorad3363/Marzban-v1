@@ -63,10 +63,7 @@ jobs:
             --ignore=tests/test_mysql_stage8_bulk_jobs.py \
             --ignore=tests/test_mysql_stage9_dashboard.py \
             --ignore=tests/test_mysql_stage10_pagination.py \
-            --ignore=tests/test_mysql_stage11_operations.py \
-            --deselect=tests/test_stage5_restricted_creation_namespace.py::test_seat_raw_endpoint_is_denied_even_if_creation_mode_is_free_form \
-            --deselect='tests/test_stage5_restricted_creation_namespace.py::test_restricted_raw_endpoint_creates_from_simple_fields[USED_TRAFFIC]' \
-            --deselect='tests/test_stage5_restricted_creation_namespace.py::test_restricted_raw_endpoint_creates_from_simple_fields[ALLOCATED_TRAFFIC]'
+            --ignore=tests/test_mysql_stage11_operations.py
       - name: Verify MySQL migrations and partial-DDL recovery
         run: >-
           python -m pytest -q

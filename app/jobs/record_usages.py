@@ -64,36 +64,39 @@ def record_user_stats(params: list, node_id: Union[int, None],
     if not params:
         return
 
-    created_at = datetime.fromisoformat(datetime.utcnow().strftime('%Y-%m-%dT%H:00:00'))
-
     with GetDB() as db:
-        select_stmt = select(NodeUserUsage.user_id) \
-            .where(and_(NodeUserUsage.node_id == node_id, NodeUserUsage.created_at == created_at))
-        existings = [r[0] for r in db.execute(select_stmt).fetchall()]
-        uids_to_insert = set()
+        _record_user_stats(db, params, node_id, consumption_factor)
+        db.commit()
 
-        for p in params:
-            uid = int(p['uid'])
-            if uid in existings:
-                continue
-            uids_to_insert.add(uid)
 
-        if uids_to_insert:
-            stmt = insert(NodeUserUsage).values(
-                user_id=bindparam('uid'),
-                created_at=created_at,
-                node_id=node_id,
-                used_traffic=0
-            )
-            safe_execute(db, stmt, [{'uid': uid} for uid in uids_to_insert])
+def _record_user_stats(db, params, node_id, consumption_factor=1):
+    created_at = datetime.fromisoformat(datetime.utcnow().strftime('%Y-%m-%dT%H:00:00'))
+    select_stmt = select(NodeUserUsage.user_id) \
+        .where(and_(NodeUserUsage.node_id == node_id, NodeUserUsage.created_at == created_at))
+    existings = [r[0] for r in db.execute(select_stmt).fetchall()]
+    uids_to_insert = set()
 
-        stmt = update(NodeUserUsage) \
-            .values(used_traffic=NodeUserUsage.used_traffic + bindparam('value') * consumption_factor) \
-            .where(and_(NodeUserUsage.user_id == bindparam('uid'),
-                        NodeUserUsage.node_id == node_id,
-                        NodeUserUsage.created_at == created_at))
-        safe_execute(db, stmt, params)
+    for p in params:
+        uid = int(p['uid'])
+        if uid in existings:
+            continue
+        uids_to_insert.add(uid)
 
+    if uids_to_insert:
+        stmt = insert(NodeUserUsage).values(
+            user_id=bindparam('uid'),
+            created_at=created_at,
+            node_id=node_id,
+            used_traffic=0
+        )
+        db.connection().execute(stmt, [{'uid': uid} for uid in uids_to_insert])
+
+    stmt = update(NodeUserUsage) \
+        .values(used_traffic=NodeUserUsage.used_traffic + bindparam('value') * consumption_factor) \
+        .where(and_(NodeUserUsage.user_id == bindparam('uid'),
+                    NodeUserUsage.node_id == node_id,
+                    NodeUserUsage.created_at == created_at))
+    db.connection().execute(stmt, params)
 
 def record_node_stats(params: list[dict], node_id: Union[int, None]):
     if not params:
@@ -259,6 +262,10 @@ def record_user_usages():
                     suspended_admin_ids = money_billing.settle_used_traffic(
                         db, dict(admin_usage)
                     )
+                if not DISABLE_RECORDING_NODE_USAGE:
+                    for node_id, items in per_node.items():
+                        if items:
+                            _record_user_stats(db, items, node_id)
                 db.commit()
                 break
             except (OperationalError, IntegrityError) as err:
@@ -274,12 +281,6 @@ def record_user_usages():
     if suspended_admin_ids:
         xray.operations.restart_all_cores()
 
-    if not DISABLE_RECORDING_NODE_USAGE:
-        # Historical per-node buckets are derived from the newly committed
-        # deltas; cumulative snapshots must never be written as hourly usage.
-        for node_id, items in per_node.items():
-            if items:
-                record_user_stats(items, node_id, 1)
 
 
 def record_node_usages():

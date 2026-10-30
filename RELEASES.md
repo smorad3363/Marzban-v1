@@ -1,3 +1,9 @@
+# v1.1.11
+
+Release target: v1.1.11
+
+Safety fixes and unified latest-stable installer. See [release notes](docs/RELEASE_NOTES_v1.1.11.md). Real traffic qualification remains pending.
+
 # Marzban V1 — Immutable Releases
 
 Current stable: v1.1.10. Latest **verified stable Release**: [v1.1.10](https://github.com/smorad3363/Marzban-v1/releases/tag/v1.1.10) (published 2026-10-16). Source commit: `b09801ca922199b06eaf43938664544331328668`.

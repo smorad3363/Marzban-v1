@@ -709,6 +709,7 @@ def update_user(
 
 
 def reset_user_data_usage(db: Session, dbuser: User, commit: bool = True) -> User:
+    db.refresh(dbuser, with_for_update=True)
     """
     Resets the data usage of a user and logs the reset.
 
@@ -750,6 +751,8 @@ def reset_user_data_usage(db: Session, dbuser: User, commit: bool = True) -> Use
 
 
 def reset_user_by_next(db: Session, dbuser: User) -> User:
+    db.refresh(dbuser, with_for_update=True)
+    db.expire(dbuser, ["next_plan"])
     """
     Resets the data usage of a user based on next user.
 

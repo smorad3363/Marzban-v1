@@ -111,6 +111,11 @@ def validate_plan_only_direct_edit(
         changed.add("expire")
     if "concurrent_user_limit" in fields_set and getattr(modify, "concurrent_user_limit", None) != dbuser.concurrent_user_limit:
         changed.add("concurrent_user_limit")
+    for field in ("on_hold_expire_duration", "data_limit_reset_strategy"):
+        if field in fields_set and getattr(modify, field, None) != getattr(dbuser, field, None):
+            changed.add(field)
+    if "status" in fields_set and getattr(modify, "status", None) == "on_hold" and dbuser.status != "on_hold":
+        changed.add("status")
     if not changed:
         return
     target_settings = _settings(db, dbuser.admin_id)

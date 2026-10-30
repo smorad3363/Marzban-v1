@@ -115,3 +115,59 @@ def test_snapshot_never_requests_destructive_xray_reset():
 
     sample = get_user_counter_snapshot(FakeAPI())
     assert sample["accounts"]["123.test-user.slot2"] == {"uplink": 15, "downlink": 20}
+
+
+def test_wall_clock_adjustment_does_not_recharge_cumulative_traffic():
+    cursor = SimpleNamespace(uptime_seconds=100, sampled_at=datetime(2026, 10, 29))
+    for jump in (-3600, 10, 3600):
+        same = is_same_epoch(cursor, uptime=160, sampled_at=cursor.sampled_at + timedelta(seconds=60 + jump))
+        assert counter_delta(1100, 1000, same_epoch=same) == 100
+
+
+def test_history_write_failure_rolls_back_usage_and_cursor(monkeypatch):
+    from contextlib import contextmanager
+    import pytest
+    from sqlalchemy.exc import OperationalError
+    from app.jobs import record_usages
+    from app.db.models import Admin, User, NodeUserUsage
+
+    engine = sa.create_engine("sqlite+pysqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine, expire_on_commit=False)
+    with Session() as db:
+        admin = Admin(username="atomic-admin", hashed_password="x")
+        user = User(username="atomic-user", admin=admin, used_traffic=0)
+        db.add(user)
+        db.commit()
+        at = datetime.utcnow()
+        sample = {"sampled_at": at, "uptime": 100, "accounts": {
+            f"{user.id}.atomic-user": {"uplink": 100, "downlink": 50}}}
+        @contextmanager
+        def get_db():
+            yield db
+        monkeypatch.setattr(record_usages, "GetDB", get_db)
+        monkeypatch.setattr(record_usages.xray, "nodes", {})
+        monkeypatch.setattr(record_usages, "get_user_counter_snapshot", lambda _: sample)
+        monkeypatch.setattr(record_usages, "DISABLE_RECORDING_NODE_USAGE", False)
+        monkeypatch.setattr(record_usages.money_billing, "settle_used_traffic", lambda *_: set())
+        original = record_usages._record_user_stats
+        def fail_history(*args):
+            original(*args)
+            raise OperationalError("history", {}, Exception(2006, "lost connection"))
+        monkeypatch.setattr(record_usages, "_record_user_stats", fail_history)
+        with pytest.raises(OperationalError):
+            record_usages.record_user_usages()
+        db.refresh(user)
+        assert user.used_traffic == 0
+        assert db.query(XrayUserUsageCursor).count() == 0
+        assert db.query(NodeUserUsage).count() == 0
+        monkeypatch.setattr(record_usages, "_record_user_stats", original)
+        record_usages.record_user_usages()
+        db.refresh(user)
+        assert user.used_traffic == 150
+        assert db.query(NodeUserUsage).one().used_traffic == 150
+        record_usages.record_user_usages()
+        db.refresh(user)
+        assert user.used_traffic == 150
+        assert db.query(NodeUserUsage).one().used_traffic == 150
+    engine.dispose()

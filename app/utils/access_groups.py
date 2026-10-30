@@ -304,7 +304,7 @@ def response(db: Session, group: AccessGroup) -> AccessGroupResponse:
     inbounds, hosts, nodes = _scope(db, group.id)
     active_count = (
         db.query(func.count(User.id))
-        .filter(User.access_group_id == group.id, User.status == UserStatus.active)
+        .filter(User.access_group_id == group.id, User.status.in_((UserStatus.active, UserStatus.on_hold)))
         .scalar()
         or 0
     )
@@ -381,7 +381,7 @@ def update(db: Session, actor: Admin, group: AccessGroup, values: AccessGroupInp
     db.flush()
     users = (
         db.query(User)
-        .filter(User.access_group_id == group.id, User.status == UserStatus.active)
+        .filter(User.access_group_id == group.id, User.status.in_((UserStatus.active, UserStatus.on_hold)))
         .order_by(User.id)
         .all()
     )
@@ -407,7 +407,7 @@ def archive(db: Session, actor: Admin, group: AccessGroup) -> None:
     _require_owner(db, actor)
     active_users = (
         db.query(func.count(User.id))
-        .filter(User.access_group_id == group.id, User.status == UserStatus.active)
+        .filter(User.access_group_id == group.id, User.status.in_((UserStatus.active, UserStatus.on_hold)))
         .scalar()
         or 0
     )
@@ -679,7 +679,7 @@ def propagate_host_changes(
             )
         users = (
             db.query(User)
-            .filter(User.access_group_id == group_id, User.status == UserStatus.active)
+            .filter(User.access_group_id == group_id, User.status.in_((UserStatus.active, UserStatus.on_hold)))
             .order_by(User.id)
             .all()
         )

@@ -23,7 +23,7 @@ LAST_XRAY_CORES=10
 # Fork configuration
 # Override at runtime, e.g. MARZBAN_GITHUB_REPO=another-user/Marzban marzban install
 # =============================================================================
-CLI_RELEASE_VERSION="v1.1.10"
+CLI_RELEASE_VERSION="v1.1.11"
 V1_LINEAGE_SOURCE_VERSION="5.2.0"
 V1_LINEAGE_SOURCE_IMAGE="ghcr.io/smorad3363/marzban-vnext:v5.2.0"
 V1_LINEAGE_TARGET_VERSION="v1.0.0"
@@ -71,8 +71,8 @@ is_allowed_v1_lineage_transition() {
 }
 
 latest_published_version() {
-    github_download -fsSL "${MARZBAN_RELEASES_API}?per_page=100" 2>/dev/null |
-        jq -r '[.[] | select(.draft == false and .prerelease == false)][0].tag_name // empty'
+    github_download -fsSL "${MARZBAN_RELEASES_API}/latest" 2>/dev/null |
+        jq -r 'if .draft == false and .prerelease == false then .tag_name else empty end'
 }
 
 resolve_requested_version() {

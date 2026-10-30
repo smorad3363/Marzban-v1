@@ -23,10 +23,11 @@ def counter_delta(current: int, previous: int, *, same_epoch: bool) -> int:
 def is_same_epoch(cursor: XrayUserUsageCursor, *, uptime: int, sampled_at: datetime) -> bool:
     if uptime < cursor.uptime_seconds:
         return False
-    elapsed = (sampled_at - cursor.sampled_at).total_seconds()
-    uptime_elapsed = uptime - cursor.uptime_seconds
-    # Xray uptime is rounded to seconds. Allow poll duration and clock jitter.
-    return elapsed >= -2 and abs(elapsed - uptime_elapsed) <= 8
+    # Wall-clock jumps (NTP/manual adjustment) do not restart Xray. Never
+    # recharge cumulative counters merely because wall time differs from uptime.
+    # A lower process uptime or individual counter identifies an observed reset.
+    return True
+
 
 
 def accumulate_snapshots(db, snapshots: dict, usage_coefficient: dict):
