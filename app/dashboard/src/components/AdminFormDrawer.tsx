@@ -153,6 +153,7 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
       queryClient.invalidateQueries("admin-management");
       queryClient.invalidateQueries("admin-hierarchy-tree");
       queryClient.invalidateQueries("admin-capabilities");
+      queryClient.invalidateQueries("account-summary");
       toast({ title: t(isEditing ? "admins.updated" : "admins.created"), status: "success", duration: 3000 });
       onClose();
     },

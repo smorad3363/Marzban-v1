@@ -1,3 +1,9 @@
+# v1.1.13
+
+Release target: v1.1.13
+
+Access Group navigation and delegated permission refresh. [Notes](docs/RELEASE_NOTES_v1.1.13.md).
+
 # v1.1.12
 
 Release target: v1.1.12
