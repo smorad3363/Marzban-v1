@@ -66,7 +66,9 @@ import "slick-carousel/slick/slick-theme.css";
 import "slick-carousel/slick/slick.css";
 import { localizedApiError } from "utils/apiError";
 import { z } from "zod";
-import { useDashboard } from "../contexts/DashboardContext";
+import { useQueryClient } from "react-query";
+import { duplicateHostValues, hostsSchema } from "utils/hostsForm";
+import { fetchInbounds, useDashboard } from "../contexts/DashboardContext";
 import { DeleteIcon } from "./DeleteUserModal";
 import { Icon } from "./Icon";
 import { Input as CustomInput } from "./Input";
@@ -126,39 +128,6 @@ const InfoIcon = chakra(InformationCircleIcon, {
   },
 });
 
-const hostsSchema = z.record(
-  z.string().min(1),
-  z.array(
-    z.object({
-      id: z.number().int().positive().optional(),
-      remark: z.string().min(1, "Remark is required"),
-      address: z.string().min(1, "Address is required"),
-      port: z
-        .string()
-        .or(z.number())
-        .nullable()
-        .transform((value) => {
-          if (typeof value === "number") return value;
-          if (value !== null && !isNaN(parseInt(value)))
-            return Number(parseInt(value));
-          return null;
-        }),
-      path: z.string().nullable(),
-      sni: z.string().nullable(),
-      host: z.string().nullable(),
-      mux_enable: z.boolean().default(false),
-      allowinsecure: z.boolean().nullable().default(false),
-      is_disabled: z.boolean().default(true),
-      fragment_setting: z.string().nullable(),
-      noise_setting: z.string().nullable(),
-      random_user_agent: z.boolean().default(false),
-      security: z.string(),
-      alpn: z.string(),
-      fingerprint: z.string(),
-      use_sni_as_host: z.boolean().default(false),
-    })
-  )
-);
 
 const Error = chakra(FormErrorMessage, {
   baseStyle: {
@@ -195,10 +164,12 @@ const AccordionInbound: FC<AccordionInboundType> = ({
   } = useFieldArray({
     control: form.control,
     name: hostKey,
+    keyName: "_formKey",
   });
   const { errors } = form.formState;
   const { t } = useTranslation();
   const accordionErrors = errors[hostKey];
+  const toast = useToast();
   const handleAddHost = () => {
     addHost({
       host: "",
@@ -218,11 +189,13 @@ const AccordionInbound: FC<AccordionInboundType> = ({
       fingerprint: "",
       use_sni_as_host: false,
     });
+    toast({ title: "ردیف هاست اضافه شد", description: "آدرس و عنوان را وارد کنید و برای ثبت، اعمال را بزنید.", status: "info", duration: 4000 });
   };
   const duplicateHost = (index: number) => {
     if (index < 0 || index >= hosts.length) return;
-    const hostToDuplicate = hosts[index];
-    insertHost(index + 1, hostToDuplicate);
+    const hostToDuplicate = form.getValues(hostKey)[index];
+    insertHost(index + 1, duplicateHostValues(hostToDuplicate));
+    toast({ title: "کپی هاست آماده شد؛ برای ثبت، اعمال را بزنید.", status: "info", duration: 4000 });
   };
   useEffect(() => {
     if (accordionErrors && !isOpen) {
@@ -266,7 +239,7 @@ const AccordionInbound: FC<AccordionInboundType> = ({
           {hosts.map((host, index) => {
             return (
               <motion.div
-                key={host.id}
+                key={host._formKey}
                 layout
                 initial={false}
                 animate={{ opacity: 1 }}
@@ -275,15 +248,15 @@ const AccordionInbound: FC<AccordionInboundType> = ({
                   layout: { type: "spring", stiffness: 500, damping: 30 },
                   opacity: { duration: 0.1 },
                 }}
-                id={host.id}
+                id={host._formKey}
                 whileDrag={{ scale: 1.05, zIndex: 10 }}
                 style={{
                   width: "100%",
                 }}
               >
                 <VStack
-                  id={host.id}
-                  key={host.id}
+                  id={host._formKey}
+                  key={host._formKey}
                   border="1px solid"
                   _dark={{ borderColor: "gray.600", bg: "#273142" }}
                   _light={{ borderColor: "gray.200", bg: "#fcfbfb" }}
@@ -669,7 +642,7 @@ const AccordionInbound: FC<AccordionInboundType> = ({
                             <Input
                               size="sm"
                               borderRadius="4px"
-                              placeholder={String(inbound.port || "8080")}
+                              placeholder={String(inbound?.port || "8080")}
                               type="number"
                               {...form.register(
                                 hostKey + "." + index + ".port"
@@ -1214,13 +1187,19 @@ export const HostsDialog: FC = () => {
     setHosts,
   } = useHosts();
   const toast = useToast();
+  const queryClient = useQueryClient();
+  const [isNetworkLoading, setIsNetworkLoading] = useState(false);
   const { t } = useTranslation();
   const [openAccordions, setOpenAccordions] = useState<any>({});
   const [pendingHosts, setPendingHosts] = useState<HostsSchema | null>(null);
   const [impact, setImpact] = useState<HostUpdateImpact | null>(null);
 
   useEffect(() => {
-    if (isEditingHosts) fetchHosts();
+    if (!isEditingHosts) return;
+    setIsNetworkLoading(true);
+    Promise.all([fetchHosts(), fetchInbounds()])
+      .catch((error) => toast({ title: "دریافت تنظیمات هاست انجام نشد", description: localizedApiError(error), status: "error", duration: 5000 }))
+      .finally(() => setIsNetworkLoading(false));
   }, [isEditingHosts]);
   const form = useForm<z.infer<typeof hostsSchema>>({
     resolver: zodResolver(hostsSchema),
@@ -1230,7 +1209,7 @@ export const HostsDialog: FC = () => {
     if (hosts && isEditingHosts) {
       form.reset(hosts);
     }
-  }, [hosts]);
+  }, [hosts, isEditingHosts]);
 
   const onClose = () => {
     setOpenAccordions({});
@@ -1247,7 +1226,8 @@ export const HostsDialog: FC = () => {
           duration: 3000,
         });
         refetchUsers();
-        fetchHosts();
+        queryClient.invalidateQueries("access-group-network-options");
+        queryClient.invalidateQueries("access-groups");
         setPendingHosts(null);
         setImpact(null);
       })
@@ -1318,12 +1298,12 @@ export const HostsDialog: FC = () => {
         <ModalCloseButton mt={3} />
         <ModalBody w={{ base: "full", md: "440px" }} maxW="full" pb={3} pt={3}>
           <FormProvider {...form}>
-            <form onSubmit={form.handleSubmit(handleFormSubmit)}>
+            <form onSubmit={form.handleSubmit(handleFormSubmit, () => toast({ title: "هاست ذخیره نشد", description: "فیلدهای مشخص‌شده، به‌ویژه عنوان و آدرس هاست را بررسی کنید.", status: "error", duration: 5000 }))}>
               <Text mb={3} opacity={0.8} fontSize="sm">
                 {t("hostsDialog.title")}
               </Text>
-              {isLoading && t("hostsDialog.loading")}
-              {!isLoading &&
+              {(isLoading || isNetworkLoading) && t("hostsDialog.loading")}
+              {!isLoading && !isNetworkLoading &&
                 hosts &&
                 (Object.keys(hosts).length > 0 ? (
                   <Accordion
@@ -1357,8 +1337,8 @@ export const HostsDialog: FC = () => {
                   colorScheme="primary"
                   size="sm"
                   px={5}
-                  isLoading={isPostLoading || isImpactLoading}
-                  disabled={isPostLoading || isImpactLoading}
+                  isLoading={isPostLoading || isImpactLoading || isNetworkLoading}
+                  disabled={isPostLoading || isImpactLoading || isNetworkLoading}
                 >
                   {t("hostsDialog.apply")}
                 </Button>

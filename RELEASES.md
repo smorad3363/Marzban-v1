@@ -1,3 +1,9 @@
+# v1.1.12
+
+Release target: v1.1.12
+
+Host editor and Access Group refresh fixes. See [release notes](docs/RELEASE_NOTES_v1.1.12.md).
+
 # v1.1.11
 
 Release target: v1.1.11

@@ -102,6 +102,7 @@ jobs:
         working-directory: app/dashboard
         run: |
           node scripts/test-stage1-ui-contracts.cjs
+          node scripts/test-hosts-form.cjs
           node scripts/test-autofill-contract.cjs
 
       - name: Build dashboard from source

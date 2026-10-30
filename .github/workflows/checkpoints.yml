@@ -132,7 +132,7 @@ jobs:
         run: npm ci
       - name: Verify Stage 1 UI contracts
         working-directory: app/dashboard
-        run: node scripts/test-stage1-ui-contracts.cjs
+        run: node scripts/test-stage1-ui-contracts.cjs && node scripts/test-hosts-form.cjs
       - name: Build dashboard from source
         working-directory: app/dashboard
         run: VITE_BASE_API=/api/ npm run build
