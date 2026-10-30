@@ -170,4 +170,9 @@ def test_history_write_failure_rolls_back_usage_and_cursor(monkeypatch):
         db.refresh(user)
         assert user.used_traffic == 150
         assert db.query(NodeUserUsage).one().used_traffic == 150
+        # A removed account can remain in a polled Xray snapshot. Its history
+        # must not violate the user FK and roll back everybody else's traffic.
+        sample["accounts"]["999999.removed-user"] = {"uplink": 30, "downlink": 20}
+        record_usages.record_user_usages()
+        assert db.query(NodeUserUsage).count() == 1
     engine.dispose()

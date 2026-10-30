@@ -233,10 +233,11 @@ def record_user_usages():
                     db, snapshots, usage_coefficient
                 )
                 suspended_admin_ids = set()
+                admin_by_user = {}
                 if users_usage:
                     ids = [int(item["uid"]) for item in users_usage]
                     admin_by_user = dict(
-                        db.query(User.id, User.admin_id).filter(User.id.in_(ids)).all()
+                        db.query(User.id, User.admin_id).filter(User.id.in_(ids)).order_by(User.id).with_for_update().all()
                     )
                     admin_usage = defaultdict(int)
                     for item in users_usage:
@@ -264,8 +265,9 @@ def record_user_usages():
                     )
                 if not DISABLE_RECORDING_NODE_USAGE:
                     for node_id, items in per_node.items():
-                        if items:
-                            _record_user_stats(db, items, node_id)
+                        existing_items = [item for item in items if int(item["uid"]) in admin_by_user]
+                        if existing_items:
+                            _record_user_stats(db, existing_items, node_id)
                 db.commit()
                 break
             except (OperationalError, IntegrityError) as err:
