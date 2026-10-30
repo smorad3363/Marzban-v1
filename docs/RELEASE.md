@@ -18,3 +18,14 @@ sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-
 sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/v1.1.10/scripts/marzban.sh)" @ install-script v1.1.10
 sudo marzban node install --version v1.1.10
 ```
+
+## Permanent latest-stable entry point
+
+```bash
+sudo apt-get update && sudo apt-get install -y curl && sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/smorad3363/Marzban-v1/main/scripts/install.sh)"
+```
+
+The wrapper calls the official installer with `install --version latest --database mysql`.
+`latest` resolves GitHub's latest stable Release, not a development branch image.
+On a reviewed VERSION merge, publish-reviewed-version.yml verifies the exact PR
+head checks and dispatches canonical build.yml, followed by independent validators.
