@@ -45,7 +45,7 @@ jobs:
 
       - name: Verify Stage 1 UI contracts
         working-directory: app/dashboard
-        run: node scripts/test-stage1-ui-contracts.cjs
+        run: node scripts/test-stage1-ui-contracts.cjs && node scripts/test-hosts-form.cjs
 
       - name: Verify authenticated autofill contract
         working-directory: app/dashboard

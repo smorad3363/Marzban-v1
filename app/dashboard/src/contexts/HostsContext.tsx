@@ -30,7 +30,7 @@ type HostsStore = {
   isPostLoading: boolean;
   isImpactLoading: boolean;
   hosts: HostsSchema;
-  fetchHosts: () => void;
+  fetchHosts: () => Promise<void>;
   previewHosts: (hosts: HostsSchema) => Promise<HostUpdateImpact>;
   setHosts: (hosts: HostsSchema, action?: HostImpactAction) => Promise<void>;
 };
@@ -41,7 +41,7 @@ export const useHosts = create<HostsStore>((set) => ({
   hosts: {},
   fetchHosts: () => {
     set({ isLoading: true });
-    fetch("/hosts")
+    return fetch<HostsSchema>("/hosts")
       .then((hosts) => set({ hosts }))
       .finally(() => set({ isLoading: false }));
   },
@@ -54,7 +54,7 @@ export const useHosts = create<HostsStore>((set) => ({
   setHosts: (body, action) => {
     set({ isPostLoading: true });
     const query = action ? `?impact_action=${encodeURIComponent(action)}` : "";
-    return fetch(`/hosts${query}`, { method: "PUT", body }).finally(() => {
+    return fetch<HostsSchema>(`/hosts${query}`, { method: "PUT", body }).then((hosts) => { set({ hosts }); }).finally(() => {
       set({ isPostLoading: false });
     });
   },
