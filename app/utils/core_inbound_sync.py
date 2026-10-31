@@ -5,10 +5,11 @@ New inbounds are never assigned to an Access Group.
 """
 from __future__ import annotations
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.models import (
-    AccessGroupHost, AccessGroupInbound, MarzhelpAdminInboundPermission,
+    AccessGroup, AccessGroupHost, AccessGroupInbound, MarzhelpAdminInboundPermission,
     MarzhelpAdminSettings, Proxy, ProxyHost, ProxyInbound, User,
     excluded_inbounds_association, template_inbounds_association,
 )
@@ -132,8 +133,57 @@ def synchronize_inbounds(
         "renamed": list(rename) if rename else None,
         "grouped_users_reconciled": touched_users,
         "groups_without_network": sorted(
-            group_id for group_id in {
-                row[0] for row in db.query(AccessGroupInbound.access_group_id).distinct()
-            } if not group_tags.get(group_id)
+            row[0] for row in db.query(AccessGroup.id).filter(
+                AccessGroup.archived_at.is_(None)
+            ).all() if not group_tags.get(row[0])
         ),
     }
+
+
+# The rollback snapshot is limited to network metadata. Neither commercial
+# records nor usage-history tables are read or written by reconciliation.
+_STATE_TABLES = (
+    AccessGroupInbound.__table__,
+    AccessGroupHost.__table__,
+    MarzhelpAdminInboundPermission.__table__,
+    excluded_inbounds_association,
+    template_inbounds_association,
+)
+
+
+def capture_network_state(db: Session) -> dict:
+    return {
+        "tables": [
+            (table, [dict(row) for row in db.execute(select(table)).mappings()])
+            for table in _STATE_TABLES
+        ],
+        "hosts": [
+            (row.id, row.inbound_tag, row.is_legacy)
+            for row in db.query(ProxyHost).all()
+        ],
+        "inbound_tags": {
+            row[0] for row in db.query(ProxyInbound.tag).all()
+        },
+    }
+
+
+def restore_network_state(db: Session, snapshot: dict) -> None:
+    # Repair an already-committed DB change if writing/restarting runtime fails.
+    # Child rows are restored before removing newly created inbound identities.
+    for table, _ in snapshot["tables"]:
+        db.execute(table.delete())
+    for table, rows in snapshot["tables"]:
+        if rows:
+            db.execute(table.insert(), rows)
+    for host_id, tag, legacy in snapshot["hosts"]:
+        db.query(ProxyHost).filter(ProxyHost.id == host_id).update(
+            {"inbound_tag": tag, "is_legacy": legacy}, synchronize_session=False
+        )
+    created_tags = {
+        row[0] for row in db.query(ProxyInbound.tag).all()
+    } - snapshot["inbound_tags"]
+    if created_tags:
+        db.query(ProxyInbound).filter(ProxyInbound.tag.in_(created_tags)).delete(
+            synchronize_session=False
+        )
+    db.flush()
