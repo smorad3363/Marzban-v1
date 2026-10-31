@@ -93,7 +93,7 @@ def test_delete_prunes_only_removed_tag_and_preserves_users_and_commerce(db, mon
     } for u in users)
     assert session.get(ProxyHost, host.id).is_legacy is True
     assert _state(users) == snapshot
-    assert plan.current_version.data_limit == 123456789
+    assert admin_plans.plan_response(session, plan).version.data_limit == 123456789
 
 
 def test_explicit_rename_moves_host_id_group_admin_permission_and_credentials(db, monkeypatch):
