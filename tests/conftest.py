@@ -19,10 +19,13 @@ subprocess.check_output = check_output
 
 # Public-address discovery happens during app import. Keep tests offline and
 # deterministic rather than disclosing the runner address to external services.
-import requests
+try:
+    import requests
+except ImportError:
+    requests = None  # Installer-only test jobs do not install application dependencies.
 from types import SimpleNamespace
 
-_original_get = requests.get
+_original_get = requests.get if requests is not None else None
 def _offline_address_discovery(url, *args, **kwargs):
     address_urls = {
         "http://api4.ipify.org/": "8.8.8.8",
@@ -35,4 +38,5 @@ def _offline_address_discovery(url, *args, **kwargs):
         return SimpleNamespace(text=address_urls[url])
     return _original_get(url, *args, **kwargs)
 
-requests.get = _offline_address_discovery
+if requests is not None:
+    requests.get = _offline_address_discovery
