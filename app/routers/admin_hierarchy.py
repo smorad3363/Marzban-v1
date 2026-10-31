@@ -1830,6 +1830,7 @@ def update_access_group(
     group_id: int,
     values: AccessGroupInput,
     request: Request,
+    bg: BackgroundTasks,
     db: Session = Depends(get_db),
     admin: Admin = Depends(Admin.get_current),
 ):
@@ -1847,6 +1848,8 @@ def update_access_group(
         target_id=group.id, target_name=group.name,
         details={"synced_active_user_ids": synced_ids}, request=request,
     )
+    for user_id in synced_ids:
+        bg.add_task(xray.operations.update_user_by_id, user_id=user_id)
     return access_groups.response(db, group)
 
 

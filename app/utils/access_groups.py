@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import object_session
 
 from app import xray
+from app.device_limit.slots import sync_device_slots
 from app.db.access_group_models import AccessGroupAdminAccess
 from app.db.models import (
     AccessGroup,
@@ -99,16 +100,20 @@ def _replace_admin_access(
     # Permission policy controls future Access Group selection. Existing users
     # keep their already-authorized binding so Owner can revoke an Admin without
     # breaking active subscriptions or blocking later network maintenance.
-    db.query(AccessGroupAdminAccess).filter(
-        AccessGroupAdminAccess.access_group_id == group.id
-    ).delete(synchronize_session=False)
-    # Explicit policy persists the exact group Owner as an internal restriction
-    # sentinel. Omitted allowed_admin_ids preserves legacy/public behavior by
-    # leaving zero rows, while explicit [] is durable deny-all for Admins.
     persisted_ids = allowed | ({group.owner_admin_id} if explicit_policy else set())
+    existing_ids = set(_permission_admin_ids(db, group.id))
+    revoked = existing_ids - persisted_ids
+    if revoked:
+        db.query(AccessGroupAdminAccess).filter(
+            AccessGroupAdminAccess.access_group_id == group.id,
+            AccessGroupAdminAccess.admin_id.in_(revoked),
+        ).delete(synchronize_session=False)
+    # Retained grants are not new assignments. Recreating them would reject
+    # network maintenance whenever a previously authorized Admin is suspended.
+    # Newly granted IDs still pass the persistence role/status/scope guard.
     db.add_all(
         AccessGroupAdminAccess(access_group_id=group.id, admin_id=admin_id)
-        for admin_id in sorted(persisted_ids)
+        for admin_id in sorted(persisted_ids - existing_ids)
     )
 
 
@@ -381,7 +386,7 @@ def update(db: Session, actor: Admin, group: AccessGroup, values: AccessGroupInp
     db.flush()
     users = (
         db.query(User)
-        .filter(User.access_group_id == group.id, User.status.in_((UserStatus.active, UserStatus.on_hold)))
+        .filter(User.access_group_id == group.id)
         .order_by(User.id)
         .all()
     )
@@ -399,8 +404,10 @@ def update(db: Session, actor: Admin, group: AccessGroup, values: AccessGroupInp
         _require_admin_network_scope(db, inbounds, user.admin_id)
         _apply_network_to_user(db, user, inbounds)
         user.access_group_id = group.id
+        sync_device_slots(db, user)
+    active_ids = [user.id for user in users if user.status in (UserStatus.active, UserStatus.on_hold)]
     db.commit()
-    return [user.id for user in users]
+    return active_ids
 
 
 def archive(db: Session, actor: Admin, group: AccessGroup) -> None:
