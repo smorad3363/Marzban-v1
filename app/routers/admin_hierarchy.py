@@ -2127,7 +2127,8 @@ def requests_alerts(request_before_id: int | None = Query(default=None, ge=1), a
         alert_query = alert_query.filter(AdminAccountAlert.id < alert_before_id)
     requests = request_query.order_by(UserDeletionRequest.id.desc()).limit(100).all()
     alerts = alert_query.order_by(AdminAccountAlert.id.desc()).limit(100).all()
-    return {"requests": [request_response(db, row) for row in requests], "alerts": [{"id": row.id, "admin_id": row.admin_id, "kind": row.kind, "details": row.details, "created_at": row.created_at} for row in alerts], "actor_id": actor.id}
+    names = dict(db.query(DBAdmin.id, DBAdmin.username).filter(DBAdmin.id.in_({row.admin_id for row in alerts})).all())
+    return {"requests": [request_response(db, row) for row in requests], "alerts": [{"id": row.id, "admin_id": row.admin_id, "admin_username": names.get(row.admin_id), "kind": row.kind, "details": row.details, "created_at": row.created_at} for row in alerts], "actor_id": actor.id}
 
 
 @router.post("/admin-management/deletion-requests/{request_id}/decision", response_model=DeletionRequestResponse)

@@ -15,6 +15,7 @@ import {
   GridItem,
   HStack,
   IconButton,
+  Input as ChakraInput,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -461,7 +462,8 @@ export const UserDialog: FC<UserDialogProps> = () => {
   const restrictedDurationValid = !restrictedCreate || (
     Number(dataLimit) > 0
     && Number.isInteger(selectedRestrictedDuration)
-    && restrictedDurationOptions.includes(selectedRestrictedDuration)
+    && selectedRestrictedDuration > 0
+    && selectedRestrictedDuration <= Math.max(0, ...restrictedDurationOptions)
   );
 
   useEffect(() => {
@@ -1039,19 +1041,18 @@ export const UserDialog: FC<UserDialogProps> = () => {
                       {restrictedCreate && (
                         <FormControl mb="10px" isRequired>
                           <FormLabel>مدت سرویس</FormLabel>
-                          <Select
+                          <ChakraInput
+                            type="number"
+                            min={1}
+                            step={1}
+                            max={Math.max(0, ...restrictedDurationOptions)}
                             value={restrictedDurationDays}
                             onChange={(event) => setRestrictedDurationDays(event.target.value)}
                             isDisabled={disabled || capabilitiesQuery.isLoading}
                             minH="44px"
-                          >
-                            <option value="">یک مدت مجاز انتخاب کنید</option>
-                            {restrictedDurationOptions.map((days) => (
-                              <option key={days} value={days}>{days.toLocaleString("fa-IR")} روز</option>
-                            ))}
-                          </Select>
+                          />
                           {restrictedDurationOptions.length ? (
-                            <FormHelperText>مدت از presetهای فعال Owner گرفته می‌شود و زمان انقضا هنگام ثبت محاسبه می‌شود.</FormHelperText>
+                            <FormHelperText>تعداد روز دلخواه را وارد کنید؛ ضریب بازهٔ مدت به‌صورت خودکار در محاسبه اعتبار اعمال می‌شود.</FormHelperText>
                           ) : (
                             <Alert mt={2} status="warning" borderRadius="10px">
                               <AlertIcon />

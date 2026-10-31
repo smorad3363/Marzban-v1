@@ -136,6 +136,8 @@ export const Header: FC = () => {
       minW={{ lg: "272px" }}
       minH={{ lg: "100vh" }}
       h={{ lg: "100vh" }}
+      overflowY={{ lg: "auto" }}
+      sx={{ "& > *": { flexShrink: 0 } }}
       position={{ base: "relative", lg: "sticky" }}
       top="0"
       zIndex="sticky"

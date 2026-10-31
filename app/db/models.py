@@ -833,6 +833,7 @@ class MarzhelpAdminSettings(Base):
     used_traffic_price_per_gib_toman = Column(BigInteger, nullable=True)
     # Numerator remainder modulo GiB for exact fractional usage settlement.
     usage_billing_remainder = Column(BigInteger, nullable=False, default=0)
+    usage_billing_fraction = Column(Integer, nullable=False, default=0)
     total_traffic = Column(BigInteger, nullable=True)
     delegated_traffic = Column(BigInteger, nullable=False, default=0)
     used_traffic = Column(BigInteger, nullable=False, default=0)
@@ -1370,6 +1371,8 @@ class User(Base):
     )
     usage_logs = relationship("UserUsageResetLogs", back_populates="user")  # maybe rename it to reset_usage_logs?
     expire = Column(Integer, nullable=True)
+    form_duration_days = Column(Integer, nullable=True)
+    duration_multiplier_basis_points = Column(Integer, nullable=False, default=10000)
     admin_id = Column(Integer, ForeignKey("admins.id"), index=True)
     access_group_id = Column(
         BigInteger().with_variant(Integer, "sqlite"),

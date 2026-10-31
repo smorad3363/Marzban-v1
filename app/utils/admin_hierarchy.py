@@ -1589,58 +1589,59 @@ def suspend_admin(
 
 
 def resume_admin(db: Session, *, actor: Admin, target: Admin) -> int:
+    """Resume legacy automatic suspension without treating it as Owner Freeze."""
     if not admin_in_scope(db, actor, target.id) or actor.id == target.id:
         raise HierarchyError("resume_scope_forbidden", "Target admin is outside actor scope")
-    settings = db.get(MarzhelpAdminSettings, target.id)
+    settings = db.query(MarzhelpAdminSettings).filter_by(admin_id=target.id).with_for_update().one_or_none()
     if settings is None or settings.account_status_id != ACCOUNT_STATUS_IDS[SUSPENDED]:
         raise HierarchyError("no_active_suspension", "Admin has no resumable suspension event")
-    if settings.suspension_event_id is None:
-        if automatic_suspension_reason(db, settings) is not None:
-            raise HierarchyError(
-                "suspension_condition_active",
-                "Automatic suspension condition is still active",
-            )
-        settings.account_status_id = ACCOUNT_STATUS_IDS[ACTIVE]
-        settings.suspended_reason_id = None
-        settings.suspended_at = None
-        settings.suspended_by_admin_id = None
-        db.commit()
-        return 0
-    event_id = int(settings.suspension_event_id)
-    rows = (
-        db.query(AdminSuspensionUser, User)
-        .join(User, User.id == AdminSuspensionUser.user_id)
-        .filter(
-            AdminSuspensionUser.event_id == event_id,
-            AdminSuspensionUser.sync_status == "applied",
-        )
-        .order_by(User.id)
-        .with_for_update()
-        .all()
-    )
+    event_id = settings.suspension_event_id
+    event = db.get(AdminSuspensionEvent, event_id) if event_id else None
+    if event_id and (event is None or event.operation_type != "suspension" or event.status != "complete"):
+        raise HierarchyError("no_active_suspension", "Use the matching Owner Freeze recovery operation")
+    policies = db.query(MarzhelpAdminSettings).filter(
+        MarzhelpAdminSettings.suspension_event_id == event_id,
+        MarzhelpAdminSettings.account_status_id == ACCOUNT_STATUS_IDS[SUSPENDED],
+    ).order_by(MarzhelpAdminSettings.admin_id).with_for_update().all() if event_id else [settings]
+    from app.utils import financial_controls
+    for policy in policies:
+        if automatic_suspension_reason(db, policy) is not None or financial_controls.state(policy) in {"frozen", "disabled"}:
+            raise HierarchyError("suspension_condition_active", "Automatic suspension condition is still active")
+    restored_admin_ids = {p.admin_id for p in policies}
+    for policy in policies:
+        policy.account_status_id = ACCOUNT_STATUS_IDS[ACTIVE]
+        policy.suspended_reason_id = None
+        policy.suspended_at = None
+        policy.suspended_by_admin_id = None
+        policy.suspension_event_id = None
+    db.flush()
     restored = 0
+    rows = db.query(AdminSuspensionUser, User).join(User, User.id == AdminSuspensionUser.user_id).filter(
+        AdminSuspensionUser.event_id == event_id,
+        AdminSuspensionUser.sync_status == "applied",
+    ).order_by(User.id).with_for_update().all() if event_id else []
+    now = utc_now_naive()
     for snapshot, user in rows:
-        if user.status == UserStatus.disabled:
-            user.status = UserStatus(snapshot.previous_status)
-            restored += 1
+        if user.status != UserStatus.disabled or user.admin_id not in restored_admin_ids:
+            snapshot.sync_status = "skipped_changed"
+            continue
+        penalty = user.device_limit_state
+        if financial_controls.connections_blocked(db, user.admin_id) or (
+            penalty is not None and penalty.penalty_status in {"temporarily_disabled", "permanently_disabled"}
+        ):
+            snapshot.sync_status = "skipped_changed"
+            continue
+        expired = (user.expire is not None and user.expire <= now.replace(tzinfo=timezone.utc).timestamp()) or (
+            snapshot.previous_status == "on_hold" and user.on_hold_timeout is not None and user.on_hold_timeout <= now
+        )
+        exhausted = user.data_limit is not None and int(user.used_traffic or 0) >= user.data_limit
+        user.status = UserStatus.expired if expired else UserStatus.limited if exhausted else UserStatus(snapshot.previous_status)
         snapshot.sync_status = "restored"
-    subtree_settings = db.query(MarzhelpAdminSettings).filter(
-        MarzhelpAdminSettings.suspension_event_id == event_id
-    )
-    subtree_settings.update(
-        {
-            MarzhelpAdminSettings.account_status_id: ACCOUNT_STATUS_IDS[ACTIVE],
-            MarzhelpAdminSettings.suspended_reason_id: None,
-            MarzhelpAdminSettings.suspended_at: None,
-            MarzhelpAdminSettings.suspended_by_admin_id: None,
-            MarzhelpAdminSettings.suspension_event_id: None,
-        },
-        synchronize_session=False,
-    )
-    event = db.get(AdminSuspensionEvent, event_id)
+        restored += 1
     if event:
         event.status = "resolved"
-        event.resolved_at = utc_now_naive()
+        event.resolved_at = now
+        event.resolved_by_admin_id = actor.id
     db.commit()
     return restored
 

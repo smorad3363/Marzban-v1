@@ -149,7 +149,7 @@ def test_history_write_failure_rolls_back_usage_and_cursor(monkeypatch):
         monkeypatch.setattr(record_usages.xray, "nodes", {})
         monkeypatch.setattr(record_usages, "get_user_counter_snapshot", lambda _: sample)
         monkeypatch.setattr(record_usages, "DISABLE_RECORDING_NODE_USAGE", False)
-        monkeypatch.setattr(record_usages.money_billing, "settle_used_traffic", lambda *_: set())
+        monkeypatch.setattr(record_usages.money_billing, "settle_used_traffic", lambda *_, **_kwargs: set())
         original = record_usages._record_user_stats
         def fail_history(*args):
             original(*args)

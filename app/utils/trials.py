@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from hashlib import sha256
 
-from sqlalchemy import and_, exists, or_
+from sqlalchemy import and_, exists, or_, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -19,9 +19,28 @@ from app.db.models import (
     UserPlanAssignment,
 )
 from app.utils import admin_hierarchy, marzhelp_policy
+from app.utils.admin_billing import BillingMode, billing_mode
 
 
 MAX_CLEANUP_BATCH = 500
+
+
+def require_eligible(db: Session, target: Admin, settings: MarzhelpAdminSettings) -> None:
+    if not admin_hierarchy.is_owner(db, target) and billing_mode(settings) not in {BillingMode.ALLOCATED_TRAFFIC, BillingMode.USER_CREDIT}:
+        raise admin_hierarchy.HierarchyError("trial_billing_mode_forbidden", "Trial quota is available only for Plan and Allocated Traffic Admins")
+
+
+def consume_quota(db: Session, target: Admin, settings: MarzhelpAdminSettings) -> None:
+    require_eligible(db, target, settings)
+    db.flush()
+    result = db.execute(update(MarzhelpAdminSettings).where(
+        MarzhelpAdminSettings.admin_id == target.id,
+        MarzhelpAdminSettings.trial_quota > 0,
+    ).values(trial_quota=MarzhelpAdminSettings.trial_quota - 1,
+             trials_used=MarzhelpAdminSettings.trials_used + 1))
+    if result.rowcount != 1:
+        raise admin_hierarchy.HierarchyError("trial_quota_exhausted", "Trial creation quota is exhausted")
+    db.expire(settings, ["trial_quota", "trials_used"])
 
 
 def adjust_quota(
@@ -50,6 +69,7 @@ def adjust_quota(
     )
     if settings is None:
         raise admin_hierarchy.HierarchyError("policy_missing", "Target policy is missing")
+    require_eligible(db, target, settings)
     existing = (
         db.query(AdminCreditTransfer)
         .filter(AdminCreditTransfer.idempotency_key == idempotency_key)
@@ -143,6 +163,7 @@ def reset_quota(
     )
     if settings is None:
         raise admin_hierarchy.HierarchyError("policy_missing", "Target policy is missing")
+    require_eligible(db, target, settings)
     before = int(settings.trial_quota or 0)
     after = int(settings.trial_quota_limit or 0)
     if after <= 0:

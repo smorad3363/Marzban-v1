@@ -750,23 +750,8 @@ def create_user_from_plan(
         )
         if replay:
             return replay[0], replay[1], False
-        consumed = db.execute(
-            update(MarzhelpAdminSettings)
-            .where(
-                MarzhelpAdminSettings.admin_id == actor.id,
-                MarzhelpAdminSettings.trial_quota > 0,
-            )
-            .values(
-                trial_quota=MarzhelpAdminSettings.trial_quota - 1,
-                trials_used=MarzhelpAdminSettings.trials_used + 1,
-                updated_at=func.now(),
-            )
-        )
-        if consumed.rowcount != 1:
-            raise admin_hierarchy.HierarchyError(
-                "trial_quota_exhausted", "Trial creation quota is exhausted"
-            )
-        db.expire(settings, ["trial_quota", "trials_used"])
+        from app.utils import trials
+        trials.consume_quota(db, actor, settings)
     payload = _plan_user_payload(version, username, status, note, group_inbounds)
     try:
         user = crud.create_user(
@@ -775,6 +760,7 @@ def create_user_from_plan(
             admin=actor,
             commit=False,
             apply_namespace=False,
+            trial=bool(plan.is_trial),
         )
         access_groups.apply_to_user(db, user, access_group_id)
         assignment = UserPlanAssignment(
@@ -865,9 +851,10 @@ def renew_user_from_plan(
         requested_access_group_id is not None
         and requested_access_group_id != user.access_group_id
     )
+    plan = db.get(AdminUserPlan, plan_id)
     from app.utils.financial_controls import require_spending
-    require_spending(db, actor.id)
-    require_spending(db, user.admin_id)
+    require_spending(db, actor.id, allow_unfunded=bool(plan and plan.is_trial))
+    require_spending(db, user.admin_id, allow_unfunded=bool(plan and plan.is_trial))
     admin_hierarchy.require_active_account(db, actor)
     owner_account = db.get(Admin, user.admin_id)
     if owner_account is not None:
@@ -881,9 +868,9 @@ def renew_user_from_plan(
     if plan.archived_at is not None:
         raise admin_hierarchy.HierarchyError("plan_archived", "Archived plan cannot be renewed")
     if plan.is_trial:
-        raise admin_hierarchy.HierarchyError(
-            "trial_renewal_forbidden", "Trial plans can only create new Trial users"
-        )
+        latest = db.query(UserPlanAssignment).filter_by(user_id=user.id).order_by(UserPlanAssignment.id.desc()).first()
+        if latest is None or not latest.is_trial:
+            raise admin_hierarchy.HierarchyError("trial_renewal_forbidden", "A paid User cannot be renewed with a free Trial")
     version = db.get(AdminUserPlanVersion, plan.current_version_id)
     settings = (
         db.query(MarzhelpAdminSettings)
@@ -928,6 +915,11 @@ def renew_user_from_plan(
     else:
         marzhelp_policy._validate_traffic_credit(db, settings)
 
+    if plan.is_trial:
+        from app.utils import trials
+        trials.consume_quota(db, owner_account, settings)
+    user.form_duration_days = None
+    user.duration_multiplier_basis_points = 10000
     if user.used_traffic:
         db.add(UserUsageResetLogs(user_id=user.id, used_traffic_at_reset=user.used_traffic))
     user.used_traffic = 0
@@ -972,7 +964,7 @@ def renew_user_from_plan(
         version_id=version.id,
         actor_admin_id=actor.id,
         operation_type="renew",
-        is_trial=False,
+        is_trial=bool(plan.is_trial),
         idempotency_key=idempotency_key,
     )
     try:

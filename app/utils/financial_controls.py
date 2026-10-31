@@ -34,7 +34,7 @@ def connections_blocked(db, admin_id):
     return any(state(s)=='disabled' for s in db.query(MarzhelpAdminSettings).filter(MarzhelpAdminSettings.admin_id.in_(ids)).all())
 
 
-def require_spending(db, admin_id):
+def require_spending(db, admin_id, *, allow_unfunded=False):
     if admin_id is None: return
     admin = db.get(Admin, admin_id)
     if admin is not None and admin_hierarchy.is_owner(db, admin): return
@@ -43,7 +43,7 @@ def require_spending(db, admin_id):
     for settings in db.query(MarzhelpAdminSettings).filter(MarzhelpAdminSettings.admin_id.in_(ids)).all():
         if state(settings) in {'frozen','disabled'}:
             raise admin_hierarchy.HierarchyError('financial_account_frozen','Financial limit blocks new purchases and renewals')
-        if settings.money_billing_enabled and settings.financial_limits_enabled and int(settings.last_positive_charge_toman or 0)<=0 and int(settings.money_balance_toman or 0)<=0:
+        if not allow_unfunded and settings.money_billing_enabled and settings.financial_limits_enabled and int(settings.last_positive_charge_toman or 0)<=0 and int(settings.money_balance_toman or 0)<=0:
             raise admin_hierarchy.HierarchyError('money_funding_required','A positive wallet grant is required before provisioning paid service')
 
 
@@ -53,16 +53,24 @@ def alert(db, admin_id, key, kind, details=None):
 
 
 def mark_manual_status(db, user):
+    from app.db.models import AdminSuspensionUser
+    for snapshot in db.query(AdminSuspensionUser).filter_by(user_id=user.id, sync_status="applied").all():
+        snapshot.sync_status = "skipped_changed"
     for hold in db.query(AdminFinancialUserHold).filter(AdminFinancialUserHold.user_id == user.id).all():
         hold.restore_allowed = False
 
 
 def reconcile(db, admin_ids=None):
     """Caller owns transaction; return user IDs whose runtime must be refreshed."""
+    # Production disables autoflush. Reloading locked rows must not discard a
+    # pending wallet grant, initial funding, refund or charge in this transaction.
+    db.flush()
     query = db.query(MarzhelpAdminSettings).order_by(MarzhelpAdminSettings.admin_id)
     if admin_ids is not None: query = query.filter(MarzhelpAdminSettings.admin_id.in_(admin_ids))
     changed = set()
     for settings in query.with_for_update().populate_existing().all():
+        # An earlier ancestor in this pass may have created an overlapping hold.
+        db.flush()
         account = db.get(Admin, settings.admin_id)
         if account is None or admin_hierarchy.is_owner(db,account): continue
         previously_changed = set(changed)

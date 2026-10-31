@@ -79,16 +79,19 @@ def duration_preset(db: Session, expire: int | None) -> OwnerDurationPreset:
     now = int(datetime.now(timezone.utc).timestamp())
     seconds = max(int(expire) - now, 0)
     days = max(round(seconds / 86400), 1)
+    if seconds <= 0:
+        raise admin_hierarchy.HierarchyError("duration_preset_required", "Duration must be positive")
     if abs(seconds - days * 86400) > 300:
         raise admin_hierarchy.HierarchyError("duration_preset_required", "Duration must match an Owner preset")
-    preset = db.get(OwnerDurationPreset, days)
-    if preset is None or not preset.enabled:
-        raise admin_hierarchy.HierarchyError("duration_preset_required", "Duration must match an enabled Owner preset")
-    return preset
+    return duration_days_preset(db, days)
 
 
 def duration_days_preset(db: Session, duration_days: int) -> OwnerDurationPreset:
-    preset = db.get(OwnerDurationPreset, int(duration_days))
+    # Each configured endpoint is an inclusive upper bound. Do not skip a
+    # disabled interval into a more expensive or less restrictive interval.
+    preset = db.query(OwnerDurationPreset).filter(
+        OwnerDurationPreset.duration_days >= int(duration_days)
+    ).order_by(OwnerDurationPreset.duration_days).first() if duration_days > 0 else None
     if preset is None or not preset.enabled:
         raise admin_hierarchy.HierarchyError("duration_preset_required", "Duration must match an enabled Owner preset")
     return preset

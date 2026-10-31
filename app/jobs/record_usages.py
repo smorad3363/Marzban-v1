@@ -236,14 +236,16 @@ def record_user_usages():
                 admin_by_user = {}
                 if users_usage:
                     ids = [int(item["uid"]) for item in users_usage]
-                    admin_by_user = dict(
-                        db.query(User.id, User.admin_id).filter(User.id.in_(ids)).order_by(User.id).with_for_update().all()
-                    )
+                    billing_rows = db.query(User.id, User.admin_id, User.duration_multiplier_basis_points).filter(User.id.in_(ids)).order_by(User.id).with_for_update().all()
+                    admin_by_user = {row.id: row.admin_id for row in billing_rows}
+                    coefficients = {row.id: row.duration_multiplier_basis_points for row in billing_rows}
                     admin_usage = defaultdict(int)
+                    weighted_usage = defaultdict(int)
                     for item in users_usage:
                         admin_id = admin_by_user.get(int(item["uid"]))
                         if admin_id is not None:
                             admin_usage[admin_id] += item["value"]
+                            weighted_usage[admin_id] += int(item["value"]) * int(coefficients[int(item["uid"])])
 
                     user_stmt = update(User).where(
                         User.id == bindparam("uid")
@@ -261,7 +263,7 @@ def record_user_usages():
                             for admin_id, amount in admin_usage.items()
                         ])
                     suspended_admin_ids = money_billing.settle_used_traffic(
-                        db, dict(admin_usage)
+                        db, dict(admin_usage), weighted_usage=dict(weighted_usage)
                     )
                 if not DISABLE_RECORDING_NODE_USAGE:
                     for node_id, items in per_node.items():

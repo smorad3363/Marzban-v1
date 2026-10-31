@@ -239,6 +239,7 @@ export const UserDetailsDrawer: FC<UserDetailsDrawerProps> = ({
                     <Detail label="تاریخ ایجاد" value={fmtDateTime(user.created_at)} />
                     <Detail label="آخرین فعالیت" value={fmtDateTime(user.online_at)} />
                     <Detail label="انقضا" value={fmtExpire(user.expire)} />
+                    {user.form_duration_days != null && <Detail label="ضریب اعتبار مدت دلخواه" value={`${(user.duration_multiplier_basis_points ?? 10000) / 10000}x · ${user.form_duration_days} روز`} />}
                     <Detail label="سقف دستگاه" value={user.concurrent_user_limit ?? "نامحدود"} />
                   </SimpleGrid>
 

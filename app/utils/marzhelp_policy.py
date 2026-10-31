@@ -1086,7 +1086,7 @@ def record_quota_rejection(error: MarzhelpPolicyError, db: Session | None = None
             db.close()
 
 
-def validate_create(db: Session, admin_id: int | None, user: Any) -> MarzhelpAdminSettings | None:
+def validate_create(db: Session, admin_id: int | None, user: Any, *, trial: bool = False) -> MarzhelpAdminSettings | None:
     settings = _settings(db, admin_id, lock=True)
     if settings is None:
         return None
@@ -1094,7 +1094,7 @@ def validate_create(db: Session, admin_id: int | None, user: Any) -> MarzhelpAdm
     from app.utils.financial_controls import require_spending
     from app.utils import admin_hierarchy
     try:
-        require_spending(db, admin_id)
+        require_spending(db, admin_id, allow_unfunded=trial)
     except admin_hierarchy.HierarchyError as exc:
         raise MarzhelpPolicyError(exc.code, str(exc)) from exc
     if settings.prevent_user_creation:
@@ -1331,6 +1331,13 @@ def validate_update(
             owner_pricing.duration_days_preset(db, delta // 86400)
         elif not dbuser.expire:
             owner_pricing.duration_preset(db, expire)
+    if dbuser.form_duration_days is not None and expiration_changed and not _is_effective_owner(db, actor):
+        from app.utils import owner_pricing
+        delta_days = (int(expire or 0) - int(dbuser.expire or 0)) // 86400
+        duration = int(dbuser.form_duration_days) + delta_days
+        preset = owner_pricing.duration_days_preset(db, duration)
+        dbuser.form_duration_days = duration
+        dbuser.duration_multiplier_basis_points = preset.multiplier_basis_points
     volume_delta = int(data_limit or 0) - int(old_data_limit or 0)
     if strategy.mode == admin_billing.BillingMode.ALLOCATED_TRAFFIC and not _is_effective_owner(db, actor):
         from app.utils import owner_pricing, money_billing

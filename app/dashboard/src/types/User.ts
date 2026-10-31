@@ -59,6 +59,8 @@ export type UserPlanMeta = {
 };
 
 export type User = {
+  form_duration_days?: number | null;
+  duration_multiplier_basis_points?: number;
   id: number;
   proxies: ProxyType;
   expire: number | null;

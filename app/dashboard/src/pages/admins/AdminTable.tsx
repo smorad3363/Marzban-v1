@@ -226,7 +226,7 @@ export const AdminTable: FC<Props> = ({
               />
             </Tooltip>
 
-            {item.trial_quota_limit > 0 && (
+            {item.trial_quota_limit > 0 && ["ALLOCATED_TRAFFIC", "USER_CREDIT"].includes(item.policy.billing_mode) && (
               <Tooltip label="بازنشانی سهمیه تست" hasArrow>
                 <IconButton
                   aria-label={`بازنشانی سهمیه تست ${item.username}`}

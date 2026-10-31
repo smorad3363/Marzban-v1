@@ -29,7 +29,7 @@ def test_concurrent_deletion_approvals_refund_once(monkeypatch):
     original_not_after=crypto.X509.gmtime_adj_notAfter
     monkeypatch.setattr(crypto.X509,'gmtime_adj_notAfter',lambda certificate,seconds:original_not_after(certificate,min(seconds,2_000_000_000)))
     command.upgrade(alembic,'head')
-    factory=sessionmaker(bind=engine,expire_on_commit=False)
+    factory=sessionmaker(bind=engine,expire_on_commit=False,autoflush=False)
     with factory() as db:
         owner=Admin(username='financial-mysql-owner',hashed_password='x',is_sudo=True)
         child=Admin(username='financial-mysql-child',hashed_password='x',is_sudo=False)
@@ -71,4 +71,16 @@ def test_concurrent_deletion_approvals_refund_once(monkeypatch):
         assert db.get(MarzhelpAdminSettings,child_id).money_balance_toman==1700
         assert db.get(MarzhelpAdminSettings,child_id).last_positive_charge_toman==100
         assert db.query(AdminMoneyTransaction).filter_by(operation_key='money:grant:parallel-grant-once').count()==1
+    with factory() as db:
+        settings = db.get(MarzhelpAdminSettings, child_id)
+        settings.billing_mode = 'USED_TRAFFIC'
+        settings.money_billing_enabled = True
+        settings.used_traffic_price_per_gib_toman = 1000
+        db.commit()
+        for value in [1, 3, 1024**3 - 4]:
+            money_billing.settle_used_traffic(db, {child_id: value}, weighted_usage={child_id: value * 13000})
+            db.commit()
+        db.refresh(settings)
+        assert settings.money_balance_toman == 400
+        assert settings.usage_billing_remainder == settings.usage_billing_fraction == 0
     engine.dispose()

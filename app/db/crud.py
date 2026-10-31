@@ -460,6 +460,7 @@ def create_user(
     admin: Admin = None,
     commit: bool = True,
     apply_namespace: bool = True,
+    trial: bool = False,
 ) -> User:
     """
     Creates a new user with provided details.
@@ -485,7 +486,7 @@ def create_user(
         )
 
     policy_settings = marzhelp_policy.validate_create(
-        db, admin.id if admin is not None else None, user
+        db, admin.id if admin is not None else None, user, trial=trial
     )
 
     username = (

@@ -78,6 +78,7 @@ def add_user(
 
     dbadmin = crud.get_admin(db, admin.username)
     form_cost_toman = 0
+    form_preset = None
     if dbadmin is not None and admin_hierarchy.hierarchy_enabled(db):
         settings = db.get(MarzhelpAdminSettings, dbadmin.id)
         billing_mode = admin_billing.billing_mode(settings) if settings is not None else None
@@ -96,6 +97,7 @@ def add_user(
                 admin_billing.BillingMode.ALLOCATED_TRAFFIC,
             }:
                 try:
+                    form_preset = owner_pricing.duration_preset(db, new_user.expire or None)
                     form_cost_toman = owner_pricing.form_price(
                         db,
                         settings,
@@ -120,6 +122,10 @@ def add_user(
 
     try:
         dbuser = crud.create_user(db, new_user, admin=dbadmin, commit=False)
+        if form_preset is not None:
+            from datetime import datetime, timezone
+            dbuser.form_duration_days = max(round((int(new_user.expire) - int(datetime.now(timezone.utc).timestamp())) / 86400), 1)
+            dbuser.duration_multiplier_basis_points = form_preset.multiplier_basis_points
         if new_user.access_group_id is not None:
             access_groups.apply_to_user(db, dbuser, new_user.access_group_id)
         if dbadmin is not None:
