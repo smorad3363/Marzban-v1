@@ -95,6 +95,8 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
   const [creditAmount, setCreditAmount] = useState("");
   const [creditReason, setCreditReason] = useState("");
   const [creditBalance, setCreditBalance] = useState<number | null>(null);
+  const [trialAmount, setTrialAmount] = useState("");
+  const trialRequest = useRef<{ key: string; id: string } | null>(null);
   const isEditing = Boolean(admin);
 
   const capabilitiesQuery = useQuery<AdminCapabilities, Error>(
@@ -135,6 +137,7 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
     }
     setInboundSearch(""); setNewUserLimit(""); setCreditAmount(""); setCreditReason("");
     setCreditBalance(admin?.policy.money_balance_toman ?? null);
+    setTrialAmount(""); trialRequest.current = null;
   }, [admin, isOpen]);
 
   const availableInbounds = useMemo(() => [...inbounds.values()].flat().filter((item) =>
@@ -162,7 +165,7 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
     onError: (error) => { toast({ title: t("admins.saveFailed"), description: localizedApiError(error), status: "error", duration: 5000 }); },
   });
 
-  const creditMutation = useMutation<unknown, Error, { operation: "grant" | "reclaim"; amount: number }>(
+  const creditMutation = useMutation<{ target_balance_toman: number }, Error, { operation: "grant" | "reclaim"; amount: number }>(
     ({ operation, amount }) => {
       const key = JSON.stringify([admin?.username, operation, amount, creditReason.trim()]);
       if (creditRequest.current?.key !== key) creditRequest.current = { key, id: `admin-money-${crypto.randomUUID()}` };
@@ -171,14 +174,38 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
       body: { amount_toman: amount, idempotency_key: creditRequest.current.id, note: creditReason.trim() || undefined },
       });
     }, {
-      onSuccess: () => {
+      onSuccess: (result) => {
         creditRequest.current = null;
+        setCreditBalance(result.target_balance_toman);
         setCreditAmount(""); setCreditReason("");
         queryClient.invalidateQueries("admin-management");
         queryClient.invalidateQueries("admin-hierarchy-tree");
+        queryClient.invalidateQueries("account-summary");
+        queryClient.invalidateQueries("admin-requests-alerts");
         toast({ title: "اعتبار به‌روزرسانی شد", status: "success", duration: 3000 });
       },
       onError: (error) => { toast({ title: "تغییر اعتبار انجام نشد", description: localizedApiError(error), status: "error", duration: 5000 }); },
+    }
+  );
+
+  const trialMutation = useMutation<unknown, Error, "grant" | "reclaim" | "reset">(
+    (operation) => {
+      const key = JSON.stringify([admin?.username, operation, trialAmount]);
+      if (trialRequest.current?.key !== key) trialRequest.current = { key, id: `trial-${crypto.randomUUID()}` };
+      return fetch(`/admin-management/${encodeURIComponent(admin?.username || "")}/trial-quota/${operation}`, {
+        method: "POST", body: { idempotency_key: trialRequest.current.id, ...(operation === "reset" ? {} : { amount: Number(trialAmount) }) },
+      });
+    }, {
+      onSuccess: () => {
+        trialRequest.current = null;
+        setTrialAmount("");
+        queryClient.invalidateQueries("admin-management");
+        queryClient.invalidateQueries("admin-hierarchy-tree");
+        queryClient.invalidateQueries("account-summary");
+        toast({ title: "سهمیه تست به‌روزرسانی شد", status: "success" });
+        onClose();
+      },
+      onError: (error) => { toast({ title: "تغییر سهمیه تست انجام نشد", description: localizedApiError(error), status: "error" }); },
     }
   );
 
@@ -400,6 +427,20 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
                     <Button type="button" colorScheme="primary" isDisabled={!creditAmountValid} isLoading={creditMutation.isLoading} onClick={() => adjustCredit("grant")}>افزایش</Button>
                     <Button type="button" variant="outline" colorScheme="orange" isDisabled={!creditAmountValid} isLoading={creditMutation.isLoading} onClick={() => adjustCredit("reclaim")}>کاهش</Button>
                   </Stack>
+                </Section>
+              )}
+
+              {(mode === "ALLOCATED_TRAFFIC" || mode === "USER_CREDIT") && (
+                <Section title="مدیریت تست" description="هر ساخت یا تمدید تست یک سهمیه مصرف می‌کند. قیمت و مدت تست از پلن آزمایشی گرفته می‌شود.">
+                  {isEditing ? <Stack spacing={3}>
+                    <Text>مانده: {admin?.trial_quota ?? 0} · سقف سهمیه: {admin?.trial_quota_limit ?? 0} · استفاده‌شده: {admin?.trials_used ?? 0}</Text>
+                    {accountQuery.data?.role === "OWNER" && <HStack flexWrap="wrap">
+                      <Input aria-label="تعداد سهمیه تست" type="number" min={1} step={1} dir="ltr" value={trialAmount} onChange={(e) => setTrialAmount(e.target.value)} maxW="160px" />
+                      <Button type="button" isDisabled={!Number.isInteger(Number(trialAmount)) || Number(trialAmount) <= 0} isLoading={trialMutation.isLoading} onClick={() => trialMutation.mutate("grant")}>افزایش سهمیه تست</Button>
+                      <Button type="button" isDisabled={!Number.isInteger(Number(trialAmount)) || Number(trialAmount) <= 0} isLoading={trialMutation.isLoading} onClick={() => trialMutation.mutate("reclaim")}>کاهش سهمیه تست</Button>
+                    </HStack>}
+                    <Button type="button" alignSelf="start" isDisabled={!admin?.trial_quota_limit} isLoading={trialMutation.isLoading} onClick={() => trialMutation.mutate("reset")}>بازنشانی سهمیه تست</Button>
+                  </Stack> : <Text fontSize="sm">بعد از ذخیره ادمین، سهمیه تست را از ویرایش همین ادمین تنظیم کنید.</Text>}
                 </Section>
               )}
 

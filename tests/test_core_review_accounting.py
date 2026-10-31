@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 from unittest.mock import Mock
+from types import SimpleNamespace
 
 import pytest
 from pymysql.err import OperationalError as DriverOperationalError
@@ -11,7 +12,7 @@ from app.jobs import record_usages
 @pytest.mark.parametrize("code", [1205, 1213])
 def test_record_usage_retries_sqlalchemy_wrapped_lock_errors(monkeypatch, code):
     db = Mock()
-    db.query.return_value.filter.return_value.order_by.return_value.with_for_update.return_value.all.return_value = [(7, 9)]
+    db.query.return_value.filter.return_value.order_by.return_value.with_for_update.return_value.all.return_value = [SimpleNamespace(id=7, admin_id=9, duration_multiplier_basis_points=13000)]
     @contextmanager
     def get_db():
         yield db
@@ -25,6 +26,7 @@ def test_record_usage_retries_sqlalchemy_wrapped_lock_errors(monkeypatch, code):
     monkeypatch.setattr(record_usages.money_billing, "settle_used_traffic", settle)
     record_usages.record_user_usages()
     assert settle.call_count == 2
+    assert settle.call_args.kwargs["weighted_usage"] == {9: 1300000}
     assert db.rollback.call_count == 1
     assert db.commit.call_count == 1
 

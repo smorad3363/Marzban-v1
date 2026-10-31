@@ -193,12 +193,17 @@ def test_owner_role_cannot_be_added_as_explicit_admin_permission(db):
     _assert_grant_error(session, group, target.id, "access_group_admin_role_invalid")
 
 
-def test_suspended_admin_cannot_receive_access_group_permission(db):
+@pytest.mark.parametrize("status", [2, 3])
+def test_inactive_admin_can_receive_permission_without_activation(db, status):
     session, _, target, group = db
     settings = session.get(MarzhelpAdminSettings, target.id)
-    settings.account_status_id = admin_hierarchy.ACCOUNT_STATUS_IDS[admin_hierarchy.SUSPENDED]
+    settings.account_status_id = status
     session.commit()
-    _assert_grant_error(session, group, target.id, "access_group_admin_inactive")
+    _grant(session, group, target.id)
+    session.commit()
+    assert settings.account_status_id == status
+    with pytest.raises(admin_hierarchy.HierarchyError, match="Administrative account"):
+        admin_hierarchy.require_active_account(session, target)
 
 
 def test_admin_without_policy_cannot_receive_access_group_permission(db):
@@ -310,7 +315,7 @@ def test_retained_inactive_grant_does_not_block_network_maintenance(db):
     access_groups._replace_admin_access(session, group, _values(group, []))
     session.commit()
     assert access_groups._allowed_admin_ids(session, group.id) == []
-    with pytest.raises(admin_hierarchy.HierarchyError) as error:
-        access_groups._replace_admin_access(session, group, _values(group, [target.id]))
-        session.flush()
-    assert error.value.code == 'access_group_admin_inactive'
+    access_groups._replace_admin_access(session, group, _values(group, [target.id]))
+    session.commit()
+    assert access_groups._allowed_admin_ids(session, group.id) == [target.id]
+    assert session.get(MarzhelpAdminSettings, target.id).account_status_id == 2

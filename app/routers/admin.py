@@ -122,7 +122,13 @@ def managed_admin_response(
         ),
         parent_username=parent_username,
         active_owner_freeze_event_id=(
-            settings.suspension_event_id if settings is not None else None
+            settings.suspension_event_id
+            if settings is not None and settings.suspension_event_id is not None
+            and db.query(AdminSuspensionEvent.id).filter(
+                AdminSuspensionEvent.id == settings.suspension_event_id,
+                AdminSuspensionEvent.operation_type == "owner_freeze",
+                AdminSuspensionEvent.status == "complete",
+            ).first() is not None else None
         ),
         trial_quota=int(settings.trial_quota or 0) if settings else 0,
         trial_quota_limit=int(settings.trial_quota_limit or 0) if settings else 0,

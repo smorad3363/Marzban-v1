@@ -370,15 +370,15 @@ export const Settings: FC = () => {
                   <Box>
                     <HStack mb={3} justify="space-between" wrap="wrap">
                       <Box>
-                        <Text fontWeight="800">مدت‌های آماده</Text>
-                        <Text color="var(--panel-text-muted)" fontSize="sm">ضریب هر مدت روی قیمت پایه اعمال می‌شود.</Text>
+                        <Text fontWeight="800">بازه‌های مدت دلخواه</Text>
+                        <Text color="var(--panel-text-muted)" fontSize="sm">هر ردیف حد بالای یک بازه است؛ مثلاً تا ۳۰ روز ضریب ۱ و از ۳۱ تا ۶۰ روز ضریب ۱٫۳.</Text>
                       </Box>
                       <Badge colorScheme="cyan">{pricing.duration_presets.filter((item) => item.enabled).length.toLocaleString("fa-IR")} فعال</Badge>
                     </HStack>
                     <SimpleGrid columns={{ base: 1, md: 2 }} gap={3}>
                       {pricing.duration_presets.map((preset, index) => (
                         <Card
-                          key={preset.duration_days}
+                          key={index}
                           p={3}
                           borderWidth="1px"
                           borderColor="var(--panel-border)"
@@ -387,7 +387,11 @@ export const Settings: FC = () => {
                         >
                           <HStack align="center" gap={3}>
                             <Box flex="1">
-                              <Text fontWeight="700">{preset.duration_days.toLocaleString("fa-IR")} روز</Text>
+                              <FormControl><FormLabel fontSize="xs">حد بالای بازه (روز)</FormLabel><Input aria-label={`حد بالای بازه ${index + 1}`} type="number" min={1} max={3650} value={preset.duration_days} onChange={(event) => {
+                                const duration_presets = [...pricing.duration_presets];
+                                duration_presets[index] = { ...preset, duration_days: Number(event.target.value) };
+                                setPricing({ ...pricing, duration_presets });
+                              }} /></FormControl>
                               <Text color="var(--panel-text-muted)" fontSize="xs">ضریب قیمت</Text>
                             </Box>
                             <Input
@@ -413,10 +417,12 @@ export const Settings: FC = () => {
                                 setPricing({ ...pricing, duration_presets });
                               }}
                             />
+                            <Button size="xs" variant="ghost" isDisabled={pricing.duration_presets.length <= 1} onClick={() => setPricing({ ...pricing, duration_presets: pricing.duration_presets.filter((_, i) => i !== index) })}>حذف بازه</Button>
                           </HStack>
                         </Card>
                       ))}
                     </SimpleGrid>
+                    <Button mt={3} size="sm" onClick={() => setPricing({ ...pricing, duration_presets: [...pricing.duration_presets, { duration_days: Math.max(0, ...pricing.duration_presets.map((p) => p.duration_days)) + 30, multiplier: 1, enabled: true }] })}>افزودن بازه</Button>
                   </Box>
 
                   <HStack justify="space-between" wrap="wrap" gap={3}>

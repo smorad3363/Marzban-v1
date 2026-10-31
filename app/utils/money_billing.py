@@ -41,6 +41,7 @@ def usage_total(db: Session, user: User) -> int:
 def _settings_for_update(db: Session, admin_ids: set[int]) -> dict[int, MarzhelpAdminSettings]:
     if not admin_ids:
         return {}
+    db.flush()
     rows = (
         db.query(MarzhelpAdminSettings)
         .filter(MarzhelpAdminSettings.admin_id.in_(sorted(admin_ids)))
@@ -301,8 +302,8 @@ def charge_plan_purchase(
     user_id: int | None = None,
 ) -> None:
     from app.utils.financial_controls import require_spending
-    require_spending(db, buyer.id)
-    require_spending(db, actor.id)
+    require_spending(db, buyer.id, allow_unfunded=bool(plan.is_trial))
+    require_spending(db, actor.id, allow_unfunded=bool(plan.is_trial))
     if plan.is_trial or admin_hierarchy.is_owner(db, buyer):
         return
     buyer_settings = db.get(MarzhelpAdminSettings, buyer.id)
@@ -441,7 +442,7 @@ def charge_form_purchase(
     financial_controls.reconcile(db, {buyer.id})
 
 
-def settle_used_traffic(db: Session, usage_by_admin: dict[int, int]) -> set[int]:
+def settle_used_traffic(db: Session, usage_by_admin: dict[int, int], *, weighted_usage: dict[int, int] | None = None) -> set[int]:
     usage_by_admin = {int(k): int(v) for k, v in usage_by_admin.items() if int(v) > 0}
     if not usage_by_admin:
         return set()
@@ -463,6 +464,7 @@ def settle_used_traffic(db: Session, usage_by_admin: dict[int, int]) -> set[int]
         .all()
     }
     billable: dict[int, int] = defaultdict(int)
+    billable_weighted: dict[int, int] = defaultdict(int)
     for owner_id, byte_count in usage_by_admin.items():
         current = admins.get(owner_id)
         while current is not None and not admin_hierarchy.is_owner(db, current):
@@ -474,6 +476,7 @@ def settle_used_traffic(db: Session, usage_by_admin: dict[int, int]) -> set[int]
             ):
                 break
             billable[current.id] += byte_count
+            billable_weighted[current.id] += (weighted_usage or {}).get(owner_id, byte_count * 10000)
             current = admins.get(current.parent_admin_id)
     if not billable:
         return set()
@@ -491,8 +494,11 @@ def settle_used_traffic(db: Session, usage_by_admin: dict[int, int]) -> set[int]
         price = row.used_traffic_price_per_gib_toman
         if price is None:
             continue
-        numerator = int(row.usage_billing_remainder or 0) + byte_count * int(price)
-        charge, row.usage_billing_remainder = divmod(numerator, GIB)
+        numerator = (int(row.usage_billing_remainder or 0) * 10000
+                     + int(row.usage_billing_fraction or 0)
+                     + billable_weighted[admin_id] * int(price))
+        charge, remainder = divmod(numerator, GIB * 10000)
+        row.usage_billing_remainder, row.usage_billing_fraction = divmod(remainder, 10000)
         charges[admin_id] = charge
         deltas[admin_id] -= charge
         parent = admins.get(admins[admin_id].parent_admin_id)

@@ -1,3 +1,9 @@
+# v1.1.18
+
+Release target: v1.1.18
+
+Fix Admin wallet persistence, legacy debt recovery, duration coefficients and Trial management. [Notes](docs/RELEASE_NOTES_v1.1.18.md).
+
 # v1.1.17
 
 Release target: v1.1.17

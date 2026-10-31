@@ -110,7 +110,7 @@ def _replace_admin_access(
         ).delete(synchronize_session=False)
     # Retained grants are not new assignments. Recreating them would reject
     # network maintenance whenever a previously authorized Admin is suspended.
-    # Newly granted IDs still pass the persistence role/status/scope guard.
+    # Newly granted IDs still pass the persistence role/hierarchy/scope guard.
     db.add_all(
         AccessGroupAdminAccess(access_group_id=group.id, admin_id=admin_id)
         for admin_id in sorted(persisted_ids - existing_ids)

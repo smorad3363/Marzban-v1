@@ -101,16 +101,11 @@ def _validate_admin_assignment(session: OrmSession, row: AccessGroupAdminAccess)
             "Administrator policy is missing",
         )
 
-    active_status_id = admin_hierarchy.ACCOUNT_STATUS_IDS[admin_hierarchy.ACTIVE]
-    status_id = getattr(settings, "account_status_id", None)
-    if status_id is not None:
-        is_active = int(status_id) == active_status_id
-    else:
-        is_active = admin_hierarchy.account_status_code(session, target.id) == admin_hierarchy.ACTIVE
-    if not is_active:
+    # Owner may prepare network permissions while an Admin is suspended or
+    # disabled. Account/financial runtime guards still prevent network use.
+    if target.deleted_at is not None:
         raise admin_hierarchy.HierarchyError(
-            "access_group_admin_inactive",
-            "Access Group permissions require an active Admin account",
+            "access_group_admin_invalid", "Retired administrators cannot receive permissions"
         )
 
     if admin_hierarchy.hierarchy_enabled(session):

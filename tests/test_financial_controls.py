@@ -13,7 +13,7 @@ from test_stage3_billing_modes import _seed
 def tree(tmp_path):
     engine=create_engine(f'sqlite:///{tmp_path}/finance.db')
     Base.metadata.create_all(engine)
-    db=sessionmaker(bind=engine,expire_on_commit=False)()
+    db=sessionmaker(bind=engine,expire_on_commit=False,autoflush=False)()
     owner,child,user=_seed(db)
     settings=db.get(MarzhelpAdminSettings,child.id)
     settings.money_billing_enabled=True

@@ -331,6 +331,8 @@ class UserUsageResetResponse(BaseModel):
 
 class UserResponse(User):
     id: int
+    form_duration_days: Optional[int] = None
+    duration_multiplier_basis_points: int = 10000
     username: str
     status: UserStatus
     used_traffic: Optional[int]

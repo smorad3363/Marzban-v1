@@ -394,13 +394,14 @@ def test_restricted_raw_endpoint_rejects_protected_network_and_device_fields(db,
 
 
 @pytest.mark.parametrize("billing_mode", ["USED_TRAFFIC", "ALLOCATED_TRAFFIC"])
-def test_restricted_raw_endpoint_creates_from_simple_fields(db, monkeypatch, billing_mode):
+@pytest.mark.parametrize("days,coefficient", [(30,10000),(31,13000),(45,13000),(59,13000)])
+def test_restricted_raw_endpoint_creates_from_simple_fields(db, monkeypatch, billing_mode, days, coefficient):
     session, _ = db
     tag, _ = _network(session, monkeypatch)
     admin, settings = _admin(session, f"simple-{billing_mode.lower()}", billing_mode=billing_mode)
     from datetime import datetime, timezone
     from app.db.models import OwnerDurationPreset
-    session.add(OwnerDurationPreset(duration_days=30, multiplier_basis_points=10000, enabled=True))
+    session.add_all([OwnerDurationPreset(duration_days=30, multiplier_basis_points=10000, enabled=True), OwnerDurationPreset(duration_days=60, multiplier_basis_points=13000, enabled=True)])
     settings.money_balance_toman = 10000
     session.get(AdminHierarchySettings, 1).enabled = True
     session.commit()
@@ -418,7 +419,7 @@ def test_restricted_raw_endpoint_creates_from_simple_fields(db, monkeypatch, bil
         UserCreate(
             username="simple-customer",
             data_limit=2048,
-            expire=int(datetime.now(timezone.utc).timestamp()) + 30 * 86400,
+            expire=int(datetime.now(timezone.utc).timestamp()) + days * 86400,
             note="description",
         ),
         BackgroundTasks(),
@@ -429,6 +430,9 @@ def test_restricted_raw_endpoint_creates_from_simple_fields(db, monkeypatch, bil
     assert dbuser.username == f"{admin.user_namespace_prefix}_simple-customer"
     assert dbuser.inbounds == {ProxyTypes.VLESS: [tag]}
     assert dbuser.concurrent_user_limit is None
+    assert dbuser.form_duration_days == days
+    assert dbuser.duration_multiplier_basis_points == coefficient
+    assert response.duration_multiplier_basis_points == coefficient
 
 
 def test_seat_plan_renewal_charges_exact_cost_once_on_retry(db, monkeypatch):
