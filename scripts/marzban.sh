@@ -1084,6 +1084,9 @@ install_marzban() {
     sed -i 's/^# \(XRAY_JSON = .*\)$/\1/' "$ENV_FILE"
     sed -i 's~\(XRAY_JSON = \).*~\1"/var/lib/marzban/xray_config.json"~' "$ENV_FILE"
 
+    # Only fresh installs reach this path. Updates preserve the existing mode.
+    echo 'XRAY_LOCAL_CORE_ENABLED=false' >> "$ENV_FILE"
+
     prompt_for_marzban_password
     MYSQL_ROOT_PASSWORD=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 20)
 

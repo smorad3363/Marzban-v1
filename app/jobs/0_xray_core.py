@@ -4,7 +4,7 @@ import traceback
 from app import app, logger, scheduler, xray
 from app.db import GetDB, crud
 from app.models.node import NodeStatus
-from config import JOB_CORE_HEALTH_CHECK_INTERVAL
+from config import JOB_CORE_HEALTH_CHECK_INTERVAL, XRAY_LOCAL_CORE_ENABLED
 from xray_api import exc as xray_exc
 
 
@@ -12,7 +12,7 @@ def core_health_check():
     config = None
 
     # main core
-    if not xray.core.started:
+    if XRAY_LOCAL_CORE_ENABLED and not xray.core.started:
         if not config:
             config = xray.config.include_db_users()
         xray.core.restart(config)
@@ -45,7 +45,8 @@ def start_core():
     # main core
     logger.info("Starting main Xray core")
     try:
-        xray.core.start(config)
+        if XRAY_LOCAL_CORE_ENABLED:
+            xray.core.start(config)
     except Exception:
         traceback.print_exc()
 

@@ -429,6 +429,7 @@ export const DashboardOverview: FC = () => {
               <Skeleton height="180px" borderRadius="12px" />
             ) : (
               <Stack spacing={2.5}>
+                {accountData.billing_mode === "USED_TRAFFIC" && <Box p={3} bg="var(--panel-nested)" borderRadius="12px"><Text fontSize="sm" fontWeight="850">نرخ پایه هر گیگ: {accountData.used_traffic_price_per_gib_toman == null ? "تنظیم نشده" : toman(accountData.used_traffic_price_per_gib_toman)}</Text><Text fontSize="xs" color="var(--panel-text-muted)" mt={1}>هر گیگ برابر ۱۰۲۴ مگابایت است. هزینه مصرف هر اکانت با ضریب مدت همان اکانت محاسبه می‌شود.</Text></Box>}
                 <HStack justify="space-between"><Text fontSize="11px" color="var(--panel-text-muted)">مانده اعتبار</Text><Text fontSize="sm" fontWeight="850">{toman(accountData.money_balance_toman)}</Text></HStack>
                 <HStack justify="space-between"><Text fontSize="11px" color="var(--panel-text-muted)">سقف اعتبار</Text><Text fontSize="sm" fontWeight="850">{credit(quota?.credit_limit)}</Text></HStack>
                 <HStack justify="space-between"><Text fontSize="11px" color="var(--panel-text-muted)">اعتبار مصرف‌شده</Text><Text fontSize="sm" fontWeight="850">{quota ? credit(quota.credit_used) : "—"}</Text></HStack>

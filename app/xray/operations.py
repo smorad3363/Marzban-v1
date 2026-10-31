@@ -1,3 +1,4 @@
+from config import XRAY_LOCAL_CORE_ENABLED
 from datetime import datetime
 from functools import lru_cache
 from typing import TYPE_CHECKING
@@ -109,7 +110,7 @@ def add_user(dbuser: "DBUser"):
                 ):
                     account.flow = XTLSFlows.NONE
 
-                if node_scope is None:
+                if XRAY_LOCAL_CORE_ENABLED and node_scope is None:
                     _add_user_to_inbound(xray.api, inbound_tag, account)  # main core
                 for node_id, node in list(xray.nodes.items()):
                     if (node_scope is None or node_id in node_scope) and node.connected and node.started:
@@ -139,7 +140,8 @@ def remove_user(dbuser: "DBUser"):
 
     for inbound_tag in xray.config.inbounds_by_tag:
         for email in emails:
-            _remove_user_from_inbound(xray.api, inbound_tag, email)
+            if XRAY_LOCAL_CORE_ENABLED:
+                _remove_user_from_inbound(xray.api, inbound_tag, email)
             for node in list(xray.nodes.values()):
                 if node.connected and node.started:
                     _remove_user_from_inbound(node.api, inbound_tag, email)
@@ -215,7 +217,8 @@ def update_user(dbuser: "DBUser"):
 
     for inbound_tag, accounts in accounts_by_inbound.items():
         account_tuple = tuple(accounts)
-        _replace_inbound_users(xray.api, inbound_tag, all_emails, account_tuple if node_scope is None else ())
+        if XRAY_LOCAL_CORE_ENABLED:
+            _replace_inbound_users(xray.api, inbound_tag, all_emails, account_tuple if node_scope is None else ())
         for node_id, node in list(xray.nodes.items()):
             if node.connected and node.started:
                 _replace_inbound_users(node.api, inbound_tag, all_emails,

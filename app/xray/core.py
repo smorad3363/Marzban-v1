@@ -7,7 +7,7 @@ from contextlib import contextmanager
 
 from app import logger
 from app.xray.config import XRayConfig
-from config import DEBUG
+from config import DEBUG, XRAY_LOCAL_CORE_ENABLED
 
 
 class XRayCore:
@@ -104,6 +104,8 @@ class XRayCore:
         return False
 
     def start(self, config: XRayConfig):
+        if not XRAY_LOCAL_CORE_ENABLED:
+            return
         from app.utils.access_groups import filter_node_config
         config = filter_node_config(config, None)
         if self.started is True:
