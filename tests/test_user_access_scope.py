@@ -517,6 +517,7 @@ def test_create_user_records_authenticated_owner_and_audit_actor(
         ),
     )
     payload = UserCreate(
+                    expire=2_000_000_000,
         username="created_by_a",
         proxies={ProxyTypes.VLESS: {}},
         inbounds={ProxyTypes.VLESS: ["VLESS TCP"]},

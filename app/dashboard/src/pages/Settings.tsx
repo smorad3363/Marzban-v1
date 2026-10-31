@@ -32,12 +32,12 @@ import { queryClient } from "utils/react-query";
 
 type Pricing = {
   price_per_gib_toman: number;
-  allow_unlimited_duration: boolean;
-  duration_presets: Array<{
-    duration_days: number;
-    multiplier: number;
-    enabled: boolean;
-  }>;
+  duration_pricing_mode: "CAPPED_DAILY";
+  duration_base_days: number;
+  duration_cap_days: number;
+  duration_max_multiplier: number;
+  duration_examples: Array<{ duration_days: number; multiplier: number }>;
+
 };
 
 type BackupSettings = {
@@ -351,78 +351,15 @@ export const Settings: FC = () => {
                       />
                       <FormHelperText>مبلغ به تومان و فقط برای محاسبات فرم آزاد.</FormHelperText>
                     </FormControl>
-                    <FormControl>
-                      <FormLabel>مدت نامحدود</FormLabel>
-                      <HStack minH="40px" justify="space-between" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="10px" px={3}>
-                        <Text fontSize="sm">امکان ساخت کاربر بدون تاریخ انقضا</Text>
-                        <Switch
-                          colorScheme="primary"
-                          isChecked={pricing.allow_unlimited_duration}
-                          onChange={(event) =>
-                            setPricing({ ...pricing, allow_unlimited_duration: event.target.checked })
-                          }
-                          aria-label="مدت نامحدود"
-                        />
-                      </HStack>
-                    </FormControl>
                   </SimpleGrid>
 
-                  <Box>
-                    <HStack mb={3} justify="space-between" wrap="wrap">
-                      <Box>
-                        <Text fontWeight="800">بازه‌های مدت دلخواه</Text>
-                        <Text color="var(--panel-text-muted)" fontSize="sm">هر ردیف حد بالای یک بازه است؛ مثلاً تا ۳۰ روز ضریب ۱ و از ۳۱ تا ۶۰ روز ضریب ۱٫۳.</Text>
-                      </Box>
-                      <Badge colorScheme="cyan">{pricing.duration_presets.filter((item) => item.enabled).length.toLocaleString("fa-IR")} فعال</Badge>
-                    </HStack>
-                    <SimpleGrid columns={{ base: 1, md: 2 }} gap={3}>
-                      {pricing.duration_presets.map((preset, index) => (
-                        <Card
-                          key={index}
-                          p={3}
-                          borderWidth="1px"
-                          borderColor="var(--panel-border)"
-                          borderRadius="12px"
-                          bg="var(--panel-nested)"
-                        >
-                          <HStack align="center" gap={3}>
-                            <Box flex="1">
-                              <FormControl><FormLabel fontSize="xs">حد بالای بازه (روز)</FormLabel><Input aria-label={`حد بالای بازه ${index + 1}`} type="number" min={1} max={3650} value={preset.duration_days} onChange={(event) => {
-                                const duration_presets = [...pricing.duration_presets];
-                                duration_presets[index] = { ...preset, duration_days: Number(event.target.value) };
-                                setPricing({ ...pricing, duration_presets });
-                              }} /></FormControl>
-                              <Text color="var(--panel-text-muted)" fontSize="xs">ضریب قیمت</Text>
-                            </Box>
-                            <Input
-                              aria-label={`ضریب ${preset.duration_days} روز`}
-                              type="number"
-                              step="0.0001"
-                              min="0.0001"
-                              w="110px"
-                              value={preset.multiplier}
-                              onChange={(event) => {
-                                const duration_presets = [...pricing.duration_presets];
-                                duration_presets[index] = { ...preset, multiplier: Number(event.target.value) };
-                                setPricing({ ...pricing, duration_presets });
-                              }}
-                            />
-                            <Switch
-                              colorScheme="primary"
-                              aria-label={`فعال بودن مدت ${preset.duration_days} روز`}
-                              isChecked={preset.enabled}
-                              onChange={(event) => {
-                                const duration_presets = [...pricing.duration_presets];
-                                duration_presets[index] = { ...preset, enabled: event.target.checked };
-                                setPricing({ ...pricing, duration_presets });
-                              }}
-                            />
-                            <Button size="xs" variant="ghost" isDisabled={pricing.duration_presets.length <= 1} onClick={() => setPricing({ ...pricing, duration_presets: pricing.duration_presets.filter((_, i) => i !== index) })}>حذف بازه</Button>
-                          </HStack>
-                        </Card>
-                      ))}
+                  <Box p={4} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px">
+                    <Text fontWeight="800">ضریب خودکار مدت</Text>
+                    <Text mt={2} fontSize="sm">تا {pricing.duration_base_days} روز ضریب ۱ است. افزایش روزانه به‌تدریج کمتر می‌شود؛ پس از شش ماه بسیار جزئی است و از {pricing.duration_cap_days} روز به بعد روی {pricing.duration_max_multiplier} ثابت می‌ماند.</Text>
+                    <Text mt={2} fontSize="sm">برای ساخت هر اکانت، تنظیم مدت مشخص الزامی است.</Text>
+                    <SimpleGrid mt={3} columns={{ base: 2, md: 4 }} gap={2}>
+                      {pricing.duration_examples.map((example) => <Box key={example.duration_days} p={2} bg="var(--panel-nested)" borderRadius="8px"><Text fontSize="sm">{example.duration_days.toLocaleString("fa-IR")} روز</Text><Badge>{example.multiplier.toLocaleString("fa-IR", { maximumFractionDigits: 4 })}×</Badge></Box>)}
                     </SimpleGrid>
-                    <Button mt={3} size="sm" onClick={() => setPricing({ ...pricing, duration_presets: [...pricing.duration_presets, { duration_days: Math.max(0, ...pricing.duration_presets.map((p) => p.duration_days)) + 30, multiplier: 1, enabled: true }] })}>افزودن بازه</Button>
                   </Box>
 
                   <HStack justify="space-between" wrap="wrap" gap={3}>

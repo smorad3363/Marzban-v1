@@ -574,6 +574,7 @@ def test_delegated_admin_xray_sync_reloads_committed_user(session, monkeypatch):
     dbuser = crud.create_user(
         session,
         UserCreate(
+                    expire=2_000_000_000,
             username="delegated-created",
             proxies={"vless": {}},
             inbounds={"vless": ["delegated"]},

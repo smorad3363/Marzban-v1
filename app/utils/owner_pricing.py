@@ -1,8 +1,9 @@
-"""Owner pricing presets and deterministic Form pricing."""
+"""Owner policy and deterministic capped daily Form pricing."""
 
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
@@ -13,6 +14,30 @@ from app.utils.admin_billing import BillingMode, billing_mode
 
 
 GIB = 1024**3
+BASE_DAYS = 30
+CAP_DAYS = 365
+MAX_MULTIPLIER_BPS = 12000
+
+
+@dataclass(frozen=True)
+class DurationQuote:
+    duration_days: int
+    multiplier_basis_points: int
+
+
+def duration_multiplier_basis_points(days: int) -> int:
+    """Concave daily pricing: 1x through day 30, a smooth 1.2x cap at day 365."""
+    if days <= 0:
+        raise admin_hierarchy.HierarchyError("duration_required", "A positive account duration is required")
+    if days <= BASE_DAYS:
+        return 10000
+    if days >= CAP_DAYS:
+        return MAX_MULTIPLIER_BPS
+    span = CAP_DAYS - BASE_DAYS
+    remaining = CAP_DAYS - days
+    denominator = span ** 3
+    numerator = (MAX_MULTIPLIER_BPS - 10000) * (denominator - remaining ** 3)
+    return 10000 + (numerator + denominator // 2) // denominator
 
 
 def get_policy(db: Session) -> OwnerCommercialPolicy:
@@ -29,7 +54,13 @@ def response(db: Session) -> OwnerPricingResponse:
     presets = db.query(OwnerDurationPreset).order_by(OwnerDurationPreset.duration_days).all()
     return OwnerPricingResponse(
         price_per_gib_toman=policy.price_per_gib_toman,
-        allow_unlimited_duration=policy.allow_unlimited_duration,
+        allow_unlimited_duration=False,
+        duration_pricing_mode="CAPPED_DAILY",
+        duration_base_days=BASE_DAYS,
+        duration_cap_days=CAP_DAYS,
+        duration_max_multiplier=MAX_MULTIPLIER_BPS / 10000,
+        duration_examples=[DurationPresetInput(duration_days=days, multiplier=duration_multiplier_basis_points(days) / 10000)
+                           for days in (30, 60, 90, 180, 270, 365, 730)],
         duration_presets=[
             DurationPresetInput(
                 duration_days=row.duration_days,
@@ -42,13 +73,8 @@ def response(db: Session) -> OwnerPricingResponse:
 
 
 def enabled_duration_days(db: Session) -> list[int]:
-    return [
-        int(row[0])
-        for row in db.query(OwnerDurationPreset.duration_days)
-        .filter(OwnerDurationPreset.enabled.is_(True))
-        .order_by(OwnerDurationPreset.duration_days)
-        .all()
-    ]
+    # Compatibility examples only; these are no longer an allowlist or a cap.
+    return [BASE_DAYS, 180, CAP_DAYS]
 
 
 def update(db: Session, actor: Admin, values: OwnerPricingUpdate) -> OwnerPricingResponse:
@@ -56,45 +82,26 @@ def update(db: Session, actor: Admin, values: OwnerPricingUpdate) -> OwnerPricin
         raise admin_hierarchy.HierarchyError("pricing_owner_only", "Only Owner can manage pricing")
     policy = get_policy(db)
     policy.price_per_gib_toman = values.price_per_gib_toman
-    policy.allow_unlimited_duration = values.allow_unlimited_duration
-    db.query(OwnerDurationPreset).delete(synchronize_session=False)
-    db.add_all(
-        OwnerDurationPreset(
-            duration_days=item.duration_days,
-            multiplier_basis_points=round(item.multiplier * 10_000),
-            enabled=item.enabled,
-        )
-        for item in values.duration_presets
-    )
+    policy.allow_unlimited_duration = False
+    # Keep historical preset rows for history/compatibility; the formula alone
+    # prices new Form purchases. An old client cannot re-enable unlimited time.
     db.commit()
     return response(db)
 
 
-def duration_preset(db: Session, expire: int | None) -> OwnerDurationPreset:
-    policy = get_policy(db)
+def duration_preset(db: Session, expire: int | None) -> DurationQuote:
     if not expire:
-        if not policy.allow_unlimited_duration:
-            raise admin_hierarchy.HierarchyError("unlimited_duration_forbidden", "Unlimited duration requires Owner permission")
-        raise admin_hierarchy.HierarchyError("unlimited_form_pricing_undefined", "Unlimited Form duration requires a priced preset")
+        raise admin_hierarchy.HierarchyError("duration_required", "A positive account duration is required")
     now = int(datetime.now(timezone.utc).timestamp())
-    seconds = max(int(expire) - now, 0)
-    days = max(round(seconds / 86400), 1)
+    seconds = int(expire) - now
     if seconds <= 0:
-        raise admin_hierarchy.HierarchyError("duration_preset_required", "Duration must be positive")
-    if abs(seconds - days * 86400) > 300:
-        raise admin_hierarchy.HierarchyError("duration_preset_required", "Duration must match an Owner preset")
+        raise admin_hierarchy.HierarchyError("duration_required", "A positive account duration is required")
+    days = (seconds + 86399) // 86400
     return duration_days_preset(db, days)
 
 
-def duration_days_preset(db: Session, duration_days: int) -> OwnerDurationPreset:
-    # Each configured endpoint is an inclusive upper bound. Do not skip a
-    # disabled interval into a more expensive or less restrictive interval.
-    preset = db.query(OwnerDurationPreset).filter(
-        OwnerDurationPreset.duration_days >= int(duration_days)
-    ).order_by(OwnerDurationPreset.duration_days).first() if duration_days > 0 else None
-    if preset is None or not preset.enabled:
-        raise admin_hierarchy.HierarchyError("duration_preset_required", "Duration must match an enabled Owner preset")
-    return preset
+def duration_days_preset(db: Session, duration_days: int) -> DurationQuote:
+    return DurationQuote(duration_days, duration_multiplier_basis_points(duration_days))
 
 
 def form_price(db: Session, settings: MarzhelpAdminSettings, *, data_limit: int | None, expire: int | None) -> int:
@@ -110,7 +117,9 @@ def form_price(db: Session, settings: MarzhelpAdminSettings, *, data_limit: int 
 
 
 def adjustment_price(db: Session, *, old_limit: int | None, new_limit: int | None,
-                     old_expire: int | None, new_expire: int | None) -> int:
+                     old_expire: int | None, new_expire: int | None,
+                     old_duration_days: int | None = None,
+                     old_multiplier_basis_points: int = 10000) -> int:
     """Quote added traffic or a purchased duration extension; never refund edits."""
     if not new_limit:
         raise admin_hierarchy.HierarchyError("unlimited_form_traffic_forbidden", "Form requires finite traffic")
@@ -121,14 +130,17 @@ def adjustment_price(db: Session, *, old_limit: int | None, new_limit: int | Non
     if not extension and not added:
         return 0
     if extension:
-        if not old_expire or extension % 86400:
-            raise admin_hierarchy.HierarchyError("duration_preset_required", "Extension must match an Owner preset")
-        preset = duration_days_preset(db, extension // 86400)
-        volume = new_limit
+        if not old_expire:
+            raise admin_hierarchy.HierarchyError("duration_required", "An existing duration is required")
+        now = int(datetime.now(timezone.utc).timestamp())
+        baseline = old_duration_days or max(BASE_DAYS, (int(old_expire) - now + 86399) // 86400)
+        factor = duration_multiplier_basis_points(baseline + (extension + 86399) // 86400)
     else:
-        preset = duration_preset(db, new_expire)
-        volume = added
+        factor = old_multiplier_basis_points
+    # A time-only extension buys only the increase in the duration coefficient.
+    # Added traffic is priced at the resulting coefficient. No edit refunds.
+    weighted_volume = added * factor + int(old_limit or 0) * max(factor - old_multiplier_basis_points, 0)
     policy = get_policy(db)
     denominator = GIB * 10_000
-    return (volume * int(policy.price_per_gib_toman) * int(preset.multiplier_basis_points)
+    return (weighted_volume * int(policy.price_per_gib_toman)
             + denominator - 1) // denominator

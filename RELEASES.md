@@ -1,3 +1,9 @@
+# v1.1.19
+
+Release target: v1.1.19
+
+Capped daily Form duration pricing and mandatory finite account time. [Notes](docs/RELEASE_NOTES_v1.1.19.md).
+
 # v1.1.18
 
 Release target: v1.1.18

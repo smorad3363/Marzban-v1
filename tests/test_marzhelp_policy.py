@@ -643,6 +643,7 @@ def test_concurrent_weighted_creates_cannot_exceed_capacity(session, monkeypatch
             crud.create_user(
                 db,
                 UserCreate(
+                    expire=2_000_000_000,
                     username=f"concurrent-{index}",
                     proxies={"vless": {}},
                     inbounds={"vless": ["capacity"]},
@@ -677,6 +678,7 @@ def test_concurrent_creates_with_one_account_slot_only_one_succeeds(session, mon
             crud.create_user(
                 db,
                 UserCreate(
+                    expire=2_000_000_000,
                     username=f"account-slot-{index}",
                     proxies={"vless": {}},
                     inbounds={"vless": ["account"]},

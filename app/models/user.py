@@ -155,11 +155,11 @@ class UserCreate(User):
             },
             "next_plan": {
                 "data_limit": 0,
-                "expire": 0,
+                "expire": 2_000_000_000,
                 "add_remaining_traffic": False,
                 "fire_on_either": True
             },
-            "expire": 0,
+            "expire": 2_000_000_000,
             "data_limit": 0,
             "data_limit_reset_strategy": "no_reset",
             "status": "active",
@@ -236,11 +236,11 @@ class UserModify(User):
             },
             "next_plan": {
                 "data_limit": 0,
-                "expire": 0,
+                "expire": 2_000_000_000,
                 "add_remaining_traffic": False,
                 "fire_on_either": True
             },
-            "expire": 0,
+            "expire": 2_000_000_000,
             "data_limit": 0,
             "data_limit_reset_strategy": "no_reset",
             "status": "active",

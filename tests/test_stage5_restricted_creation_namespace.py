@@ -394,8 +394,8 @@ def test_restricted_raw_endpoint_rejects_protected_network_and_device_fields(db,
 
 
 @pytest.mark.parametrize("billing_mode", ["USED_TRAFFIC", "ALLOCATED_TRAFFIC"])
-@pytest.mark.parametrize("days,coefficient", [(30,10000),(31,13000),(45,13000),(59,13000)])
-def test_restricted_raw_endpoint_creates_from_simple_fields(db, monkeypatch, billing_mode, days, coefficient):
+@pytest.mark.parametrize("days", [30,31,45,59,365,1000])
+def test_restricted_raw_endpoint_creates_from_simple_fields(db, monkeypatch, billing_mode, days):
     session, _ = db
     tag, _ = _network(session, monkeypatch)
     admin, settings = _admin(session, f"simple-{billing_mode.lower()}", billing_mode=billing_mode)
@@ -430,6 +430,8 @@ def test_restricted_raw_endpoint_creates_from_simple_fields(db, monkeypatch, bil
     assert dbuser.username == f"{admin.user_namespace_prefix}_simple-customer"
     assert dbuser.inbounds == {ProxyTypes.VLESS: [tag]}
     assert dbuser.concurrent_user_limit is None
+    from app.utils.owner_pricing import duration_multiplier_basis_points
+    coefficient = duration_multiplier_basis_points(days)
     assert dbuser.form_duration_days == days
     assert dbuser.duration_multiplier_basis_points == coefficient
     assert response.duration_multiplier_basis_points == coefficient

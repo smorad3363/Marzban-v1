@@ -166,7 +166,7 @@ def test_sudo_owner_session_can_manage_admins_during_role_metadata_mismatch(db, 
     assert managed.username == owner.username
 
 
-def test_admin_capabilities_publish_enabled_owner_duration_presets(db):
+def test_admin_capabilities_publish_formula_examples_independent_of_legacy_presets(db):
     _, _, leaf, _, _ = _legacy_tree(db)
     db.add_all([
         OwnerDurationPreset(duration_days=1, multiplier_basis_points=10_000, enabled=True),
@@ -180,7 +180,7 @@ def test_admin_capabilities_publish_enabled_owner_duration_presets(db):
         admin=APIAdmin(id=leaf.id, username=leaf.username, is_sudo=False),
     )
 
-    assert capabilities.allowed_form_duration_days == [1, 30]
+    assert capabilities.allowed_form_duration_days == [30, 180, 365]
 
 
 def test_used_traffic_parent_selects_child_mode_and_delegates_bounded_creation(db):
