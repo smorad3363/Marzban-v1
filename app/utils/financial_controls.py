@@ -30,6 +30,7 @@ def can_spend(settings, amount):
 
 def connections_blocked(db, admin_id):
     ids={admin_id} | {r[0] for r in db.query(AdminHierarchy.ancestor_id).filter(AdminHierarchy.descendant_id==admin_id).all()}
+    ids.discard(admin_hierarchy.owner_id(db))
     return any(state(s)=='disabled' for s in db.query(MarzhelpAdminSettings).filter(MarzhelpAdminSettings.admin_id.in_(ids)).all())
 
 
@@ -38,6 +39,7 @@ def require_spending(db, admin_id):
     admin = db.get(Admin, admin_id)
     if admin is not None and admin_hierarchy.is_owner(db, admin): return
     ids = {admin_id} | {r[0] for r in db.query(AdminHierarchy.ancestor_id).filter(AdminHierarchy.descendant_id == admin_id).all()}
+    ids.discard(admin_hierarchy.owner_id(db))
     for settings in db.query(MarzhelpAdminSettings).filter(MarzhelpAdminSettings.admin_id.in_(ids)).all():
         if state(settings) in {'frozen','disabled'}:
             raise admin_hierarchy.HierarchyError('financial_account_frozen','Financial limit blocks new purchases and renewals')
@@ -98,8 +100,7 @@ def reconcile(db, admin_ids=None):
             if user is not None and hold.restore_allowed and other is None and user.status==UserStatus.disabled:
                 owner_settings=db.get(MarzhelpAdminSettings,user.admin_id)
                 valid_admin=owner_settings is not None and int(owner_settings.account_status_id or 1)==1 and (owner_settings.expiry_date is None or owner_settings.expiry_date>=datetime.now(timezone.utc).date())
-                ancestor_ids={user.admin_id} | {r[0] for r in db.query(AdminHierarchy.ancestor_id).filter(AdminHierarchy.descendant_id==user.admin_id).all()}
-                debt_blocked=any(state(s)=="disabled" for s in db.query(MarzhelpAdminSettings).filter(MarzhelpAdminSettings.admin_id.in_(ancestor_ids)).all())
+                debt_blocked=connections_blocked(db,user.admin_id)
                 if valid_admin and not debt_blocked:
                     expired=(user.expire is not None and user.expire<=datetime.now(timezone.utc).timestamp()) or (hold.previous_status=="on_hold" and user.on_hold_timeout is not None and user.on_hold_timeout<=datetime.now(timezone.utc).replace(tzinfo=None))
                     exhausted=user.data_limit is not None and int(user.used_traffic or 0)>=user.data_limit
