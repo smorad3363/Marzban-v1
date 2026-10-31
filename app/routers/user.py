@@ -188,7 +188,7 @@ def modify_user(
 
     - **username**: Cannot be changed. Used to identify the user.
     - **status**: User's new status. Can be 'active', 'disabled', 'on_hold', 'limited', or 'expired'.
-    - **expire**: UTC timestamp for new account expiration. Set to `0` for unlimited, `null` for no change.
+    - **expire**: Future UTC timestamp for new account expiration; finite time is required. Use `null` or omit for no change.
     - **data_limit**: New max data usage in bytes (e.g., `1073741824` for 1GB). Set to `0` for unlimited, `null` for no change.
     - **data_limit_reset_strategy**: New strategy for data limit reset. Options include 'daily', 'weekly', 'monthly', or 'no_reset'.
     - **proxies**: Dictionary of new protocol settings (e.g., `vmess`, `vless`). Empty dictionary means no change.
