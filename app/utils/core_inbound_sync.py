@@ -42,9 +42,21 @@ def synchronize_inbounds(
         removed.remove(old_tag)
 
     # Persist identities before making exclusion rows refer to them.
+    new_identity_tags = set()
     for tag in sorted(new_tags):
         if db.query(ProxyInbound.id).filter(ProxyInbound.tag == tag).first() is None:
             db.add(ProxyInbound(tag=tag))
+            new_identity_tags.add(tag)
+    db.flush()
+    # Preserve the existing default Host behavior for independent new inbounds.
+    # Renames move their original Host identities and must not create a Host.
+    rename_target = rename[1] if rename else None
+    for tag in sorted(new_identity_tags - {rename_target}):
+        db.add(ProxyHost(
+            inbound_tag=tag,
+            remark="🚀 Marz ({USERNAME}) [{PROTOCOL} - {TRANSPORT}]",
+            address="{SERVER_IP}",
+        ))
     db.flush()
 
     if rename:
@@ -183,6 +195,9 @@ def restore_network_state(db: Session, snapshot: dict) -> None:
         row[0] for row in db.query(ProxyInbound.tag).all()
     } - snapshot["inbound_tags"]
     if created_tags:
+        db.query(ProxyHost).filter(ProxyHost.inbound_tag.in_(created_tags)).delete(
+            synchronize_session=False
+        )
         db.query(ProxyInbound).filter(ProxyInbound.tag.in_(created_tags)).delete(
             synchronize_session=False
         )
