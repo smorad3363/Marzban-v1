@@ -1370,7 +1370,7 @@ class User(Base):
         default=UserDataLimitResetStrategy.no_reset,
     )
     usage_logs = relationship("UserUsageResetLogs", back_populates="user")  # maybe rename it to reset_usage_logs?
-    expire = Column(Integer, nullable=True)
+    expire = Column(BigInteger, nullable=True)
     form_duration_days = Column(Integer, nullable=True)
     duration_multiplier_basis_points = Column(Integer, nullable=False, default=10000)
     admin_id = Column(Integer, ForeignKey("admins.id"), index=True)
@@ -1477,7 +1477,7 @@ class NextPlan(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     data_limit = Column(BigInteger, nullable=False)
-    expire = Column(Integer, nullable=True)
+    expire = Column(BigInteger, nullable=True)
     add_remaining_traffic = Column(Boolean, nullable=False, default=False, server_default='0')
     fire_on_either = Column(Boolean, nullable=False, default=True, server_default='0')
 

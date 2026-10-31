@@ -1319,25 +1319,14 @@ def validate_update(
         from app.utils import owner_pricing
         if expire is None:
             if on_hold_duration:
-                if on_hold_duration % 86400:
-                    raise MarzhelpPolicyError("duration_preset_required", "Duration must use whole preset days")
-                owner_pricing.duration_days_preset(db, on_hold_duration // 86400)
-            elif not owner_pricing.get_policy(db).allow_unlimited_duration:
-                raise MarzhelpPolicyError("unlimited_duration_forbidden", "Unlimited duration requires Owner permission")
+                owner_pricing.duration_days_preset(db, (on_hold_duration + 86399) // 86400)
+            else:
+                raise MarzhelpPolicyError("duration_required", "A positive account duration is required")
         elif dbuser.expire and expire != dbuser.expire:
             delta = abs(expire - dbuser.expire)
-            if delta % 86400:
-                raise MarzhelpPolicyError("duration_preset_required", "Duration change must use whole preset days")
-            owner_pricing.duration_days_preset(db, delta // 86400)
+            owner_pricing.duration_days_preset(db, (delta + 86399) // 86400)
         elif not dbuser.expire:
             owner_pricing.duration_preset(db, expire)
-    if dbuser.form_duration_days is not None and expiration_changed and not _is_effective_owner(db, actor):
-        from app.utils import owner_pricing
-        delta_days = (int(expire or 0) - int(dbuser.expire or 0)) // 86400
-        duration = int(dbuser.form_duration_days) + delta_days
-        preset = owner_pricing.duration_days_preset(db, duration)
-        dbuser.form_duration_days = duration
-        dbuser.duration_multiplier_basis_points = preset.multiplier_basis_points
     volume_delta = int(data_limit or 0) - int(old_data_limit or 0)
     if strategy.mode == admin_billing.BillingMode.ALLOCATED_TRAFFIC and not _is_effective_owner(db, actor):
         from app.utils import owner_pricing, money_billing
@@ -1346,12 +1335,22 @@ def validate_update(
         cost = owner_pricing.adjustment_price(
             db, old_limit=old_data_limit, new_limit=data_limit,
             old_expire=dbuser.expire, new_expire=expire,
+            old_duration_days=dbuser.form_duration_days,
+            old_multiplier_basis_points=dbuser.duration_multiplier_basis_points,
         )
         buyer = db.get(Admin, dbuser.admin_id)
         money_billing.charge_form_purchase(
             db, buyer=buyer, actor=actor or buyer, user_id=dbuser.id,
             amount_toman=cost, operation_key=f"form-edit:{uuid4().hex}",
         )
+    if dbuser.form_duration_days is not None and expiration_changed and not _is_effective_owner(db, actor):
+        from app.utils import owner_pricing
+        delta_seconds = int(expire or 0) - int(dbuser.expire or 0)
+        delta_days = ((abs(delta_seconds) + 86399) // 86400) * (1 if delta_seconds > 0 else -1)
+        duration = int(dbuser.form_duration_days) + delta_days
+        preset = owner_pricing.duration_days_preset(db, duration)
+        dbuser.form_duration_days = duration
+        dbuser.duration_multiplier_basis_points = preset.multiplier_basis_points
     _validate_traffic_credit(
         db,
         settings,

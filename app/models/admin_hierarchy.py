@@ -383,8 +383,8 @@ class DurationPresetInput(BaseModel):
 
 class OwnerPricingUpdate(BaseModel):
     price_per_gib_toman: int = Field(ge=0)
-    allow_unlimited_duration: bool = False
-    duration_presets: list[DurationPresetInput] = Field(min_length=1)
+    allow_unlimited_duration: Literal[False] = False
+    duration_presets: list[DurationPresetInput] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def unique_durations(self):
@@ -395,7 +395,11 @@ class OwnerPricingUpdate(BaseModel):
 
 
 class OwnerPricingResponse(OwnerPricingUpdate):
-    pass
+    duration_pricing_mode: Literal["CAPPED_DAILY"] = "CAPPED_DAILY"
+    duration_base_days: int = 30
+    duration_cap_days: int = 365
+    duration_max_multiplier: float = 1.2
+    duration_examples: list[DurationPresetInput] = Field(default_factory=list)
 
 
 class AccessGroupNetworkHostOption(BaseModel):

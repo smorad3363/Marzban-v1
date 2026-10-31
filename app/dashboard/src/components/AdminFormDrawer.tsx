@@ -444,7 +444,7 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
                 </Section>
               )}
 
-              <Section title="محدودیت‌های اختیاری" description="خالی‌گذاشتن هر مورد یعنی بدون محدودیت.">
+              <Section title="محدودیت‌های اختیاری" description="خالی‌گذاشتن سقف‌ها یعنی بدون سقف اضافی؛ تنظیم مدت مشخص برای خود اکانت همیشه الزامی است.">
                 <SimpleGrid columns={{ base: 1, md: 2, xl: 4 }} gap={3}>
                   {mode !== "USER_CREDIT" && <FormControl><FormLabel>بیشترین تعداد کاربر</FormLabel><Input type="number" min={1} dir="ltr" value={form.policy.max_users ?? ""} onChange={(e) => setPolicy("max_users", nullableNumber(e))} /></FormControl>}
                   <FormControl><FormLabel>بیشترین مدت اشتراک (روز)</FormLabel><Input type="number" min={1} dir="ltr" value={form.policy.max_user_duration_days ?? ""} onChange={(e) => setPolicy("max_user_duration_days", nullableNumber(e))} /></FormControl>

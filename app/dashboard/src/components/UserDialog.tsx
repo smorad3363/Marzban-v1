@@ -400,9 +400,9 @@ export const UserDialog: FC<UserDialogProps> = () => {
     []
   );
 
-  const [dataLimit, userStatus, ownerAdmin, concurrentUserLimit, requestedUsername] = useWatch({
+  const [dataLimit, userStatus, ownerAdmin, concurrentUserLimit, requestedUsername, expiryValue, holdDays] = useWatch({
     control: form.control,
-    name: ["data_limit", "status", "owner_admin", "concurrent_user_limit", "username"],
+    name: ["data_limit", "status", "owner_admin", "concurrent_user_limit", "username", "expire", "on_hold_expire_duration"],
   });
   const selectedOwner = adminsQuery.data?.find(
     (admin) => admin.username === ownerAdmin
@@ -457,14 +457,20 @@ export const UserDialog: FC<UserDialogProps> = () => {
   const unlimitedDevicesAllowed = effectiveCapabilities.allowed_subscription_modes.some(
     (mode) => mode.endsWith("_unlimited_devices")
   );
-  const restrictedDurationOptions = effectiveCapabilities.allowed_form_duration_days || [];
   const selectedRestrictedDuration = Number(restrictedDurationDays);
   const restrictedDurationValid = !restrictedCreate || (
     Number(dataLimit) > 0
     && Number.isInteger(selectedRestrictedDuration)
     && selectedRestrictedDuration > 0
-    && selectedRestrictedDuration <= Math.max(0, ...restrictedDurationOptions)
   );
+
+  const creationDurationValid = isEditing || (restrictedCreate
+    ? Number.isInteger(selectedRestrictedDuration) && selectedRestrictedDuration > 0
+    : userStatus === "on_hold" ? Number(holdDays) > 0 : Number(expiryValue) > Date.now() / 1000);
+  const durationRequiredMessage = "حتماً یک مدت مشخص برای اکانت تنظیم کنید؛ زمان خالی یا نامحدود مجاز نیست.";
+  const notifyRequiredDuration = () => {
+    if (!toast.isActive("user-duration-required")) toast({ id: "user-duration-required", title: durationRequiredMessage, status: "warning", position: "top", duration: 4000, isClosable: true });
+  };
 
   useEffect(() => {
     if (!isOpen || effectiveCapabilities.all_user_limits) return;
@@ -528,6 +534,7 @@ export const UserDialog: FC<UserDialogProps> = () => {
   }, [editingUser, userData.username]);
 
   const submit = (values: FormType) => {
+    if (!creationDurationValid) { notifyRequiredDuration(); return; }
     setLoading(true);
     const methods = { edited: editUser, created: createUser };
     const method = isEditing ? "edited" : "created";
@@ -693,7 +700,7 @@ export const UserDialog: FC<UserDialogProps> = () => {
             },
           }}
         >
-          <form onSubmit={form.handleSubmit(submit)} style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, maxWidth: "100%", overflow: "hidden" }}>
+          <form onSubmit={form.handleSubmit(submit, () => { if (!creationDurationValid) notifyRequiredDuration(); })} style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, maxWidth: "100%", overflow: "hidden" }}>
             <ModalHeader
               px={{ base: 4, md: 6 }}
               py={{ base: 4, md: 5 }}
@@ -1045,20 +1052,13 @@ export const UserDialog: FC<UserDialogProps> = () => {
                             type="number"
                             min={1}
                             step={1}
-                            max={Math.max(0, ...restrictedDurationOptions)}
                             value={restrictedDurationDays}
-                            onChange={(event) => setRestrictedDurationDays(event.target.value)}
+                            onChange={(event) => { setRestrictedDurationDays(event.target.value); if (!Number(event.target.value)) notifyRequiredDuration(); }}
+                            onBlur={() => { if (!creationDurationValid) notifyRequiredDuration(); }}
                             isDisabled={disabled || capabilitiesQuery.isLoading}
                             minH="44px"
                           />
-                          {restrictedDurationOptions.length ? (
-                            <FormHelperText>تعداد روز دلخواه را وارد کنید؛ ضریب بازهٔ مدت به‌صورت خودکار در محاسبه اعتبار اعمال می‌شود.</FormHelperText>
-                          ) : (
-                            <Alert mt={2} status="warning" borderRadius="10px">
-                              <AlertIcon />
-                              <Text fontSize="sm">Owner هنوز مدت مجاز فعالی برای ساخت دستی تعریف نکرده است.</Text>
-                            </Alert>
-                          )}
+                          <FormHelperText>تعداد روز دلخواه را وارد کنید؛ ضریب روزانه خودکار محاسبه می‌شود و از یک سال به بعد ثابت است.</FormHelperText>
                         </FormControl>
                       )}
                       <FormControl mb={"10px"} display={restrictedCreate ? "none" : "block"}>
@@ -1125,6 +1125,7 @@ export const UserDialog: FC<UserDialogProps> = () => {
                                         : undefined
                                     }
                                     onChange={(date: Date) => {
+                                      if (!date) notifyRequiredDuration();
                                       form.setValue(
                                         "on_hold_expire_duration",
                                         null
@@ -1171,6 +1172,8 @@ export const UserDialog: FC<UserDialogProps> = () => {
                           />
                         )}
                       </FormControl>
+
+                      {!creationDurationValid && <Alert status="warning" role="alert" aria-live="polite" mb={3} borderRadius="10px"><AlertIcon /><Text fontSize="sm">{durationRequiredMessage}</Text></Alert>}
 
                       <FormControl
                         mb={"10px"}
@@ -1363,7 +1366,7 @@ export const UserDialog: FC<UserDialogProps> = () => {
                     px="8"
                     colorScheme="primary"
                     isLoading={loading}
-                    isDisabled={disabled || (restrictedCreate ? !restrictedDurationValid : (lacksCapacity || !modeAllowed))}
+                    isDisabled={disabled || (restrictedCreate ? Number(dataLimit) <= 0 : (lacksCapacity || !modeAllowed))}
                     w={{ base: "full", sm: "auto" }}
                   >
                     {isEditing ? t("userDialog.editUser") : t("createUser")}

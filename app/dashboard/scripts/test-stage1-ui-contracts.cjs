@@ -86,12 +86,12 @@ assert.ok(adminForm.includes("canonicalOwnerBillingModes"), "Owner billing mode 
 assert.ok(adminForm.includes('accountQuery.data?.role === "OWNER"'), "Owner fallback must be gated by the account role");
 assert.ok(adminForm.includes("allowedModes.length === 0"), "Missing delegated billing modes must show a visible warning instead of a blank selector");
 
-// Delegated user creation contracts: Plans use the scoped endpoint; Form durations use Owner presets.
+// Plans use the scoped endpoint; custom Form duration is positive and priced by the daily curve.
 assert.ok(createUserFromPlan.includes('fetch("/available-user-plans")'), "Plan user creation must load only effective plans");
 assert.ok(createUserFromPlan.includes('fetch("/users/from-plan"'), "Plan user creation must use the dedicated Plan endpoint");
 assert.ok(createUserFromPlan.includes("access_group_id: Number(groupId)"), "Plan user creation must keep explicit Access Group selection");
-assert.ok(userDialog.includes("allowed_form_duration_days"), "Form creation must consume Owner-approved duration presets");
-assert.ok(userDialog.includes("restrictedDurationOptions"), "Restricted Form creation must render preset durations");
+assert.ok(userDialog.includes("Number.isInteger(selectedRestrictedDuration)") && userDialog.includes("selectedRestrictedDuration > 0"), "custom creation must require positive whole days");
+assert.ok(!userDialog.includes("restrictedDurationOptions"), "legacy presets must not cap or whitelist custom durations");
 assert.ok(userDialog.includes("Math.floor(Date.now() / 1000) + selectedRestrictedDuration * 86400"), "Restricted Form expiry must be calculated from submit time");
 assert.ok(userDialog.includes('display={restrictedCreate ? "none" : "block"}'), "Restricted Form creation must not expose the arbitrary calendar expiry control");
 
@@ -127,3 +127,12 @@ assert.ok(toastHandler.includes("localizedApiError(e, field)"), "Validation fiel
 assert.ok(httpService.includes("error.message = localizedApiError(error)"), "All shared fetch failures must normalize legacy error.message");
 
 console.log("stage 1 UI contracts: assertions passed");
+
+// New service must report missing time live, while legacy metadata stays editable.
+const durationForm = read("src/components/UserDialog.tsx");
+const durationSettings = read("src/pages/Settings.tsx");
+assert.ok(durationForm.includes('aria-live="polite"') && durationForm.includes('role="alert"'), "missing duration must have a live warning");
+assert.ok(durationForm.includes('toast.isActive("user-duration-required")'), "duration warning must be actionable without duplicate toasts");
+assert.ok(durationForm.includes('if (!creationDurationValid) { notifyRequiredDuration(); return; }'), "submit must not send missing duration");
+assert.ok(!durationSettings.includes('pricing.allow_unlimited_duration'), "unlimited-time permission must not be exposed");
+assert.ok(durationSettings.includes('duration_max_multiplier') && durationSettings.includes('duration_examples'), "Owner must see the capped duration policy");

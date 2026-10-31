@@ -63,7 +63,7 @@ def add_user(
 
     - **username**: 3 to 32 characters, can include a-z, 0-9, and underscores.
     - **status**: User's status, defaults to `active`. Special rules if `on_hold`.
-    - **expire**: UTC timestamp for account expiration. Use `0` for unlimited.
+    - **expire**: Required future UTC expiration timestamp, or a positive on-hold duration.
     - **data_limit**: Max data usage in bytes (e.g., `1073741824` for 1GB). `0` means unlimited.
     - **data_limit_reset_strategy**: Defines how/if data limit resets. `no_reset` means it never resets.
     - **proxies**: Dictionary of protocol settings (e.g., `vmess`, `vless`).
@@ -123,8 +123,7 @@ def add_user(
     try:
         dbuser = crud.create_user(db, new_user, admin=dbadmin, commit=False)
         if form_preset is not None:
-            from datetime import datetime, timezone
-            dbuser.form_duration_days = max(round((int(new_user.expire) - int(datetime.now(timezone.utc).timestamp())) / 86400), 1)
+            dbuser.form_duration_days = form_preset.duration_days
             dbuser.duration_multiplier_basis_points = form_preset.multiplier_basis_points
         if new_user.access_group_id is not None:
             access_groups.apply_to_user(db, dbuser, new_user.access_group_id)

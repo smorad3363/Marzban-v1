@@ -1,0 +1,13 @@
+# v1.1.19
+
+- Replace manual Form duration bands with a deterministic daily curve. For positive whole days d, the coefficient is 1 through day 30; for days 31–364 it is `1 + 0.20 * (1 - ((365-d)/335)^3)`; from day 365 onward it is fixed at 1.20. Round once to integer basis points. The marginal increase becomes very small after six months. Sample coefficients: 30 days 1, 60 days 1.0491, 180 days 1.1663, 365 or 730 days 1.20. Legacy preset rows remain stored for historical compatibility but no longer price new Form purchases.
+- Remove the unlimited-time permission and manual band editor from Settings. Show formula examples instead. Arbitrary positive custom days have no preset whitelist or one-year ceiling; the coefficient alone stops increasing at one year. Keep the separate optional Admin maximum duration ceiling.
+- Require a future expiry for every newly created active account, including Owner requests; on-hold accounts require a positive deferred duration. Reject blank, unlimited or past time in the backend before writing any user or commercial changes. Show a live warning and deduplicated toast in the creation dialog. Existing unlimited accounts remain unchanged and metadata remains editable; changing a duration must produce finite valid time.
+- Preserve purchased duration/coefficient snapshots until an explicit duration edit. Allocated Form time extensions buy only the positive coefficient difference on existing traffic, plus any newly added traffic at the resulting coefficient. Extending at the 1.20 cap adds no time surcharge and does not reset traffic usage. Actual-usage billing continues to use the stored coefficient and exact fractional remainder.
+- Widen Users and queued Plan expiry columns to BIGINT for finite dates beyond 2038. The migration is replayable, preserves existing values and disables the obsolete unlimited-time flag. Wallet balances, ledgers, quotas, credentials, Access Groups and core/network settings are not rewritten.
+
+Validation covers arbitrary-day curve boundaries, decreasing marginal growth and cap, missing-time rejection for Owner/Admin and on-hold accounts, existing unlimited metadata edits, post-2038 expiry, extension pricing through CRUD, migration replay/data retention, and both supported MySQL versions through the required PR gates. Dashboard contracts cover the live duration warning and removed permission.
+
+File disposition: KEEP historical policy/preset rows, schema history, runtime/fixture assets and attribution. MERGE/REPLACE generated dashboard bundles and their HTML references using the canonical Vite build. No unrelated source deletion.
+
+After verified publication and a live recovery snapshot, update using `marzban update --version v1.1.19`.

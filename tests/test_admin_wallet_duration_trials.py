@@ -84,19 +84,16 @@ def test_alerts_return_scoped_admin_usernames(tree):
     assert result['alerts'][0]['admin_id'] == child.id
 
 
-@pytest.mark.parametrize('days,multiplier', [(1,10000),(30,10000),(31,13000),(45,13000),(59,13000),(60,13000)])
-def test_arbitrary_days_use_inclusive_duration_bands(tree, days, multiplier):
+@pytest.mark.parametrize('days', [1,30,31,45,59,60,180,365,1000])
+def test_arbitrary_days_use_capped_daily_curve(tree, days):
     db, _, _, _, settings = tree
-    db.add_all([OwnerDurationPreset(duration_days=30, multiplier_basis_points=10000), OwnerDurationPreset(duration_days=60, multiplier_basis_points=13000)])
+    db.add_all([OwnerDurationPreset(duration_days=30, multiplier_basis_points=10000), OwnerDurationPreset(duration_days=60, multiplier_basis_points=13000, enabled=False)])
     db.commit()
     expire = int((datetime.now(timezone.utc) + timedelta(days=days)).timestamp())
-    assert owner_pricing.duration_preset(db, expire).multiplier_basis_points == multiplier
-    assert owner_pricing.form_price(db, settings, data_limit=1024**3, expire=expire) == multiplier // 10
-    with pytest.raises(admin_hierarchy.HierarchyError):
-        owner_pricing.duration_days_preset(db, 61)
-    db.get(OwnerDurationPreset, 60).enabled = False; db.commit()
-    with pytest.raises(admin_hierarchy.HierarchyError):
-        owner_pricing.duration_days_preset(db, 45)
+    factor = owner_pricing.duration_multiplier_basis_points(days)
+    assert owner_pricing.duration_preset(db, expire).multiplier_basis_points == factor
+    assert owner_pricing.form_price(db, settings, data_limit=1024**3, expire=expire) == (factor + 9) // 10
+    assert owner_pricing.duration_days_preset(db, 100000).multiplier_basis_points == 12000
 
 
 def test_usage_factor_settles_exactly_without_changing_real_usage(tree):

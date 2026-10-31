@@ -473,6 +473,8 @@ def create_user(
     Returns:
         User: The created user object.
     """
+    from app.utils.user_duration import validate_new_user
+    validate_new_user(user)
     excluded_inbounds_tags = user.excluded_inbounds
     proxies = []
     for proxy_type, settings in user.proxies.items():
@@ -582,6 +584,14 @@ def update_user(
     # Requests may have loaded this user before another transaction committed.
     # Price and apply the modification against the same locked current state.
     db.refresh(dbuser, with_for_update=True)
+    fields = modify.model_fields_set
+    changed_expire = "expire" in fields and (modify.expire or None) != (dbuser.expire or None)
+    changed_hold = "on_hold_expire_duration" in fields and modify.on_hold_expire_duration != dbuser.on_hold_expire_duration
+    if changed_expire or changed_hold:
+        from app.utils.user_duration import require_duration
+        require_duration(expire=modify.expire if "expire" in fields else dbuser.expire,
+                         status=modify.status or dbuser.status,
+                         on_hold_duration=modify.on_hold_expire_duration if "on_hold_expire_duration" in fields else dbuser.on_hold_expire_duration)
     renewal, allowance_consumed = marzhelp_policy.validate_update(
         db,
         dbuser,

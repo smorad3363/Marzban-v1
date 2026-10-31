@@ -83,4 +83,10 @@ def test_concurrent_deletion_approvals_refund_once(monkeypatch):
         db.refresh(settings)
         assert settings.money_balance_toman == 400
         assert settings.usage_billing_remainder == settings.usage_billing_fraction == 0
+    with factory() as db:
+        long_user = User(username='finite-after-2038', admin_id=child_id, status='active', expire=2200000000)
+        db.add(long_user); db.commit(); db.refresh(long_user)
+        assert long_user.expire == 2200000000
+        from app.utils.owner_pricing import duration_multiplier_basis_points
+        assert duration_multiplier_basis_points(10000) == 12000
     engine.dispose()
