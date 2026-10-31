@@ -1,3 +1,9 @@
+# v1.1.17
+
+Release target: v1.1.17
+
+Reconcile removed core Inbounds with Access Groups and add explicit tag rename. [Notes](docs/RELEASE_NOTES_v1.1.17.md).
+
 # v1.1.16
 
 Release target: v1.1.16
