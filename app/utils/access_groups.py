@@ -321,6 +321,7 @@ def response(db: Session, group: AccessGroup) -> AccessGroupResponse:
         node_ids=sorted(nodes),
         inbounds=sorted(inbounds),
         hosts={tag: sorted(hosts[tag]) for tag in sorted(inbounds)},
+        network_status="READY" if inbounds else "NO_NETWORK_ACCESS",
         allowed_admin_ids=_allowed_admin_ids(db, group.id),
         admin_access_restricted=bool(_permission_admin_ids(db, group.id)),
         archived_at=group.archived_at,
