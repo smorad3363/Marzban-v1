@@ -40,9 +40,10 @@ export const DeleteUserModal: FC<DeleteUserModalProps> = () => {
     if (user) {
       setLoading(true);
       deleteUser(user)
-        .then(() => {
+        .then((result) => {
           toast({
-            title: t("deleteUser.deleteSuccess", { username: user.username }),
+            title: result?.status === "PENDING" ? "درخواست حذف و بازگشت وجه برای ادمین بالاسری ثبت شد" : t("deleteUser.deleteSuccess", { username: user.username }),
+            description: result?.refund_toman ? `${result.refund_toman.toLocaleString("fa-IR")} تومان به ادمین خریدار برگردانده شد` : undefined,
             status: "success",
             isClosable: true,
             position: "top",

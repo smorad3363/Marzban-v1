@@ -46,6 +46,7 @@ const accessPolicyOptions = [
 
 const emptyPolicy = (): AdminPolicy => ({
   billing_mode: "USED_TRAFFIC", total_traffic: null, expiry_date: null,
+  financial_limits_enabled: true, financial_freeze_percent: 10, financial_disable_percent: 40,
   money_billing_enabled: true, money_balance_toman: 0, used_traffic_price_per_gib_toman: null,
   user_limit: null, max_users: null, device_capacity_limit: null,
   admin_traffic_warning_percent: 80, sudo_traffic_warning_percent: 80,
@@ -400,6 +401,9 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
                 <SimpleGrid columns={{ base: 1, md: 2, xl: 4 }} gap={3}>
                   {mode !== "USER_CREDIT" && <FormControl><FormLabel>بیشترین تعداد کاربر</FormLabel><Input type="number" min={1} dir="ltr" value={form.policy.max_users ?? ""} onChange={(e) => setPolicy("max_users", nullableNumber(e))} /></FormControl>}
                   <FormControl><FormLabel>بیشترین مدت اشتراک (روز)</FormLabel><Input type="number" min={1} dir="ltr" value={form.policy.max_user_duration_days ?? ""} onChange={(e) => setPolicy("max_user_duration_days", nullableNumber(e))} /></FormControl>
+                  <FormControl><FormLabel>هشدار مصرف کاربر (درصد)</FormLabel><Input type="number" min={1} max={100} dir="ltr" value={form.policy.admin_traffic_warning_percent} onChange={(e) => setPolicy("admin_traffic_warning_percent", Number(e.target.value))} /></FormControl>
+                  <FormControl><FormLabel>بدهی فریز (درصد آخرین شارژ)</FormLabel><Input type="number" min={1} max={1000} dir="ltr" value={form.policy.financial_freeze_percent ?? 10} onChange={(e) => setPolicy("financial_freeze_percent", Number(e.target.value))} /></FormControl>
+                  <FormControl><FormLabel>بدهی قطع کاربران (درصد آخرین شارژ)</FormLabel><Input type="number" min={1} max={1000} dir="ltr" value={form.policy.financial_disable_percent ?? 40} onChange={(e) => setPolicy("financial_disable_percent", Number(e.target.value))} /></FormControl>
                   <FormControl><FormLabel>تاریخ پایان مدیر</FormLabel><Input type="date" dir="ltr" value={form.policy.expiry_date || ""} onChange={(e) => setPolicy("expiry_date", e.target.value || null)} /></FormControl>
                   <FormControl><FormLabel>{t("admins.telegramId")}</FormLabel><Input type="number" value={form.telegram_id ?? ""} dir="ltr" onChange={(e) => setField("telegram_id", nullableNumber(e))} /></FormControl>
                 </SimpleGrid>

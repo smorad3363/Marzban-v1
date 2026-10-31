@@ -110,7 +110,7 @@ export const AdminTable: FC<Props> = ({
     return "فریز";
   };
 
-  const RowActions: FC<{ item: ManagedAdmin }> = ({ item }) => {
+  const rowActions = (item: ManagedAdmin) => {
     const amount = creditAmounts[item.username] || "";
     const validAmount = Number.isFinite(Number(amount)) && Number(amount) > 0;
 
@@ -308,7 +308,7 @@ export const AdminTable: FC<Props> = ({
                         </Box>
                       </HStack>
                     </Td>
-                    <Td><StatusPill status={item.account_status} /></Td>
+                    <Td><StatusPill status={item.account_status} />{["frozen", "disabled"].includes(item.policy.financial_state || "") && <Badge colorScheme="red">{item.policy.financial_state === "frozen" ? "فریز مالی" : "قطع مالی کاربران"}</Badge>}</Td>
                     <Td>
                       <HStack spacing={1.5} flexWrap="wrap">
                         <Badge variant="outline" color={isItemOwner ? "var(--panel-accent)" : "var(--panel-text-body)"} borderColor={isItemOwner ? "var(--panel-accent-border)" : "var(--panel-border)"} bg={isItemOwner ? "var(--panel-accent-soft)" : "var(--panel-muted-soft)"} fontSize="11px" textTransform="none">
@@ -341,7 +341,7 @@ export const AdminTable: FC<Props> = ({
                         {item.parent_username || "—"}
                       </Text>
                     </Td>
-                    <Td textAlign="end" py={2.5}><RowActions item={item} /></Td>
+                    <Td textAlign="end" py={2.5}>{rowActions(item)}</Td>
                   </Tr>
                   <Tr bg="rgba(2,8,23,.24)">
                     <Td colSpan={7} py={2} px={4} borderBottomColor="rgba(148,163,184,.14)">
@@ -369,7 +369,7 @@ export const AdminTable: FC<Props> = ({
                   <Box minW={0}>
                     <HStack spacing={2} flexWrap="wrap">
                       <Text dir="ltr" fontSize="14px" fontWeight="800">{item.username}</Text>
-                      <StatusPill status={item.account_status} />
+                      <StatusPill status={item.account_status} />{["frozen", "disabled"].includes(item.policy.financial_state || "") && <Badge colorScheme="red">{item.policy.financial_state === "frozen" ? "فریز مالی" : "قطع مالی کاربران"}</Badge>}
                     </HStack>
                     <Text mt={1} color="var(--panel-text-muted)" fontSize="11px" dir="ltr">{item.parent_username ? `↳ ${item.parent_username}` : "ادمین ریشه"}</Text>
                   </Box>

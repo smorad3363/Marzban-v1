@@ -110,7 +110,7 @@ class Admin(BaseModel):
         dbadmin = crud.get_admin(db, admin.username)
         if dbadmin is not None and admin_hierarchy.hierarchy_enabled(db):
             state = admin_hierarchy.account_status_code(db, dbadmin.id)
-            read_only_paths = {"/api/admin", "/api/admin/logout", "/api/account/summary", "/api/account/activity"}
+            read_only_paths = {"/api/admin", "/api/admin/logout", "/api/account/summary", "/api/account/activity", "/api/admin-management/requests-alerts"}
             suspended_read_allowed = (
                 state == admin_hierarchy.SUSPENDED
                 and request.method.upper() in {"GET", "HEAD", "OPTIONS"}
@@ -275,6 +275,11 @@ class MarzhelpAdminPolicy(BaseModel):
     billing_mode: BillingMode = BillingMode.LEGACY_COMPAT
     money_billing_enabled: bool = False
     money_balance_toman: int = Field(default=0)
+    last_positive_charge_toman: int = Field(default=0, ge=0)
+    financial_state: str = "normal"
+    financial_limits_enabled: bool = True
+    financial_freeze_percent: int = Field(default=10, ge=1, le=1000)
+    financial_disable_percent: int = Field(default=40, ge=1, le=1000)
     used_traffic_price_per_gib_toman: Optional[int] = Field(default=None, ge=0)
     total_traffic: Optional[int] = Field(default=None, ge=0)
     expiry_date: Optional[date] = None
@@ -299,6 +304,12 @@ class MarzhelpAdminPolicy(BaseModel):
     prevent_revoke_subscription: bool = False
     prevent_unlimited_traffic: bool = False
     model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode="after")
+    def validate_financial_thresholds(self):
+        if self.financial_disable_percent <= self.financial_freeze_percent:
+            raise ValueError("Disable percentage must exceed freeze percentage")
+        return self
 
     @field_validator("allowed_inbounds")
     @classmethod

@@ -72,7 +72,7 @@ type DashboardStateType = {
   refetchUsers: () => void;
   resetAllUsage: () => Promise<void>;
   onFilterChange: (filters: Partial<FilterType>) => void;
-  deleteUser: (user: User) => Promise<void>;
+  deleteUser: (user: User) => Promise<{ status?: string; request_id?: number; refund_toman?: number }>;
   createUser: (user: UserCreate) => Promise<User>;
   editUser: (user: UserCreate) => Promise<void>;
   fetchUserUsage: (user: User, query: FilterUsageType) => Promise<void>;
@@ -193,10 +193,11 @@ export const useDashboard = create(
     },
     deleteUser: (user: User) => {
       set({ editingUser: null });
-      return fetch(`/user/${user.username}`, { method: "DELETE" }).then(() => {
+      return fetch<{ status?: string; request_id?: number; refund_toman?: number }>(`/user/${user.username}`, { method: "DELETE" }).then((result) => {
         set({ deletingUser: null });
         get().refetchUsers();
         invalidateUserAggregates();
+        return result;
       });
     },
     createUser: (body: UserCreate) => {

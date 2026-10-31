@@ -40,6 +40,7 @@ import { Navigate, useSearchParams } from "react-router-dom";
 import { fetch } from "service/http";
 import { AdminCapabilities, ManagedAdmin, ManagedAdminList } from "types/Admin";
 import { localizedApiError } from "utils/apiError";
+import { RequestsAlerts } from "./RequestsAlerts";
 import { AdminTable, CreditOperation } from "./AdminTable";
 import { AdminsIcon, control, FilterButton, panel, SummaryStat } from "./AdminUi";
 
@@ -224,7 +225,7 @@ export const AdminsPage: FC = () => {
   );
 
   if (!getUserIsPending && !capabilities.isLoading && !canManage) {
-    return <Navigate to="/" replace />;
+    return <AppShell><RequestsAlerts /></AppShell>;
   }
 
   const rawAdmins = query.data?.admins || [];
@@ -439,6 +440,8 @@ export const AdminsPage: FC = () => {
           )}
         </Card>
       </Stack>
+
+      <RequestsAlerts />
 
       <AdminFormDrawer isOpen={formDisclosure.isOpen} admin={selected} onClose={formDisclosure.onClose} />
 

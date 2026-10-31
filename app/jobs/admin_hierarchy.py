@@ -1,66 +1,44 @@
 from app import logger, scheduler, xray
 from app.db import GetDB
 from app.db.models import Admin, AdminHierarchy, MarzhelpAdminSettings
-from app.utils import admin_hierarchy
+from app.utils import admin_hierarchy, financial_controls
 
 
 def enforce_admin_account_limits() -> None:
-    """Suspend expired/exhausted accounts and their subtree without OFFSET scans."""
-
+    """Durably reconcile financial holds, expiry and scoped account warnings."""
     changed = False
     with GetDB() as db:
-        if not admin_hierarchy.hierarchy_enabled(db):
-            return
-        owner = db.get(Admin, admin_hierarchy.owner_id(db))
-        if owner is None:
-            logger.error("Admin hierarchy is enabled without a valid Owner")
-            return
-        candidates = (
-            db.query(Admin, MarzhelpAdminSettings)
+        financial_controls.reconcile(db)
+        financial_controls.collect_alerts(db)
+        pending = dict(db.query(MarzhelpAdminSettings.admin_id, MarzhelpAdminSettings.financial_runtime_revision).filter(
+            MarzhelpAdminSettings.financial_runtime_revision > MarzhelpAdminSettings.financial_runtime_applied_revision).all())
+        changed = bool(pending)
+        db.commit()
+        owner = db.get(Admin, admin_hierarchy.owner_id(db)) if admin_hierarchy.hierarchy_enabled(db) else None
+        candidates = (db.query(Admin, MarzhelpAdminSettings)
             .join(MarzhelpAdminSettings, MarzhelpAdminSettings.admin_id == Admin.id)
-            .filter(
-                Admin.id != owner.id,
-                MarzhelpAdminSettings.account_status_id == admin_hierarchy.ACCOUNT_STATUS_IDS[admin_hierarchy.ACTIVE],
-            )
-            .order_by(Admin.id)
-            .all()
-        )
-        covered_admin_ids: set[int] = set()
+            .filter(Admin.id != owner.id, MarzhelpAdminSettings.account_status_id == admin_hierarchy.ACCOUNT_STATUS_IDS[admin_hierarchy.ACTIVE])
+            .order_by(Admin.id).all()) if owner is not None else []
+        covered_admin_ids = set()
         for target, settings in candidates:
             if target.id in covered_admin_ids:
                 continue
             reason_id = admin_hierarchy.automatic_suspension_reason(db, settings)
             if reason_id is None:
                 continue
-            admin_hierarchy.suspend_admin(
-                db,
-                actor=owner,
-                target=target,
-                reason_id=reason_id,
-                include_subtree=True,
-            )
-            covered_admin_ids.update(
-                row[0]
-                for row in db.query(AdminHierarchy.descendant_id)
-                .filter(AdminHierarchy.ancestor_id == target.id)
-                .all()
-            )
+            admin_hierarchy.suspend_admin(db, actor=owner, target=target, reason_id=reason_id, include_subtree=True)
+            covered_admin_ids.update(row[0] for row in db.query(AdminHierarchy.descendant_id).filter(AdminHierarchy.ancestor_id == target.id).all())
             changed = True
             logger.warning('Admin "%s" was suspended automatically (reason_id=%s)', target.username, reason_id)
-
     if changed:
-        startup_config = xray.config.include_db_users()
-        if xray.core.started:
-            xray.core.restart(startup_config)
-        for node_id, node in list(xray.nodes.items()):
-            if node.connected:
-                xray.operations.restart_node(node_id, startup_config)
+        # A failed apply leaves its revision pending, including across restarts.
+        xray.operations.restart_all_cores()
+        with GetDB() as db:
+            for admin_id, revision in pending.items():
+                db.query(MarzhelpAdminSettings).filter(MarzhelpAdminSettings.admin_id == admin_id,
+                    MarzhelpAdminSettings.financial_runtime_applied_revision < revision).update(
+                    {MarzhelpAdminSettings.financial_runtime_applied_revision: revision}, synchronize_session=False)
+            db.commit()
 
 
-scheduler.add_job(
-    enforce_admin_account_limits,
-    "interval",
-    minutes=1,
-    coalesce=True,
-    max_instances=1,
-)
+scheduler.add_job(enforce_admin_account_limits, "interval", minutes=1, coalesce=True, max_instances=1)

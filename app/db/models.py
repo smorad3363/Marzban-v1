@@ -823,6 +823,13 @@ class MarzhelpAdminSettings(Base):
     # configured commercial accounts. Values are stored as whole Toman.
     money_billing_enabled = Column(Boolean, nullable=False, default=False)
     money_balance_toman = Column(BigInteger, nullable=False, default=0)
+    last_positive_charge_toman = Column(BigInteger, nullable=False, default=0)
+    financial_limits_enabled = Column(Boolean, nullable=False, default=True)
+    financial_freeze_percent = Column(Integer, nullable=False, default=10)
+    financial_disable_percent = Column(Integer, nullable=False, default=40)
+    financial_state = Column(String(16), nullable=False, default="normal")
+    financial_runtime_revision = Column(BigInteger, nullable=False, default=0)
+    financial_runtime_applied_revision = Column(BigInteger, nullable=False, default=0)
     used_traffic_price_per_gib_toman = Column(BigInteger, nullable=True)
     # Numerator remainder modulo GiB for exact fractional usage settlement.
     usage_billing_remainder = Column(BigInteger, nullable=False, default=0)
@@ -1280,6 +1287,45 @@ class AdminMoneyTransaction(Base):
         nullable=True,
     )
     user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    details = Column(JSON, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class UserDeletionRequest(Base):
+    __tablename__ = "user_deletion_requests"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, nullable=False, index=True)
+    username = Column(String(34), nullable=False)
+    account_admin_id = Column(Integer, ForeignKey("admins.id", ondelete="RESTRICT"), nullable=False, index=True)
+    requester_admin_id = Column(Integer, ForeignKey("admins.id", ondelete="RESTRICT"), nullable=False)
+    reviewer_admin_id = Column(Integer, ForeignKey("admins.id", ondelete="RESTRICT"), nullable=False, index=True)
+    status = Column(String(16), nullable=False, default="PENDING")
+    purchase_toman = Column(BigInteger, nullable=False, default=0)
+    refund_toman = Column(BigInteger, nullable=True)
+    used_bytes = Column(BigInteger, nullable=False)
+    quota_bytes = Column(BigInteger, nullable=False)
+    purchase_snapshot = Column(JSON, nullable=False)
+    decided_by_admin_id = Column(Integer, nullable=True)
+    decision_note = Column(String(512), nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    decided_at = Column(DateTime, nullable=True)
+
+
+class AdminFinancialUserHold(Base):
+    __tablename__ = "admin_financial_user_holds"
+    admin_id = Column(Integer, ForeignKey("admins.id", ondelete="CASCADE"), primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    previous_status = Column(String(16), nullable=False)
+    restore_allowed = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class AdminAccountAlert(Base):
+    __tablename__ = "admin_account_alerts"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    admin_id = Column(Integer, ForeignKey("admins.id", ondelete="CASCADE"), nullable=False, index=True)
+    event_key = Column(String(160), nullable=False, unique=True)
+    kind = Column(String(32), nullable=False)
     details = Column(JSON, nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 

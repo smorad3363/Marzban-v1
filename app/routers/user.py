@@ -271,6 +271,19 @@ def remove_user(
     admin: Admin = Depends(Admin.get_current),
 ):
     """Remove a user"""
+    from app.utils import user_deletion_finance
+    actor = crud.get_admin(db, admin.username)
+    try:
+        deletion = user_deletion_finance.request_deletion(db, actor, dbuser)
+        if deletion.status == "PENDING":
+            AuditLogService.log(db, actor, "user.deletion_request", "user_deletion_request", f"Deletion requested for {dbuser.username}", target_id=deletion.id, details={"purchase_toman": deletion.purchase_toman}, request=request, commit=False)
+            db.commit()
+            return {"detail": "Deletion request sent to direct parent", "status": "PENDING", "request_id": deletion.id}
+        if deletion.status != "APPROVED":
+            raise admin_hierarchy.HierarchyError("refund_already_finalized", "Deletion request was rejected")
+    except admin_hierarchy.HierarchyError as exc:
+        db.rollback()
+        raise HTTPException(status_code=403, detail={"code": exc.code, "message": str(exc)}) from exc
     previous_value = user_audit_state(dbuser)
     user_id = dbuser.id
     username = dbuser.username
@@ -293,7 +306,7 @@ def remove_user(
     )
 
     logger.info(f'User "{dbuser.username}" deleted')
-    return {"detail": "User successfully deleted"}
+    return {"detail": "User successfully deleted", "refund_toman": int(deletion.refund_toman or 0)}
 
 
 @router.post("/user/{username}/reset", response_model=UserResponse, responses={403: responses._403, 404: responses._404})

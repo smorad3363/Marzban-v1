@@ -996,13 +996,14 @@ def test_used_traffic_plan_access_does_not_charge_allocated_purchase(db):
     assert db.query(AdminMoneyTransaction).count() == 0
 
 
-def test_used_traffic_zero_crossing_suspends_account_and_active_users_atomically(db):
+def test_used_traffic_zero_crossing_warns_without_freezing_or_disabling(db):
     _, parent, child, parent_settings, child_settings = _money_tree(db)
     parent_settings.billing_mode = admin_billing.BillingMode.USED_TRAFFIC.value
     parent_settings.used_traffic_price_per_gib_toman = 50_000
     child_settings.billing_mode = admin_billing.BillingMode.USED_TRAFFIC.value
     child_settings.used_traffic_price_per_gib_toman = 70_000
     child_settings.money_balance_toman = 10_000
+    child_settings.last_positive_charge_toman = 1_000_000
     user = User(username="prepaid-crossing", admin_id=child.id, status=UserStatus.active)
     db.add(user)
     db.flush()
@@ -1010,11 +1011,12 @@ def test_used_traffic_zero_crossing_suspends_account_and_active_users_atomically
     suspended = money_billing.settle_used_traffic(db, {child.id: 1024 ** 3})
     db.refresh(child_settings)
 
-    assert suspended == {child.id}
+    assert suspended == set()
     assert child_settings.money_balance_toman == -60_000
-    assert child_settings.account_status_id == admin_hierarchy.ACCOUNT_STATUS_IDS[admin_hierarchy.SUSPENDED]
-    assert child_settings.suspended_reason_id == 2
-    assert user.status == UserStatus.disabled
+    assert child_settings.account_status_id == admin_hierarchy.ACCOUNT_STATUS_IDS[admin_hierarchy.ACTIVE]
+    assert child_settings.financial_state == "empty"
+    assert child_settings.suspended_reason_id is None
+    assert user.status == UserStatus.active
     assert db.query(AdminMoneyTransaction).filter(
         AdminMoneyTransaction.admin_id == child.id,
         AdminMoneyTransaction.operation_type == "usage_settlement",
