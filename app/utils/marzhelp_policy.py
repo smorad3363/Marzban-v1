@@ -1240,14 +1240,16 @@ def validate_update(
         return False, False
 
     _validate_account(settings)
-    from app.utils.financial_controls import require_spending
-    from app.utils import admin_hierarchy
-    try:
-        require_spending(db, settings.admin_id)
-        if actor is not None:
-            require_spending(db, getattr(actor, "id", None))
-    except admin_hierarchy.HierarchyError as exc:
-        raise MarzhelpPolicyError(exc.code, str(exc)) from exc
+    quota_changed = modify.data_limit is not None and _effective_data_limit(modify.data_limit) != _effective_data_limit(dbuser.data_limit)
+    if renewal or expiration_changed or quota_changed or concurrent_limit_changed or modify.next_plan is not None:
+        from app.utils.financial_controls import require_spending
+        from app.utils import admin_hierarchy
+        try:
+            require_spending(db, settings.admin_id)
+            if actor is not None:
+                require_spending(db, getattr(actor, "id", None))
+        except admin_hierarchy.HierarchyError as exc:
+            raise MarzhelpPolicyError(exc.code, str(exc)) from exc
     concurrent_user_limit = (
         getattr(modify, "concurrent_user_limit", None)
         if concurrent_limit_changed
@@ -1425,6 +1427,12 @@ def validate_next_plan_activation(db: Session, dbuser: User) -> bool:
     if settings is None:
         return False
     _validate_account(settings)
+    from app.utils.financial_controls import require_spending
+    from app.utils import admin_hierarchy
+    try:
+        require_spending(db, settings.admin_id)
+    except admin_hierarchy.HierarchyError as exc:
+        raise MarzhelpPolicyError(exc.code, str(exc)) from exc
     if _requires_explicit_plan_renewal(settings):
         raise MarzhelpPolicyError(
             "queued_paid_renewal_forbidden",

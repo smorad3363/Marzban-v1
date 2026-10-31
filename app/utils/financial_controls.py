@@ -13,9 +13,19 @@ def state(settings):
     if basis > 0:
         if balance * 100 <= -basis * int(settings.financial_disable_percent or 40): return 'disabled'
         if balance * 100 <= -basis * int(settings.financial_freeze_percent or 10): return 'frozen'
+    # An account without any recorded funding cannot accumulate unlimited debt.
+    if basis <= 0 and balance < 0: return 'disabled'
     if balance <= 0: return 'empty'
     if basis > 0 and balance * 100 <= basis * 10: return 'low'
     return 'normal'
+
+
+def can_spend(settings, amount):
+    """A recorded top-up permits bounded debt, never an unbounded overdraft."""
+    floor = 0
+    if settings.money_billing_enabled and settings.financial_limits_enabled:
+        floor = -(int(settings.last_positive_charge_toman or 0) * int(settings.financial_freeze_percent or 10) // 100)
+    return state(settings) not in {'frozen','disabled'} and int(settings.money_balance_toman or 0) - amount >= floor
 
 
 def connections_blocked(db, admin_id):
@@ -31,6 +41,8 @@ def require_spending(db, admin_id):
     for settings in db.query(MarzhelpAdminSettings).filter(MarzhelpAdminSettings.admin_id.in_(ids)).all():
         if state(settings) in {'frozen','disabled'}:
             raise admin_hierarchy.HierarchyError('financial_account_frozen','Financial limit blocks new purchases and renewals')
+        if settings.money_billing_enabled and settings.financial_limits_enabled and int(settings.last_positive_charge_toman or 0)<=0 and int(settings.money_balance_toman or 0)<=0:
+            raise admin_hierarchy.HierarchyError('money_funding_required','A positive wallet grant is required before provisioning paid service')
 
 
 def alert(db, admin_id, key, kind, details=None):

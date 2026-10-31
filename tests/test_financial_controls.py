@@ -218,3 +218,60 @@ def test_decision_and_wallet_rollback_together(tree):
     assert settings.money_balance_toman==1000 and row.status=='PENDING'
     assert db.get(User,user.id) is not None
     assert db.query(AdminMoneyTransaction).filter_by(operation_type='purchase_refund').count()==0
+
+
+def test_frozen_admin_can_edit_metadata_without_a_paid_change(tree):
+    from app.db import crud
+    from app.models.user import UserModify
+    db,owner,child,user,settings=tree
+    settings.money_balance_toman=-100;db.commit()
+    changed=crud.update_user(db,user,UserModify(data_limit=user.data_limit,expire=user.expire,note='metadata only'),actor=child)
+    assert changed.note=='metadata only'
+    assert settings.money_balance_toman==-100
+    with pytest.raises(marzhelp_policy.MarzhelpPolicyError,match='Financial limit'):
+        crud.update_user(db,user,UserModify(data_limit=user.data_limit+100),actor=child)
+
+
+def test_paid_spending_can_reach_freeze_boundary_but_not_exceed_it(tree):
+    db,owner,child,user,settings=tree
+    settings.money_balance_toman=0;db.commit()
+    money_billing.charge_form_purchase(db,buyer=child,actor=child,user_id=user.id,amount_toman=100)
+    db.commit()
+    assert settings.money_balance_toman==-100 and settings.financial_state=='frozen'
+    assert user.status==UserStatus.active
+    with pytest.raises(admin_hierarchy.HierarchyError,match='Financial limit'):
+        money_billing.charge_form_purchase(db,buyer=child,actor=child,user_id=user.id,amount_toman=1,operation_key='new-expense-after-freeze')
+    db.rollback()
+    settings.money_balance_toman=0;settings.financial_state='empty';db.commit()
+    with pytest.raises(admin_hierarchy.HierarchyError,match='insufficient'):
+        money_billing.charge_form_purchase(db,buyer=child,actor=child,user_id=user.id,amount_toman=101,operation_key='overdraft-too-large')
+    db.rollback()
+    assert settings.money_balance_toman==0
+
+
+def test_pending_request_follows_current_direct_parent_after_reparent(tree):
+    db,owner,child,user,settings=tree
+    paid(db,owner,child,user)
+    user.used_traffic=200;db.commit()
+    row=refunds.request_deletion(db,child,user);db.commit()
+    parent=Admin(username='replacement-parent',hashed_password='x')
+    db.add(parent);db.flush()
+    db.add(MarzhelpAdminSettings(admin_id=parent.id,billing_mode='ALLOCATED_TRAFFIC',can_create_admins=True));db.commit()
+    admin_hierarchy.reparent_subtree(db,owner,child,parent)
+    assert refunds.visible_requests(db,parent).filter_by(id=row.id).count()==1
+    assert refunds.request_response(db,row).reviewer_admin_id==parent.id
+    with pytest.raises(admin_hierarchy.HierarchyError,match='direct parent'):
+        refunds.decide(db,owner,row.id,True,300,None)
+    refunds.decide(db,parent,row.id,True,300,None);db.commit()
+    assert settings.money_balance_toman==1300 and db.get(User,user.id) is None
+
+
+def test_unfunded_usage_account_cannot_accumulate_unbounded_debt(tree):
+    db,owner,child,user,settings=tree
+    settings.last_positive_charge_toman=0
+    settings.money_balance_toman=0;db.commit()
+    with pytest.raises(admin_hierarchy.HierarchyError,match='wallet grant'):
+        finance.require_spending(db,child.id)
+    settings.money_balance_toman=-1
+    finance.reconcile(db);db.commit()
+    assert settings.financial_state=='disabled' and user.status==UserStatus.disabled

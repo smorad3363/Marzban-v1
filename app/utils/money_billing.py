@@ -252,9 +252,9 @@ def transfer_money(
     direction = 1 if operation_type == "grant" else -1
     child_delta = direction * amount_toman
     parent_delta = -child_delta
-    if child_delta < 0 and child_settings.money_balance_toman + child_delta < 0:
+    if child_delta < 0 and not financial_controls.can_spend(child_settings, -child_delta):
         raise admin_hierarchy.HierarchyError("money_balance_insufficient", "Child money balance is insufficient")
-    if parent_settings is not None and parent_delta < 0 and parent_settings.money_balance_toman + parent_delta < 0:
+    if parent_settings is not None and parent_delta < 0 and not financial_controls.can_spend(parent_settings, -parent_delta):
         raise admin_hierarchy.HierarchyError("money_balance_insufficient", "Parent money balance is insufficient")
 
     rows = []
@@ -365,8 +365,9 @@ def charge_plan_purchase(
         if not admin_hierarchy.is_owner(db, parent):
             deltas[parent.id] += price
             counterparties[parent.id] = child.id
+    from app.utils import financial_controls
     for admin_id, delta in deltas.items():
-        if int(settings[admin_id].money_balance_toman or 0) + delta < 0:
+        if delta < 0 and not financial_controls.can_spend(settings[admin_id], -delta):
             raise admin_hierarchy.HierarchyError("money_balance_insufficient", "Money balance is insufficient for this Plan")
     for admin_id in sorted(deltas):
         row_settings = settings[admin_id]
@@ -389,6 +390,7 @@ def charge_plan_purchase(
                 details={"usage_baseline": usage_total(db, db.get(User, user_id)) if user_id else 0, "quota_bytes": int(version.data_limit or 0)},
             )
         )
+    financial_controls.reconcile(db, set(settings))
 
 
 def charge_form_purchase(
@@ -401,11 +403,11 @@ def charge_form_purchase(
     operation_key: str | None = None,
 ) -> None:
     """Charge one deterministic ALLOCATED_TRAFFIC Form purchase."""
+    if admin_hierarchy.is_owner(db, buyer) or amount_toman <= 0:
+        return
     from app.utils.financial_controls import require_spending
     require_spending(db, buyer.id)
     require_spending(db, actor.id)
-    if admin_hierarchy.is_owner(db, buyer) or amount_toman <= 0:
-        return
     operation_key = operation_key or f"form-money:create:{user_id}"
     if db.query(AdminMoneyTransaction.id).filter(AdminMoneyTransaction.operation_key == operation_key).first():
         return
@@ -418,7 +420,8 @@ def charge_form_purchase(
     if BillingMode(settings.billing_mode) != BillingMode.ALLOCATED_TRAFFIC:
         return
     before = int(settings.money_balance_toman or 0)
-    if before < amount_toman:
+    from app.utils import financial_controls
+    if not financial_controls.can_spend(settings, amount_toman):
         raise admin_hierarchy.HierarchyError("money_balance_insufficient", "Admin Toman wallet is insufficient")
     settings.money_balance_toman = before - amount_toman
     db.add(
@@ -435,6 +438,7 @@ def charge_form_purchase(
             details={"formula": "GiB x PricePerGiB x DurationMultiplier", "usage_baseline": usage_total(db, db.get(User, user_id)), "quota_bytes": int(db.get(User, user_id).data_limit or 0)},
         )
     )
+    financial_controls.reconcile(db, {buyer.id})
 
 
 def settle_used_traffic(db: Session, usage_by_admin: dict[int, int]) -> set[int]:

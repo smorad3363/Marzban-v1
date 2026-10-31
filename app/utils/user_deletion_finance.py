@@ -1,6 +1,6 @@
 """Deletion refunds reverse a recorded purchase, never metered usage charges."""
 from datetime import datetime
-from sqlalchemy import or_
+from sqlalchemy import and_, or_
 from app.db.models import Admin, AdminMoneyTransaction, MarzhelpAdminSettings, User, UserDeletionRequest
 from app.utils import admin_hierarchy, financial_controls
 from app.utils.money_billing import usage_total
@@ -11,7 +11,20 @@ PURCHASE_TYPES = ('plan_create','plan_renew','form_create')
 def visible_requests(db,actor):
     query=db.query(UserDeletionRequest)
     if admin_hierarchy.is_owner(db,actor): return query
-    return query.filter(or_(UserDeletionRequest.requester_admin_id==actor.id,UserDeletionRequest.reviewer_admin_id==actor.id,UserDeletionRequest.account_admin_id==actor.id))
+    direct_accounts=db.query(Admin.id).filter(Admin.parent_admin_id==actor.id)
+    return query.filter(or_(UserDeletionRequest.requester_admin_id==actor.id,and_(UserDeletionRequest.status!="PENDING",UserDeletionRequest.reviewer_admin_id==actor.id),UserDeletionRequest.account_admin_id==actor.id,UserDeletionRequest.account_admin_id.in_(direct_accounts)))
+
+
+def current_reviewer(db,row):
+    account=db.get(Admin,row.account_admin_id)
+    return (account.parent_admin_id if account is not None else None) or admin_hierarchy.owner_id(db)
+
+
+def request_response(db,row):
+    from app.models.admin_hierarchy import DeletionRequestResponse
+    response=DeletionRequestResponse.model_validate(row)
+    if row.status=='PENDING': response.reviewer_admin_id=current_reviewer(db,row)
+    return response
 
 
 def purchase(db,user):
@@ -70,6 +83,7 @@ def apply_refund(db,row,actor,amount):
         db.add(AdminMoneyTransaction(operation_key=f'deletion-refund:{row.id}',operation_type='purchase_refund',admin_id=policy.admin_id,actor_admin_id=actor.id,counterparty_admin_id=row.account_admin_id if policy.admin_id!=row.account_admin_id else row.reviewer_admin_id,delta_toman=delta,balance_before=before,balance_after=before+delta,details={'deletion_request_id':row.id,'source_transaction_id':entry['source_id'],'username':row.username}))
     row.status='APPROVED';row.refund_toman=amount;row.decided_by_admin_id=actor.id;row.decided_at=datetime.utcnow()
     db.flush()
+    financial_controls.reconcile(db, ids)
 
 
 def decide(db,actor,request_id,approve,amount,note):
@@ -78,12 +92,14 @@ def decide(db,actor,request_id,approve,amount,note):
     if candidate is None: raise admin_hierarchy.HierarchyError('refund_request_not_found','Deletion request not found')
     user=db.query(User).filter(User.id==candidate.user_id).with_for_update().populate_existing().one_or_none()
     row=db.query(UserDeletionRequest).filter(UserDeletionRequest.id==request_id).with_for_update().populate_existing().one()
-    if actor.id!=row.reviewer_admin_id:
+    reviewer_id=current_reviewer(db,row) if row.status=='PENDING' else row.reviewer_admin_id
+    if actor.id!=reviewer_id:
         raise admin_hierarchy.HierarchyError('refund_decision_forbidden','Only the direct parent assigned to this request can decide')
     if row.status!='PENDING':
         # Exact repeat is harmless; differing decisions are rejected.
         if row.decided_by_admin_id==actor.id and row.status==('APPROVED' if approve else 'REJECTED') and (not approve or row.refund_toman==amount) and row.decision_note==note: return row,None
         raise admin_hierarchy.HierarchyError('refund_already_finalized','Deletion request is already finalized')
+    row.reviewer_admin_id=reviewer_id
     if approve:
         if user is None: raise admin_hierarchy.HierarchyError('user_not_found','User no longer exists')
         if not admin_hierarchy.can_access_user(db,actor,user):

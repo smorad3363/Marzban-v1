@@ -5,16 +5,17 @@ import pytest
 import sqlalchemy as sa
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import sessionmaker
-from app.db.base import Base
+from alembic import command
+from alembic.config import Config
+from OpenSSL import crypto
 from app.db.models import Admin, AdminMoneyTransaction, MarzhelpAdminSettings, User, UserDeletionRequest
 from app.utils import admin_hierarchy, money_billing, user_deletion_finance as refunds
-from test_stage3_billing_modes import _seed
 
 URL=os.getenv('TEST_MYSQL_DATABASE_URL')
 
 
 @pytest.mark.skipif(not URL,reason='Disposable MySQL CI database is not configured')
-def test_concurrent_deletion_approvals_refund_once():
+def test_concurrent_deletion_approvals_refund_once(monkeypatch):
     url=make_url(URL)
     assert url.get_backend_name()=='mysql' and url.database.endswith('marzban_test')
     engine=sa.create_engine(URL,pool_pre_ping=True)
@@ -23,10 +24,21 @@ def test_concurrent_deletion_approvals_refund_once():
         for table in sa.inspect(conn).get_table_names():
             conn.execute(sa.text('DROP TABLE `'+table.replace('`','``')+'`'))
         conn.execute(sa.text('SET FOREIGN_KEY_CHECKS=1'))
-    Base.metadata.create_all(engine)
+    alembic=Config('alembic.ini')
+    alembic.set_main_option('sqlalchemy.url',URL)
+    original_not_after=crypto.X509.gmtime_adj_notAfter
+    monkeypatch.setattr(crypto.X509,'gmtime_adj_notAfter',lambda certificate,seconds:original_not_after(certificate,min(seconds,2_000_000_000)))
+    command.upgrade(alembic,'head')
     factory=sessionmaker(bind=engine,expire_on_commit=False)
     with factory() as db:
-        owner,child,user=_seed(db)
+        owner=Admin(username='financial-mysql-owner',hashed_password='x',is_sudo=True)
+        child=Admin(username='financial-mysql-child',hashed_password='x',is_sudo=False)
+        db.add_all([owner,child]);db.flush()
+        db.add_all([MarzhelpAdminSettings(admin_id=owner.id,billing_mode='LEGACY_COMPAT'),MarzhelpAdminSettings(admin_id=child.id,billing_mode='ALLOCATED_TRAFFIC',total_traffic=100000,used_traffic=10000)])
+        db.commit()
+        admin_hierarchy.set_owner(db,owner.username)
+        user=User(username='financial-mysql-user',admin_id=child.id,status='active',data_limit=10000,used_traffic=200)
+        db.add(user);db.commit()
         settings=db.get(MarzhelpAdminSettings,child.id)
         settings.money_balance_toman=1000
         user.data_limit=10000;user.used_traffic=200

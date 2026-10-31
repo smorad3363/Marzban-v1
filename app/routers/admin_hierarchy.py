@@ -2117,7 +2117,7 @@ def execute_trial_cleanup(
 @router.get("/admin-management/requests-alerts")
 def requests_alerts(request_before_id: int | None = Query(default=None, ge=1), alert_before_id: int | None = Query(default=None, ge=1), db: Session = Depends(get_db), admin: Admin = Depends(Admin.get_current)):
     from app.db.models import AdminAccountAlert
-    from app.utils.user_deletion_finance import visible_requests
+    from app.utils.user_deletion_finance import visible_requests, request_response
     actor = _db_actor(db, admin)
     request_query = visible_requests(db, actor)
     alert_query = admin_hierarchy.scope_admin_column(db.query(AdminAccountAlert), db, actor, AdminAccountAlert.admin_id)
@@ -2127,7 +2127,7 @@ def requests_alerts(request_before_id: int | None = Query(default=None, ge=1), a
         alert_query = alert_query.filter(AdminAccountAlert.id < alert_before_id)
     requests = request_query.order_by(UserDeletionRequest.id.desc()).limit(100).all()
     alerts = alert_query.order_by(AdminAccountAlert.id.desc()).limit(100).all()
-    return {"requests": [DeletionRequestResponse.model_validate(row) for row in requests], "alerts": [{"id": row.id, "admin_id": row.admin_id, "kind": row.kind, "details": row.details, "created_at": row.created_at} for row in alerts], "actor_id": actor.id}
+    return {"requests": [request_response(db, row) for row in requests], "alerts": [{"id": row.id, "admin_id": row.admin_id, "kind": row.kind, "details": row.details, "created_at": row.created_at} for row in alerts], "actor_id": actor.id}
 
 
 @router.post("/admin-management/deletion-requests/{request_id}/decision", response_model=DeletionRequestResponse)
