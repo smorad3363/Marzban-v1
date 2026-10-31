@@ -769,13 +769,6 @@ def automatic_suspension_reason(
     today: date | None = None,
 ) -> int | None:
     admin = db.get(Admin, settings.admin_id)
-    if (
-        admin is not None
-        and not is_owner(db, admin)
-        and bool(settings.money_billing_enabled)
-        and int(settings.money_balance_toman or 0) <= 0
-    ):
-        return 2
     if settings.expiry_date is not None and settings.expiry_date < (today or date.today()):
         return 3
     configured_limit = (

@@ -612,6 +612,8 @@ def update_user(
                 dbproxy.excluded_inbounds = [get_or_create_inbound(db, tag) for tag in tags]
 
     if modify.status is not None:
+        from app.utils.financial_controls import mark_manual_status
+        mark_manual_status(db, dbuser)
         dbuser.status = modify.status
         dbuser.last_status_change = datetime.utcnow()
         device_limit_state = dbuser.device_limit_state
@@ -1306,6 +1308,8 @@ def upsert_marzhelp_admin_policy(
         exclude={
             "billing_mode",
             "money_balance_toman",
+            "last_positive_charge_toman",
+            "financial_state",
             "allowed_inbounds",
             "allowed_user_limits",
             "allowed_subscription_modes",

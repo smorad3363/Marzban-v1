@@ -485,3 +485,27 @@ class TrialCleanupResponse(BaseModel):
     count: int
     usernames: list[str]
     replayed: bool = False
+
+
+class DeletionDecision(BaseModel):
+    approve: bool
+    refund_toman: int = Field(default=0, ge=0)
+    note: Optional[str] = Field(default=None, max_length=512)
+
+
+class DeletionRequestResponse(BaseModel):
+    id: int
+    username: str
+    account_admin_id: int
+    requester_admin_id: int
+    reviewer_admin_id: int
+    status: str
+    purchase_toman: int
+    refund_toman: Optional[int] = None
+    used_bytes: int
+    quota_bytes: int
+    decided_by_admin_id: Optional[int] = None
+    decision_note: Optional[str] = None
+    created_at: datetime
+    decided_at: Optional[datetime] = None
+    model_config = ConfigDict(from_attributes=True)

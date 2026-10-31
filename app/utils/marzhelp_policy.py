@@ -1091,6 +1091,12 @@ def validate_create(db: Session, admin_id: int | None, user: Any) -> MarzhelpAdm
     if settings is None:
         return None
     _validate_account(settings)
+    from app.utils.financial_controls import require_spending
+    from app.utils import admin_hierarchy
+    try:
+        require_spending(db, admin_id)
+    except admin_hierarchy.HierarchyError as exc:
+        raise MarzhelpPolicyError(exc.code, str(exc)) from exc
     if settings.prevent_user_creation:
         raise MarzhelpPolicyError(
             "creation_forbidden", "MarzHelp: user creation is disabled for this admin"
@@ -1234,6 +1240,16 @@ def validate_update(
         return False, False
 
     _validate_account(settings)
+    quota_changed = modify.data_limit is not None and _effective_data_limit(modify.data_limit) != _effective_data_limit(dbuser.data_limit)
+    if renewal or expiration_changed or quota_changed or concurrent_limit_changed or modify.next_plan is not None:
+        from app.utils.financial_controls import require_spending
+        from app.utils import admin_hierarchy
+        try:
+            require_spending(db, settings.admin_id)
+            if actor is not None:
+                require_spending(db, getattr(actor, "id", None))
+        except admin_hierarchy.HierarchyError as exc:
+            raise MarzhelpPolicyError(exc.code, str(exc)) from exc
     concurrent_user_limit = (
         getattr(modify, "concurrent_user_limit", None)
         if concurrent_limit_changed
@@ -1421,6 +1437,12 @@ def validate_next_plan_activation(db: Session, dbuser: User) -> bool:
             "seat_plan_renewal_required",
             "SEAT_CREDIT renewals must use an explicit Plan and idempotency key",
         )
+    from app.utils.financial_controls import require_spending
+    from app.utils import admin_hierarchy
+    try:
+        require_spending(db, settings.admin_id)
+    except admin_hierarchy.HierarchyError as exc:
+        raise MarzhelpPolicyError(exc.code, str(exc)) from exc
     data_limit = resulting_next_plan_data_limit(dbuser)
     expire = _effective_expire(dbuser.next_plan.expire)
     _validate_data_limit(settings, data_limit)
@@ -1488,6 +1510,11 @@ def validate_activation(db: Session, dbuser: User) -> None:
 
 
 def validate_no_active_penalty(dbuser: User) -> None:
+    from sqlalchemy.orm import object_session
+    from app.utils.financial_controls import connections_blocked
+    db=object_session(dbuser)
+    if db is not None and connections_blocked(db, dbuser.admin_id):
+        raise MarzhelpPolicyError("financial_users_disabled", "Financial debt prevents user activation")
     state = dbuser.device_limit_state
     if state is not None and state.penalty_status in {
         PenaltyStatus.temporarily_disabled.value,
@@ -1553,6 +1580,8 @@ def validate_transfer(db: Session, dbuser: User, new_admin_id: int) -> None:
 def capture_delete(db: Session, dbuser: User) -> int:
     if dbuser.admin_id is None:
         return 0
+    from app.utils.user_deletion_finance import capture_financial_delete
+    capture_financial_delete(db, dbuser)
     settings = _settings(db, dbuser.admin_id, lock=True)
     if settings is not None and settings.prevent_user_deletion:
         raise MarzhelpPolicyError("deletion_forbidden", "MarzHelp: user deletion is disabled")

@@ -865,6 +865,13 @@ def renew_user_from_plan(
         requested_access_group_id is not None
         and requested_access_group_id != user.access_group_id
     )
+    from app.utils.financial_controls import require_spending
+    require_spending(db, actor.id)
+    require_spending(db, user.admin_id)
+    admin_hierarchy.require_active_account(db, actor)
+    owner_account = db.get(Admin, user.admin_id)
+    if owner_account is not None:
+        admin_hierarchy.require_active_account(db, owner_account)
     marzhelp_policy.validate_no_active_penalty(user)
     if not admin_hierarchy.can_access_user(db, actor, user):
         raise admin_hierarchy.HierarchyError("user_scope_forbidden", "User is outside actor scope")
@@ -913,7 +920,7 @@ def renew_user_from_plan(
                 "credit_exhausted",
                 "Renewal Seat cost exceeds available Seat Credit",
             )
-    elif mode != admin_billing.BillingMode.USED_TRAFFIC:
+    elif mode not in (admin_billing.BillingMode.USED_TRAFFIC, admin_billing.BillingMode.USER_CREDIT):
         if version.data_limit == 0 and available is not None:
             raise admin_hierarchy.HierarchyError("unlimited_traffic_forbidden", "Finite credit cannot renew unlimited")
         if available is not None and version.data_limit > available:

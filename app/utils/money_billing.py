@@ -8,6 +8,7 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import datetime
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.db.models import (
@@ -17,6 +18,8 @@ from app.db.models import (
     AdminUserPlan,
     AdminUserPlanPrice,
     AdminUserPlanVersion,
+    User,
+    UserUsageResetLogs,
     MarzhelpAdminSettings,
 )
 from app.utils import admin_hierarchy
@@ -25,6 +28,14 @@ from app.utils.admin_billing import BillingMode
 
 GIB = 1024 ** 3
 PRICED_PLAN_MODES = {BillingMode.ALLOCATED_TRAFFIC, BillingMode.USER_CREDIT}
+
+
+def usage_total(db: Session, user: User) -> int:
+    # Relationship collections may still be cached when a renewal inserts a reset
+    # log in this transaction. Query the flushed authoritative history instead.
+    db.flush()
+    resets = db.query(func.coalesce(func.sum(UserUsageResetLogs.used_traffic_at_reset), 0)).filter(UserUsageResetLogs.user_id == user.id).scalar()
+    return int(user.used_traffic or 0) + int(resets or 0)
 
 
 def _settings_for_update(db: Session, admin_ids: set[int]) -> dict[int, MarzhelpAdminSettings]:
@@ -208,7 +219,7 @@ def transfer_money(
         .order_by(AdminMoneyTransaction.admin_id)
         .all()
     )
-    if existing:
+    def checked_replay(existing):
         child_row = next((row for row in existing if row.admin_id == child.id), None)
         if (
             child_row is None
@@ -225,16 +236,25 @@ def transfer_money(
             "target_balance_toman": child_row.balance_after,
         }, False
 
+    if existing:
+        return checked_replay(existing)
+
     parent_is_owner = admin_hierarchy.is_owner(db, parent)
     settings = _settings_for_update(db, {child.id} | ({parent.id} if not parent_is_owner else set()))
     child_settings = settings[child.id]
+    existing = db.query(AdminMoneyTransaction).filter(AdminMoneyTransaction.operation_key == operation_key).order_by(AdminMoneyTransaction.admin_id).with_for_update().populate_existing().all()
+    if existing:
+        return checked_replay(existing)
+    from app.utils import financial_controls
+    if operation_type == "grant":
+        financial_controls.require_spending(db, parent.id)
     parent_settings = settings.get(parent.id)
     direction = 1 if operation_type == "grant" else -1
     child_delta = direction * amount_toman
     parent_delta = -child_delta
-    if child_settings.money_balance_toman + child_delta < 0:
+    if child_delta < 0 and not financial_controls.can_spend(child_settings, -child_delta):
         raise admin_hierarchy.HierarchyError("money_balance_insufficient", "Child money balance is insufficient")
-    if parent_settings is not None and parent_settings.money_balance_toman + parent_delta < 0:
+    if parent_settings is not None and parent_delta < 0 and not financial_controls.can_spend(parent_settings, -parent_delta):
         raise admin_hierarchy.HierarchyError("money_balance_insufficient", "Parent money balance is insufficient")
 
     rows = []
@@ -258,7 +278,11 @@ def transfer_money(
             )
         )
     db.add_all(rows)
+    if operation_type == "grant":
+        child_settings.last_positive_charge_toman = amount_toman
+    runtime_user_ids = financial_controls.reconcile(db, set(settings))
     return {
+        "runtime_user_ids": sorted(runtime_user_ids),
         "operation_key": operation_key,
         "source_balance_toman": parent_settings.money_balance_toman if parent_settings is not None else None,
         "target_balance_toman": child_settings.money_balance_toman,
@@ -276,6 +300,9 @@ def charge_plan_purchase(
     idempotency_key: str,
     user_id: int | None = None,
 ) -> None:
+    from app.utils.financial_controls import require_spending
+    require_spending(db, buyer.id)
+    require_spending(db, actor.id)
     if plan.is_trial or admin_hierarchy.is_owner(db, buyer):
         return
     buyer_settings = db.get(MarzhelpAdminSettings, buyer.id)
@@ -328,6 +355,8 @@ def charge_plan_purchase(
         item.id for edge in edges for item in edge[:2] if not admin_hierarchy.is_owner(db, item)
     }
     settings = _settings_for_update(db, non_owner_ids)
+    require_spending(db, buyer.id)
+    require_spending(db, actor.id)
     deltas: dict[int, int] = defaultdict(int)
     counterparties: dict[int, int] = {}
     for child, parent, price in edges:
@@ -336,8 +365,9 @@ def charge_plan_purchase(
         if not admin_hierarchy.is_owner(db, parent):
             deltas[parent.id] += price
             counterparties[parent.id] = child.id
+    from app.utils import financial_controls
     for admin_id, delta in deltas.items():
-        if int(settings[admin_id].money_balance_toman or 0) + delta < 0:
+        if delta < 0 and not financial_controls.can_spend(settings[admin_id], -delta):
             raise admin_hierarchy.HierarchyError("money_balance_insufficient", "Money balance is insufficient for this Plan")
     for admin_id in sorted(deltas):
         row_settings = settings[admin_id]
@@ -357,8 +387,10 @@ def charge_plan_purchase(
                 plan_id=plan.id,
                 version_id=version.id,
                 user_id=user_id,
+                details={"usage_baseline": usage_total(db, db.get(User, user_id)) if user_id else 0, "quota_bytes": int(version.data_limit or 0)},
             )
         )
+    financial_controls.reconcile(db, set(settings))
 
 
 def charge_form_purchase(
@@ -373,6 +405,9 @@ def charge_form_purchase(
     """Charge one deterministic ALLOCATED_TRAFFIC Form purchase."""
     if admin_hierarchy.is_owner(db, buyer) or amount_toman <= 0:
         return
+    from app.utils.financial_controls import require_spending
+    require_spending(db, buyer.id)
+    require_spending(db, actor.id)
     operation_key = operation_key or f"form-money:create:{user_id}"
     if db.query(AdminMoneyTransaction.id).filter(AdminMoneyTransaction.operation_key == operation_key).first():
         return
@@ -385,13 +420,14 @@ def charge_form_purchase(
     if BillingMode(settings.billing_mode) != BillingMode.ALLOCATED_TRAFFIC:
         return
     before = int(settings.money_balance_toman or 0)
-    if before < amount_toman:
+    from app.utils import financial_controls
+    if not financial_controls.can_spend(settings, amount_toman):
         raise admin_hierarchy.HierarchyError("money_balance_insufficient", "Admin Toman wallet is insufficient")
     settings.money_balance_toman = before - amount_toman
     db.add(
         AdminMoneyTransaction(
             operation_key=operation_key,
-            operation_type="form_create",
+            operation_type="form_adjust" if operation_key.startswith("form-edit:") else "form_create",
             admin_id=buyer.id,
             actor_admin_id=actor.id,
             counterparty_admin_id=buyer.parent_admin_id,
@@ -399,9 +435,10 @@ def charge_form_purchase(
             balance_before=before,
             balance_after=before - amount_toman,
             user_id=user_id,
-            details={"formula": "GiB x PricePerGiB x DurationMultiplier"},
+            details={"formula": "GiB x PricePerGiB x DurationMultiplier", "usage_baseline": usage_total(db, db.get(User, user_id)), "quota_bytes": int(db.get(User, user_id).data_limit or 0)},
         )
     )
+    financial_controls.reconcile(db, {buyer.id})
 
 
 def settle_used_traffic(db: Session, usage_by_admin: dict[int, int]) -> set[int]:
@@ -501,41 +538,5 @@ def settle_used_traffic(db: Session, usage_by_admin: dict[int, int]) -> set[int]
             ledger.delta_toman = int(ledger.delta_toman) + deltas[admin_id]
             ledger.balance_after = after
             ledger.details = details
-    crossed = {
-        admin_id
-        for admin_id in billable
-        if int(locked[admin_id].money_balance_toman or 0) <= 0
-        and locked[admin_id].account_status_id
-        == admin_hierarchy.ACCOUNT_STATUS_IDS[admin_hierarchy.ACTIVE]
-    }
-    if not crossed:
-        return set()
-    covered = {
-        descendant_id
-        for ancestor_id, descendant_id in db.query(
-            AdminHierarchy.ancestor_id, AdminHierarchy.descendant_id
-        )
-        .filter(
-            AdminHierarchy.ancestor_id.in_(sorted(crossed)),
-            AdminHierarchy.descendant_id.in_(sorted(crossed)),
-            AdminHierarchy.depth > 0,
-        )
-        .all()
-    }
-    owner = admins.get(admin_hierarchy.owner_id(db))
-    if owner is None:
-        raise admin_hierarchy.HierarchyError(
-            "owner_missing", "Owner is required for prepaid usage suspension"
-        )
-    suspended: set[int] = set()
-    for admin_id in sorted(crossed - covered):
-        admin_hierarchy.suspend_admin(
-            db,
-            actor=owner,
-            target=admins[admin_id],
-            reason_id=2,
-            include_subtree=True,
-            commit=False,
-        )
-        suspended.add(admin_id)
-    return suspended
+    from app.utils.financial_controls import reconcile
+    return reconcile(db, set(locked))

@@ -40,6 +40,7 @@ import { Navigate, useSearchParams } from "react-router-dom";
 import { fetch } from "service/http";
 import { AdminCapabilities, ManagedAdmin, ManagedAdminList } from "types/Admin";
 import { localizedApiError } from "utils/apiError";
+import { RequestsAlerts } from "./RequestsAlerts";
 import { AdminTable, CreditOperation } from "./AdminTable";
 import { AdminsIcon, control, FilterButton, panel, SummaryStat } from "./AdminUi";
 
@@ -62,6 +63,7 @@ export const AdminsPage: FC = () => {
   const deleteDisclosure = useDisclosure();
   const freezeDisclosure = useDisclosure();
   const cancelRef = useRef<HTMLButtonElement>(null);
+  const creditRequest = useRef<{ key: string; id: string } | null>(null);
 
   const [selected, setSelected] = useState<ManagedAdmin | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -194,16 +196,20 @@ export const AdminsPage: FC = () => {
   );
 
   const creditMutation = useMutation(
-    ({ item, operation, amount }: { item: ManagedAdmin; operation: CreditOperation; amount: number }) =>
-      fetch(`/admin-management/${encodeURIComponent(item.username)}/money/${operation}`, {
+    ({ item, operation, amount }: { item: ManagedAdmin; operation: CreditOperation; amount: number }) => {
+      const key = JSON.stringify([item.username, operation, Math.round(amount)]);
+      if (creditRequest.current?.key !== key) creditRequest.current = { key, id: `admin-money-${crypto.randomUUID()}` };
+      return fetch(`/admin-management/${encodeURIComponent(item.username)}/money/${operation}`, {
         method: "POST",
         body: {
           amount_toman: Math.round(amount),
-          idempotency_key: `admin-money-${crypto.randomUUID()}`,
+          idempotency_key: creditRequest.current.id,
         },
-      }),
+      });
+    },
     {
       onSuccess: (_data, variables) => {
+        creditRequest.current = null;
         refreshAdminData();
         setCreditAmounts((current) => ({ ...current, [variables.item.username]: "" }));
         toast({
@@ -224,7 +230,7 @@ export const AdminsPage: FC = () => {
   );
 
   if (!getUserIsPending && !capabilities.isLoading && !canManage) {
-    return <Navigate to="/" replace />;
+    return <AppShell><RequestsAlerts /></AppShell>;
   }
 
   const rawAdmins = query.data?.admins || [];
@@ -439,6 +445,8 @@ export const AdminsPage: FC = () => {
           )}
         </Card>
       </Stack>
+
+      <RequestsAlerts />
 
       <AdminFormDrawer isOpen={formDisclosure.isOpen} admin={selected} onClose={formDisclosure.onClose} />
 

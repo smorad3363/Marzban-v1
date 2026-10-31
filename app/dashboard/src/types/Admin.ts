@@ -8,6 +8,11 @@ export type AdminPolicy = {
   billing_mode: "LEGACY_COMPAT" | "SEAT_CREDIT" | "USED_TRAFFIC" | "ALLOCATED_TRAFFIC" | "USER_CREDIT";
   money_billing_enabled: boolean;
   money_balance_toman: number;
+  last_positive_charge_toman?: number;
+  financial_state?: string;
+  financial_limits_enabled?: boolean;
+  financial_freeze_percent?: number;
+  financial_disable_percent?: number;
   used_traffic_price_per_gib_toman: number | null;
   total_traffic: number | null;
   expiry_date: string | null;

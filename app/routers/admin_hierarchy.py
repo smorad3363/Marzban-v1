@@ -23,6 +23,7 @@ from app.db.models import (
     AdminSuspensionReason,
     AdminUserCreationMode,
     AdminUserPlan,
+    UserDeletionRequest,
     AllocatedTrafficRefundEvent,
     AllocatedTrafficRefundRequest,
     MarzhelpAdminSettings,
@@ -37,6 +38,8 @@ from app.models.admin_hierarchy import (
     ApiTokenCreate,
     ApiTokenCreated,
     ApiTokenSummary,
+    DeletionRequestResponse,
+    DeletionDecision,
     AllocatedTrafficRefundCreate,
     AllocatedTrafficRefundDecision,
     AllocatedTrafficRefundEventResponse,
@@ -731,6 +734,12 @@ def _money_move(
     except Exception as exc:
         db.rollback()
         _raise_domain(exc)
+    if result.get("runtime_user_ids"):
+        try:
+            xray.operations.restart_all_cores()
+        except Exception:
+            from app import logger
+            logger.exception("Financial runtime apply failed; persistent revision will retry")
     return MoneyTransferResponse(**result, replayed=not created)
 
 
@@ -2102,3 +2111,38 @@ def execute_trial_cleanup(
     except Exception as exc:
         db.rollback()
         _raise_domain(exc)
+
+
+# Purchase-money deletion approvals are distinct from legacy traffic-credit refunds.
+@router.get("/admin-management/requests-alerts")
+def requests_alerts(request_before_id: int | None = Query(default=None, ge=1), alert_before_id: int | None = Query(default=None, ge=1), db: Session = Depends(get_db), admin: Admin = Depends(Admin.get_current)):
+    from app.db.models import AdminAccountAlert
+    from app.utils.user_deletion_finance import visible_requests, request_response
+    actor = _db_actor(db, admin)
+    request_query = visible_requests(db, actor)
+    alert_query = admin_hierarchy.scope_admin_column(db.query(AdminAccountAlert), db, actor, AdminAccountAlert.admin_id)
+    if request_before_id is not None:
+        request_query = request_query.filter(UserDeletionRequest.id < request_before_id)
+    if alert_before_id is not None:
+        alert_query = alert_query.filter(AdminAccountAlert.id < alert_before_id)
+    requests = request_query.order_by(UserDeletionRequest.id.desc()).limit(100).all()
+    alerts = alert_query.order_by(AdminAccountAlert.id.desc()).limit(100).all()
+    return {"requests": [request_response(db, row) for row in requests], "alerts": [{"id": row.id, "admin_id": row.admin_id, "kind": row.kind, "details": row.details, "created_at": row.created_at} for row in alerts], "actor_id": actor.id}
+
+
+@router.post("/admin-management/deletion-requests/{request_id}/decision", response_model=DeletionRequestResponse)
+def decide_user_deletion(request_id: int, values: DeletionDecision, request: Request, bg: BackgroundTasks, db: Session = Depends(get_db), admin: Admin = Depends(Admin.get_current)):
+    from app.utils import user_deletion_finance, financial_controls
+    actor = _db_actor(db, admin)
+    try:
+        row, deleted = user_deletion_finance.decide(db, actor, request_id, values.approve, values.refund_toman, values.note)
+        financial_controls.reconcile(db)
+        AuditLogService.log(db, actor, "user.deletion_decision", "user_deletion_request", f"Deletion request {row.id}: {row.status}", target_id=row.id, details={"refund_toman": row.refund_toman, "decision_note": row.decision_note}, request=request, commit=False)
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        _raise_domain(exc)
+    if deleted is not None:
+        bg.add_task(xray.operations.remove_user, dbuser=deleted)
+        bg.add_task(xray.operations.restart_all_cores)
+    return row
