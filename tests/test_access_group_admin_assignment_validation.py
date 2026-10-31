@@ -296,3 +296,21 @@ def test_revoked_binding_still_obeys_admin_network_ceiling(db):
     with pytest.raises(admin_hierarchy.HierarchyError) as raised:
         access_groups._require_admin_network_scope(session, {INBOUND}, target.id)
     assert raised.value.code == "access_group_scope_forbidden"
+
+
+def test_retained_inactive_grant_does_not_block_network_maintenance(db):
+    session, owner, target, group = db
+    access_groups._replace_admin_access(session, group, _values(group, [target.id]))
+    session.commit()
+    session.get(MarzhelpAdminSettings, target.id).account_status_id = 2
+    session.commit()
+    access_groups._replace_admin_access(session, group, _values(group, [target.id]))
+    session.commit()
+    assert access_groups._allowed_admin_ids(session, group.id) == [target.id]
+    access_groups._replace_admin_access(session, group, _values(group, []))
+    session.commit()
+    assert access_groups._allowed_admin_ids(session, group.id) == []
+    with pytest.raises(admin_hierarchy.HierarchyError) as error:
+        access_groups._replace_admin_access(session, group, _values(group, [target.id]))
+        session.flush()
+    assert error.value.code == 'access_group_admin_inactive'

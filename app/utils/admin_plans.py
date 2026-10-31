@@ -577,7 +577,7 @@ def _apply_network_to_user(
             if inbound["tag"] not in allowed
         ]
     for proxy in existing.values():
-        db.delete(proxy)
+        user.proxies.remove(proxy)
 
 
 def subscription_host_scope(db: Session, user: User) -> dict[str, set[int]] | None:
