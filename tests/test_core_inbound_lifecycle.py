@@ -199,3 +199,112 @@ def test_snapshot_restores_previous_network_metadata_after_restart_failure(db, m
     assert access_groups._scope(session, group.id)[0] == {old}
     assert session.get(ProxyHost, host.id).inbound_tag == old
     assert all(access_groups.user_inbound_scope(user) == {old} for user in users)
+
+
+def test_core_update_restores_db_and_file_after_runtime_restart_error(
+    db, monkeypatch, tmp_path,
+):
+    import json
+    from types import SimpleNamespace
+    from fastapi import HTTPException
+    from app.routers import core
+
+    session, owner = db
+    old, host, _ = _configure_network(session, monkeypatch)
+    group = access_groups.create(session, owner, AccessGroupInput(
+        name="failed-runtime-group", inbounds=[old], hosts={old: [host.id]},
+    ))
+    _users(session, owner, group)
+    original = {
+        "inbounds": [{"tag": old, "protocol": "vless", "port": 443}],
+        "outbounds": [{"tag": "DIRECT", "protocol": "freedom"}],
+    }
+    path = tmp_path / "xray.json"
+    path.write_text(json.dumps(original))
+
+    class FakeConfig:
+        def __init__(self, data, api_port=65000):
+            self.api_port = api_port
+            self.inbounds_by_tag = {item["tag"]: item for item in data["inbounds"]}
+
+        def include_db_users(self):
+            return self
+
+    previous = FakeConfig(original)
+    monkeypatch.setattr(core, "XRAY_JSON", str(path))
+    monkeypatch.setattr(core, "XRayConfig", FakeConfig)
+    monkeypatch.setattr(core.xray, "config", previous)
+    count = []
+    def restart(_config):
+        count.append(1)
+        if len(count) == 1:
+            raise RuntimeError("simulated Xray rejection")
+    monkeypatch.setattr(core.xray, "core", SimpleNamespace(restart=restart, started=True))
+    monkeypatch.setattr(core.xray, "hosts", SimpleNamespace(update=lambda: None))
+    monkeypatch.setattr(core.xray, "nodes", {})
+
+    updated = {
+        "inbounds": [{"tag": "RENAMED", "protocol": "vless", "port": 443}],
+        "outbounds": original["outbounds"],
+    }
+    with pytest.raises(HTTPException) as error:
+        core._apply_core_update(updated, session, rename=(old, "RENAMED"))
+    assert error.value.status_code == 503
+    assert len(count) == 2
+    assert json.loads(path.read_text()) == original
+    assert core.xray.config is previous
+    session.expire_all()
+    assert access_groups._scope(session, group.id)[0] == {old}
+    assert session.get(ProxyHost, host.id).inbound_tag == old
+
+
+def test_core_update_success_restarts_connected_nodes_and_prunes_only_deleted_tag(
+    db, monkeypatch, tmp_path,
+):
+    import json
+    from types import SimpleNamespace
+    from app.routers import core
+
+    session, owner = db
+    old, host, _ = _configure_network(session, monkeypatch)
+    kept_host, kept = _new_inbound(session, "KEEP VLESS")
+    before = dict(xray.config.inbounds_by_tag)
+    before[kept["tag"]] = kept
+    _config(monkeypatch, before)
+    group = access_groups.create(session, owner, AccessGroupInput(
+        name="live-transition", inbounds=list(before),
+        hosts={old: [host.id], kept["tag"]: [kept_host.id]},
+    ))
+    _users(session, owner, group)
+    original = {
+        "inbounds": [{"tag": tag, "protocol": "vless", "port": 443} for tag in before],
+        "outbounds": [{"tag": "DIRECT", "protocol": "freedom"}],
+    }
+    path = tmp_path / "xray.json"
+    path.write_text(json.dumps(original))
+
+    class FakeConfig:
+        def __init__(self, data, api_port=65000):
+            self.api_port = api_port
+            self.inbounds_by_tag = {item["tag"]: item for item in data["inbounds"]}
+        def include_db_users(self):
+            return self
+
+    previous = FakeConfig(original)
+    monkeypatch.setattr(core, "XRAY_JSON", str(path))
+    monkeypatch.setattr(core, "XRayConfig", FakeConfig)
+    monkeypatch.setattr(core.xray, "config", previous)
+    restarted = []
+    monkeypatch.setattr(core.xray, "core", SimpleNamespace(
+        restart=lambda config: restarted.append("main"), started=True
+    ))
+    monkeypatch.setattr(core.xray, "hosts", SimpleNamespace(update=lambda: None))
+    monkeypatch.setattr(core.xray, "nodes", {
+        7: SimpleNamespace(connected=True), 8: SimpleNamespace(connected=False),
+    })
+    monkeypatch.setattr(core.xray.operations, "restart_node", lambda node_id, config: restarted.append(node_id))
+    updated = {"inbounds": [original["inbounds"][1]], "outbounds": original["outbounds"]}
+    core._apply_core_update(updated, session)
+    assert restarted == ["main", 7]
+    assert access_groups._scope(session, group.id)[0] == {kept["tag"]}
+    assert len(json.loads(path.read_text())["inbounds"]) == 1
