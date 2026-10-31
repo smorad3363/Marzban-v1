@@ -901,6 +901,8 @@ def create_managed_admin(
             request=request,
             commit=False,
         )
+        from app.utils.admin_alerts import sync_settings
+        sync_settings(db, [settings])
         db.commit()
         db.refresh(dbadmin)
         db.refresh(settings)
@@ -1204,6 +1206,8 @@ def modify_managed_admin(
                 status_code=400,
                 detail={"code": exc.code, "message": str(exc)},
             )
+    from app.utils.admin_alerts import sync_settings
+    sync_settings(db, [settings])
     db.commit()
     db.refresh(dbadmin)
     db.refresh(settings)

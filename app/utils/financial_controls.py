@@ -68,11 +68,13 @@ def reconcile(db, admin_ids=None):
     query = db.query(MarzhelpAdminSettings).order_by(MarzhelpAdminSettings.admin_id)
     if admin_ids is not None: query = query.filter(MarzhelpAdminSettings.admin_id.in_(admin_ids))
     changed = set()
+    incident_settings = []
     for settings in query.with_for_update().populate_existing().all():
         # An earlier ancestor in this pass may have created an overlapping hold.
         db.flush()
         account = db.get(Admin, settings.admin_id)
         if account is None or admin_hierarchy.is_owner(db,account): continue
+        incident_settings.append(settings)
         previously_changed = set(changed)
         new = state(settings)
         transitioned = new != settings.financial_state
@@ -120,17 +122,49 @@ def reconcile(db, admin_ids=None):
             db.delete(hold)
         if changed != previously_changed:
             settings.financial_runtime_revision = int(settings.financial_runtime_revision or 0) + 1
+    from app.utils.admin_alerts import sync_settings
+    sync_settings(db, incident_settings)
     db.flush()
     return changed
 
 
 def collect_alerts(db):
-    for settings in db.query(MarzhelpAdminSettings).filter(MarzhelpAdminSettings.account_status_id.in_([2,3])).all():
-        kind='account_suspended' if settings.account_status_id==2 else 'account_disabled'
-        alert(db,settings.admin_id,f'manual-status:{settings.admin_id}:{kind}:{settings.suspended_at}',kind)
-    for user,settings in db.query(User,MarzhelpAdminSettings).join(MarzhelpAdminSettings,MarzhelpAdminSettings.admin_id==User.admin_id).filter(User.data_limit>0).all():
-        percent=int(settings.admin_traffic_warning_percent or 80)
-        if int(user.used_traffic or 0)*100 < int(user.data_limit)*percent: continue
-        reset=db.query(UserUsageResetLogs.id).filter(UserUsageResetLogs.user_id==user.id).order_by(UserUsageResetLogs.id.desc()).first()
-        key=f'user-usage:{user.id}:{reset[0] if reset else 0}:{user.data_limit}:{percent}'
-        alert(db,user.admin_id,key,'user_usage',{'username':user.username,'percent':percent})
+    from sqlalchemy import func
+    last_admin = 0
+    while True:
+        policies = db.query(MarzhelpAdminSettings).filter(MarzhelpAdminSettings.admin_id > last_admin,
+            MarzhelpAdminSettings.account_status_id.in_([2,3])).order_by(MarzhelpAdminSettings.admin_id).limit(250).all()
+        if not policies: break
+        candidates = []
+        for policy in policies:
+            kind = 'account_suspended' if policy.account_status_id == 2 else 'account_disabled'
+            key = f'manual-status:{policy.admin_id}:{kind}:{policy.suspended_at}'
+            candidates.append((policy.admin_id,kind,key))
+        existing = {key for key, in db.query(AdminAccountAlert.event_key).filter(
+            AdminAccountAlert.event_key.in_([key for _,_,key in candidates])).all()}
+        for admin_id,kind,key in candidates:
+            if key not in existing: db.add(AdminAccountAlert(admin_id=admin_id,event_key=key,kind=kind))
+        db.flush()
+        last_admin = policies[-1].admin_id
+    # Qualify in SQL and page only warning candidates. Load reset IDs and
+    # existing event keys in batches instead of one query per user.
+    from sqlalchemy import func
+    threshold = func.coalesce(func.nullif(MarzhelpAdminSettings.admin_traffic_warning_percent,0),80)
+    last_id = 0
+    while True:
+        rows = (db.query(User.id,User.username,User.admin_id,User.data_limit,threshold.label('percent'))
+            .join(MarzhelpAdminSettings,MarzhelpAdminSettings.admin_id==User.admin_id)
+            .filter(User.id>last_id,User.data_limit>0,User.used_traffic>=User.data_limit*(threshold/100.0))
+            .order_by(User.id).limit(250).all())
+        if not rows: break
+        resets = dict(db.query(UserUsageResetLogs.user_id,func.max(UserUsageResetLogs.id)).filter(
+            UserUsageResetLogs.user_id.in_([r.id for r in rows])).group_by(UserUsageResetLogs.user_id).all())
+        candidates = [(r,f'user-usage:{r.id}:{resets.get(r.id,0)}:{r.data_limit}:{r.percent}') for r in rows]
+        existing = {key for key, in db.query(AdminAccountAlert.event_key).filter(
+            AdminAccountAlert.event_key.in_([key for _,key in candidates])).all()}
+        for row,key in candidates:
+            if key not in existing:
+                db.add(AdminAccountAlert(admin_id=row.admin_id,event_key=key,kind='user_usage',
+                                         details={'username':row.username,'percent':row.percent}))
+        db.flush()
+        last_id = rows[-1].id

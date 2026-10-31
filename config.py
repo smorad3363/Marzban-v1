@@ -46,6 +46,9 @@ XRAY_JSON = config("XRAY_JSON", default="./xray_config.json")
 XRAY_FALLBACKS_INBOUND_TAG = config("XRAY_FALLBACKS_INBOUND_TAG", cast=str, default="") or config(
     "XRAY_FALLBACK_INBOUND_TAG", cast=str, default=""
 )
+# Preserve existing deployments; fresh installs explicitly disable the local core.
+XRAY_LOCAL_CORE_ENABLED = config("XRAY_LOCAL_CORE_ENABLED", cast=bool, default=True)
+
 XRAY_EXECUTABLE_PATH = config("XRAY_EXECUTABLE_PATH", default="/usr/local/bin/xray")
 XRAY_ASSETS_PATH = config("XRAY_ASSETS_PATH", default="/usr/local/share/xray")
 XRAY_EXCLUDE_INBOUND_TAGS = config("XRAY_EXCLUDE_INBOUND_TAGS", default='').split()
@@ -190,3 +193,6 @@ JOB_NODE_OPERATIONS_RETENTION_INTERVAL = max(
     300,
     config("JOB_NODE_OPERATIONS_RETENTION_INTERVAL", cast=int, default=3600),
 )
+
+# Comprehensive alert scans; never used to delay accounting or debt enforcement.
+JOB_ADMIN_ALERTS_INTERVAL = max(30, config("JOB_ADMIN_ALERTS_INTERVAL", cast=int, default=120))

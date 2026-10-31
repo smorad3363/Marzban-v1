@@ -2147,3 +2147,63 @@ def decide_user_deletion(request_id: int, values: DeletionDecision, request: Req
         bg.add_task(xray.operations.remove_user, dbuser=deleted)
         bg.add_task(xray.operations.restart_all_cores)
     return row
+
+
+@router.get('/admin-management/alert-center')
+def alert_center(status: str = Query('active', pattern='^(active|resolved|all)$'),
+                 severity: str | None = Query(None, pattern='^(critical|warning)$'),
+                 username: str | None = Query(None, max_length=64),
+                 before: int | None = Query(None, ge=1),
+                 db: Session = Depends(get_db), admin: Admin = Depends(Admin.get_current)):
+    from app.utils import admin_alerts
+    return admin_alerts.center(db, _db_actor(db,admin), status=status, severity=severity, username=username, before=before)
+
+
+@router.post('/admin-management/alert-center/{incident_id}/seen')
+def incident_seen(incident_id: int, revision: int = Query(..., ge=1),
+                  db: Session = Depends(get_db), admin: Admin = Depends(Admin.get_current)):
+    from app.utils import admin_alerts
+    try:
+        admin_alerts.seen(db, _db_actor(db,admin), incident_id, revision)
+        db.commit()
+    except admin_hierarchy.HierarchyError as exc:
+        db.rollback()
+        raise HTTPException(status_code=404 if exc.code=='incident_not_found' else 409,
+                            detail={'code':exc.code,'message':str(exc)}) from exc
+    return {'seen': True}
+
+
+@router.get('/admin-management/alert-events')
+def alert_events(request: Request, db: Session = Depends(get_db), admin: Admin = Depends(Admin.get_current)):
+    """Authenticated stream; short DB reads, no long-held connection or full scans."""
+    import asyncio
+    from starlette.responses import StreamingResponse
+    from app.db import GetDB
+    from app.db.models import AdminAccountAlert
+    actor_id = _db_actor(db,admin).id
+    token = request.headers.get('Authorization','').removeprefix('Bearer ')
+    db.rollback()  # Release the request connection before opening the stream.
+    def read_version():
+        with GetDB() as session:
+            identity = Admin.get_admin(token, session)
+            if identity is None: return None
+            actor = session.get(DBAdmin,actor_id)
+            if actor is None or identity.username != actor.username: return None
+            query = admin_hierarchy.scope_admin_column(session.query(func.max(AdminAccountAlert.id)),
+                                                      session, actor, AdminAccountAlert.admin_id)
+            return int(query.scalar() or 0)
+    async def events():
+        from starlette.concurrency import run_in_threadpool
+        previous = None
+        for _ in range(80):
+            if await request.is_disconnected(): break
+            version = await run_in_threadpool(read_version)
+            if version is None: break
+            if version != previous:
+                yield 'event: alerts\ndata: '+str(version)+'\n\n'
+                previous = version
+            else:
+                yield ': keepalive\n\n'
+            await asyncio.sleep(15)
+    return StreamingResponse(events(), media_type='text/event-stream',
+                             headers={'Cache-Control':'no-cache','X-Accel-Buffering':'no'})

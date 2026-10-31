@@ -19,7 +19,7 @@ from app.utils.core_inbound_sync import (
 )
 from app.utils.audit import AuditLogService
 from app.xray import XRayConfig
-from config import XRAY_JSON
+from config import XRAY_JSON, XRAY_LOCAL_CORE_ENABLED
 
 router = APIRouter(tags=["Core"], prefix="/api", responses={401: responses._401})
 
@@ -36,6 +36,9 @@ async def core_logs(websocket: WebSocket, db: Session = Depends(get_db)):
     dbadmin = crud.get_admin(db, admin.username)
     if admin.auth_method != "session" or dbadmin is None or not admin_hierarchy.is_owner(db, dbadmin):
         return await websocket.close(reason="You're not allowed", code=4403)
+
+    if not XRAY_LOCAL_CORE_ENABLED:
+        return await websocket.close(reason="Local core intentionally disabled: management-only Master", code=1000)
 
     interval = websocket.query_params.get("interval")
     if interval:
@@ -89,6 +92,7 @@ def get_core_stats(admin: Admin = Depends(Admin.check_sudo_admin)):
     return CoreStats(
         version=xray.core.version,
         started=xray.core.started,
+        local_enabled=XRAY_LOCAL_CORE_ENABLED,
         logs_websocket=router.url_path_for("core_logs"),
     )
 
@@ -187,7 +191,7 @@ def _apply_core_update(
             xray.config = config
             startup_config = config.include_db_users()
             xray.core.restart(startup_config)
-            if not xray.core.started:
+            if XRAY_LOCAL_CORE_ENABLED and not xray.core.started:
                 raise RuntimeError("Xray core did not start with the updated configuration")
             xray.hosts.update()
         except Exception as exc:

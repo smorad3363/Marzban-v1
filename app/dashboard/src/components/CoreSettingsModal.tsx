@@ -136,6 +136,7 @@ const CoreSettingModalContent: FC = () => {
     config,
     isPostLoading,
     version,
+    local_enabled,
     restartCore,
   } = useCoreSettings();
   const logsDiv = useRef<HTMLDivElement | null>(null);
@@ -171,7 +172,7 @@ const CoreSettingModalContent: FC = () => {
     []
   );
 
-  const { readyState } = useWebSocket(getWebsocketUrl(selectedNode), {
+  const { readyState } = useWebSocket(local_enabled || selectedNode ? getWebsocketUrl(selectedNode) : null, {
     onMessage: (e: any) => {
       logsTmp.push(e.data);
       if (logsTmp.length > MAX_NUMBER_OF_LOGS)
@@ -234,6 +235,7 @@ const CoreSettingModalContent: FC = () => {
   return (
     <form onSubmit={form.handleSubmit(handleOnSave)}>
       <ModalBody>
+        {!local_enabled && <Text mb={3} fontSize="sm">مستر فقط مدیریتی است؛ هسته محلی عمداً غیرفعال است. تنظیمات و مدیریت نودها فعال می‌ماند.</Text>}
         <FormControl>
           <HStack justifyContent="space-between" alignItems="flex-start">
             <FormLabel>

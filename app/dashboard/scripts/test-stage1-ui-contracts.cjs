@@ -136,3 +136,12 @@ assert.ok(durationForm.includes('toast.isActive("user-duration-required")'), "du
 assert.ok(durationForm.includes('if (!creationDurationValid) { notifyRequiredDuration(); return; }'), "submit must not send missing duration");
 assert.ok(!durationSettings.includes('pricing.allow_unlimited_duration'), "unlimited-time permission must not be exposed");
 assert.ok(durationSettings.includes('duration_max_multiplier') && durationSettings.includes('duration_examples'), "Owner must see the capped duration policy");
+
+const alertCenter = fs.readFileSync(path.join(root, "src/components/AlertCenter.tsx"), "utf8");
+const appShellAlerts = fs.readFileSync(path.join(root, "src/components/AppShell.tsx"), "utf8");
+assert.ok(appShellAlerts.includes("<AlertCenter />"), "every authenticated shell must include the alert center");
+assert.ok(alertCenter.includes("refetchInterval:60000") && alertCenter.includes("refetchIntervalInBackground:false"), "alerts must use a single slow foreground fallback");
+assert.ok(alertCenter.includes("/admin-management/alert-events") && alertCenter.includes("Authorization:"), "event delivery must use authenticated fetch, without query-string credentials");
+assert.ok(alertCenter.includes("aria-live=\"polite\"") && alertCenter.includes("position=\"sticky\""), "active warnings must remain visible and accessible");
+assert.ok(alertCenter.includes("/seen?revision=") && alertCenter.includes("resolved_at"), "view receipts and resolved state must remain distinct");
+assert.ok(alertCenter.includes("visibilitychange") && alertCenter.includes("generation++"), "hidden-tab streams must stop without duplicate reconnects");

@@ -18,6 +18,7 @@ from app.utils import money_billing, usage_cursors
 from app.utils.bandwidth import bandwidth_store
 from config import (
     DISABLE_RECORDING_NODE_USAGE,
+    XRAY_LOCAL_CORE_ENABLED,
     JOB_RECORD_NODE_USAGES_INTERVAL,
     JOB_RECORD_USER_USAGES_INTERVAL,
     XRAY_STATS_MAX_WORKERS,
@@ -206,7 +207,7 @@ def get_user_counter_snapshot(api: XRayAPI):
 
 
 def record_user_usages():
-    api_instances = {None: xray.api}
+    api_instances = {None: xray.api} if XRAY_LOCAL_CORE_ENABLED else {}
     usage_coefficient = {None: 1}
 
     for node_id, node in list(xray.nodes.items()):
@@ -288,7 +289,7 @@ def record_user_usages():
 
 
 def record_node_usages():
-    api_instances = {None: xray.api}
+    api_instances = {None: xray.api} if XRAY_LOCAL_CORE_ENABLED else {}
     for node_id, node in list(xray.nodes.items()):
         if node.connected and node.started:
             api_instances[node_id] = node.api

@@ -23,7 +23,7 @@ LAST_XRAY_CORES=10
 # Fork configuration
 # Override at runtime, e.g. MARZBAN_GITHUB_REPO=another-user/Marzban marzban install
 # =============================================================================
-CLI_RELEASE_VERSION="v1.1.19"
+CLI_RELEASE_VERSION="v1.1.20"
 V1_LINEAGE_SOURCE_VERSION="5.2.0"
 V1_LINEAGE_SOURCE_IMAGE="ghcr.io/smorad3363/marzban-vnext:v5.2.0"
 V1_LINEAGE_TARGET_VERSION="v1.0.0"
@@ -1083,6 +1083,9 @@ install_marzban() {
     github_download -fsSL "$files_url_prefix/.env.example" -o "$ENV_FILE"
     sed -i 's/^# \(XRAY_JSON = .*\)$/\1/' "$ENV_FILE"
     sed -i 's~\(XRAY_JSON = \).*~\1"/var/lib/marzban/xray_config.json"~' "$ENV_FILE"
+
+    # Only fresh installs reach this path. Updates preserve the existing mode.
+    echo 'XRAY_LOCAL_CORE_ENABLED=false' >> "$ENV_FILE"
 
     prompt_for_marzban_password
     MYSQL_ROOT_PASSWORD=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 20)

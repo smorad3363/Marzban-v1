@@ -7,7 +7,7 @@ import { localizedApiError } from "utils/apiError";
 type RequestItem = { id: number; username: string; account_admin_id: number; reviewer_admin_id: number; status: string; purchase_toman: number; refund_toman: number | null; used_bytes: number; quota_bytes: number; created_at: string; decision_note: string | null };
 type AlertItem = { id: number; admin_id: number; admin_username: string | null; kind: string; details?: { username?: string; percent?: number; balance_toman?: number }; created_at: string };
 type Data = { actor_id: number; requests: RequestItem[]; alerts: AlertItem[] };
-const labels: Record<string, string> = { low: "کمبود موجودی (۱۰٪ آخرین شارژ)", empty: "اتمام موجودی", frozen: "فریز مالی؛ ساخت و تمدید متوقف است", disabled: "قطع کاربران به دلیل بدهی", normal: "رفع محدودیت مالی", user_usage: "رسیدن کاربر به حد مصرف", account_suspended: "تعلیق حساب ادمین", account_disabled: "غیرفعال شدن حساب ادمین" };
+const labels: Record<string, string> = { incident_open: "هشدار جدید", incident_change: "تغییر وضعیت هشدار", incident_resolved: "رفع هشدار", low: "کمبود موجودی (۱۰٪ آخرین شارژ)", empty: "اتمام موجودی", frozen: "فریز مالی؛ ساخت و تمدید متوقف است", disabled: "قطع کاربران به دلیل بدهی", normal: "رفع محدودیت مالی", user_usage: "رسیدن کاربر به حد مصرف", account_suspended: "تعلیق حساب ادمین", account_disabled: "غیرفعال شدن حساب ادمین" };
 const statuses: Record<string, string> = { PENDING: "در انتظار بررسی", APPROVED: "تأیید و حذف شد", REJECTED: "رد شد" };
 
 export const RequestsAlerts = () => {
@@ -18,7 +18,7 @@ export const RequestsAlerts = () => {
   const [alertBefore, setAlertBefore] = useState<number | null>(null);
   const [amounts, setAmounts] = useState<Record<number, string>>({});
   const [notes, setNotes] = useState<Record<number, string>>({});
-  const query = useQuery<Data, Error>(["admin-requests-alerts", requestBefore, alertBefore], () => fetch(`/admin-management/requests-alerts?${new URLSearchParams({ ...(requestBefore ? { request_before_id: String(requestBefore) } : {}), ...(alertBefore ? { alert_before_id: String(alertBefore) } : {}) })}`), { refetchInterval: 15000 });
+  const query = useQuery<Data, Error>(["admin-requests-alerts", requestBefore, alertBefore], () => fetch(`/admin-management/requests-alerts?${new URLSearchParams({ ...(requestBefore ? { request_before_id: String(requestBefore) } : {}), ...(alertBefore ? { alert_before_id: String(alertBefore) } : {}) })}`), { refetchInterval: 60000, refetchIntervalInBackground: false });
   const decide = useMutation(({ item, approve }: { item: RequestItem; approve: boolean }) => fetch(`/admin-management/deletion-requests/${item.id}/decision`, { method: "POST", body: { approve, refund_toman: approve ? Number(amounts[item.id] ?? item.purchase_toman) : 0, note: notes[item.id]?.trim() || null } }), {
     onSuccess: () => { client.invalidateQueries("admin-requests-alerts"); client.invalidateQueries("admin-management"); client.invalidateQueries("account-summary"); client.invalidateQueries("users"); toast({ title: "تصمیم ثبت شد", status: "success" }); },
     onError: (error) => { toast({ title: "ثبت تصمیم انجام نشد", description: localizedApiError(error), status: "error" }); },

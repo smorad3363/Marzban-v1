@@ -522,6 +522,9 @@ def create_user(
     marzhelp_policy.record_create(
         db, dbuser, policy_settings is not None
     )
+    if policy_settings is not None:
+        from app.utils.admin_alerts import sync_settings
+        sync_settings(db, [policy_settings])
     if commit:
         db.commit()
         db.refresh(dbuser)
@@ -713,6 +716,11 @@ def update_user(
         db.flush()
         marzhelp_policy.record_renewal(db, dbuser, allowance_consumed)
 
+    if dbuser.admin_id is not None:
+        settings = db.get(MarzhelpAdminSettings, dbuser.admin_id)
+        if settings is not None:
+            from app.utils.admin_alerts import sync_settings
+            sync_settings(db, [settings])
     if commit:
         db.commit()
         db.refresh(dbuser)
