@@ -193,3 +193,6 @@ JOB_NODE_OPERATIONS_RETENTION_INTERVAL = max(
     300,
     config("JOB_NODE_OPERATIONS_RETENTION_INTERVAL", cast=int, default=3600),
 )
+
+# Comprehensive alert scans; never used to delay accounting or debt enforcement.
+JOB_ADMIN_ALERTS_INTERVAL = max(30, config("JOB_ADMIN_ALERTS_INTERVAL", cast=int, default=120))

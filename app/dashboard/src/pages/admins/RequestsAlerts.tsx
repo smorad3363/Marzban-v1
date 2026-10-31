@@ -18,7 +18,7 @@ export const RequestsAlerts = () => {
   const [alertBefore, setAlertBefore] = useState<number | null>(null);
   const [amounts, setAmounts] = useState<Record<number, string>>({});
   const [notes, setNotes] = useState<Record<number, string>>({});
-  const query = useQuery<Data, Error>(["admin-requests-alerts", requestBefore, alertBefore], () => fetch(`/admin-management/requests-alerts?${new URLSearchParams({ ...(requestBefore ? { request_before_id: String(requestBefore) } : {}), ...(alertBefore ? { alert_before_id: String(alertBefore) } : {}) })}`), { refetchInterval: 15000 });
+  const query = useQuery<Data, Error>(["admin-requests-alerts", requestBefore, alertBefore], () => fetch(`/admin-management/requests-alerts?${new URLSearchParams({ ...(requestBefore ? { request_before_id: String(requestBefore) } : {}), ...(alertBefore ? { alert_before_id: String(alertBefore) } : {}) })}`), { refetchInterval: 60000, refetchIntervalInBackground: false });
   const decide = useMutation(({ item, approve }: { item: RequestItem; approve: boolean }) => fetch(`/admin-management/deletion-requests/${item.id}/decision`, { method: "POST", body: { approve, refund_toman: approve ? Number(amounts[item.id] ?? item.purchase_toman) : 0, note: notes[item.id]?.trim() || null } }), {
     onSuccess: () => { client.invalidateQueries("admin-requests-alerts"); client.invalidateQueries("admin-management"); client.invalidateQueries("account-summary"); client.invalidateQueries("users"); toast({ title: "تصمیم ثبت شد", status: "success" }); },
     onError: (error) => { toast({ title: "ثبت تصمیم انجام نشد", description: localizedApiError(error), status: "error" }); },

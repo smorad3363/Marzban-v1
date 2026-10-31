@@ -2,6 +2,7 @@ from app import logger, scheduler, xray
 from app.db import GetDB
 from app.db.models import Admin, AdminHierarchy, MarzhelpAdminSettings
 from app.utils import admin_hierarchy, financial_controls
+from config import JOB_ADMIN_ALERTS_INTERVAL
 
 
 def enforce_admin_account_limits() -> None:
@@ -9,7 +10,6 @@ def enforce_admin_account_limits() -> None:
     changed = False
     with GetDB() as db:
         financial_controls.reconcile(db)
-        financial_controls.collect_alerts(db)
         pending = dict(db.query(MarzhelpAdminSettings.admin_id, MarzhelpAdminSettings.financial_runtime_revision).filter(
             MarzhelpAdminSettings.financial_runtime_revision > MarzhelpAdminSettings.financial_runtime_applied_revision).all())
         changed = bool(pending)
@@ -42,3 +42,14 @@ def enforce_admin_account_limits() -> None:
 
 
 scheduler.add_job(enforce_admin_account_limits, "interval", minutes=1, coalesce=True, max_instances=1)
+
+
+def collect_admin_alerts() -> None:
+    """Slow comprehensive warning scans independently of debt enforcement."""
+    with GetDB() as db:
+        financial_controls.collect_alerts(db)
+        db.commit()
+
+
+scheduler.add_job(collect_admin_alerts, "interval", seconds=JOB_ADMIN_ALERTS_INTERVAL,
+                  coalesce=True, max_instances=1)

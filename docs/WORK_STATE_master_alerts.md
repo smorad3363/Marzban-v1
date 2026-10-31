@@ -26,3 +26,5 @@ Remaining work before release:
 Server was checked read-only: v1.1.19 Panel and MySQL healthy. No server changes were made during this implementation stage. On resume verify actual main, worktree, branch/head and server first; do not repeat previous wallet repairs or deployments.
 
 Disposition: KEEP existing runtime/history/configuration assets; ADD tests/checkpoint. No unrelated deletion.
+
+Additional implemented scheduling change: comprehensive warning collection moved to its own JOB_ADMIN_ALERTS_INTERVAL (default 120 seconds, minimum 30); financial enforcement remains every minute. Existing requests/alerts view refresh is 60 seconds and disabled in background tabs. New global incident UI/backend is not yet implemented. Focused suite result: 13 passed. Full initial-stage regression log: /workspace/scratch/db4be7e340d2/master-alerts-full.log (read final result on resume).
