@@ -459,6 +459,7 @@ class AccessGroupResponse(BaseModel):
     node_ids: list[int]
     inbounds: list[str]
     hosts: dict[str, list[int]]
+    network_status: Literal["READY", "NO_NETWORK_ACCESS"] = "READY"
     allowed_admin_ids: list[int] = Field(default_factory=list)
     admin_access_restricted: bool = False
     archived_at: Optional[datetime]
