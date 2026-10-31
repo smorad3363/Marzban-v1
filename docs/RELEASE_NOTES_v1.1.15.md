@@ -3,7 +3,9 @@
 Dashboard Admin management includes scoped deletion requests and financial/user
 usage alerts. Admins without delegation permissions can read their own requests
 and alerts without receiving Admin management privileges. Credit inputs retain
-focus across multi-digit edits and paste.
+focus across multi-digit edits and paste. Access Group optional Inbound/Host
+checkboxes no longer inherit per-checkbox native required validation; group
+minimum-selection and active-Host validation remain enforced.
 
 Deletion refunds reverse the last actual paid creation/purchase cycle, including
 reseller margin entries, to its original purchaser. Unused OnHold accounts and

@@ -193,7 +193,7 @@ export const AccessGroupManager = () => {
           <FormLabel>ادمین‌های مجاز</FormLabel>
           <SimpleGrid columns={{ base: 1, md: 2 }} gap={1} p={2} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px">
             {(admins.data || []).filter((admin) => admin.role === "ADMIN").map((admin) => (
-              <Checkbox
+              <Checkbox isRequired={false}
                 key={admin.id}
                 minH="44px"
                 isChecked={draft.allowedAdminIds.includes(admin.id)}
@@ -218,7 +218,7 @@ export const AccessGroupManager = () => {
         <FormControl>
           <FormLabel>نودها</FormLabel>
           <SimpleGrid columns={{ base: 1, md: 2 }} gap={1} p={2} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px">
-            {(nodes.data || []).map((node) => node.id != null && <Checkbox key={node.id} minH="44px" isChecked={draft.nodeIds.includes(node.id)} onChange={(event) => setDraft((current) => ({ ...current, nodeIds: event.target.checked ? [...new Set([...current.nodeIds, node.id!])].sort((a, b) => a - b) : current.nodeIds.filter((id) => id !== node.id) }))}><HStack><Text>{node.name}</Text>{node.status && <Badge>{nodeStatusLabel(node.status)}</Badge>}</HStack></Checkbox>)}
+            {(nodes.data || []).map((node) => node.id != null && <Checkbox isRequired={false} key={node.id} minH="44px" isChecked={draft.nodeIds.includes(node.id)} onChange={(event) => setDraft((current) => ({ ...current, nodeIds: event.target.checked ? [...new Set([...current.nodeIds, node.id!])].sort((a, b) => a - b) : current.nodeIds.filter((id) => id !== node.id) }))}><HStack><Text>{node.name}</Text>{node.status && <Badge>{nodeStatusLabel(node.status)}</Badge>}</HStack></Checkbox>)}
             {!nodes.data?.length && <Text p={2} color="var(--panel-text-muted)">نودی ثبت نشده است.</Text>}
           </SimpleGrid>
           <FormHelperText>{draft.nodeIds.length ? `${draft.nodeIds.length} نود انتخاب شده` : "همه نودها؛ فیلتر نود اعمال نمی‌شود."}</FormHelperText>
@@ -227,16 +227,16 @@ export const AccessGroupManager = () => {
           <FormLabel>اینباندها و هاست‌های مجاز</FormLabel>
           <Stack maxH="360px" overflowY="auto" spacing={1} p={2} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px">
             {options.map((inbound) => <Box key={inbound.tag} px={2} py={1} borderRadius="12px" bg={draft.inbounds.includes(inbound.tag) ? "blackAlpha.100" : "transparent"} _dark={{ bg: draft.inbounds.includes(inbound.tag) ? "whiteAlpha.50" : "transparent" }}>
-              <Checkbox minH="44px" colorScheme="primary" isChecked={draft.inbounds.includes(inbound.tag)} onChange={(event) => setDraft((current) => {
+              <Checkbox isRequired={false} minH="44px" colorScheme="primary" isChecked={draft.inbounds.includes(inbound.tag)} onChange={(event) => setDraft((current) => {
                 const inbounds = toggleAccessGroupInboundTag(current.inbounds, inbound.tag, event.target.checked);
                 const hosts = { ...current.hosts };
                 if (event.target.checked) hosts[inbound.tag] = hosts[inbound.tag] || [];
                 else delete hosts[inbound.tag];
                 return { ...current, inbounds, hosts: normalizeAccessGroupHostScope(hosts) };
               })}><Stack spacing={0} dir="ltr"><Text fontSize="sm" fontWeight="700" overflowWrap="anywhere">{inbound.tag}</Text><Text color="var(--panel-text-muted)" fontSize="xs">{inbound.protocol} · {inbound.network} · {inbound.tls || "none"}{inbound.port ? ` · ${inbound.port}` : ""}</Text></Stack></Checkbox>
-              {draft.inbounds.includes(inbound.tag) && <Stack ms={7} mb={2} spacing={1}>{inbound.hosts.map((host) => <Checkbox key={host.id} minH="44px" colorScheme="cyan" isChecked={(draft.hosts[inbound.tag] || []).includes(host.id)} onChange={(event) => setDraft((current) => ({ ...current, hosts: toggleAccessGroupHostId(current.hosts, inbound.tag, host.id, event.target.checked) }))}><Text fontSize="sm" overflowWrap="anywhere" dir="ltr">#{host.id} · {host.remark}</Text></Checkbox>)}{(draft.hosts[inbound.tag] || []).filter((hostId) => !inbound.hosts.some((host) => host.id === hostId)).map((hostId) => <Checkbox key={hostId} minH="44px" colorScheme="red" isChecked onChange={(event) => setDraft((current) => ({ ...current, hosts: toggleAccessGroupHostId(current.hosts, inbound.tag, hostId, event.target.checked) }))}><HStack dir="ltr"><Text fontSize="sm">#{hostId}</Text><Badge colorScheme="red">حذف‌شده / غیرفعال</Badge></HStack></Checkbox>)}{!inbound.hosts.length && <Text color="red.500" fontSize="xs">هاست فعالی برای این اینباند وجود ندارد.</Text>}</Stack>}
+              {draft.inbounds.includes(inbound.tag) && <Stack ms={7} mb={2} spacing={1}>{inbound.hosts.map((host) => <Checkbox isRequired={false} key={host.id} minH="44px" colorScheme="cyan" isChecked={(draft.hosts[inbound.tag] || []).includes(host.id)} onChange={(event) => setDraft((current) => ({ ...current, hosts: toggleAccessGroupHostId(current.hosts, inbound.tag, host.id, event.target.checked) }))}><Text fontSize="sm" overflowWrap="anywhere" dir="ltr">#{host.id} · {host.remark}</Text></Checkbox>)}{(draft.hosts[inbound.tag] || []).filter((hostId) => !inbound.hosts.some((host) => host.id === hostId)).map((hostId) => <Checkbox isRequired={false} key={hostId} minH="44px" colorScheme="red" isChecked onChange={(event) => setDraft((current) => ({ ...current, hosts: toggleAccessGroupHostId(current.hosts, inbound.tag, hostId, event.target.checked) }))}><HStack dir="ltr"><Text fontSize="sm">#{hostId}</Text><Badge colorScheme="red">حذف‌شده / غیرفعال</Badge></HStack></Checkbox>)}{!inbound.hosts.length && <Text color="red.500" fontSize="xs">هاست فعالی برای این اینباند وجود ندارد.</Text>}</Stack>}
             </Box>)}
-            {missingInbounds.map((tag) => <Checkbox key={tag} minH="44px" px={2} colorScheme="red" isChecked onChange={(event) => setDraft((current) => ({ ...current, inbounds: toggleAccessGroupInboundTag(current.inbounds, tag, event.target.checked), hosts: Object.fromEntries(Object.entries(current.hosts).filter(([key]) => key !== tag)) }))}><HStack dir="ltr"><Text fontSize="sm">{tag}</Text><Badge colorScheme="red">حذف‌شده / قدیمی</Badge></HStack></Checkbox>)}
+            {missingInbounds.map((tag) => <Checkbox isRequired={false} key={tag} minH="44px" px={2} colorScheme="red" isChecked onChange={(event) => setDraft((current) => ({ ...current, inbounds: toggleAccessGroupInboundTag(current.inbounds, tag, event.target.checked), hosts: Object.fromEntries(Object.entries(current.hosts).filter(([key]) => key !== tag)) }))}><HStack dir="ltr"><Text fontSize="sm">{tag}</Text><Badge colorScheme="red">حذف‌شده / قدیمی</Badge></HStack></Checkbox>)}
             {!options.length && <Text p={2} color="var(--panel-text-muted)">اینباند قابل استفاده‌ای پیدا نشد.</Text>}
           </Stack>
           <FormHelperText>برای هر اینباند انتخاب‌شده حداقل یک هاست فعال لازم است.</FormHelperText>

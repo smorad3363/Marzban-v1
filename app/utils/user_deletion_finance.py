@@ -15,8 +15,8 @@ def visible_requests(db,actor):
     return query.filter(or_(UserDeletionRequest.requester_admin_id==actor.id,and_(UserDeletionRequest.status!="PENDING",UserDeletionRequest.reviewer_admin_id==actor.id),UserDeletionRequest.account_admin_id==actor.id,UserDeletionRequest.account_admin_id.in_(direct_accounts)))
 
 
-def current_reviewer(db,row):
-    account=db.get(Admin,row.account_admin_id)
+def current_reviewer(db,row,lock=False):
+    account=(db.query(Admin).filter(Admin.id==row.account_admin_id).with_for_update().populate_existing().one_or_none() if lock else db.get(Admin,row.account_admin_id))
     return (account.parent_admin_id if account is not None else None) or admin_hierarchy.owner_id(db)
 
 
@@ -92,7 +92,7 @@ def decide(db,actor,request_id,approve,amount,note):
     if candidate is None: raise admin_hierarchy.HierarchyError('refund_request_not_found','Deletion request not found')
     user=db.query(User).filter(User.id==candidate.user_id).with_for_update().populate_existing().one_or_none()
     row=db.query(UserDeletionRequest).filter(UserDeletionRequest.id==request_id).with_for_update().populate_existing().one()
-    reviewer_id=current_reviewer(db,row) if row.status=='PENDING' else row.reviewer_admin_id
+    reviewer_id=current_reviewer(db,row,lock=True) if row.status=='PENDING' else row.reviewer_admin_id
     if actor.id!=reviewer_id:
         raise admin_hierarchy.HierarchyError('refund_decision_forbidden','Only the direct parent assigned to this request can decide')
     if row.status!='PENDING':

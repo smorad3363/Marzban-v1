@@ -1427,12 +1427,6 @@ def validate_next_plan_activation(db: Session, dbuser: User) -> bool:
     if settings is None:
         return False
     _validate_account(settings)
-    from app.utils.financial_controls import require_spending
-    from app.utils import admin_hierarchy
-    try:
-        require_spending(db, settings.admin_id)
-    except admin_hierarchy.HierarchyError as exc:
-        raise MarzhelpPolicyError(exc.code, str(exc)) from exc
     if _requires_explicit_plan_renewal(settings):
         raise MarzhelpPolicyError(
             "queued_paid_renewal_forbidden",
@@ -1443,6 +1437,12 @@ def validate_next_plan_activation(db: Session, dbuser: User) -> bool:
             "seat_plan_renewal_required",
             "SEAT_CREDIT renewals must use an explicit Plan and idempotency key",
         )
+    from app.utils.financial_controls import require_spending
+    from app.utils import admin_hierarchy
+    try:
+        require_spending(db, settings.admin_id)
+    except admin_hierarchy.HierarchyError as exc:
+        raise MarzhelpPolicyError(exc.code, str(exc)) from exc
     data_limit = resulting_next_plan_data_limit(dbuser)
     expire = _effective_expire(dbuser.next_plan.expire)
     _validate_data_limit(settings, data_limit)
