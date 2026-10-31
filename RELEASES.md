@@ -1,3 +1,9 @@
+# v1.1.16
+
+Release target: v1.1.16
+
+Preserve Owner exemption in financial ancestor checks. [Notes](docs/RELEASE_NOTES_v1.1.16.md).
+
 # v1.1.15
 
 Release target: v1.1.15
