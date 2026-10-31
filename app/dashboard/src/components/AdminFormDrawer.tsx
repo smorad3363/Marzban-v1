@@ -87,6 +87,7 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
   const queryClient = useQueryClient();
   const { inbounds } = useDashboard();
   const usernameRef = useRef<HTMLInputElement>(null);
+  const creditRequest = useRef<{ key: string; id: string } | null>(null);
   const [form, setForm] = useState<ManagedAdminPayload>(emptyAdmin());
   const [billingMode, setBillingMode] = useState<BillingMode | "">("");
   const [inboundSearch, setInboundSearch] = useState("");
@@ -162,11 +163,16 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
   });
 
   const creditMutation = useMutation<unknown, Error, { operation: "grant" | "reclaim"; amount: number }>(
-    ({ operation, amount }) => fetch(`/admin-management/${encodeURIComponent(admin?.username || "")}/money/${operation}`, {
+    ({ operation, amount }) => {
+      const key = JSON.stringify([admin?.username, operation, amount, creditReason.trim()]);
+      if (creditRequest.current?.key !== key) creditRequest.current = { key, id: `admin-money-${crypto.randomUUID()}` };
+      return fetch(`/admin-management/${encodeURIComponent(admin?.username || "")}/money/${operation}`, {
       method: "POST",
-      body: { amount_toman: amount, idempotency_key: `admin-money-${crypto.randomUUID()}`, note: creditReason.trim() || undefined },
-    }), {
+      body: { amount_toman: amount, idempotency_key: creditRequest.current.id, note: creditReason.trim() || undefined },
+      });
+    }, {
       onSuccess: () => {
+        creditRequest.current = null;
         setCreditAmount(""); setCreditReason("");
         queryClient.invalidateQueries("admin-management");
         queryClient.invalidateQueries("admin-hierarchy-tree");
