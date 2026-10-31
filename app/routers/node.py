@@ -7,6 +7,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, R
 from sqlalchemy.exc import IntegrityError
 from starlette.websockets import WebSocketDisconnect
 
+from config import XRAY_LOCAL_CORE_ENABLED
 from app import logger, xray
 from app.db import Session, crud, get_db
 from app.db.node_operations import list_node_events, list_traffic_buckets, traffic_window_average
@@ -456,9 +457,9 @@ def get_bandwidth(
     _: Admin = Depends(Admin.check_sudo_admin),
 ):
     """Return bounded live Xray throughput without polling Xray from the request path."""
-    rows: list[NodeBandwidthResponse] = [
+    rows: list[NodeBandwidthResponse] = ([
         _bandwidth_response_for(None, "Master", bool(getattr(xray.core, "started", False)))
-    ]
+    ] if XRAY_LOCAL_CORE_ENABLED else [])
     for dbnode in crud.get_nodes(db):
         status = getattr(dbnode.status, "value", dbnode.status)
         rows.append(

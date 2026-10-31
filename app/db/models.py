@@ -1331,6 +1331,36 @@ class AdminAccountAlert(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
 
+class AdminAlertIncident(Base):
+    __tablename__ = "admin_alert_incidents"
+    __table_args__ = (UniqueConstraint("admin_id", "resource", name="uq_admin_incident_resource"),
+                     Index("ix_admin_incident_active", "resolved_at", "severity", "admin_id", "id"))
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    admin_id = Column(Integer, ForeignKey("admins.id", ondelete="CASCADE"), nullable=False, index=True)
+    resource = Column(String(32), nullable=False)
+    state = Column(String(32), nullable=False)
+    severity = Column(String(16), nullable=False)
+    details = Column(JSON, nullable=False)
+    revision = Column(Integer, nullable=False, default=1)
+    opened_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    resolved_at = Column(DateTime, nullable=True)
+
+
+class AdminAlertScanState(Base):
+    __tablename__ = "admin_alert_scan_state"
+    id = Column(Integer, primary_key=True)
+    checked_at = Column(DateTime, nullable=False)
+
+
+class AdminAlertReceipt(Base):
+    __tablename__ = "admin_alert_receipts"
+    viewer_admin_id = Column(Integer, ForeignKey("admins.id", ondelete="CASCADE"), primary_key=True)
+    incident_id = Column(Integer, ForeignKey("admin_alert_incidents.id", ondelete="CASCADE"), primary_key=True)
+    revision = Column(Integer, nullable=False)
+    seen_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
 class User(Base):
     __tablename__ = "users"
     __table_args__ = (

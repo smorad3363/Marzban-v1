@@ -37,6 +37,9 @@ async def core_logs(websocket: WebSocket, db: Session = Depends(get_db)):
     if admin.auth_method != "session" or dbadmin is None or not admin_hierarchy.is_owner(db, dbadmin):
         return await websocket.close(reason="You're not allowed", code=4403)
 
+    if not XRAY_LOCAL_CORE_ENABLED:
+        return await websocket.close(reason="Local core intentionally disabled: management-only Master", code=1000)
+
     interval = websocket.query_params.get("interval")
     if interval:
         try:

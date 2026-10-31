@@ -7,7 +7,7 @@ import { localizedApiError } from "utils/apiError";
 type RequestItem = { id: number; username: string; account_admin_id: number; reviewer_admin_id: number; status: string; purchase_toman: number; refund_toman: number | null; used_bytes: number; quota_bytes: number; created_at: string; decision_note: string | null };
 type AlertItem = { id: number; admin_id: number; admin_username: string | null; kind: string; details?: { username?: string; percent?: number; balance_toman?: number }; created_at: string };
 type Data = { actor_id: number; requests: RequestItem[]; alerts: AlertItem[] };
-const labels: Record<string, string> = { low: "کمبود موجودی (۱۰٪ آخرین شارژ)", empty: "اتمام موجودی", frozen: "فریز مالی؛ ساخت و تمدید متوقف است", disabled: "قطع کاربران به دلیل بدهی", normal: "رفع محدودیت مالی", user_usage: "رسیدن کاربر به حد مصرف", account_suspended: "تعلیق حساب ادمین", account_disabled: "غیرفعال شدن حساب ادمین" };
+const labels: Record<string, string> = { incident_open: "هشدار جدید", incident_change: "تغییر وضعیت هشدار", incident_resolved: "رفع هشدار", low: "کمبود موجودی (۱۰٪ آخرین شارژ)", empty: "اتمام موجودی", frozen: "فریز مالی؛ ساخت و تمدید متوقف است", disabled: "قطع کاربران به دلیل بدهی", normal: "رفع محدودیت مالی", user_usage: "رسیدن کاربر به حد مصرف", account_suspended: "تعلیق حساب ادمین", account_disabled: "غیرفعال شدن حساب ادمین" };
 const statuses: Record<string, string> = { PENDING: "در انتظار بررسی", APPROVED: "تأیید و حذف شد", REJECTED: "رد شد" };
 
 export const RequestsAlerts = () => {

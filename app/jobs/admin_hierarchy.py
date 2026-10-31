@@ -47,6 +47,8 @@ scheduler.add_job(enforce_admin_account_limits, "interval", minutes=1, coalesce=
 def collect_admin_alerts() -> None:
     """Slow comprehensive warning scans independently of debt enforcement."""
     with GetDB() as db:
+        from app.utils import admin_alerts
+        admin_alerts.collect(db)
         financial_controls.collect_alerts(db)
         db.commit()
 

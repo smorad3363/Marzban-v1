@@ -3,6 +3,7 @@ import useGetUser from "hooks/useGetUser";
 import { FC, PropsWithChildren, useEffect } from "react";
 import { CoreSettingsModal } from "./CoreSettingsModal";
 import { Footer } from "./Footer";
+import { AlertCenter } from "./AlertCenter";
 import { Header } from "./Header";
 import { HostsDialog } from "./HostsDialog";
 import { NodesDialog } from "./NodesModal";
@@ -56,6 +57,7 @@ export const AppShell: FC<PropsWithChildren> = ({ children }) => {
           py={{ base: 5, md: 7 }}
         >
           <Box w="full" maxW="none" minW={0} flex="1">
+            <AlertCenter />
             {children}
           </Box>
           <Footer mt={8} />

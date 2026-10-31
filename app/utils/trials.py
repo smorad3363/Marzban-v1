@@ -41,6 +41,8 @@ def consume_quota(db: Session, target: Admin, settings: MarzhelpAdminSettings) -
     if result.rowcount != 1:
         raise admin_hierarchy.HierarchyError("trial_quota_exhausted", "Trial creation quota is exhausted")
     db.expire(settings, ["trial_quota", "trials_used"])
+    from app.utils.admin_alerts import sync_settings
+    sync_settings(db, [settings])
 
 
 def adjust_quota(
@@ -116,6 +118,8 @@ def adjust_quota(
     )
     db.add(row)
     db.flush()
+    from app.utils.admin_alerts import sync_settings
+    sync_settings(db, [settings])
     return row, True
 
 
@@ -191,6 +195,8 @@ def reset_quota(
     )
     db.add(row)
     db.flush()
+    from app.utils.admin_alerts import sync_settings
+    sync_settings(db, [settings])
     return row, True
 
 
