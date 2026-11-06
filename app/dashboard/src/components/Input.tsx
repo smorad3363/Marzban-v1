@@ -123,7 +123,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           rounded="md"
           _focusWithin={{
             outline: "2px solid",
-            outlineColor: "primary.200",
+            outlineColor: "var(--panel-accent)",
           }}
           bg={disabled ? "gray.100" : "transparent"}
           _dark={{ bg: disabled ? "gray.600" : "transparent" }}
@@ -153,7 +153,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
               w="full"
               _focusVisible={{
                 outline: "none",
-                borderColor: "primary.300",
+                borderColor: "var(--panel-accent)",
                 boxShadow: "none",
               }}
               _disabled={{

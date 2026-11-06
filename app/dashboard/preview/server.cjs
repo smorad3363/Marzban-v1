@@ -43,6 +43,12 @@ async function handler(req,res) {
   const session=sessions.get(sid),f=fixtures(session),p=url.pathname.replace(/^\/api/,'');
   if(url.pathname==='/__preview/state'&&req.method==='POST'){const data=await body(req);session.role=roles.includes(data.role)?data.role:'owner';session.mode=modes.includes(data.mode)?data.mode:'demo';if(data.reset)session.users=[];res.writeHead(303,{location:'/dashboard/'});return res.end();}
   if(url.pathname==='/__preview/requests')return json(res,session.requests);
+  if(url.pathname==='/__preview/canvas') {
+   const width = [320,375,768,1024,1440].includes(+url.searchParams.get('width')) ? +url.searchParams.get('width') : 375;
+   const route = ['/','/users/','/admins/','/plans/','/device-limits/','/audit-logs/','/settings/','/login/'].includes(url.searchParams.get('route')) ? url.searchParams.get('route') : '/';
+   res.setHeader('content-type','text/html; charset=utf-8');res.setHeader('x-robots-tag','noindex');
+   return res.end(`<!doctype html><html><head><title>Marzban responsive review</title><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="margin:0;background:#344039;font:14px system-ui;color:white"><form style="padding:12px;display:flex;gap:12px;flex-wrap:wrap"><label>Viewport <select name="width" aria-label="Review width">${[320,375,768,1024,1440].map(w=>`<option value="${w}"${w===width?' selected':''}>${w}</option>`).join('')}</select></label><label>Page <select name="route" aria-label="Review page">${['/','/users/','/admins/','/plans/','/device-limits/','/audit-logs/','/settings/','/login/'].map(r=>`<option value="${r}"${r===route?' selected':''}>${r}</option>`).join('')}</select></label><button>Review layout</button><span>Synthetic UI review · ${width}px</span></form><div style="padding:12px;overflow:auto"><iframe title="Responsive console" src="/dashboard/#${route}" style="display:block;margin:auto;width:${width}px;height:900px;border:1px solid #718a7c;border-radius:12px;background:white"></iframe></div></body></html>`);
+  }
   if(url.pathname==='/__preview/health')return json(res,{ok:true,synthetic:true});
   if(url.pathname.startsWith('/api/')) {
    session.requests.push({path:p,method:req.method,time:now()});if(session.requests.length>1000)session.requests.shift();
@@ -106,6 +112,7 @@ async function handler(req,res) {
   const ext=path.extname(file);const type={'.html':'text/html; charset=utf-8','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.woff2':'font/woff2'}[ext]||'application/octet-stream';
   res.setHeader('content-type',type);res.setHeader('cache-control','no-store');res.setHeader('x-robots-tag','noindex, nofollow');
   if(ext==='.html')return res.end(fs.readFileSync(file,'utf8').replace('</body>',toolbar(session)+'</body>'));
+  if(/\.(js|css|json|svg)$/.test(file) && /gzip/.test(req.headers['accept-encoding']||'')){res.setHeader('content-encoding','gzip');return res.end(require('node:zlib').gzipSync(fs.readFileSync(file)));}
   fs.createReadStream(file).pipe(res);
  }catch(error){console.error(error.stack);if(!res.headersSent)json(res,{detail:'Preview fixture failure'},500);else res.end();}
 }

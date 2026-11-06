@@ -92,19 +92,8 @@ const emptyDraft = (): PlanDraft => ({
   isTrial: false,
 });
 
-const categoryAccents: Accent[] = [
-  { color: "#72e6a7", soft: "rgba(54, 211, 153, .08)", border: "rgba(72, 224, 161, .22)", glow: "rgba(54, 211, 153, .16)" },
-  { color: "#7cc8ff", soft: "rgba(73, 163, 255, .08)", border: "rgba(91, 177, 255, .22)", glow: "rgba(73, 163, 255, .14)" },
-  { color: "#e8bd68", soft: "rgba(232, 189, 104, .08)", border: "rgba(232, 189, 104, .24)", glow: "rgba(232, 189, 104, .17)" },
-  { color: "#c7a2ff", soft: "rgba(170, 117, 255, .08)", border: "rgba(190, 145, 255, .22)", glow: "rgba(170, 117, 255, .14)" },
-];
-
-const trialAccent: Accent = {
-  color: "#ff8aa8",
-  soft: "rgba(255, 92, 135, .08)",
-  border: "rgba(255, 112, 150, .22)",
-  glow: "rgba(255, 92, 135, .16)",
-};
+const categoryAccents: Accent[] = ["accent", "info", "warning", "success"].map(tone => ({ color: `var(--panel-${tone})`, soft: `var(--panel-${tone}-soft)`, border: `var(--panel-${tone}-border)`, glow: "transparent" }));
+const trialAccent: Accent = { color: "var(--panel-info)", soft: "var(--panel-info-soft)", border: "var(--panel-info-border)", glow: "transparent" };
 
 const resetLabels: Record<PlanDraft["resetStrategy"], string> = {
   no_reset: "بدون ریست",
@@ -266,7 +255,7 @@ export const Plans: FC = () => {
         <PageHeader eyebrow="مدیریت اشتراک" title="پلن‌های کاربر" description="پلن‌ها، دسته‌بندی‌ها و دسترسی‌های شبکه را در کنار هم مدیریت کنید." actions={
           <HStack spacing={2.5} flexWrap="wrap" position="relative">
             {account.data?.role === "OWNER" && <Button onClick={() => document.getElementById("access-groups")?.scrollIntoView({ behavior: "smooth", block: "start" })} minH="46px" px={5} variant="outline" borderColor="var(--panel-border)" color="var(--panel-text)" bg="rgba(255,255,255,.015)" _hover={{ borderColor: "var(--panel-accent-border)", bg: "var(--panel-accent-soft)", color: "var(--panel-accent)" }}>گروه‌های دسترسی</Button>}
-            {canManage && <Button minH="46px" px={5} bg="var(--panel-accent)" color="var(--panel-accent-contrast)" leftIcon={<Icon as={PlusIcon} boxSize="18px" />} onClick={openCreate} isDisabled={(categories.data || []).length === 0} _hover={{ transform: "translateY(-1px)", filter: "brightness(1.05)", boxShadow: "0 12px 30px var(--panel-accent-soft)" }} _active={{ transform: "translateY(0)" }}>پلن جدید</Button>}
+            {canManage && <Button minH="46px" px={5} bg="var(--panel-accent)" color="var(--panel-accent-contrast)" leftIcon={<Icon as={PlusIcon} boxSize="18px" />} onClick={openCreate} isDisabled={(categories.data || []).length === 0} _hover={{ filter: "brightness(1.05)", boxShadow: "0 12px 30px var(--panel-accent-soft)" }} _active={{ transform: "translateY(0)" }}>پلن جدید</Button>}
           </HStack>
         } />
 
@@ -286,7 +275,7 @@ export const Plans: FC = () => {
                   const accent = getCategoryAccent(index);
                   const isEditingCategory = editingCategoryId === category.id;
                   return (
-                    <Box key={category.id} p={4} minH="150px" borderRadius="16px" borderWidth="1px" borderColor={accent.border} bg={`linear-gradient(145deg, ${accent.soft} 0%, var(--panel-bg) 72%)`} transition="transform .2s ease, border-color .2s ease, box-shadow .2s ease" _hover={{ transform: "translateY(-2px)", boxShadow: `0 14px 30px ${accent.glow}` }}>
+                    <Box key={category.id} p={4} minH="150px" borderRadius="16px" borderWidth="1px" borderColor={accent.border} bg={`linear-gradient(145deg, ${accent.soft} 0%, var(--panel-bg) 72%)`} transition="transform .2s ease, border-color .2s ease, box-shadow .2s ease" _hover={{ boxShadow: "var(--shadow-panel)" }}>
                       <Stack h="full" spacing={3}>
                         <HStack justify="space-between" align="start"><Box display="grid" placeItems="center" w="36px" h="36px" borderRadius="12px" bg={accent.soft} borderWidth="1px" borderColor={accent.border}><Icon as={CubeTransparentIcon} boxSize="18px" color={accent.color} /></Box><Badge px={2.5} py={1} borderRadius="full" bg={accent.soft} color={accent.color} borderWidth="1px" borderColor={accent.border}>{category.plan_count.toLocaleString("fa-IR")} پلن</Badge></HStack>
                         {isEditingCategory ? <Input value={editingCategoryName} maxLength={128} minH="42px" bg="var(--panel-surface)" borderColor={accent.border} onChange={(event) => setEditingCategoryName(event.target.value)} /> : <Text fontWeight="700" fontSize="md" noOfLines={2}>{category.name}</Text>}
@@ -315,21 +304,21 @@ export const Plans: FC = () => {
               const accent = getPlanAccent(plan, index);
               const planPrice = plan.is_trial ? 0 : plan.effective_price_toman;
               return (
-                <Card key={plan.id} p={0} overflow="hidden" bg="var(--panel-surface)" color="var(--panel-text)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius={{ base: "18px", md: "22px" }} boxShadow="0 18px 44px rgba(0,0,0,.18)" transition="transform .22s ease, border-color .22s ease, box-shadow .22s ease" _hover={{ transform: "translateY(-4px)", borderColor: accent.border, boxShadow: `0 24px 56px rgba(0,0,0,.28), 0 0 0 1px ${accent.soft}` }}>
+                <Card key={plan.id} p={0} overflow="hidden" bg="var(--panel-surface)" color="var(--panel-text)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius={{ base: "18px", md: "22px" }} boxShadow="var(--shadow-panel)" transition="transform .22s ease, border-color .22s ease, box-shadow .22s ease" _hover={{ borderColor: accent.border, boxShadow: "var(--shadow-panel)" }}>
                   <Box h="3px" bg={`linear-gradient(90deg, ${accent.color}, transparent)`} />
                   <Stack p={{ base: 4, md: 5 }} spacing={5} h="full">
                     <HStack justify="space-between" align="start" spacing={3}>
-                      <HStack align="start" spacing={3} minW={0}><Box display="grid" placeItems="center" w="44px" h="44px" borderRadius="14px" bg={accent.soft} borderWidth="1px" borderColor={accent.border} flexShrink={0}><Icon as={plan.is_trial ? SparklesIcon : RocketLaunchIcon} boxSize="21px" color={accent.color} /></Box><Box minW={0}><Text as="h2" fontSize="lg" fontWeight="700" overflowWrap="anywhere" noOfLines={2}>{plan.name}</Text><HStack mt={2} spacing={1.5} flexWrap="wrap"><Badge variant="outline" borderColor={accent.border} color={accent.color} bg={accent.soft} borderRadius="full" px={2.5} py={1}>{plan.category_name || "بدون دسته"}</Badge>{plan.is_trial && <Badge color="#ff9bb4" bg="rgba(255, 92, 135, .10)" borderWidth="1px" borderColor="rgba(255, 112, 150, .24)" borderRadius="full" px={2.5} py={1}>تست رایگان</Badge>}</HStack></Box></HStack>
+                      <HStack align="start" spacing={3} minW={0}><Box display="grid" placeItems="center" w="44px" h="44px" borderRadius="14px" bg={accent.soft} borderWidth="1px" borderColor={accent.border} flexShrink={0}><Icon as={plan.is_trial ? SparklesIcon : RocketLaunchIcon} boxSize="21px" color={accent.color} /></Box><Box minW={0}><Text as="h2" fontSize="lg" fontWeight="700" overflowWrap="anywhere" noOfLines={2}>{plan.name}</Text><HStack mt={2} spacing={1.5} flexWrap="wrap"><Badge variant="outline" borderColor={accent.border} color={accent.color} bg={accent.soft} borderRadius="full" px={2.5} py={1}>{plan.category_name || "بدون دسته"}</Badge>{plan.is_trial && <Badge color="var(--panel-info)" bg="rgba(255, 92, 135, .10)" borderWidth="1px" borderColor="rgba(255, 112, 150, .24)" borderRadius="full" px={2.5} py={1}>تست رایگان</Badge>}</HStack></Box></HStack>
                       <Badge variant="subtle" bg="var(--panel-bg)" color="var(--panel-text-muted)" borderRadius="full" px={2.5} py={1} flexShrink={0}>v{plan.version_number.toLocaleString("fa-IR")}</Badge>
                     </HStack>
-                    <Box><Text color="var(--panel-text-muted)" fontSize="xs" fontWeight="700">قیمت پلن</Text><HStack align="baseline" mt={1} spacing={2} flexWrap="wrap"><Text fontSize={{ base: "2xl", md: "3xl" }} fontWeight="700" color={plan.is_trial ? "#ff9bb4" : "var(--panel-accent)"} letterSpacing="-.02em">{planPrice.toLocaleString("fa-IR")}</Text><Text fontSize="sm" color="var(--panel-text-body)" fontWeight="700">تومان</Text></HStack>{plan.description && <Text mt={3} color="var(--panel-text-body)" fontSize="sm" lineHeight="1.9" noOfLines={2} minH={{ md: "53px" }}>{plan.description}</Text>}</Box>
+                    <Box><Text color="var(--panel-text-muted)" fontSize="xs" fontWeight="700">قیمت پلن</Text><HStack align="baseline" mt={1} spacing={2} flexWrap="wrap"><Text fontSize={{ base: "2xl", md: "3xl" }} fontWeight="700" color={plan.is_trial ? "var(--panel-info)" : "var(--panel-accent)"} letterSpacing="-.02em">{planPrice.toLocaleString("fa-IR")}</Text><Text fontSize="sm" color="var(--panel-text-body)" fontWeight="700">تومان</Text></HStack>{plan.description && <Text mt={3} color="var(--panel-text-body)" fontSize="sm" lineHeight="1.9" noOfLines={2} minH={{ md: "53px" }}>{plan.description}</Text>}</Box>
                     <SimpleGrid columns={3} gap={2.5}>
                       <Box p={3} bg="var(--panel-bg)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="14px" minW={0}><Icon as={CircleStackIcon} boxSize="16px" color={accent.color} mb={2} /><Text color="var(--panel-text-muted)" fontSize="xs">حجم</Text><Text mt={1} fontWeight="700" fontSize="sm" noOfLines={1}>{formatBytes(plan.version.data_limit)}</Text></Box>
                       <Box p={3} bg="var(--panel-bg)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="14px" minW={0}><Icon as={CalendarDaysIcon} boxSize="16px" color={accent.color} mb={2} /><Text color="var(--panel-text-muted)" fontSize="xs">مدت</Text><Text mt={1} fontWeight="700" fontSize="sm" noOfLines={1}>{plan.version.duration_days.toLocaleString("fa-IR")} روز</Text></Box>
                       <Box p={3} bg="var(--panel-bg)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="14px" minW={0}><Icon as={CpuChipIcon} boxSize="16px" color={accent.color} mb={2} /><Text color="var(--panel-text-muted)" fontSize="xs">دستگاه</Text><Text mt={1} fontWeight="700" fontSize="sm">{plan.version.concurrent_user_limit === null ? "∞" : plan.version.concurrent_user_limit.toLocaleString("fa-IR")}</Text></Box>
                     </SimpleGrid>
                     <HStack justify="space-between" py={3} px={3.5} bg="var(--panel-bg)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="14px"><HStack spacing={2}><Icon as={BoltIcon} boxSize="17px" color={accent.color} /><Text color="var(--panel-text-muted)" fontSize="sm">ریست حجم</Text></HStack><Text fontSize="sm" fontWeight="700">{resetLabels[plan.version.reset_strategy]}</Text></HStack>
-                    {canManage && <SimpleGrid columns={2} gap={2.5}><Button minH="44px" size="sm" bg="var(--panel-accent)" color="var(--panel-accent-contrast)" leftIcon={<Icon as={PencilSquareIcon} boxSize="16px" />} onClick={() => openEdit(plan)} _hover={{ filter: "brightness(1.05)", transform: "translateY(-1px)" }}>ویرایش پلن</Button><Button minH="44px" size="sm" variant="outline" colorScheme="red" leftIcon={<Icon as={ArchiveBoxIcon} boxSize="16px" />} onClick={() => { setArchiveTarget(plan); archiveDialog.onOpen(); }}>بایگانی</Button></SimpleGrid>}
+                    {canManage && <SimpleGrid columns={2} gap={2.5}><Button minH="44px" size="sm" bg="var(--panel-accent)" color="var(--panel-accent-contrast)" leftIcon={<Icon as={PencilSquareIcon} boxSize="16px" />} onClick={() => openEdit(plan)} _hover={{ filter: "brightness(1.05)", }}>ویرایش پلن</Button><Button minH="44px" size="sm" variant="outline" colorScheme="red" leftIcon={<Icon as={ArchiveBoxIcon} boxSize="16px" />} onClick={() => { setArchiveTarget(plan); archiveDialog.onOpen(); }}>بایگانی</Button></SimpleGrid>}
                     {accountActive && (
                       <Stack mt="auto" pt={5} spacing={3.5} borderTopWidth="1px" borderColor="var(--panel-border)">
                         <HStack spacing={3} align="start"><Box display="grid" placeItems="center" w="36px" h="36px" borderRadius="12px" bg={accent.soft} borderWidth="1px" borderColor={accent.border} flexShrink={0}><Icon as={UserPlusIcon} boxSize="18px" color={accent.color} /></Box><Box><Text fontWeight="700" fontSize="sm">ساخت سریع کاربر</Text><Text color="var(--panel-text-muted)" fontSize="xs" mt={1} lineHeight="1.8">با این پلن یک کاربر جدید سریع ایجاد کنید.</Text></Box></HStack>
@@ -352,7 +341,7 @@ export const Plans: FC = () => {
 
       <Modal isOpen={modal.isOpen} onClose={modal.onClose} size="2xl" scrollBehavior="inside">
         <ModalOverlay bg="var(--panel-overlay)" backdropFilter="blur(6px)" />
-        <ModalContent as="form" onSubmit={submit} mx={3} my={3} maxH="calc(100dvh - 24px)" overflow="hidden" bg="var(--panel-surface)" color="var(--panel-text)" borderWidth="1px" borderColor="var(--panel-accent-border)" borderRadius={{ base: "18px", md: "22px" }} boxShadow="0 30px 90px rgba(0,0,0,.5)">
+        <ModalContent as="form" onSubmit={submit} mx={3} my={3} maxH="calc(100dvh - 24px)" overflow="hidden" bg="var(--panel-surface)" color="var(--panel-text)" borderWidth="1px" borderColor="var(--panel-accent-border)" borderRadius={{ base: "18px", md: "22px" }} boxShadow="var(--shadow-elevated)">
           <ModalHeader ps={14} py={5} borderBottomWidth="1px" borderColor="var(--panel-border)"><HStack spacing={3}><Box display="grid" placeItems="center" w="38px" h="38px" borderRadius="12px" bg="var(--panel-accent-soft)" borderWidth="1px" borderColor="var(--panel-accent-border)"><Icon as={editing ? PencilSquareIcon : PlusIcon} boxSize="18px" color="var(--panel-accent)" /></Box><Box><Text fontSize="lg" fontWeight="700">{editing ? "ویرایش پلن" : "پلن جدید"}</Text><Text color="var(--panel-text-muted)" fontSize="xs" mt={1}>{editing ? "تغییرات به‌صورت نسخه جدید ذخیره می‌شوند." : "مشخصات پلن اشتراک جدید را تکمیل کنید."}</Text></Box></HStack></ModalHeader>
           <ModalCloseButton top={4} insetInlineStart={3} insetInlineEnd="auto" />
           <ModalBody overflowY="auto" py={5}><Stack spacing={5}>

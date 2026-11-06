@@ -318,10 +318,10 @@ const CoreSettingModalContent: FC = () => {
           <Box
             border="1px solid"
             borderColor="gray.300"
-            bg="#F9F9F9"
+            bg="var(--panel-nested)"
             _dark={{
               borderColor: "gray.500",
-              bg: "#2e3440",
+              bg: "var(--panel-nested)",
             }}
             borderRadius={5}
             minHeight="200px"

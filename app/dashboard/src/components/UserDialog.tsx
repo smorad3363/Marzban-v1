@@ -983,7 +983,7 @@ export const UserDialog: FC<UserDialogProps> = () => {
                               </Select>
                             )}
                           />
-                          <FormHelperText color={lacksCapacity ? "red.300" : "gray.400"}>
+                          <FormHelperText color={lacksCapacity ? "var(--panel-danger)" : "gray.400"}>
                             {t("userDialog.capacityCost", {
                               cost: requestedCapacity,
                               remaining: assignableCapacity ?? t("unlimited"),

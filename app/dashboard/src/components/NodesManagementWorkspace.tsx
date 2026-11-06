@@ -1187,7 +1187,7 @@ export const NodesManagementWorkspace: FC = () => {
                 ) : (
                   visibleRows.map((row) => {
                     const selectedRow = selectedKey === row.key;
-                    const color = row.status === "connected" ? "green.300" : row.status === "connecting" ? "yellow.300" : row.status === "disabled" ? "gray.400" : "red.300";
+                    const color = row.status === "connected" ? "var(--panel-success)" : row.status === "connecting" ? "var(--panel-warning)" : row.status === "disabled" ? "gray.400" : "var(--panel-danger)";
                     return (
                       <Grid
                         key={row.key}

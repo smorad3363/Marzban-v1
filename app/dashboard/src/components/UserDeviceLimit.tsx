@@ -141,7 +141,7 @@ export const UserDeviceLimit: FC<UserDeviceLimitProps> = ({ user, compact = fals
         <ModalContent mx={3} my={3} maxH="calc(100dvh - 24px)" dir={i18n.dir()} bg="var(--panel-surface)" color="var(--panel-text)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius={{ base: "14px", md: "18px" }} boxShadow="0 24px 70px rgba(0,0,0,.58)">
           <ModalHeader pe={14}>
             <HStack align="start">
-              <Box p={2.5} borderRadius="11px" bg={hasPenalty ? "rgba(234,179,8,.12)" : "rgba(34,197,94,.1)"} color={hasPenalty ? "yellow.200" : "green.200"}>{hasPenalty ? <WarningIcon /> : <SafeIcon />}</Box>
+              <Box p={2.5} borderRadius="11px" bg={hasPenalty ? "rgba(234,179,8,.12)" : "rgba(34,197,94,.1)"} color={hasPenalty ? "var(--panel-warning)" : "var(--panel-success)"}>{hasPenalty ? <WarningIcon /> : <SafeIcon />}</Box>
               <Box minW={0}>
                 <Text>{t("deviceLimit.userTitle")}</Text>
                 <Text dir="ltr" fontFamily="mono" color="var(--panel-text-muted)" fontSize="sm" mt={1} sx={{ unicodeBidi: "isolate" }}>{user.username}</Text>

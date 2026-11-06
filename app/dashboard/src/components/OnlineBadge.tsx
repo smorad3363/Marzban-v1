@@ -39,7 +39,7 @@ export const OnlineBadge: FC<UserStatusProps> = ({ lastOnline }) => {
     return (
       <Tooltip label={`آخرین فعالیت: ${exactTimestamp}`} hasArrow>
         <HStack spacing={1.5} flexShrink={0}>
-          <Box bg="green.300" _dark={{ bg: "green.500" }} className="circle pulse green" />
+          <Box bg="var(--panel-success)" _dark={{ bg: "var(--panel-success)" }} className="circle pulse green" />
           <Text fontSize="xs" color="var(--panel-success)">الان آنلاین</Text>
         </HStack>
       </Tooltip>

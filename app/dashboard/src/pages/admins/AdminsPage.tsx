@@ -315,7 +315,7 @@ export const AdminsPage: FC = () => {
               onClick={openCreate}
               borderRadius="10px"
               transition="transform .16s ease, box-shadow .16s ease"
-              _hover={{ transform: "translateY(-1px)", boxShadow: "0 8px 24px var(--panel-accent-soft-strong)" }}
+              _hover={{ boxShadow: "0 8px 24px var(--panel-accent-soft-strong)" }}
               _active={{ transform: "translateY(0)" }}
             >
               {t("admins.create")}
@@ -336,8 +336,8 @@ export const AdminsPage: FC = () => {
 
         <SimpleGrid columns={{ base: 2, xl: 4 }} gap={3}>
           <SummaryStat label="کل ادمین‌ها" value={query.isLoading ? "—" : total.toLocaleString("fa-IR")} hint="در محدوده مدیریتی شما" />
-          <SummaryStat label="فعال در این صفحه" value={query.isLoading ? "—" : activeOnPage.toLocaleString("fa-IR")} hint={`از ${admins.length.toLocaleString("fa-IR")} ردیف`} tone="green.300" />
-          <SummaryStat label="فریز در این صفحه" value={query.isLoading ? "—" : frozenOnPage.toLocaleString("fa-IR")} hint="برای بررسی سریع وضعیت‌ها" tone="orange.300" />
+          <SummaryStat label="فعال در این صفحه" value={query.isLoading ? "—" : activeOnPage.toLocaleString("fa-IR")} hint={`از ${admins.length.toLocaleString("fa-IR")} ردیف`} tone="var(--panel-success)" />
+          <SummaryStat label="فریز در این صفحه" value={query.isLoading ? "—" : frozenOnPage.toLocaleString("fa-IR")} hint="برای بررسی سریع وضعیت‌ها" tone="var(--panel-warning)" />
           <SummaryStat label="کیف پول این صفحه" value={query.isLoading ? "—" : `${walletOnPage.toLocaleString("fa-IR")} تومان`} hint="جمع موجودی ادمین‌های قابل مشاهده" />
         </SimpleGrid>
 

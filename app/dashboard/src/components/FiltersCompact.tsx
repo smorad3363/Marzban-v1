@@ -79,8 +79,8 @@ const StatusButton: FC<{
       whiteSpace="nowrap"
       flexShrink={0}
       onClick={onClick}
-      transition="transform .14s ease, border-color .14s ease, background .14s ease"
-      _hover={{ transform: "translateY(-1px)", borderColor: palette.border, color: palette.color }}
+      transition="border-color .14s ease, background-color .14s ease"
+      _hover={{ borderColor: palette.border, color: palette.color }}
       _active={{ transform: "translateY(0)" }}
     >
       {label}

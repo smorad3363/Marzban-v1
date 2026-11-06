@@ -75,7 +75,7 @@ const InlineDetails: FC<{ item: ManagedAdmin }> = ({ item }) => (
     <DetailChip label="مدت کاربر" value={limitText(item.policy.max_user_duration_days, " روز")} />
     <DetailChip label="انقضا" value={item.policy.expiry_date || "نامحدود"} />
     <DetailChip label="تلگرام" value={item.telegram_id?.toString() || "ثبت نشده"} />
-    <Box w={{ base: "full", xl: "1px" }} h={{ base: "1px", xl: "24px" }} bg="whiteAlpha.100" mx={1} />
+    <Box w={{ base: "full", xl: "1px" }} h={{ base: "1px", xl: "24px" }} bg="var(--panel-border)" mx={1} />
     <Text color="var(--panel-text-muted)" fontSize="xs" fontWeight="700" me={1}>دسترسی:</Text>
     <DetailChip label="ایجاد" value={item.policy.prevent_user_creation ? "مسدود" : "مجاز"} tone={item.policy.prevent_user_creation ? "var(--panel-danger)" : "var(--panel-success)"} />
     <DetailChip label="حذف" value={item.policy.prevent_user_deletion ? "مسدود" : "مجاز"} tone={item.policy.prevent_user_deletion ? "var(--panel-danger)" : "var(--panel-success)"} />
@@ -133,7 +133,7 @@ export const AdminTable: FC<Props> = ({
               isDisabled={!validAmount || busy}
               onClick={() => onCredit(item, "reclaim")}
               transition="background .16s ease, border-color .16s ease, transform .16s ease"
-              _hover={{ bg: "var(--panel-danger-soft)", borderColor: "var(--panel-danger-border)", transform: "translateY(-1px)" }}
+              _hover={{ bg: "var(--panel-danger-soft)", borderColor: "var(--panel-danger-border)", }}
               _active={{ transform: "translateY(0)" }}
             >
               <Text as="span" fontSize="19px" lineHeight="1" fontWeight="400">−</Text>
@@ -177,7 +177,7 @@ export const AdminTable: FC<Props> = ({
               isDisabled={!validAmount || busy}
               onClick={() => onCredit(item, "grant")}
               transition="background .16s ease, border-color .16s ease, transform .16s ease"
-              _hover={{ bg: "var(--panel-success-soft)", borderColor: "rgba(74,222,128,.48)", transform: "translateY(-1px)" }}
+              _hover={{ bg: "var(--panel-success-soft)", borderColor: "rgba(74,222,128,.48)", }}
               _active={{ transform: "translateY(0)" }}
             >
               <Text as="span" fontSize="19px" lineHeight="1" fontWeight="400">+</Text>
@@ -200,7 +200,7 @@ export const AdminTable: FC<Props> = ({
             borderRadius="12px"
             isDisabled={!canEdit(item)}
             onClick={() => onEdit(item)}
-            _hover={{ bg: "var(--panel-accent-soft-strong)", transform: "translateY(-1px)" }}
+            _hover={{ bg: "var(--panel-accent-soft-strong)", }}
             _active={{ transform: "translateY(0)" }}
           />
         </Tooltip>
@@ -214,14 +214,14 @@ export const AdminTable: FC<Props> = ({
                 size="sm"
                 minW="36px"
                 h="36px"
-                color={item.account_status === "ACTIVE" ? "orange.200" : "green.200"}
+                color={item.account_status === "ACTIVE" ? "var(--panel-warning)" : "var(--panel-success)"}
                 bg={item.account_status === "ACTIVE" ? "var(--panel-warning-soft)" : "var(--panel-success-soft)"}
                 borderWidth="1px"
                 borderColor={item.account_status === "ACTIVE" ? "var(--panel-warning-soft)" : "var(--panel-success-border)"}
                 borderRadius="12px"
                 isDisabled={busy}
                 onClick={() => onStatus(item)}
-                _hover={{ bg: item.account_status === "ACTIVE" ? "var(--panel-warning-soft)" : "var(--panel-success-soft)", transform: "translateY(-1px)" }}
+                _hover={{ bg: item.account_status === "ACTIVE" ? "var(--panel-warning-soft)" : "var(--panel-success-soft)", }}
                 _active={{ transform: "translateY(0)" }}
               />
             </Tooltip>
@@ -241,7 +241,7 @@ export const AdminTable: FC<Props> = ({
                   borderRadius="12px"
                   isDisabled={busy}
                   onClick={() => onTrialReset(item)}
-                  _hover={{ bg: "var(--panel-info-soft)", transform: "translateY(-1px)" }}
+                  _hover={{ bg: "var(--panel-info-soft)", }}
                   _active={{ transform: "translateY(0)" }}
                 />
               </Tooltip>
@@ -261,7 +261,7 @@ export const AdminTable: FC<Props> = ({
                 borderRadius="12px"
                 isDisabled={busy}
                 onClick={() => onDelete(item)}
-                _hover={{ bg: "var(--panel-danger-soft)", transform: "translateY(-1px)" }}
+                _hover={{ bg: "var(--panel-danger-soft)", }}
                 _active={{ transform: "translateY(0)" }}
               />
             </Tooltip>
@@ -337,13 +337,13 @@ export const AdminTable: FC<Props> = ({
                       </Text>
                     </Td>
                     <Td>
-                      <Text dir="ltr" color={item.parent_username ? "gray.200" : "gray.500"} fontSize="12px" fontWeight="700" noOfLines={1}>
+                      <Text dir="ltr" color={item.parent_username ? "var(--panel-text-body)" : "var(--panel-text-muted)"} fontSize="12px" fontWeight="700" noOfLines={1}>
                         {item.parent_username || "—"}
                       </Text>
                     </Td>
                     <Td textAlign="end" py={2.5}>{rowActions(item)}</Td>
                   </Tr>
-                  <Tr bg="rgba(2,8,23,.24)">
+                  <Tr bg="var(--panel-nested)">
                     <Td colSpan={7} py={2} px={4} borderBottomColor="rgba(148,163,184,.14)">
                       <InlineDetails item={item} />
                     </Td>
@@ -355,14 +355,14 @@ export const AdminTable: FC<Props> = ({
         </Table>
       </TableContainer>
 
-      <Stack display={{ base: "flex", lg: "none" }} divider={<Divider borderColor="whiteAlpha.100" />} spacing={0}>
+      <Stack display={{ base: "flex", lg: "none" }} divider={<Divider borderColor="var(--panel-border)" />} spacing={0}>
         {admins.map((item) => {
           const isItemOwner = item.role === "OWNER";
           const amount = creditAmounts[item.username] || "";
           const validAmount = Number.isFinite(Number(amount)) && Number(amount) > 0;
 
           return (
-            <Box key={item.username} p={3.5} role="group" transition="background .16s ease" _hover={{ bg: "whiteAlpha.50" }}>
+            <Box key={item.username} p={3.5} role="group" transition="background .16s ease" _hover={{ bg: "var(--panel-row-hover)" }}>
               <HStack justify="space-between" align="start" gap={3}>
                 <HStack align="start" spacing={2.5} minW={0}>
                   <AdminAvatar username={item.username} owner={isItemOwner} />
@@ -452,7 +452,7 @@ export const AdminTable: FC<Props> = ({
                 </Stack>
               )}
 
-              <Box mt={3} pt={3} borderTopWidth="1px" borderColor="whiteAlpha.100">
+              <Box mt={3} pt={3} borderTopWidth="1px" borderColor="var(--panel-border)">
                 <InlineDetails item={item} />
               </Box>
             </Box>

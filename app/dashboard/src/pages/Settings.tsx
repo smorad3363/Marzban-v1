@@ -107,7 +107,7 @@ const Section: FC<{
   >
     <Stack spacing={1}>
       <Heading size="md">{title}</Heading>
-      <Text color="var(--panel-text-muted)" _dark={{ color: "gray.400" }} fontSize="sm" lineHeight="1.9">
+      <Text color="var(--panel-text-muted)" _dark={{ color: "var(--panel-text-muted)" }} fontSize="sm" lineHeight="1.9">
         {description}
       </Text>
     </Stack>

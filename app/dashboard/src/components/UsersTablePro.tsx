@@ -1,3 +1,4 @@
+import { EmptyState } from "design-system/Console";
 import {
   Badge,
   Box,
@@ -192,7 +193,7 @@ const Action: FC<{ label: string; icon: React.ReactElement; onClick: () => void;
         borderColor={palette.border}
         isDisabled={disabled}
         onClick={onClick}
-        _hover={{ transform: "translateY(-1px)", bg: palette.bg }}
+        _hover={{ bg: palette.bg }}
       />
     </Tooltip>
   );
@@ -365,13 +366,44 @@ export const UsersTablePro: FC = () => {
     }
   };
 
+  const renderUserActions = (user: User, busy: boolean) => (
+                      <HStack justify="end" gap={1} dir="ltr" maxW="full">
+                        <Action label="کپی لینک اشتراک" icon={<CopyIcon />} onClick={() => copySubscription(user)} tone="green" />
+                        {!readOnly && <Action label="ویرایش" icon={<EditIcon />} onClick={() => onEditingUser(user)} tone="blue" disabled={busy} />}
+                        {!readOnly && <Action label="حذف کاربر" icon={<DeleteIcon />} onClick={() => onDeletingUser(user)} tone="red" disabled={busy} />}
+                        <Menu placement="bottom-end" isLazy>
+                          <MenuButton
+                            as={IconButton}
+                            aria-label="عملیات بیشتر"
+                            icon={<MoreIcon />}
+                            size="xs"
+                            minW="30px"
+                            w="30px"
+                            h="30px"
+                            borderRadius="10px"
+                            color="var(--panel-text-body)"
+                            bg="var(--panel-nested)"
+                            borderWidth="1px"
+                            borderColor="var(--panel-border)"
+                            _hover={{ bg: "var(--panel-row-hover)" }}
+                          />
+                          <MenuList dir="rtl" minW="210px" bg="var(--panel-surface)" borderColor="var(--panel-border)" borderRadius="14px" boxShadow="var(--shadow-elevated)" py={1.5}>
+                            <MenuItem onClick={() => setDrawerUsername(user.username)}>جزئیات کاربر</MenuItem>
+                            <MenuItem icon={<QRIcon />} onClick={() => showQr(user)}>QR Code</MenuItem>
+                            <MenuItem icon={<AuditIcon />} onClick={() => navigate(`/audit-logs/?search=${encodeURIComponent(user.username)}`)}>گزارش فعالیت</MenuItem>
+                            {!readOnly && <MenuDivider borderColor="var(--panel-border)" />}
+                            {!readOnly && <MenuItem icon={<RenewIcon />} isDisabled={busy} onClick={() => openRenewal(user)}>تمدید با پلن</MenuItem>}
+                            {!readOnly && <MenuItem icon={user.status === "disabled" ? <PlayActionIcon /> : <PauseActionIcon />} isDisabled={busy} onClick={() => toggleStatus(user)}>{user.status === "disabled" ? "فعال‌سازی" : "غیرفعال‌سازی"}</MenuItem>}
+                            {!readOnly && <MenuItem icon={<ResetIcon />} isDisabled={busy} onClick={() => resetUsage(user)}>بازنشانی مصرف</MenuItem>}
+                            {!readOnly && <MenuItem icon={<RevokeIcon />} isDisabled={busy} onClick={() => revoke(user)}>ابطال لینک اشتراک</MenuItem>}
+                          </MenuList>
+                        </Menu>
+                      </HStack>
+  );
+
   if (users.length === 0) {
     return (
-      <Stack py={12} align="center" spacing={2}>
-        <Text fontWeight="700">کاربری برای نمایش نیست</Text>
-        <Text color="var(--panel-text-muted)" fontSize="sm">فیلترها را تغییر دهید یا کاربر جدید بسازید.</Text>
-        <Pagination />
-      </Stack>
+      <><EmptyState text="کاربری برای نمایش نیست" description="فیلترها را تغییر دهید یا کاربر جدید بسازید." /><Pagination /></>
     );
   }
 
@@ -426,10 +458,33 @@ export const UsersTablePro: FC = () => {
           fontSize="xs"
           lineHeight="1.6"
         >
-          برای جزئیات روی نام کاربر بزنید؛ جدول در موبایل افقی پیمایش می‌شود.
+          اطلاعات اصلی هر کاربر در کارت نمایش داده می‌شود؛ برای جزئیات روی نام کاربر بزنید.
         </Text>
 
+        <Stack display={{ base: "flex", lg: "none" }} spacing={0} divider={<Box borderBottom="1px solid var(--panel-border)" />} aria-label="کارت‌های کاربران">
+          {users.map((user) => {
+            const busy = busyUsername === user.username;
+            const planMeta = plan_meta[user.username] || null;
+            return <Box key={user.username} p={4} minW={0} bg={selectedMap.has(user.username) ? "var(--panel-accent-soft)" : undefined}>
+              <HStack justify="space-between" align="start" gap={3}>
+                <HStack minW={0} spacing={3} align="start">
+                  {!readOnly && <Checkbox aria-label={`انتخاب ${user.username}`} colorScheme="primary" isChecked={selectedMap.has(user.username)} onChange={(event) => setSelected(user, event.target.checked)} />}
+                  <Box minW={0}><Button variant="link" color="var(--panel-accent)" fontSize="sm" minW={0} maxW="full" justifyContent="start" onClick={() => setDrawerUsername(user.username)}><Text dir="ltr" noOfLines={1} textAlign="start">{user.username}</Text></Button><Text mt={1} color="var(--panel-text-muted)" fontSize="xs" noOfLines={1}>{planMeta?.plan_name || "بدون پلن"}</Text></Box>
+                </HStack>
+                <StatusPill status={user.status} />
+              </HStack>
+              <Box mt={4}><UsageCell user={user} /></Box>
+              <HStack mt={3} justify="space-between" flexWrap="wrap" gap={2} fontSize="xs" color="var(--panel-text-muted)"><Text>{relativeExpiry(user.expire)}</Text><Text>{relativeActivity(user.online_at)}</Text><Text>دستگاه: {user.concurrent_user_limit ?? "∞"}</Text></HStack>
+              <HStack mt={3} pt={3} borderTop="1px solid var(--panel-border)" justify="space-between" flexWrap="wrap" gap={2}>
+                <Text dir="ltr" maxW="100%" noOfLines={1} fontSize="xs" color="var(--panel-text-muted)">{isOwner ? user.admin?.username || "—" : "عملیات کاربر"}</Text>
+                {renderUserActions(user, busy)}
+              </HStack>
+            </Box>;
+          })}
+        </Stack>
+
         <TableContainer
+          display={{ base: "none", lg: "block" }}
           overflowX="auto"
           overscrollBehaviorX="contain"
           tabIndex={0}
@@ -450,7 +505,7 @@ export const UsersTablePro: FC = () => {
           >
             <Thead bg="var(--panel-nested)">
               <Tr>
-                {!readOnly && <Th w="38px"><Checkbox isChecked={allVisibleSelected} onChange={(event) => toggleAllVisible(event.target.checked)} colorScheme="primary" /></Th>}
+                {!readOnly && <Th w="38px"><Checkbox aria-label="انتخاب همه کاربران این صفحه" isChecked={allVisibleSelected} onChange={(event) => toggleAllVisible(event.target.checked)} colorScheme="primary" /></Th>}
                 <Th w="38px" textAlign="center">#</Th>
                 <Th w="190px">کاربر</Th>
                 <Th w="105px">وضعیت</Th>
@@ -474,7 +529,7 @@ export const UsersTablePro: FC = () => {
                     opacity={user.status === "disabled" ? 0.72 : 1}
                     bg={selectedMap.has(user.username) ? "var(--panel-accent-soft)" : undefined}
                   >
-                    {!readOnly && <Td><Checkbox isChecked={selectedMap.has(user.username)} onChange={(event) => setSelected(user, event.target.checked)} colorScheme="primary" /></Td>}
+                    {!readOnly && <Td><Checkbox aria-label={`انتخاب ${user.username}`} isChecked={selectedMap.has(user.username)} onChange={(event) => setSelected(user, event.target.checked)} colorScheme="primary" /></Td>}
                     <Td textAlign="center" color="var(--panel-text-muted)" fontSize="xs" fontWeight="700">{((filters.offset || 0) + index + 1).toLocaleString("fa-IR")}</Td>
                     <Td>
                       <HStack spacing={2.5} minW={0}>
@@ -537,38 +592,7 @@ export const UsersTablePro: FC = () => {
                     </Td>
                     {isOwner && <Td><Text dir="ltr" textAlign="start" fontSize="xs" fontWeight="700" noOfLines={1} sx={{ unicodeBidi: "isolate" }}>{user.admin?.username || "—"}</Text></Td>}
                     <Td textAlign="end">
-                      <HStack justify="end" gap={1} dir="ltr" maxW="full">
-                        <Action label="کپی لینک اشتراک" icon={<CopyIcon />} onClick={() => copySubscription(user)} tone="green" />
-                        {!readOnly && <Action label="ویرایش" icon={<EditIcon />} onClick={() => onEditingUser(user)} tone="blue" disabled={busy} />}
-                        {!readOnly && <Action label="حذف کاربر" icon={<DeleteIcon />} onClick={() => onDeletingUser(user)} tone="red" disabled={busy} />}
-                        <Menu placement="bottom-end" isLazy>
-                          <MenuButton
-                            as={IconButton}
-                            aria-label="عملیات بیشتر"
-                            icon={<MoreIcon />}
-                            size="xs"
-                            minW="30px"
-                            w="30px"
-                            h="30px"
-                            borderRadius="10px"
-                            color="var(--panel-text-body)"
-                            bg="var(--panel-nested)"
-                            borderWidth="1px"
-                            borderColor="var(--panel-border)"
-                            _hover={{ bg: "var(--panel-row-hover)" }}
-                          />
-                          <MenuList dir="rtl" minW="210px" bg="var(--panel-surface)" borderColor="var(--panel-border)" borderRadius="14px" boxShadow="var(--shadow-elevated)" py={1.5}>
-                            <MenuItem onClick={() => setDrawerUsername(user.username)}>جزئیات کاربر</MenuItem>
-                            <MenuItem icon={<QRIcon />} onClick={() => showQr(user)}>QR Code</MenuItem>
-                            <MenuItem icon={<AuditIcon />} onClick={() => navigate(`/audit-logs/?search=${encodeURIComponent(user.username)}`)}>گزارش فعالیت</MenuItem>
-                            {!readOnly && <MenuDivider borderColor="var(--panel-border)" />}
-                            {!readOnly && <MenuItem icon={<RenewIcon />} isDisabled={busy} onClick={() => openRenewal(user)}>تمدید با پلن</MenuItem>}
-                            {!readOnly && <MenuItem icon={user.status === "disabled" ? <PlayActionIcon /> : <PauseActionIcon />} isDisabled={busy} onClick={() => toggleStatus(user)}>{user.status === "disabled" ? "فعال‌سازی" : "غیرفعال‌سازی"}</MenuItem>}
-                            {!readOnly && <MenuItem icon={<ResetIcon />} isDisabled={busy} onClick={() => resetUsage(user)}>بازنشانی مصرف</MenuItem>}
-                            {!readOnly && <MenuItem icon={<RevokeIcon />} isDisabled={busy} onClick={() => revoke(user)}>ابطال لینک اشتراک</MenuItem>}
-                          </MenuList>
-                        </Menu>
-                      </HStack>
+                      {renderUserActions(user, busy)}
                     </Td>
                   </Tr>
                 );

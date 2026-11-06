@@ -257,3 +257,11 @@
 .ace-nord-dark .ace_indent-guide-active {
 	box-shadow: inset -1px 0 0 0 #8395b8b3;
 }
+
+/* Preserve syntax colors while integrating editor surfaces with both console themes. */
+.ace_editor.ace-dawn, .ace_editor.ace-nord-dark { background: var(--panel-input); color: var(--panel-text); border-radius: 12px; font-size: 13px; direction: ltr; text-align: left; }
+.ace_editor .ace_gutter { background: var(--panel-nested); color: var(--panel-text-muted); }
+.ace_editor .ace_marker-layer .ace_active-line, .ace_editor .ace_gutter-active-line { background: var(--panel-muted-soft); }
+.ace_editor .ace_marker-layer .ace_selection { background: var(--panel-accent-soft-strong); }
+.ace_editor .ace_cursor { color: var(--panel-accent); }
+.jsoneditor { border-radius: 12px; overflow: hidden; }

@@ -1,19 +1,19 @@
 import { Navigate, createHashRouter, useRouteError } from "react-router-dom";
 import { Alert, AlertIcon, Button, Center, Stack, Text } from "@chakra-ui/react";
-import { ReactNode } from "react";
+import { lazy, ReactNode } from "react";
 import { useQuery } from "react-query";
 import useGetUser from "hooks/useGetUser";
 import { AccountSummary } from "types/Admin";
 import { fetch } from "../service/http";
 import { getAuthToken } from "../utils/authStorage";
-import { Dashboard } from "./Dashboard";
-import { Users } from "./Users";
-import { Admins } from "./Admins";
-import { Login } from "./Login";
-import { AuditLogs } from "./AuditLogs";
-import { DeviceLimits } from "./DeviceLimits";
-import { Plans } from "./Plans";
-import { Settings } from "./Settings";
+const Dashboard = lazy(() => import("./Dashboard"));
+const Users = lazy(() => import("./Users"));
+const Admins = lazy(() => import("./Admins").then(module => ({ default: module.Admins })));
+const Login = lazy(() => import("./Login"));
+const AuditLogs = lazy(() => import("./AuditLogs"));
+const DeviceLimits = lazy(() => import("./DeviceLimits"));
+const Plans = lazy(() => import("./Plans"));
+const Settings = lazy(() => import("./Settings"));
 
 const fetchAdminLoader = () => fetch("/admin", {
   headers: { Authorization: `Bearer ${getAuthToken()}` },

@@ -73,7 +73,7 @@ const StatisticCard: FC<PropsWithChildren<StatisticCardProps>> = ({
         <Text
           color="var(--panel-text-muted)"
           _dark={{
-            color: "gray.300",
+            color: "var(--panel-text-muted)",
           }}
           fontWeight="medium"
           textTransform="capitalize"

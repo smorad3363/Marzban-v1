@@ -35,7 +35,7 @@ export const OnlineStatus: FC<UserStatusProps> = ({lastOnline}) => {
             mt="1"
             color="var(--panel-text-muted)"
             _dark={{
-                color: "gray.400",
+                color: "var(--panel-text-muted)",
             }}
         >
             {timeDifferenceInSeconds && timeDifferenceInSeconds <= 60

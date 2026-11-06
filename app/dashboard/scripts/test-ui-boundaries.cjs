@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const cp = require('node:child_process');
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 const ts = require('typescript');
 const root = path.resolve(__dirname, '..');
 const baselinePath = path.join(__dirname, 'ui-behavior-baseline.json');
@@ -42,10 +43,14 @@ if (process.argv.includes('--record')) {
       }
     }
   }
-  const changed = cp.execFileSync('git', ['diff', '--name-only', base], { cwd: root, encoding: 'utf8' }).trim().split('\n').filter(Boolean);
-  assert.ok(changed.every(file => file.startsWith('app/dashboard/')), 'Changes outside dashboard are forbidden');
-  for (const prefix of ['src/service/', 'src/contexts/', 'src/types/', 'src/hooks/']) {
-    assert.ok(!changed.some(file => file.startsWith(`app/dashboard/${prefix}`)), `${prefix} must remain unchanged`);
+  const protectedFiles = JSON.parse(fs.readFileSync(baselinePath, 'utf8')).protectedFiles;
+  const repository = path.resolve(root, '../..');
+  const files = cp.execFileSync('git', ['ls-files'], { cwd: repository, encoding: 'utf8' }).trim().split('\n');
+  const protectedNames = files.filter(file => !file.startsWith('app/dashboard/') || /^app\/dashboard\/src\/(service|contexts|types|hooks)\//.test(file));
+  assert.deepEqual(protectedNames.sort(), Object.keys(protectedFiles).sort(), 'Files outside the presentation scope were added or removed');
+  for (const file of protectedNames) {
+    const digest = crypto.createHash('sha256').update(fs.readFileSync(path.join(repository, file))).digest('hex');
+    assert.equal(digest, protectedFiles[file], `${file}: protected backend, API or policy source changed`);
   }
   console.log(`Preserved network calls, query configuration, existing actions and options in ${Object.keys(contracts).length} files; backend unchanged.`);
 }

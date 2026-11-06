@@ -34,8 +34,8 @@ export const NodesDialog: FC = () => {
           my={{ base: 2, md: 4 }}
           w={{ base: "calc(100% - 16px)", md: "calc(100% - 32px)" }}
           maxW="7xl"
-          h={{ base: "calc(100vh - 16px)", md: "calc(100vh - 32px)" }}
-          maxH={{ base: "calc(100vh - 16px)", md: "calc(100vh - 32px)" }}
+          h={{ base: "calc(100dvh - 16px)", md: "calc(100dvh - 32px)" }}
+          maxH={{ base: "calc(100dvh - 16px)", md: "calc(100dvh - 32px)" }}
           borderWidth="1px"
           borderColor="var(--panel-border)"
           borderRadius={{ base: "12px", md: "16px" }}

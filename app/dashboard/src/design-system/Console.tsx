@@ -33,7 +33,7 @@ export const Metric: FC<{ label: ReactNode; value: ReactNode; hint?: ReactNode; 
       <Text fontSize="xs" fontWeight="500" color="var(--panel-text-muted)" lineHeight="1.8">{label}</Text>
       {icon && <Box color={tone} className="console-metric-icon" flexShrink={0}>{icon}</Box>}
     </HStack>
-    <Text mt={3} fontSize={{ base: "24px", xl: "29px" }} lineHeight="1.5" fontWeight="700" sx={{ fontVariantNumeric: "tabular-nums" }} overflowWrap="anywhere">{value}</Text>
+    <Text dir="auto" mt={3} fontSize={{ base: "24px", xl: "29px" }} lineHeight="1.5" fontWeight="700" sx={{ fontVariantNumeric: "tabular-nums" }} overflowWrap="anywhere">{value}</Text>
     {hint && <Text mt={2} fontSize="xs" color="var(--panel-text-muted)" lineHeight="1.8">{hint}</Text>}
   </Surface>
 );

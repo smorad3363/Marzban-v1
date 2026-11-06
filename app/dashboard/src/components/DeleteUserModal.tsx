@@ -72,7 +72,7 @@ export const DeleteUserModal: FC<DeleteUserModalProps> = () => {
             <Text
               mt={1}
               fontSize="sm"
-              _dark={{ color: "gray.400" }}
+              _dark={{ color: "var(--panel-text-muted)" }}
               color="var(--panel-text-muted)"
             >
               <Trans components={{ b: <b /> }}>

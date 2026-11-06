@@ -105,7 +105,7 @@ const visualStatePalette: Record<
     glow: "rgba(34, 197, 94, .17)",
     tint: "rgba(34, 197, 94, .12)",
     soft: "rgba(34, 197, 94, .08)",
-    text: "green.200",
+    text: "var(--panel-success)",
   },
   pending: {
     accent: "#eab308",
@@ -113,7 +113,7 @@ const visualStatePalette: Record<
     glow: "rgba(234, 179, 8, .18)",
     tint: "rgba(234, 179, 8, .12)",
     soft: "rgba(234, 179, 8, .075)",
-    text: "yellow.200",
+    text: "var(--panel-warning)",
   },
   danger: {
     accent: "#ef4444",
@@ -121,7 +121,7 @@ const visualStatePalette: Record<
     glow: "rgba(239, 68, 68, .18)",
     tint: "rgba(239, 68, 68, .12)",
     soft: "rgba(239, 68, 68, .075)",
-    text: "red.200",
+    text: "var(--panel-danger)",
   },
 };
 
@@ -363,7 +363,7 @@ const ResetHistory: FC<{ user: User }> = ({ user }) => {
           whiteSpace="normal"
           textAlign="start"
           onClick={(event) => event.stopPropagation()}
-          _focusVisible={{ outline: "2px solid", outlineColor: "green.300" }}
+          _focusVisible={{ outline: "2px solid", outlineColor: "var(--panel-success)" }}
         >
           {t("usersTable.resetCount", { count: history.length })}
         </Button>
@@ -436,7 +436,7 @@ const ActionButtons: FC<ActionButtonsProps> = ({ user, onEdit, onRenew, accent, 
     size: "sm",
     minW: "44px",
     h: "44px",
-    color: "gray.300",
+    color: "var(--panel-text-muted)",
     borderRadius: "9px",
     borderWidth: "1px",
     borderColor: "rgba(148, 163, 184, .16)",

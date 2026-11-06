@@ -65,7 +65,7 @@ assert.ok(deviceLimits.includes('borderColor="var(--panel-border)"'), "Device Li
 assert.ok(usersTable.includes('overflowX="auto"'), "Users table must allow controlled horizontal scrolling on narrow viewports");
 assert.ok(usersTable.includes('minW={isOwner ? "1220px" : "1100px"}'), "Users table must keep a bounded readable width without returning to the legacy 1500px layout");
 assert.ok(usersTable.includes('whiteSpace: "nowrap"'), "Users table headers must remain single-line and readable");
-assert.ok(usersTable.includes("برای جزئیات روی نام کاربر بزنید؛ جدول در موبایل افقی پیمایش می‌شود."), "Mobile users must get the compact-table and details affordance hint");
+assert.ok(usersTable.includes('aria-label="کارت‌های کاربران"') && usersTable.includes("اطلاعات اصلی هر کاربر در کارت نمایش داده می‌شود"), "Mobile users must get readable cards with a details affordance");
 assert.ok(usersTable.includes("plan_meta"), "Users table must consume bounded current-Plan metadata instead of issuing per-row Plan requests");
 assert.ok(usersTable.includes("UserDetailsDrawer"), "Users table must expose the dedicated details Drawer");
 assert.ok(userDetailsDrawer.includes('enabled:') && userDetailsDrawer.includes('tabIndex === deviceTabIndex'), "Device detail query must remain lazy until its Drawer tab is selected");
@@ -145,3 +145,7 @@ assert.ok(alertCenter.includes("/admin-management/alert-events") && alertCenter.
 assert.ok(alertCenter.includes("aria-live=\"polite\"") && alertCenter.includes("position=\"sticky\""), "active warnings must remain visible and accessible");
 assert.ok(alertCenter.includes("/seen?revision=") && alertCenter.includes("resolved_at"), "view receipts and resolved state must remain distinct");
 assert.ok(alertCenter.includes("visibilitychange") && alertCenter.includes("generation++"), "hidden-tab streams must stop without duplicate reconnects");
+
+// Every CI UI contract run also guards the untouched backend and original actions.
+require("./test-ui-boundaries.cjs");
+require("./test-ui-presentation.cjs");

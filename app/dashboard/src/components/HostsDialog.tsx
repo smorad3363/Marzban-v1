@@ -123,7 +123,7 @@ const InfoIcon = chakra(InformationCircleIcon, {
   baseStyle: {
     w: 4,
     h: 4,
-    color: "gray.400",
+    color: "var(--panel-text-muted)",
     cursor: "pointer",
   },
 });
@@ -131,7 +131,7 @@ const InfoIcon = chakra(InformationCircleIcon, {
 
 const Error = chakra(FormErrorMessage, {
   baseStyle: {
-    color: "red.400",
+    color: "var(--panel-danger)",
     display: "block",
     textAlign: "left",
     w: "100%",
@@ -228,7 +228,7 @@ const AccordionInbound: FC<AccordionInboundType> = ({
           flex="1"
           textAlign="left"
           color="var(--panel-text-body)"
-          _dark={{ color: "gray.300" }}
+          _dark={{ color: "var(--panel-text-muted)" }}
         >
           {hostKey}
         </Text>

@@ -55,7 +55,7 @@ export const AdminAvatar: FC<{ username: string; owner: boolean }> = ({ username
     fontWeight="700"
     textTransform="uppercase"
     transition="transform .16s ease, border-color .16s ease"
-    _groupHover={{ transform: "translateY(-1px)", borderColor: "var(--panel-accent)" }}
+    _groupHover={{ borderColor: "var(--panel-accent)" }}
   >
     {username.slice(0, 1)}
   </Box>
@@ -87,8 +87,7 @@ export const FilterButton: FC<{ active: boolean; onClick: () => void; children: 
     _hover={{
       bg: active ? "var(--panel-accent-soft-strong)" : "var(--panel-row-hover)",
       borderColor: active ? "var(--panel-accent)" : "var(--panel-border-strong)",
-      transform: "translateY(-1px)",
-    }}
+      }}
     _active={{ transform: "translateY(0)" }}
     onClick={onClick}
   >

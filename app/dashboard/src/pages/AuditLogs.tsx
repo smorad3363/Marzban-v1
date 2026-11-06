@@ -118,12 +118,12 @@ const formatAuditDate = (value: string) => {
 };
 
 const actionTone = (action: string, status: string) => {
-  if (status === "failed") return { bg: "rgba(239,68,68,.15)", color: "red.200", border: "rgba(248,113,113,.35)" };
-  if (action.includes("delete") || action.includes("deactivate")) return { bg: "rgba(239,68,68,.12)", color: "red.200", border: "rgba(248,113,113,.3)" };
-  if (action.includes("create") || action.includes("activate")) return { bg: "rgba(34,197,94,.12)", color: "green.200", border: "rgba(74,222,128,.3)" };
-  if (action.includes("traffic") || action.includes("expiration") || action.includes("renew")) return { bg: "rgba(6,182,212,.13)", color: "cyan.200", border: "rgba(34,211,238,.3)" };
-  if (action.startsWith("bulk")) return { bg: "rgba(59,130,246,.14)", color: "blue.200", border: "rgba(96,165,250,.34)" };
-  return { bg: "whiteAlpha.100", color: "gray.200", border: "whiteAlpha.200" };
+  if (status === "failed") return { bg: "rgba(239,68,68,.15)", color: "var(--panel-danger)", border: "rgba(248,113,113,.35)" };
+  if (action.includes("delete") || action.includes("deactivate")) return { bg: "rgba(239,68,68,.12)", color: "var(--panel-danger)", border: "rgba(248,113,113,.3)" };
+  if (action.includes("create") || action.includes("activate")) return { bg: "rgba(34,197,94,.12)", color: "var(--panel-success)", border: "rgba(74,222,128,.3)" };
+  if (action.includes("traffic") || action.includes("expiration") || action.includes("renew")) return { bg: "rgba(6,182,212,.13)", color: "var(--panel-info)", border: "rgba(34,211,238,.3)" };
+  if (action.startsWith("bulk")) return { bg: "rgba(59,130,246,.14)", color: "var(--panel-info)", border: "rgba(96,165,250,.34)" };
+  return { bg: "var(--panel-muted-soft)", color: "var(--panel-text-body)", border: "var(--panel-border)" };
 };
 
 const prettyJson = (value: AuditValue) => value == null ? "—" : JSON.stringify(value, null, 2);
@@ -152,7 +152,7 @@ const AuditDetails: FC<{ log: AuditLog | null; isOpen: boolean; onClose: () => v
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="4xl" scrollBehavior="inside">
       <ModalOverlay bg="var(--panel-overlay)" backdropFilter="blur(5px)" />
-      <ModalContent dir={i18n.dir()} mx={3} my={3} maxH="calc(100dvh - 24px)" bg="var(--panel-surface)" color="var(--panel-text)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="16px" boxShadow="0 28px 80px rgba(0,0,0,.55)">
+      <ModalContent dir={i18n.dir()} mx={3} my={3} maxH="calc(100dvh - 24px)" bg="var(--panel-surface)" color="var(--panel-text)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="16px" boxShadow="var(--shadow-elevated)">
         <ModalHeader pe={14}>
           <HStack flexWrap="wrap"><ActionBadge log={log} /><Text fontSize="lg">{t("audit.detailsTitle")}</Text></HStack>
         </ModalHeader>
@@ -169,10 +169,10 @@ const AuditDetails: FC<{ log: AuditLog | null; isOpen: boolean; onClose: () => v
               </SimpleGrid>
             </Box>
             <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
-              <ValuePanel title={t("audit.previousValue")} value={log.previous_value} accent="orange.200" />
-              <ValuePanel title={t("audit.newValue")} value={log.new_value} accent="green.200" />
+              <ValuePanel title={t("audit.previousValue")} value={log.previous_value} accent="var(--panel-warning)" />
+              <ValuePanel title={t("audit.newValue")} value={log.new_value} accent="var(--panel-success)" />
             </SimpleGrid>
-            <ValuePanel title={t("audit.metadata")} value={log.details} accent="cyan.200" />
+            <ValuePanel title={t("audit.metadata")} value={log.details} accent="var(--panel-info)" />
           </Stack>
         </ModalBody>
       </ModalContent>
@@ -266,7 +266,7 @@ export const AuditLogs: FC = () => {
                   <Td><ActionBadge log={log} /></Td>
                   <Td py={2}><Text maxW="170px" noOfLines={1}>{log.target_name || log.target_id || "—"}</Text><Text color="var(--panel-text-muted)" fontSize="xs">{localizeTarget(log.target_type)}</Text></Td>
                   <Td py={2} maxW="430px"><Text noOfLines={1} lineHeight="1.6">{localizeDescription(log)}</Text></Td>
-                  <Td whiteSpace="nowrap"><HStack spacing={1.5}><ClockIcon width={15} color="#67e8f9" aria-hidden="true" /><Text dir="ltr" fontSize="xs">{formatAuditDate(log.created_at)}</Text></HStack></Td>
+                  <Td whiteSpace="nowrap"><HStack spacing={1.5}><ClockIcon width={15} color="var(--panel-info)" aria-hidden="true" /><Text dir="ltr" fontSize="xs">{formatAuditDate(log.created_at)}</Text></HStack></Td>
                   <Td textAlign="end"><Button size="xs" variant="outline" borderColor="var(--panel-border-strong)" onClick={() => showDetails(log)}>{t("audit.details")}</Button></Td>
                 </Tr>)}</Tbody>
               </Table>

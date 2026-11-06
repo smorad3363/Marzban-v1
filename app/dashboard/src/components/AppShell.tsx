@@ -30,6 +30,7 @@ export const AppShell: FC<PropsWithChildren> = ({ children }) => {
   const isOwner = !getUserIsPending && (userData.is_sudo || userData.role === "OWNER");
   const { pathname } = useLocation();
   const workspace = pathname.startsWith("/users") ? "کاربران" : pathname.startsWith("/admins") ? "ادمین‌ها و حسابداری" : pathname.startsWith("/plans") ? "پلن‌ها و دسترسی" : pathname.startsWith("/settings") ? "پیکربندی" : pathname.startsWith("/audit-logs") ? "تاریخچه فعالیت‌ها" : pathname.startsWith("/device-limits") ? "محدودیت دستگاه" : "نمای کلی";
+  useEffect(() => { window.scrollTo({ top: 0, behavior: "auto" }); }, [pathname]);
 
   useEffect(() => {
     suppressCredentialAutofillIn(document);
@@ -48,7 +49,7 @@ export const AppShell: FC<PropsWithChildren> = ({ children }) => {
 
   return (
     <>
-      <a href="#main-content" className="console-skip-link">رفتن به محتوای اصلی</a>
+      <a href="#main-content" className="console-skip-link" onClick={(event) => { event.preventDefault(); document.getElementById("main-content")?.focus(); }}>رفتن به محتوای اصلی</a>
       <Flex minH="100dvh" align="stretch" direction={{ base: "column", lg: "row" }} className="operations-shell">
         <Header />
         <Flex
@@ -57,6 +58,7 @@ export const AppShell: FC<PropsWithChildren> = ({ children }) => {
           flex="1"
           direction="column"
           id="main-content"
+          tabIndex={-1}
           px={{ base: 4, md: 7, xl: 9 }}
           pt={{ base: 0, lg: 1 }}
           pb="max(24px, env(safe-area-inset-bottom))"

@@ -43,6 +43,7 @@ export const theme = extendTheme({
     Modal: { baseStyle: { dialog, overlay: { bg: "var(--panel-overlay)", backdropFilter: "blur(5px)" }, header: { fontSize: "lg", fontWeight: 700, paddingInlineEnd: 16, borderBottom: "1px solid var(--panel-border)", py: 5, flexShrink: 0 }, body: { py: 5, minH: 0, overscrollBehavior: "contain" }, footer: { borderTop: "1px solid var(--panel-border)", gap: 2, py: 4, flexWrap: "wrap", flexShrink: 0 }, closeButton } },
     Drawer: { baseStyle: { dialog, overlay: { bg: "var(--panel-overlay)" }, header: { fontSize: "lg", paddingInlineEnd: 16, borderBottom: "1px solid var(--panel-border)", py: 5 }, body: { py: 5 }, footer: { borderTop: "1px solid var(--panel-border)", gap: 2, py: 4 }, closeButton } },
     Input: { variants: { outline: { field } }, sizes: { sm: { field: { minH: "40px", fontSize: "sm", px: 3 } }, md: { field: { minH: "44px", fontSize: "sm", px: 3.5 } } } },
+    NumberInput: { variants: { outline: { field } }, baseStyle: { stepper: { borderColor: "var(--panel-border)", color: "var(--panel-text-muted)" } } },
     Select: { variants: { outline: { field } }, sizes: { sm: { field: { minH: "40px", fontSize: "sm", px: 3, paddingInlineEnd: 9 } }, md: { field: { minH: "44px", fontSize: "sm", px: 3.5, paddingInlineEnd: 9 } } } },
     Textarea: { variants: { outline: { ...field, lineHeight: 1.9, py: 3 } } },
     FormLabel: { baseStyle: { fontSize: "sm", fontWeight: 500, mb: 2, lineHeight: 1.8, whiteSpace: "normal", overflowWrap: "anywhere", color: "var(--panel-text-body)" } },
