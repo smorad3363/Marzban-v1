@@ -112,6 +112,9 @@ const AttentionList: FC<{ items: DashboardAttentionUser[]; onOpen: (username: st
         borderColor="var(--panel-border)"
         _last={{ borderBottomWidth: 0 }}
         cursor="pointer"
+        role="button"
+        tabIndex={0}
+        onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpen(item.username); } }}
         onClick={() => onOpen(item.username)}
         justify="space-between"
         gap={3}
@@ -136,7 +139,7 @@ const TopConsumers: FC<{ items: DashboardUserSummary[]; onOpen: (username: strin
   return (
     <Stack spacing={2}>
       {items.length === 0 ? <EmptyState text="هنوز مصرف ثبت‌شده‌ای وجود ندارد." /> : items.map((item, index) => (
-        <HStack key={item.username} py={1.5} gap={3} cursor="pointer" onClick={() => onOpen(item.username)}>
+        <HStack key={item.username} py={1.5} gap={3} cursor="pointer" role="button" tabIndex={0} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpen(item.username); } }} onClick={() => onOpen(item.username)}>
           <Text w="18px" fontSize="xs" color="var(--panel-text-muted)">{fa(index + 1)}</Text>
           <Box flex="1" minW={0}>
             <HStack justify="space-between" mb={1.5}>
@@ -379,9 +382,9 @@ export const DashboardOverview: FC = () => {
             <SectionTitle title="کاربران اخیر" description="آخرین کاربران ساخته‌شده در محدوده شما" action={<Button size="xs" variant="ghost" color="var(--panel-accent)" onClick={openUsers}>مشاهده همه کاربران</Button>} />
             <Stack spacing={0}>
               {data.recent_users.length === 0 ? <EmptyState text="هنوز کاربری ساخته نشده است." /> : data.recent_users.map((item) => (
-                <HStack key={item.username} py={2.5} justify="space-between" borderBottomWidth="1px" borderColor="var(--panel-border)" _last={{ borderBottomWidth: 0 }} cursor="pointer" onClick={() => openUser(item.username)}>
-                  <Box><Text dir="ltr" fontSize="sm" fontWeight="700">{item.username}</Text><Text fontSize="xs" color="var(--panel-text-muted)">{relativeTime(item.created_at)}</Text></Box>
-                  <Badge colorScheme={item.status === "active" ? "green" : item.status === "expired" || item.status === "limited" ? "red" : "gray"}>{statusLabel(item.status)}</Badge>
+                <HStack key={item.username} py={2.5} justify="space-between" borderBottomWidth="1px" borderColor="var(--panel-border)" _last={{ borderBottomWidth: 0 }} cursor="pointer" role="button" tabIndex={0} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openUser(item.username); } }} onClick={() => openUser(item.username)}>
+                  <Box minW={0} flex="1"><Text dir="ltr" fontSize="sm" fontWeight="700" noOfLines={1} title={item.username}>{item.username}</Text><Text fontSize="xs" color="var(--panel-text-muted)">{relativeTime(item.created_at)}</Text></Box>
+                  <Badge flexShrink={0} colorScheme={item.status === "active" ? "green" : item.status === "expired" || item.status === "limited" ? "red" : "gray"}>{statusLabel(item.status)}</Badge>
                 </HStack>
               ))}
             </Stack>

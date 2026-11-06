@@ -20,7 +20,9 @@ Design sources: `src/index.scss`, `chakra.config.ts`, `src/design-system/Console
 
 ## Browser review
 
-The first checkpoint (`7bea0d6`) was served at `https://newmaster.javaher.shop:2087/dashboard/` against synthetic fixtures, isolated from the live database/API. Owner Dashboard, Users, Admins, Plans, Device Limits, Audit Logs and Settings rendered; dark/light desktop views and the 375px Admin creation modal were checked. Its persistent footer stayed inside the viewport. Hosts and Nodes dialogs opened.
+The first checkpoint (`7bea0d6`) was served at `https://newmaster.javaher.shop:2087/dashboard/` against synthetic fixtures, isolated from the live database/API. Owner Dashboard, Users, Admins, Plans, Device Limits, Audit Logs and Settings rendered; dark/light desktop views and the 375px Admin creation modal were checked. Its persistent footer stayed inside the viewport. Hosts and Nodes dialogs opened. Synthetic form-only, plan-only and suspended Admin profiles showed the expected scoped actions and hid Owner infrastructure. A delegated manager could access Plans. The manager/worst fixture reproduced horizontal overflow from a long unbroken recent-user name; its flex child now has an explicit minimum width and a bounded, titled name, and text can break safely. Clickable dashboard lists also expose equivalent Enter/Space keyboard actions.
+
+![Synthetic preview at checkpoint 7bea0d6](design-system/marzban-console/review/checkpoint-7bea-dashboard.png)
 
 That review found light-theme badge/Plan contrast defects, fixed using semantic tokens. Responsive user cards, route loading, skip-link hash routing and stronger input borders were added afterward. The final candidate still requires its browser pass after the target Desktop Commander connection returns. Five role profiles and empty/one/huge/worst/loading/error fixtures and a 320/375/768/1024/1440 review canvas are prepared in `preview/server.cjs`. Physical phone testing has not been performed.
 
