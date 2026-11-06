@@ -222,7 +222,7 @@ const UsageRing: FC<UsageRingProps> = ({ user, visualState }) => {
           dir="ltr"
           fontFamily="mono"
           fontSize="sm"
-          fontWeight="900"
+          fontWeight="700"
           color="gray.50"
         >
           {displayValue}
@@ -259,7 +259,7 @@ const GlowStatusBadge: FC<{ user: User; visualState: VisualState }> = ({
       boxShadow={`0 0 14px ${visual.glow}`}
     >
       <StatusIcon w={3.5} h={3.5} flexShrink={0} aria-hidden="true" />
-      <Text as="span" fontSize="xs" fontWeight="800" lineHeight="1">
+      <Text as="span" fontSize="xs" fontWeight="700" lineHeight="1">
         {t(`status.${user.status}`)}
       </Text>
     </Badge>
@@ -315,7 +315,7 @@ const NextPlanSummary: FC<{ user: User }> = ({ user }) => {
         textAlign="start"
         fontFamily="mono"
         fontSize="xs"
-        fontWeight="800"
+        fontWeight="700"
         color="var(--panel-text)"
         noOfLines={1}
         sx={{ unicodeBidi: "isolate" }}
@@ -326,7 +326,7 @@ const NextPlanSummary: FC<{ user: User }> = ({ user }) => {
         dir="ltr"
         textAlign="start"
         color="var(--panel-text-muted)"
-        fontSize="10px"
+        fontSize="xs"
         noOfLines={1}
         sx={{ unicodeBidi: "isolate" }}
       >
@@ -355,11 +355,11 @@ const ResetHistory: FC<{ user: User }> = ({ user }) => {
       <PopoverTrigger>
         <Button
           variant="link"
-          color="green.200"
+          color="var(--panel-success)"
           minH="32px"
           h="auto"
           fontSize="xs"
-          fontWeight="800"
+          fontWeight="700"
           whiteSpace="normal"
           textAlign="start"
           onClick={(event) => event.stopPropagation()}
@@ -371,16 +371,16 @@ const ResetHistory: FC<{ user: User }> = ({ user }) => {
       <Portal>
         <PopoverContent
           dir={i18n.dir()}
-          bg="#080f19"
+          bg="var(--panel-surface)"
           color="var(--panel-text)"
           borderColor="rgba(34, 197, 94, .38)"
           boxShadow="0 18px 46px rgba(0,0,0,.52)"
           maxW={{ base: "calc(100vw - 24px)", sm: "360px" }}
           onClick={(event) => event.stopPropagation()}
         >
-          <PopoverArrow bg="#080f19" />
+          <PopoverArrow bg="var(--panel-surface)" />
           <PopoverCloseButton />
-          <PopoverHeader fontWeight="800" borderColor="whiteAlpha.100" pe={10}>
+          <PopoverHeader fontWeight="700" borderColor="whiteAlpha.100" pe={10}>
             {t("usersTable.resetHistory")}
           </PopoverHeader>
           <PopoverBody maxH="280px" overflowY="auto" p={0}>
@@ -619,7 +619,7 @@ const UserCard: FC<UserCardProps> = ({
                     textAlign="start"
                     fontFamily="mono"
                     fontSize={{ base: "md", md: "sm" }}
-                    fontWeight="900"
+                    fontWeight="700"
                     letterSpacing="-.015em"
                     color="gray.50"
                     noOfLines={1}
@@ -649,7 +649,7 @@ const UserCard: FC<UserCardProps> = ({
                 textAlign="start"
                 fontFamily="mono"
                 fontSize="xs"
-                fontWeight="800"
+                fontWeight="700"
                 color="var(--panel-text)"
                 noOfLines={1}
                 sx={{ unicodeBidi: "isolate" }}
@@ -669,7 +669,7 @@ const UserCard: FC<UserCardProps> = ({
                   borderColor={visual.border}
                 >
                   <LimitIcon aria-hidden="true" />
-                  <Text fontFamily="mono" fontSize="xs" fontWeight="900">
+                  <Text fontFamily="mono" fontSize="xs" fontWeight="700">
                     {user.concurrent_user_limit ?? "∞"}
                   </Text>
                 </HStack>
@@ -691,7 +691,7 @@ const UserCard: FC<UserCardProps> = ({
         >
           <HStack spacing={1.5} minW={0}>
             <ExpirationIcon color={visual.text} aria-hidden="true" />
-            <Text color="var(--panel-text-muted)" fontSize="10px" fontWeight="700" whiteSpace="nowrap">
+            <Text color="var(--panel-text-muted)" fontSize="xs" fontWeight="700" whiteSpace="nowrap">
               {t("usersTable.expiration")}
             </Text>
             <Text
@@ -699,7 +699,7 @@ const UserCard: FC<UserCardProps> = ({
               textAlign="start"
               fontFamily={user.expire ? "mono" : "body"}
               fontSize="xs"
-              fontWeight="800"
+              fontWeight="700"
               color="var(--panel-text)"
               noOfLines={1}
               sx={{ unicodeBidi: "isolate" }}
@@ -712,10 +712,10 @@ const UserCard: FC<UserCardProps> = ({
             px={2}
             py={0.5}
             borderRadius="full"
-            bg="whiteAlpha.50"
+            bg="var(--panel-nested)"
             color="var(--panel-text-body)"
             textTransform="none"
-            fontSize="10px"
+            fontSize="xs"
             whiteSpace="nowrap"
           >
             {resetText}
@@ -738,7 +738,7 @@ const UserCard: FC<UserCardProps> = ({
               textAlign="start"
               fontFamily="mono"
               fontSize="xs"
-              fontWeight="800"
+              fontWeight="700"
               noOfLines={1}
               overflowWrap="anywhere"
               sx={{ unicodeBidi: "isolate" }}
@@ -1005,7 +1005,7 @@ export const UsersTable: FC<UsersTableProps> = (props) => {
         }}
         isCentered
       >
-        <ModalOverlay bg="rgba(0,0,0,.72)" />
+        <ModalOverlay bg="var(--panel-overlay)" />
         <ModalContent mx={3} bg="var(--panel-surface)" color="var(--panel-text)" borderWidth="1px" borderColor="var(--panel-border)">
           <ModalHeader>تمدید «{renewalUser?.username}» با پلن</ModalHeader>
           <ModalCloseButton isDisabled={renew.isLoading} />
@@ -1026,7 +1026,7 @@ export const UsersTable: FC<UsersTableProps> = (props) => {
                 ))}
               </Select>
               {renewalPlanId && <Text mt={2} fontSize="sm" role="status">قیمت پلن: {(plans.data?.find((plan) => plan.id === Number(renewalPlanId))?.effective_price_toman || 0).toLocaleString()} تومان؛ کسر اعتبار مطابق سیاست حساب است.</Text>}
-              {plans.isError && <Text mt={2} color="red.300" fontSize="sm">دریافت پلن‌ها انجام نشد.</Text>}
+              {plans.isError && <Text mt={2} color="var(--panel-danger)" fontSize="sm">دریافت پلن‌ها انجام نشد.</Text>}
               {!plans.isLoading && !plans.isError && (plans.data || []).length === 0 && (
                 <Text mt={2} color="var(--panel-text-muted)" fontSize="sm">پلن فعالی برای این حساب در دسترس نیست.</Text>
               )}

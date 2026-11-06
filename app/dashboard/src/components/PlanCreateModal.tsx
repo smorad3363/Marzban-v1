@@ -104,7 +104,7 @@ export const PlanCreateModal: FC<Props> = ({ isOpen, isOwner, onClose }) => {
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="2xl" scrollBehavior="inside">
-      <ModalOverlay bg="rgba(0,0,0,.72)" />
+      <ModalOverlay bg="var(--panel-overlay)" />
       <ModalContent as="form" onSubmit={submit} mx={3} my={3} maxH="calc(100dvh - 24px)" overflow="hidden" bg="var(--panel-surface)" color="var(--panel-text)" borderWidth="1px" borderColor="var(--panel-border-strong)">
         <ModalHeader ps={14}>ساخت پلن</ModalHeader>
         <ModalCloseButton top={3} insetInlineStart={3} insetInlineEnd="auto" />

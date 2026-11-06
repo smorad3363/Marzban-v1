@@ -1,0 +1,1581 @@
+{
+  "base": "270ffdddb8d1ac01b3c985dccc14058db27840e7",
+  "contracts": {
+    "src/App.tsx": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/components/AccessGroupManager.tsx": {
+      "requests": [
+        "fetch(\"/access-group-network-options\")",
+        "fetch(\"/access-groups\")",
+        "fetch(\"/nodes\")",
+        "fetch(`/access-groups/${group.id}`, { method: \"DELETE\" })",
+        "fetch<AccessGroup>(draft.id ? `/access-groups/${draft.id}` : \"/access-groups\", {\n    method: draft.id ? \"PUT\" : \"POST\",\n    body: {\n        name: draft.name.trim(),\n        description: draft.description.trim() || null,\n        node_ids: draft.nodeIds,\n        inbounds: normalizeAccessGroupInboundTags(draft.inbounds),\n        hosts: normalizeAccessGroupHostScope(draft.hosts),\n        allowed_admin_ids: draft.allowedAdminIds,\n    },\n})",
+        "fetch<ManagedAdminList>(`/admin-management?offset=${offset}&limit=100`)",
+        "useMutation(() => fetch<AccessGroup>(draft.id ? `/access-groups/${draft.id}` : \"/access-groups\", {\n    method: draft.id ? \"PUT\" : \"POST\",\n    body: {\n        name: draft.name.trim(),\n        description: draft.description.trim() || null,\n        node_ids: draft.nodeIds,\n        inbounds: normalizeAccessGroupInboundTags(draft.inbounds),\n        hosts: normalizeAccessGroupHostScope(draft.hosts),\n        allowed_admin_ids: draft.allowedAdminIds,\n    },\n}), {\n    onSuccess: (group) => {\n        queryClient.invalidateQueries(\"access-groups\");\n        queryClient.invalidateQueries(\"users\");\n        setDraft(emptyDraft());\n        toast({ title: `گروه دسترسی «${group.name}» ذخیره شد`, status: \"success\", duration: 3000 });\n    },\n    onError: (error) => {\n        toast({\n            title: \"ذخیره گروه دسترسی انجام نشد\",\n            description: localizedApiError(error),\n            status: \"error\",\n            duration: 5000,\n        });\n    },\n})",
+        "useMutation((group: AccessGroup) => fetch(`/access-groups/${group.id}`, { method: \"DELETE\" }), {\n    onSuccess: () => {\n        queryClient.invalidateQueries(\"access-groups\");\n        setDraft(emptyDraft());\n        toast({ title: \"گروه دسترسی بایگانی شد\", status: \"success\", duration: 3000 });\n    },\n    onError: (error) => {\n        toast({\n            title: \"بایگانی گروه دسترسی انجام نشد\",\n            description: localizedApiError(error),\n            status: \"error\",\n            duration: 5000,\n        });\n    },\n})",
+        "useQuery<AccessGroupNetworkOption[], Error>(\"access-group-network-options\", () => fetch(\"/access-group-network-options\"))",
+        "useQuery<AccessGroup[], Error>(\"access-groups\", () => fetch(\"/access-groups\"))",
+        "useQuery<ManagedAdmin[], Error>(\"access-group-admin-options\", fetchAdmins)",
+        "useQuery<NodeOption[], Error>(\"access-group-node-options\", () => fetch(\"/nodes\"))"
+      ],
+      "actions": [
+        "isDisabled={group.active_user_count > 0}",
+        "onChange={(event) => setDraft((current) => ({\n        ...current,\n        allowedAdminIds: event.target.checked\n            ? [...new Set([...current.allowedAdminIds, admin.id])].sort((a, b) => a - b)\n            : current.allowedAdminIds.filter((id) => id !== admin.id),\n    }))}",
+        "onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))}",
+        "onChange={(event) => setDraft((current) => ({ ...current, hosts: toggleAccessGroupHostId(current.hosts, inbound.tag, host.id, event.target.checked) }))}",
+        "onChange={(event) => setDraft((current) => ({ ...current, hosts: toggleAccessGroupHostId(current.hosts, inbound.tag, hostId, event.target.checked) }))}",
+        "onChange={(event) => setDraft((current) => ({ ...current, inbounds: toggleAccessGroupInboundTag(current.inbounds, tag, event.target.checked), hosts: Object.fromEntries(Object.entries(current.hosts).filter(([key]) => key !== tag)) }))}",
+        "onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}",
+        "onChange={(event) => setDraft((current) => ({ ...current, nodeIds: event.target.checked ? [...new Set([...current.nodeIds, node.id!])].sort((a, b) => a - b) : current.nodeIds.filter((id) => id !== node.id) }))}",
+        "onChange={(event) => setDraft((current) => {\n        const inbounds = toggleAccessGroupInboundTag(current.inbounds, inbound.tag, event.target.checked);\n        const hosts = { ...current.hosts };\n        if (event.target.checked)\n            hosts[inbound.tag] = hosts[inbound.tag] || [];\n        else\n            delete hosts[inbound.tag];\n        return { ...current, inbounds, hosts: normalizeAccessGroupHostScope(hosts) };\n    })}",
+        "onClick={() => edit(group)}",
+        "onClick={() => setDraft(emptyDraft())}",
+        "onClick={() => setDraft(emptyDraft())}",
+        "onClick={() => { groups.refetch(); network.refetch(); nodes.refetch(); admins.refetch(); }}",
+        "onClick={() => { if (window.confirm(`گروه دسترسی «${group.name}» بایگانی شود؟`))\n    archive.mutate(group); }}",
+        "onSubmit={submit}"
+      ],
+      "options": []
+    },
+    "src/components/AdminCreditSummary.tsx": {
+      "requests": [
+        "fetch(\"/account/summary\")",
+        "useQuery<AccountSummary, Error>(\"account-summary\", () => fetch(\"/account/summary\"), {\n    enabled: !getUserIsPending,\n    refetchInterval: 15000,\n})"
+      ],
+      "actions": [],
+      "options": []
+    },
+    "src/components/AdminFormDrawer.tsx": {
+      "requests": [
+        "fetch(\"/account/summary\")",
+        "fetch(\"/admin/capabilities\")",
+        "fetch(\"/plan-categories\")",
+        "fetch(`/admin-management/${encodeURIComponent(admin?.username || \"\")}/money/${operation}`, {\n    method: \"POST\",\n    body: { amount_toman: amount, idempotency_key: creditRequest.current.id, note: creditReason.trim() || undefined },\n})",
+        "fetch(`/admin-management/${encodeURIComponent(admin?.username || \"\")}/trial-quota/${operation}`, {\n    method: \"POST\", body: { idempotency_key: trialRequest.current.id, ...(operation === \"reset\" ? {} : { amount: Number(trialAmount) }) },\n})",
+        "fetch(isEditing ? `/admin-management/${admin?.username}` : \"/admin-management\", { method: isEditing ? \"PUT\" : \"POST\", body: payload, timeout: 30000, retry: 0 })",
+        "useMutation<ManagedAdmin, Error, ManagedAdminPayload>((payload) => fetch(isEditing ? `/admin-management/${admin?.username}` : \"/admin-management\", { method: isEditing ? \"PUT\" : \"POST\", body: payload, timeout: 30000, retry: 0 }), {\n    onSuccess: (savedAdmin) => {\n        if (isEditing) {\n            queryClient.setQueriesData<ManagedAdminList | undefined>(\"admin-management\", (current) => current ? ({\n                ...current,\n                admins: current.admins.map((item) => item.id === savedAdmin.id ? savedAdmin : item),\n            }) : current);\n        }\n        queryClient.invalidateQueries(\"admin-management\");\n        queryClient.invalidateQueries(\"admin-hierarchy-tree\");\n        queryClient.invalidateQueries(\"admin-capabilities\");\n        queryClient.invalidateQueries(\"account-summary\");\n        toast({ title: t(isEditing ? \"admins.updated\" : \"admins.created\"), status: \"success\", duration: 3000 });\n        onClose();\n    },\n    onError: (error) => {\n        const message = localizedApiError(error);\n        setSaveError(message);\n        toast({ title: t(\"admins.saveFailed\"), description: message, status: \"error\", duration: 5000 });\n    },\n    onSettled: () => { saveInFlight.current = false; },\n})",
+        "useMutation<unknown, Error, \"grant\" | \"reclaim\" | \"reset\">((operation) => {\n    const key = JSON.stringify([admin?.username, operation, trialAmount]);\n    if (trialRequest.current?.key !== key)\n        trialRequest.current = { key, id: `trial-${crypto.randomUUID()}` };\n    return fetch(`/admin-management/${encodeURIComponent(admin?.username || \"\")}/trial-quota/${operation}`, {\n        method: \"POST\", body: { idempotency_key: trialRequest.current.id, ...(operation === \"reset\" ? {} : { amount: Number(trialAmount) }) },\n    });\n}, {\n    onSuccess: () => {\n        trialRequest.current = null;\n        setTrialAmount(\"\");\n        queryClient.invalidateQueries(\"admin-management\");\n        queryClient.invalidateQueries(\"admin-hierarchy-tree\");\n        queryClient.invalidateQueries(\"account-summary\");\n        toast({ title: \"سهمیه تست به‌روزرسانی شد\", status: \"success\" });\n        onClose();\n    },\n    onError: (error) => { toast({ title: \"تغییر سهمیه تست انجام نشد\", description: localizedApiError(error), status: \"error\" }); },\n})",
+        "useMutation<{\n    target_balance_toman: number;\n}, Error, {\n    operation: \"grant\" | \"reclaim\";\n    amount: number;\n}>(({ operation, amount }) => {\n    const key = JSON.stringify([admin?.username, operation, amount, creditReason.trim()]);\n    if (creditRequest.current?.key !== key)\n        creditRequest.current = { key, id: `admin-money-${crypto.randomUUID()}` };\n    return fetch(`/admin-management/${encodeURIComponent(admin?.username || \"\")}/money/${operation}`, {\n        method: \"POST\",\n        body: { amount_toman: amount, idempotency_key: creditRequest.current.id, note: creditReason.trim() || undefined },\n    });\n}, {\n    onSuccess: (result) => {\n        creditRequest.current = null;\n        setCreditBalance(result.target_balance_toman);\n        setCreditAmount(\"\");\n        setCreditReason(\"\");\n        queryClient.invalidateQueries(\"admin-management\");\n        queryClient.invalidateQueries(\"admin-hierarchy-tree\");\n        queryClient.invalidateQueries(\"account-summary\");\n        queryClient.invalidateQueries(\"admin-requests-alerts\");\n        toast({ title: \"اعتبار به‌روزرسانی شد\", status: \"success\", duration: 3000 });\n    },\n    onError: (error) => { toast({ title: \"تغییر اعتبار انجام نشد\", description: localizedApiError(error), status: \"error\", duration: 5000 }); },\n})",
+        "useQuery<AccountSummary, Error>(\"account-summary\", () => fetch(\"/account/summary\"), { enabled: isOpen, staleTime: 15000 })",
+        "useQuery<AdminCapabilities, Error>(\"admin-capabilities\", () => fetch(\"/admin/capabilities\"), { enabled: isOpen, staleTime: 15000 })",
+        "useQuery<PlanCategory[], Error>(\"plan-categories\", () => fetch(\"/plan-categories\"), { enabled: isOpen, staleTime: 15000 })"
+      ],
+      "actions": [
+        "isDisabled={!Number.isInteger(Number(trialAmount)) || Number(trialAmount) <= 0}",
+        "isDisabled={!Number.isInteger(Number(trialAmount)) || Number(trialAmount) <= 0}",
+        "isDisabled={!admin?.trial_quota_limit}",
+        "isDisabled={!capabilitiesQuery.data?.can_delegate_admin_creation}",
+        "isDisabled={!capabilitiesQuery.data?.can_delegate_admin_creation}",
+        "isDisabled={!capabilitiesQuery.data?.can_delegate_plan_management}",
+        "isDisabled={!creditAmountValid}",
+        "isDisabled={!creditAmountValid}",
+        "isDisabled={capabilitiesQuery.isLoading || capabilitiesQuery.isError || accountQuery.isLoading || accountQuery.isError || !hierarchyReady}",
+        "isDisabled={isEditing}",
+        "isDisabled={mutation.isLoading}",
+        "isDisabled={mutation.isLoading}",
+        "onChange={(e) => setCreditAmount(e.target.value)}",
+        "onChange={(e) => setCreditReason(e.target.value)}",
+        "onChange={(e) => setField(\"admin_creation_limit\", nullableNumber(e))}",
+        "onChange={(e) => setField(\"can_create_allocated_children\", e.target.checked)}",
+        "onChange={(e) => setField(\"can_delegate_admin_creation\", e.target.checked)}",
+        "onChange={(e) => setField(\"can_manage_plans\", e.target.checked)}",
+        "onChange={(e) => setField(\"initial_money_credit_toman\", Math.max(0, Number(e.target.value || 0)))}",
+        "onChange={(e) => setField(\"password\", e.target.value)}",
+        "onChange={(e) => setField(\"phone\", e.target.value)}",
+        "onChange={(e) => setField(\"telegram_id\", nullableNumber(e))}",
+        "onChange={(e) => setField(\"username\", e.target.value)}",
+        "onChange={(e) => setForm((current) => ({ ...current, can_create_admins: e.target.checked, can_delegate_admin_creation: e.target.checked ? current.can_delegate_admin_creation : false, admin_creation_limit: e.target.checked ? current.admin_creation_limit : 0 }))}",
+        "onChange={(e) => setInboundSearch(e.target.value)}",
+        "onChange={(e) => setNewUserLimit(e.target.value)}",
+        "onChange={(e) => setPolicy(\"admin_traffic_warning_percent\", Number(e.target.value))}",
+        "onChange={(e) => setPolicy(\"all_inbounds\", e.target.checked)}",
+        "onChange={(e) => setPolicy(\"all_user_limits\", e.target.checked)}",
+        "onChange={(e) => setPolicy(\"expiry_date\", e.target.value || null)}",
+        "onChange={(e) => setPolicy(\"financial_disable_percent\", Number(e.target.value))}",
+        "onChange={(e) => setPolicy(\"financial_freeze_percent\", Number(e.target.value))}",
+        "onChange={(e) => setPolicy(\"max_user_duration_days\", nullableNumber(e))}",
+        "onChange={(e) => setPolicy(\"max_users\", nullableNumber(e))}",
+        "onChange={(e) => setPolicy(\"used_traffic_price_per_gib_toman\", nullableNumber(e))}",
+        "onChange={(e) => setPolicy(\"used_traffic_price_per_gib_toman\", nullableNumber(e))}",
+        "onChange={(e) => setPolicy(item.key, e.target.checked as never)}",
+        "onChange={(e) => setTrialAmount(e.target.value)}",
+        "onChange={(e) => toggleInbound(item.tag, e.target.checked)}",
+        "onChange={(e) => togglePlanCategory(category.id, e.target.checked)}",
+        "onChange={(e) => toggleSubscriptionMode(item, e.target.checked)}",
+        "onClick={() => adjustCredit(\"grant\")}",
+        "onClick={() => adjustCredit(\"reclaim\")}",
+        "onClick={() => selectBillingMode(item)}",
+        "onClick={() => setField(\"user_creation_mode\", item)}",
+        "onClick={() => setPolicy(\"allowed_user_limits\", form.policy.allowed_user_limits.filter((value) => value !== limit))}",
+        "onClick={() => trialMutation.mutate(\"grant\")}",
+        "onClick={() => trialMutation.mutate(\"reclaim\")}",
+        "onClick={() => trialMutation.mutate(\"reset\")}",
+        "onClick={addUserLimit}",
+        "onClick={onClose}",
+        "onClose={() => { if (!mutation.isLoading)\n    onClose(); }}",
+        "onSubmit={submit}"
+      ],
+      "options": []
+    },
+    "src/components/AdminHierarchyPanel.tsx": {
+      "requests": [
+        "fetch(\"/admin-management/tree\")",
+        "fetch(`/admin-management/${node.username}/${operation}`, {\n    method: \"POST\",\n    body: operation === \"freeze\"\n        ? { reason_id: 1, idempotency_key: `freeze-${node.id}-${crypto.randomUUID()}` }\n        : { idempotency_key: `unfreeze-${node.id}-${crypto.randomUUID()}` },\n})",
+        "fetch(`/admin-management/${node.username}/trial-quota/reset`, { method: \"POST\", body: { idempotency_key: `trial-reset-${node.id}-${crypto.randomUUID()}` } })",
+        "fetch<BulkJobResponse>(\"/admin-management/bulk-credit/jobs\", {\n    method: \"POST\",\n    body: { operation_id: operationId, operation, selected_admin_ids: selectedIds, amount: toApiAmount(selected[0].billing_mode, numeric) },\n})",
+        "fetch<BulkJobResponse>(`/admin-management/bulk-credit/jobs/${operationId}/execute`, { method: \"POST\", body: { chunk_size: 100 } })",
+        "fetch<BulkJobResponse>(`/admin-management/bulk-credit/jobs/${operationId}/execute`, { method: \"POST\", body: { chunk_size: 100 } })",
+        "useMutation(({ node, operation }: {\n    node: FlatNode;\n    operation: \"freeze\" | \"unfreeze\" | \"trial-reset\";\n}) => {\n    if (operation === \"trial-reset\")\n        return fetch(`/admin-management/${node.username}/trial-quota/reset`, { method: \"POST\", body: { idempotency_key: `trial-reset-${node.id}-${crypto.randomUUID()}` } });\n    return fetch(`/admin-management/${node.username}/${operation}`, {\n        method: \"POST\",\n        body: operation === \"freeze\"\n            ? { reason_id: 1, idempotency_key: `freeze-${node.id}-${crypto.randomUUID()}` }\n            : { idempotency_key: `unfreeze-${node.id}-${crypto.randomUUID()}` },\n    });\n}, { onSuccess: () => { refresh(); toast({ title: \"عملیات انجام شد\", status: \"success\" }); }, onError: (error) => { toast({ title: \"عملیات انجام نشد\", description: localizedApiError(error), status: \"error\" }); } })",
+        "useQuery<HierarchyAdminNode[], Error>(\"admin-hierarchy-tree\", () => fetch(\"/admin-management/tree\"), { refetchInterval: 15000 })"
+      ],
+      "actions": [
+        "isDisabled={Number(amount) <= 0}",
+        "isDisabled={Number(amount) <= 0}",
+        "onChange={(event) => setAmount(event.target.value)}",
+        "onChange={(event) => setSelectedIds((current) => event.target.checked ? [...new Set([...current, node.id])] : current.filter((id) => id !== node.id))}",
+        "onChange={(event) => { setModeFilter(event.target.value); setSelectedIds([]); }}",
+        "onClick={() => runBulk(\"grant_credit\")}",
+        "onClick={() => runBulk(\"reclaim_credit\")}",
+        "onClick={() => setSelectedIds([])}",
+        "onClick={() => window.confirm(`تعداد تست قابل ساخت ${node.username} به سقفش برگردد؟`) && singleAction.mutate({ node, operation: \"trial-reset\" })}",
+        "onClick={() => window.confirm(frozen ? `فریز ${node.username} باز شود؟` : `${node.username} و زیرشاخه‌اش فریز شوند؟`) && singleAction.mutate({ node, operation: frozen ? \"unfreeze\" : \"freeze\" })}"
+      ],
+      "options": [
+        "<option value=\"\">همه نوع‌های اعتبار</option>",
+        "<option value=\"ALLOCATED_TRAFFIC\">حجم ساخته‌شده</option>",
+        "<option value=\"USED_TRAFFIC\">مصرف واقعی</option>",
+        "<option value=\"USER_CREDIT\">نامحدود با سقف اکانت</option>"
+      ]
+    },
+    "src/components/AlertCenter.tsx": {
+      "requests": [
+        "useQuery<Center, Error>([...baseKey, status, severity, username, before], () => api(`/admin-management/alert-center?${params}`), { enabled: getUserIsSuccess && open && filtered, staleTime: 10000 })",
+        "useQuery<Center, Error>(baseKey, () => api(\"/admin-management/alert-center\"), {\n    enabled: getUserIsSuccess, staleTime: 15000, refetchInterval: 60000, refetchIntervalInBackground: false,\n    onSuccess: data => {\n        const signature = data.items.filter(i => !i.resolved_at).map(i => `${i.id}:${i.revision}`).sort().join(\",\");\n        const previous = announced.get(actor);\n        if (signature && signature !== previous)\n            toast({ id: `incident-${actor}-${signature}`, title: `${fa(data.counts.critical)} هشدار حیاتی و ${fa(data.counts.warning)} هشدار مهم`, description: \"هشدارهای فعال را بررسی کنید؛ مشاهده‌کردن، مشکل را رفع نمی‌کند.\", status: data.counts.critical ? \"error\" : \"warning\", duration: 7000, isClosable: true });\n        announced.set(actor, signature);\n    },\n})"
+      ],
+      "actions": [
+        "isDisabled={!query.data?.next_before}",
+        "isDisabled={before === null}",
+        "isDisabled={item.seen}",
+        "onChange={e => setDraft(e.target.value)}",
+        "onChange={e => { setSeverity(e.target.value); setBefore(null); }}",
+        "onChange={e => { setStatus(e.target.value); setBefore(null); }}",
+        "onClick={() => markSeen(item)}",
+        "onClick={() => setBefore(null)}",
+        "onClick={() => setBefore(query.data?.next_before || null)}",
+        "onClick={() => setOpen(!open)}",
+        "onClick={() => summary.refetch()}",
+        "onClick={() => { setUsername(draft.trim()); setBefore(null); }}",
+        "onKeyDown={e => { if (e.key === \"Enter\") {\n    setUsername(draft.trim());\n    setBefore(null);\n} }}"
+      ],
+      "options": [
+        "<option value=\"\">همه اهمیت‌ها</option>",
+        "<option value=\"active\">فعال</option>",
+        "<option value=\"all\">همه</option>",
+        "<option value=\"critical\">حیاتی</option>",
+        "<option value=\"resolved\">رفع‌شده</option>",
+        "<option value=\"warning\">مهم</option>"
+      ]
+    },
+    "src/components/AppShell.tsx": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/components/BrandMark.tsx": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/components/BrandingControls.tsx": {
+      "requests": [
+        "fetch<BrandingResponse>(\"/branding/logo\", { method: \"DELETE\" })",
+        "fetch<BrandingResponse>(\"/branding/logo\", { method: \"POST\", body })",
+        "useMutation(() => fetch<BrandingResponse>(\"/branding/logo\", { method: \"DELETE\" }), { onSuccess: refresh, onError: (error) => { toast({ title: \"لوگو حذف نشد\", description: localizedApiError(error), status: \"error\" }); } })",
+        "useMutation((body: FormData) => fetch<BrandingResponse>(\"/branding/logo\", { method: \"POST\", body }), { onSuccess: refresh, onError: (error) => { toast({ title: \"لوگو ذخیره نشد\", description: localizedApiError(error), status: \"error\" }); } })"
+      ],
+      "actions": [
+        "onChange={upload}",
+        "onClick={() => fileRef.current?.click()}",
+        "onClick={() => removeMutation.mutate()}"
+      ],
+      "options": []
+    },
+    "src/components/BulkUserActions.tsx": {
+      "requests": [
+        "fetch<BulkJobResponse>(\"/users/bulk/jobs\", {\n    method: \"POST\",\n    body: {\n        operation_id: operationId,\n        operation: action.operation,\n        target_scope: scope,\n        selected_admin_ids: scope === \"ALL_USERS\" ? [] : selectedAdminIds,\n        data_amount: requestAmount,\n        days_amount: action.kind === \"days\"\n            ? Math.round(numericAmount)\n            : action.kind === \"data_days\"\n                ? Math.round(numericDays)\n                : undefined,\n    },\n})",
+        "fetch<BulkJobResponse>(`/users/bulk/jobs/${operationId}/execute`, {\n    method: \"POST\",\n    body: { chunk_size: 100, retry_failed: retryFailed },\n})",
+        "fetch<BulkJobResponse>(`/users/bulk/jobs/${operationId}/execute`, {\n    method: \"POST\",\n    body: { chunk_size: 100, retry_failed: retryFailed },\n})",
+        "fetch<BulkPreviewResponse>(\"/users/bulk/preview\", {\n    method: \"POST\",\n    body: {\n        target_scope: scope,\n        selected_admin_ids: scope === \"ALL_USERS\" ? [] : selectedAdminIds,\n    },\n    signal: controller.signal,\n})",
+        "fetch<HierarchyAdminNode[]>(\"/admin-management/tree\")",
+        "fetch<string[]>(\"/users/expired\", {\n    method: \"DELETE\",\n    query: { expired_before: cutoff },\n})",
+        "fetch<string[]>(\"/users/expired\", {\n    query: { expired_before: cutoff },\n    signal: controller.signal,\n})",
+        "fetch<{\n    count: number;\n    usernames: string[];\n}>(\"/trials/cleanup\", {\n    method: \"POST\",\n    body: { expired_before: cutoff, idempotency_key: `trial-cleanup-${crypto.randomUUID()}` },\n})",
+        "fetch<{\n    count: number;\n    usernames: string[];\n}>(\"/trials/cleanup/preview\", {\n    query: { expired_before: cutoff },\n    signal: controller.signal,\n})"
+      ],
+      "actions": [
+        "isDisabled={!validAmount ||\n        !scope ||\n        isPreviewing ||\n        !preview ||\n        preview.resolved_target_count < 1}",
+        "isDisabled={isChecking || matches.length === 0 || !cutoff}",
+        "isDisabled={isDeleting}",
+        "isDisabled={isDeleting}",
+        "isDisabled={isSubmitting}",
+        "isDisabled={isSubmitting}",
+        "onChange={(event) => action.kind === \"data_days\"\n        ? setDaysAmount(event.target.value)\n        : setAmount(event.target.value)}",
+        "onChange={(event) => onToggleAll(event.target.checked)}",
+        "onChange={(event) => setAmount(event.target.value)}",
+        "onChange={(event) => setDays(event.target.value)}",
+        "onChange={(event) => setSelectedAdminIds((current) => event.target.checked\n        ? [...current, option.id].sort((a, b) => a - b)\n        : current.filter((id) => id !== option.id))}",
+        "onChange={(event) => setUnit(event.target.value as keyof typeof dataUnits)}",
+        "onChange={(event) => {\n        setScope(event.target.value as BulkTargetScope | \"\");\n        setSelectedAdminIds([]);\n        setResult(null);\n    }}",
+        "onClick={() => openAction(actionDefinitions[0])}",
+        "onClick={() => openAction(actionDefinitions[1])}",
+        "onClick={() => openAction(actionDefinitions[2])}",
+        "onClick={() => openAction(actionDefinitions[3])}",
+        "onClick={() => openAction(actionDefinitions[4])}",
+        "onClick={() => openAction(actionDefinitions[5])}",
+        "onClick={() => openAction(actionDefinitions[6])}",
+        "onClick={() => openAction(actionDefinitions[7])}",
+        "onClick={cleanupDialog.onOpen}",
+        "onClick={onClear}",
+        "onClick={onClose}",
+        "onClick={onClose}",
+        "onClick={removeExpired}",
+        "onClick={retryFailures}",
+        "onClick={submit}",
+        "onClick={trialCleanupDialog.onOpen}",
+        "onClose={actionDialog.onClose}",
+        "onClose={cleanupDialog.onClose}",
+        "onClose={isDeleting ? () => undefined : onClose}",
+        "onClose={isSubmitting ? () => undefined : onClose}",
+        "onClose={trialCleanupDialog.onClose}",
+        "onSuccess={success}",
+        "onSuccess={success}",
+        "onSuccess={success}"
+      ],
+      "options": [
+        "<option value=\"ALL_USERS\">همه کاربران سیستم</option>",
+        "<option value=\"GB\">GB</option>",
+        "<option value=\"MB\">MB</option>",
+        "<option value=\"SELECTED_ADMINS_DIRECT\">فقط کاربران مستقیم ادمین‌های انتخابی</option>",
+        "<option value=\"SELECTED_ADMINS_SUBTREE\">کاربران ادمین‌های انتخابی و زیرمجموعه‌های آن‌ها</option>",
+        "<option value=\"TB\">TB</option>"
+      ]
+    },
+    "src/components/CheckedBulkDialog.tsx": {
+      "requests": [
+        "fetch<BulkSelectionPreview>(\"/users/bulk-selection/preview\", {\n    method: \"POST\",\n    body: { operation_id: `bulk-preview-${crypto.randomUUID()}`, user_ids: users.map((user) => user.id), actions },\n    signal: controller.signal,\n})",
+        "fetch<BulkSelectionResponse>(\"/users/bulk-selection/execute\", {\n    method: \"POST\",\n    body: { operation_id: execution.current.id, user_ids: users.map((user) => user.id), actions },\n})"
+      ],
+      "actions": [
+        "isDisabled={!selected.includes(item.value) && !compatible(selected, item.value)}",
+        "isDisabled={!valid || !preview || previewKey !== payloadKey || !!result}",
+        "isDisabled={busy}",
+        "isDisabled={busy}",
+        "onChange={(event) => setDays(event.target.value)}",
+        "onChange={(event) => setSelected((current) => event.target.checked ? [...current, item.value] : current.filter((value) => value !== item.value))}",
+        "onChange={(event) => setTraffic(event.target.value)}",
+        "onChange={(event) => setUnit(event.target.value as keyof typeof units)}",
+        "onClick={execute}",
+        "onClick={onClose}",
+        "onClose={busy ? () => undefined : onClose}"
+      ],
+      "options": [
+        "<option value=\"1\">1</option>",
+        "<option value=\"30\">30</option>",
+        "<option value=\"60\">60</option>",
+        "<option value=\"7\">7</option>",
+        "<option>GB</option>",
+        "<option>MB</option>",
+        "<option>TB</option>"
+      ]
+    },
+    "src/components/CoreSettingsModal.tsx": {
+      "requests": [
+        "useMutation(restartCore)"
+      ],
+      "actions": [
+        "isDisabled={isLoading || isPostLoading}",
+        "onChange={(v) => handleLog(v.currentTarget.value, v.currentTarget.selectedOptions[0].text)}",
+        "onChange={field.onChange}",
+        "onClick={() => handleRestartCore()}",
+        "onClick={handleFullScreen}",
+        "onClose={onClose}",
+        "onSubmit={form.handleSubmit(handleOnSave)}"
+      ],
+      "options": [
+        "<option key={\"host\"} value={\"host\"} defaultChecked>\n                    Master\n                  </option>",
+        "<option key={s.address} value={String(s.id)}>\n                          {t(s.name)}\n                        </option>"
+      ]
+    },
+    "src/components/CreateUserFromPlan.tsx": {
+      "requests": [
+        "fetch(\"/access-groups\")",
+        "fetch(\"/available-user-plans\")",
+        "fetch(\"/users/from-plan\", { method: \"POST\", body: { username: username.trim(), plan_id: Number(planId), access_group_id: Number(groupId), status: \"active\", idempotency_key: request.current } })",
+        "useMutation(() => {\n    request.current ||= `create-${crypto.randomUUID()}`;\n    return fetch(\"/users/from-plan\", { method: \"POST\", body: { username: username.trim(), plan_id: Number(planId), access_group_id: Number(groupId), status: \"active\", idempotency_key: request.current } });\n}, {\n    onSuccess: () => { useDashboard.getState().refetchUsers(); queryClient.invalidateQueries(\"account-summary\"); toast({ title: \"User created\", status: \"success\" }); onClose(); },\n    onError: (error) => { toast({ title: \"User creation failed\", description: localizedApiError(error), status: \"error\" }); },\n})",
+        "useQuery<AccessGroup[]>(\"access-groups\", () => fetch(\"/access-groups\"), { enabled: isOpen })",
+        "useQuery<AvailableUserPlan[]>(\"available-user-plans\", () => fetch(\"/available-user-plans\"), { enabled: isOpen })"
+      ],
+      "actions": [
+        "isDisabled={!plan || !groupId || !username.trim() || plans.isError || groups.isError || groups.isLoading}",
+        "isDisabled={create.isLoading || !!request.current}",
+        "isDisabled={create.isLoading}",
+        "isDisabled={create.isLoading}",
+        "isDisabled={groups.isLoading || create.isLoading || !!request.current}",
+        "isDisabled={plans.isLoading || create.isLoading || !!request.current}",
+        "onChange={(event) => setGroupId(event.target.value)}",
+        "onChange={(event) => setPlanId(event.target.value)}",
+        "onChange={(event) => setUsername(event.target.value)}",
+        "onClick={() => { plans.refetch(); groups.refetch(); }}",
+        "onClick={onClose}",
+        "onClose={create.isLoading ? () => undefined : onClose}",
+        "onSubmit={(event) => { event.preventDefault(); if (plan && groupId && username.trim() && !create.isLoading)\n    create.mutate(); }}"
+      ],
+      "options": [
+        "<option key={item.id} value={item.id}>{item.name} · {item.price_toman.toLocaleString()} Toman</option>",
+        "<option key={item.id} value={item.id}>{item.name}</option>",
+        "<option value=\"\">Select network access</option>",
+        "<option value=\"\">{plans.isLoading ? \"Loading…\" : \"Select Plan\"}</option>"
+      ]
+    },
+    "src/components/DashboardOverview.tsx": {
+      "requests": [
+        "fetch(\"/account/summary\")",
+        "fetch(\"/admin/capabilities\")",
+        "fetch(`/dashboard/overview?timezone_offset_minutes=${timezoneOffset}&traffic_range=${range}`)",
+        "useQuery<AccountSummary, Error>([\"account-summary\", userData.username], () => fetch(\"/account/summary\"), { enabled: getUserIsSuccess && !isOwner, refetchInterval: 30000, staleTime: 15000 })",
+        "useQuery<AdminCapabilities, Error>([\"admin-capabilities\", userData.username], () => fetch(\"/admin/capabilities\"), { enabled: getUserIsSuccess && !isOwner, refetchInterval: 30000, staleTime: 15000 })",
+        "useQuery<DashboardOverviewData, Error>([\"dashboard-overview-v2\", userData.username, timezoneOffset, range], () => fetch(`/dashboard/overview?timezone_offset_minutes=${timezoneOffset}&traffic_range=${range}`), { enabled: getUserIsSuccess, refetchInterval: 30000, keepPreviousData: true, staleTime: 10000 })"
+      ],
+      "actions": [
+        "onClick={() => navigate(\"/admins/\")}",
+        "onClick={() => onOpen(item.username)}",
+        "onClick={() => onOpen(item.username)}",
+        "onClick={() => openUser(item.username)}",
+        "onClick={() => overview.refetch()}",
+        "onClick={() => setPlanCreateOpen(true)}",
+        "onClick={() => setRange(item)}",
+        "onClick={() => useDashboard.getState().onEditingNodes(true)}",
+        "onClick={createUser}",
+        "onClick={createUser}",
+        "onClick={openUsers}",
+        "onClick={openUsers}",
+        "onClick={openUsers}",
+        "onClose={() => setPlanCreateOpen(false)}",
+        "onOpen={openUser}",
+        "onOpen={openUser}",
+        "onOpen={openUser}"
+      ],
+      "options": []
+    },
+    "src/components/DashboardOverviewCompact.tsx": {
+      "requests": [
+        "fetch(\"/system\")",
+        "fetch(`/dashboard/overview?timezone_offset_minutes=${timezoneOffset}`)",
+        "useQuery<DashboardOverview, Error>([\"dashboard-overview-compact\", timezoneOffset], () => fetch(`/dashboard/overview?timezone_offset_minutes=${timezoneOffset}`), { enabled: getUserIsSuccess, refetchInterval: 30000 })",
+        "useQuery<SystemStats, Error>(\"statistics-query-key\", () => fetch(\"/system\"), {\n    enabled: getUserIsSuccess && isOwner,\n    refetchInterval: 10000,\n    onSuccess: ({ version: currentVersion }) => {\n        if (version !== currentVersion)\n            useDashboard.setState({ version: currentVersion });\n    },\n})"
+      ],
+      "actions": [],
+      "options": []
+    },
+    "src/components/DeleteNodeModal.tsx": {
+      "requests": [
+        "useMutation(deleteNode, {\n    onSuccess: () => {\n        generateSuccessMessage(t(\"deleteNode.deleteSuccess\", { name: deletingNode && deletingNode.name }), toast);\n        setDeletingNode(null);\n        queryClient.invalidateQueries(FetchNodesQueryKey);\n        deleteCallback && deleteCallback();\n    },\n    onError: (e) => {\n        generateErrorMessage(e, toast);\n    },\n})"
+      ],
+      "actions": [
+        "onClick={() => onDelete()}",
+        "onClick={onClose}",
+        "onClose={onClose}"
+      ],
+      "options": []
+    },
+    "src/components/DeleteUserModal.tsx": {
+      "requests": [],
+      "actions": [
+        "isDisabled={loading}",
+        "onClick={onClose}",
+        "onClick={onDelete}",
+        "onClose={onClose}"
+      ],
+      "options": []
+    },
+    "src/components/Filters.tsx": {
+      "requests": [
+        "fetch(\"/account/summary\")",
+        "fetch(\"/admin/capabilities\")",
+        "fetch<AdminOption[]>(\"/admins\", { query: { limit: 1000 } })",
+        "useQuery<AccountSummary, Error>(\"account-summary\", () => fetch(\"/account/summary\"))",
+        "useQuery<AdminCapabilities, Error>([\"admin-capabilities\", userData.username], () => fetch(\"/admin/capabilities\"))",
+        "useQuery<AdminOption[], Error>([\"user-filter-admins\"], fetchAdminOptions, { enabled: canManageAdmins, staleTime: 30000 })"
+      ],
+      "actions": [
+        "isDisabled",
+        "isDisabled={adminOptions.isLoading}",
+        "isDisabled={loading}",
+        "onChange={changeAdmin}",
+        "onChange={changeSort}",
+        "onChange={changeStatus}",
+        "onChange={onChange}",
+        "onClick={() => onCreateUser(true)}",
+        "onClick={() => setPlanCreateOpen(true)}",
+        "onClick={clear}",
+        "onClick={refetchUsers}",
+        "onClose={() => setPlanCreateOpen(false)}"
+      ],
+      "options": [
+        "<option key={admin.username} value={admin.username}>\n                  {admin.username}\n                </option>",
+        "<option value=\"\">{t(\"usersTable.allAdmins\")}</option>",
+        "<option value=\"\">{t(\"usersTable.allStatuses\")}</option>",
+        "<option value=\"-admin\">{t(\"usersTable.adminZA\")}</option>",
+        "<option value=\"-created_at\">{t(\"usersTable.newestFirst\")}</option>",
+        "<option value=\"-expire\">{t(\"usersTable.expireLate\")}</option>",
+        "<option value=\"-used_traffic\">\n              {t(\"usersTable.usageHighLow\")}\n            </option>",
+        "<option value=\"-username\">{t(\"usersTable.usernameZA\")}</option>",
+        "<option value=\"active\">{t(\"active\")}</option>",
+        "<option value=\"admin\">{t(\"usersTable.adminAZ\")}</option>",
+        "<option value=\"created_at\">{t(\"usersTable.oldestFirst\")}</option>",
+        "<option value=\"disabled\">{t(\"disabled\")}</option>",
+        "<option value=\"expire\">{t(\"usersTable.expireSoon\")}</option>",
+        "<option value=\"expired\">{t(\"expired\")}</option>",
+        "<option value=\"limited\">{t(\"limited\")}</option>",
+        "<option value=\"on_hold\">{t(\"on_hold\")}</option>",
+        "<option value=\"used_traffic\">{t(\"usersTable.usageLowHigh\")}</option>",
+        "<option value=\"username\">{t(\"usersTable.usernameAZ\")}</option>"
+      ]
+    },
+    "src/components/FiltersCompact.tsx": {
+      "requests": [
+        "fetch(\"/account/summary\")",
+        "fetch(\"/admin/capabilities\")",
+        "fetch(\"/admins\", { query: { limit: 1000 } })",
+        "fetch(\"/user-plans\")",
+        "fetch(\"/users/summary\")",
+        "useQuery<AccountSummary, Error>(\"account-summary\", () => fetch(\"/account/summary\"))",
+        "useQuery<AdminCapabilities, Error>([\"admin-capabilities\", userData.username], () => fetch(\"/admin/capabilities\"))",
+        "useQuery<AdminOption[], Error>(\"user-filter-admins\", () => fetch(\"/admins\", { query: { limit: 1000 } }), { enabled: canManageAdmins, staleTime: 30000 })",
+        "useQuery<UserPlan[], Error>(\"user-plans\", () => fetch(\"/user-plans\"), { staleTime: 30000 })",
+        "useQuery<UsersSummary, Error>([\"users-summary\"], () => fetch(\"/users/summary\"), { staleTime: 15000 })"
+      ],
+      "actions": [
+        "isDisabled={disabled}",
+        "isDisabled={loading}",
+        "onChange={(event) => onFilterChange({ sort: event.target.value, offset: 0 })}",
+        "onChange={(event) => {\n        setSearch(event.target.value);\n        updateSearch(event.target.value.trim());\n    }}",
+        "onChange={changeAdmin}",
+        "onChange={changePlan}",
+        "onClick={() => onCreateUser(true)}",
+        "onClick={() => onFilterChange({\n        expires_within_days: filters.expires_within_days ? undefined : summary.data?.expiring_within_days,\n        offset: 0,\n    })}",
+        "onClick={() => onFilterChange({\n        trial: filters.trial ? undefined : true,\n        without_plan: filters.trial ? filters.without_plan : undefined,\n        offset: 0,\n    })}",
+        "onClick={() => onFilterChange({\n        usage_percent_min: filters.usage_percent_min ? undefined : summary.data?.high_usage_threshold_percent,\n        offset: 0,\n    })}",
+        "onClick={() => onFilterChange({ attention: filters.attention ? undefined : true, offset: 0 })}",
+        "onClick={() => onFilterChange({ has_device_limit: filters.has_device_limit ? undefined : true, offset: 0 })}",
+        "onClick={() => onFilterChange({ inactive_hours: filters.inactive_hours ? undefined : 24 * 7, offset: 0 })}",
+        "onClick={() => onFilterChange({ unlimited_traffic: filters.unlimited_traffic ? undefined : true, offset: 0 })}",
+        "onClick={() => setPlanCreateOpen(true)}",
+        "onClick={() => setStatus(\"active\")}",
+        "onClick={() => setStatus(\"disabled\")}",
+        "onClick={() => setStatus(\"expired\")}",
+        "onClick={() => setStatus(\"limited\")}",
+        "onClick={() => setStatus(\"on_hold\")}",
+        "onClick={() => setStatus(undefined)}",
+        "onClick={clearAdvanced}",
+        "onClick={onClick}",
+        "onClick={onClick}",
+        "onClick={refetchUsers}",
+        "onClose={() => setPlanCreateOpen(false)}"
+      ],
+      "options": [
+        "<option key={admin.username} value={admin.username}>{admin.username}</option>",
+        "<option key={option.value} value={option.value}>{option.label}</option>",
+        "<option key={plan.id} value={plan.id}>{plan.name}</option>",
+        "<option value=\"\">همه ادمین‌ها</option>",
+        "<option value=\"\">همه پلن‌ها</option>",
+        "<option value=\"without\">بدون پلن</option>"
+      ]
+    },
+    "src/components/Footer.tsx": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/components/Header.tsx": {
+      "requests": [
+        "fetch(\"/account/summary\")",
+        "fetch(\"/admin/capabilities\")",
+        "fetch(\"/admin/logout\", { method: \"POST\" })",
+        "useQuery<AccountSummary, Error>(\"account-summary\", () => fetch(\"/account/summary\"), { enabled: getUserIsSuccess })",
+        "useQuery<AdminCapabilities, Error>([\"admin-capabilities\", userData.username], () => fetch(\"/admin/capabilities\"), { enabled: getUserIsSuccess })"
+      ],
+      "actions": [
+        "hidden={!canAccessPlans}",
+        "hidden={!canAccessPlans}",
+        "onClick={() => onEditingHosts(true)}",
+        "onClick={() => onEditingNodes(true)}",
+        "onClick={() => setMobileMenuOpen((value) => !value)}",
+        "onClick={() => useDashboard.setState({ isEditingCore: true })}",
+        "onClick={logout}",
+        "onClick={logout}",
+        "onClick={onClick}",
+        "onClick={toggleColorMode}",
+        "onClick={toggleColorMode}"
+      ],
+      "options": []
+    },
+    "src/components/HostsDialog.tsx": {
+      "requests": [],
+      "actions": [
+        "onChange={(e) => {\n        console.log(e.target.checked);\n        field.onChange(!e.target.checked);\n    }}",
+        "onClick={() => confirmImpact(\"apply_current\")}",
+        "onClick={() => confirmImpact(\"detach\")}",
+        "onClick={() => confirmImpact(\"future_only\")}",
+        "onClick={() => duplicateHost(index)}",
+        "onClick={() => moveHostPosition(index, \"down\")}",
+        "onClick={() => moveHostPosition(index, \"up\")}",
+        "onClick={() => { setImpact(null); setPendingHosts(null); }}",
+        "onClick={handleAddHost}",
+        "onClick={removeHost.bind(null, index)}",
+        "onClick={toggleAccordion}",
+        "onClose={() => { setImpact(null); setPendingHosts(null); }}",
+        "onClose={onClose}",
+        "onSubmit={form.handleSubmit(handleFormSubmit, () => toast({ title: \"هاست ذخیره نشد\", description: \"فیلدهای مشخص‌شده، به‌ویژه عنوان و آدرس هاست را بررسی کنید.\", status: \"error\", duration: 5000 }))}"
+      ],
+      "options": [
+        "<option key={s.value} value={s.value}>\n                                    {s.title}\n                                  </option>",
+        "<option key={s.value} value={s.value}>\n                                    {s.title}\n                                  </option>",
+        "<option key={s.value} value={s.value}>\n                                    {s.title}\n                                  </option>"
+      ]
+    },
+    "src/components/Icon.tsx": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/components/Input.tsx": {
+      "requests": [],
+      "actions": [
+        "onBlur={onBlur}",
+        "onChange={onChange}",
+        "onClick={clear}",
+        "onClick={onClick}"
+      ],
+      "options": []
+    },
+    "src/components/JsonEditor/index.tsx": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/components/NodeBandwidthPanel.tsx": {
+      "requests": [
+        "fetch(\"/nodes/bandwidth\")",
+        "useQuery<BandwidthResponse>({\n    queryKey: [\"nodes-live-bandwidth\"],\n    queryFn: () => fetch(\"/nodes/bandwidth\"),\n    refetchInterval: 10000,\n    refetchOnWindowFocus: false,\n    staleTime: 5000,\n})"
+      ],
+      "actions": [],
+      "options": []
+    },
+    "src/components/NodeModalStatusBadge.tsx": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/components/NodesManagementWorkspace.tsx": {
+      "requests": [
+        "fetch(\"/node/settings\")",
+        "fetch(\"/node/watchdog/settings\")",
+        "fetch(\"/node/watchdog/test\", { method: \"POST\" })",
+        "fetch(\"/nodes/bandwidth\")",
+        "fetch(\"/nodes/operations\")",
+        "fetch(`/node/${nodeId}/events?offset=0&limit=50`)",
+        "fetch(`/node/${nodeId}/operations/history?minutes=1440&max_points=120`)",
+        "fetch<NodeWatchdogSettings>(\"/node/watchdog/settings\", {\n    method: \"PUT\",\n    body: {\n        ...settings,\n        telegram_bot_token: token || undefined,\n    },\n})",
+        "useMutation(() => (node ? reconnectNode(node) : Promise.resolve()), {\n    onSuccess: () => {\n        generateSuccessMessage(\"درخواست اتصال مجدد ارسال شد\", toast);\n        queryClient.invalidateQueries(FetchNodesQueryKey);\n    },\n    onError: (error) => {\n        generateErrorMessage(error, toast);\n    },\n})",
+        "useMutation(() => fetch(\"/node/watchdog/test\", { method: \"POST\" }), {\n    onSuccess: () => {\n        generateSuccessMessage(\"پیام آزمایشی نگهبان ارسال شد\", toast);\n    },\n    onError: (error) => {\n        generateErrorMessage(error, toast);\n    },\n})",
+        "useMutation(() => fetch<NodeWatchdogSettings>(\"/node/watchdog/settings\", {\n    method: \"PUT\",\n    body: {\n        ...settings,\n        telegram_bot_token: token || undefined,\n    },\n}), {\n    onSuccess: (value) => {\n        setSettings(value);\n        setToken(\"\");\n        generateSuccessMessage(\"تنظیمات نگهبان نودها ذخیره شد\", toast);\n    },\n    onError: (error) => {\n        generateErrorMessage(error, toast);\n    },\n})",
+        "useMutation((value: NodeType) => (isNew ? addNode(normalize(value)) : updateNode(normalize(value))), {\n    onSuccess: () => {\n        generateSuccessMessage(isNew ? \"نود با موفقیت اضافه شد\" : \"تغییرات نود ذخیره شد\", toast);\n        queryClient.invalidateQueries(FetchNodesQueryKey);\n        queryClient.invalidateQueries([\"nodes-live-bandwidth\"]);\n        onSaved();\n    },\n    onError: (error) => {\n        generateErrorMessage(error, toast, form);\n    },\n})",
+        "useQuery<BandwidthResponse>({\n    queryKey: [\"nodes-live-bandwidth\"],\n    queryFn: () => fetch(\"/nodes/bandwidth\"),\n    refetchInterval: 5000,\n    refetchOnWindowFocus: false,\n    staleTime: 3000,\n})",
+        "useQuery<NodeEventsResponse>({\n    queryKey: [\"node-operations-events\", nodeId],\n    queryFn: () => fetch(`/node/${nodeId}/events?offset=0&limit=50`),\n    enabled: Boolean(nodeId),\n    refetchInterval: 15000,\n    refetchOnWindowFocus: false,\n    staleTime: 10000,\n})",
+        "useQuery<NodeTrafficHistoryResponse>({\n    queryKey: [\"node-operations-history\", nodeId],\n    queryFn: () => fetch(`/node/${nodeId}/operations/history?minutes=1440&max_points=120`),\n    enabled: Boolean(nodeId),\n    refetchOnWindowFocus: false,\n    staleTime: 30000,\n})",
+        "useQuery<NodeWatchdogSettings>({\n    queryKey: \"node-watchdog-settings\",\n    queryFn: () => fetch(\"/node/watchdog/settings\"),\n    refetchOnWindowFocus: false,\n})",
+        "useQuery<NodesOperationsResponse>({\n    queryKey: [\"nodes-operations\"],\n    queryFn: () => fetch(\"/nodes/operations\"),\n    refetchInterval: 10000,\n    refetchOnWindowFocus: false,\n    staleTime: 5000,\n})",
+        "useQuery<{\n    min_node_version: string;\n    certificate: string;\n}>({\n    queryKey: \"node-settings\",\n    queryFn: () => fetch(\"/node/settings\"),\n    refetchOnWindowFocus: false,\n})"
+      ],
+      "actions": [
+        "isDisabled={!row.editable}",
+        "isDisabled={safePage <= 1}",
+        "isDisabled={safePage >= totalPages}",
+        "onChange={(event) => field.onChange(event.target.checked ? \"connecting\" : \"disabled\")}",
+        "onChange={(event) => field.onChange(event.target.value\n        .split(/[\\n,]+/)\n        .map((value) => value.trim())\n        .filter(Boolean))}",
+        "onChange={(event) => field.onChange(event.target.value || null)}",
+        "onChange={(event) => setNumber(\"backoff_cap\", event.target.value)}",
+        "onChange={(event) => setNumber(\"check_interval\", event.target.value)}",
+        "onChange={(event) => setNumber(\"remind_every\", event.target.value)}",
+        "onChange={(event) => setPageSize(Number(event.target.value))}",
+        "onChange={(event) => setSearch(event.target.value)}",
+        "onChange={(event) => setSettings({ ...settings, enabled: event.target.checked })}",
+        "onChange={(event) => setSettings({ ...settings, telegram_chat_id: event.target.value })}",
+        "onChange={(event) => setSortMode(event.target.value as SortMode)}",
+        "onChange={(event) => setToken(event.target.value)}",
+        "onChange={field.onChange}",
+        "onChange={field.onChange}",
+        "onClick={() => reconnect.mutate()}",
+        "onClick={() => row.editable && setSelectedKey(row.key)}",
+        "onClick={() => save.mutate()}",
+        "onClick={() => setDeletingNode(node)}",
+        "onClick={() => setExpanded((value) => !value)}",
+        "onClick={() => setPage((value) => Math.max(1, value - 1))}",
+        "onClick={() => setPage((value) => Math.min(totalPages, value + 1))}",
+        "onClick={() => setSelectedKey(\"new\")}",
+        "onClick={() => setShowCertificate((value) => !value)}",
+        "onClick={() => setStatusFilter(item.key)}",
+        "onClick={() => test.mutate()}",
+        "onClick={() => {\n        bandwidth.refetch();\n        operations.refetch();\n    }}",
+        "onClick={(event) => selectCertificate(event.currentTarget)}",
+        "onClick={(event) => {\n        event.stopPropagation();\n        if (row.editable)\n            setSelectedKey(row.key);\n    }}",
+        "onSaved={() => setSelectedKey(null)}",
+        "onSaved={() => undefined}",
+        "onSubmit={form.handleSubmit((value) => saveNode.mutate(value))}"
+      ],
+      "options": [
+        "<option value=\"\">انتخاب کنید</option>",
+        "<option value=\"avg_1h\">میانگین ۱ ساعت</option>",
+        "<option value=\"avg_24h\">میانگین ۲۴ ساعت</option>",
+        "<option value=\"cloudflare\">Cloudflare</option>",
+        "<option value=\"custom\">پراکسی سفارشی</option>",
+        "<option value=\"direct\">اتصال مستقیم</option>",
+        "<option value=\"name\">نام نود</option>",
+        "<option value=\"proxy_protocol\">Proxy Protocol</option>",
+        "<option value=\"status\">مرتب‌سازی: وضعیت عملیاتی</option>",
+        "<option value=\"traffic\">ترافیک لحظه‌ای</option>",
+        "<option value=\"trusted_xff\">هدر X-Forwarded-For مورد اعتماد</option>",
+        "<option value={10}>10</option>",
+        "<option value={20}>20</option>",
+        "<option value={50}>50</option>"
+      ]
+    },
+    "src/components/NodesModal.tsx": {
+      "requests": [],
+      "actions": [
+        "onClose={onClose}"
+      ],
+      "options": []
+    },
+    "src/components/NodesUsage.tsx": {
+      "requests": [],
+      "actions": [
+        "isDisabled={disabled}",
+        "onChange={(filter, query) => {\n        setUsageFilter(filter);\n        fetchUsageWithFilter(query);\n    }}",
+        "onClose={onClose}"
+      ],
+      "options": []
+    },
+    "src/components/OnlineBadge.tsx": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/components/OnlineStatus.tsx": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/components/Pagination.tsx": {
+      "requests": [],
+      "actions": [
+        "isDisabled",
+        "isDisabled={page + 1 === noPages || noPages === 0}",
+        "isDisabled={page === 0 || noPages === 0}",
+        "onChange={handlePageSizeChange}",
+        "onClick={changePage.bind(null, page + 1)}",
+        "onClick={changePage.bind(null, page - 1)}",
+        "onClick={changePage.bind(null, pageIndex)}"
+      ],
+      "options": [
+        "<option>10</option>",
+        "<option>25</option>",
+        "<option>50</option>"
+      ]
+    },
+    "src/components/PlanCreateModal.tsx": {
+      "requests": [
+        "fetch(\"/plan-categories\")",
+        "fetch(\"/user-plans\", {\n    method: \"POST\",\n    body: {\n        name: draft.name.trim(),\n        description: draft.description.trim() || null,\n        category_id: Number(draft.categoryId),\n        is_trial: draft.isTrial,\n        version: {\n            price_toman: draft.isTrial ? 0 : Number(draft.priceToman),\n            data_limit: Math.round(Number(draft.dataGiB) * GIB),\n            duration_days: Number(draft.durationDays),\n            concurrent_user_limit: draft.deviceLimit ? Number(draft.deviceLimit) : null,\n            reset_strategy: draft.resetStrategy,\n            renewal_volume_strategy: \"replace\",\n            renewal_time_strategy: \"extend_max\",\n        },\n        allowed_admin_ids: [],\n        include_subtree: false,\n    },\n})",
+        "useMutation(() => fetch(\"/user-plans\", {\n    method: \"POST\",\n    body: {\n        name: draft.name.trim(),\n        description: draft.description.trim() || null,\n        category_id: Number(draft.categoryId),\n        is_trial: draft.isTrial,\n        version: {\n            price_toman: draft.isTrial ? 0 : Number(draft.priceToman),\n            data_limit: Math.round(Number(draft.dataGiB) * GIB),\n            duration_days: Number(draft.durationDays),\n            concurrent_user_limit: draft.deviceLimit ? Number(draft.deviceLimit) : null,\n            reset_strategy: draft.resetStrategy,\n            renewal_volume_strategy: \"replace\",\n            renewal_time_strategy: \"extend_max\",\n        },\n        allowed_admin_ids: [],\n        include_subtree: false,\n    },\n}), {\n    onSuccess: () => {\n        queryClient.invalidateQueries(\"user-plans\");\n        onClose();\n        toast({ title: \"پلن ذخیره شد\", status: \"success\", duration: 3000 });\n    },\n    onError: (error) => {\n        toast({\n            title: \"ذخیره پلن انجام نشد\",\n            description: localizedApiError(error),\n            status: \"error\",\n            duration: 5000,\n        });\n    },\n})",
+        "useQuery<PlanCategory[], Error>(\"plan-categories\", () => fetch(\"/plan-categories\"), { enabled: isOpen })"
+      ],
+      "actions": [
+        "isDisabled={(categories.data || []).length === 0}",
+        "isDisabled={draft.isTrial}",
+        "onChange={(event) => setDraft((current) => ({ ...current, categoryId: event.target.value }))}",
+        "onChange={(event) => setDraft((current) => ({ ...current, dataGiB: event.target.value }))}",
+        "onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))}",
+        "onChange={(event) => setDraft((current) => ({ ...current, deviceLimit: event.target.value }))}",
+        "onChange={(event) => setDraft((current) => ({ ...current, durationDays: event.target.value }))}",
+        "onChange={(event) => setDraft((current) => ({ ...current, isTrial: event.target.checked }))}",
+        "onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}",
+        "onChange={(event) => setDraft((current) => ({ ...current, priceToman: event.target.value }))}",
+        "onChange={(event) => setDraft((current) => ({ ...current, resetStrategy: event.target.value as PlanDraft[\"resetStrategy\"] }))}",
+        "onClick={onClose}",
+        "onClose={onClose}",
+        "onSubmit={submit}"
+      ],
+      "options": [
+        "<option key={category.id} value={category.id}>{category.name}</option>",
+        "<option value=\"\">انتخاب دسته‌بندی</option>",
+        "<option value=\"day\">روزانه</option>",
+        "<option value=\"month\">ماهانه</option>",
+        "<option value=\"no_reset\">بدون ریست</option>",
+        "<option value=\"week\">هفتگی</option>",
+        "<option value=\"year\">سالانه</option>"
+      ]
+    },
+    "src/components/QRCodeDialog.tsx": {
+      "requests": [],
+      "actions": [
+        "onClose={onClose}",
+        "onInit={() => setIndex(0)}"
+      ],
+      "options": []
+    },
+    "src/components/RadioGroup.tsx": {
+      "requests": [],
+      "actions": [
+        "isDisabled={!protocolHasInbound}",
+        "onClick={toggleAccordion}"
+      ],
+      "options": [
+        "<option key={entry.title} value={entry.value}>\n                      {entry.title}\n                    </option>",
+        "<option key={method} value={method}>\n                      {method}\n                    </option>"
+      ]
+    },
+    "src/components/ResetAllUsageModal.tsx": {
+      "requests": [],
+      "actions": [
+        "isDisabled={loading}",
+        "onClick={onClose}",
+        "onClick={onReset}",
+        "onClose={onClose}"
+      ],
+      "options": []
+    },
+    "src/components/ResetUserUsageModal.tsx": {
+      "requests": [],
+      "actions": [
+        "isDisabled={loading}",
+        "onClick={onClose}",
+        "onClick={onReset}",
+        "onClose={onClose}"
+      ],
+      "options": []
+    },
+    "src/components/RevokeSubscriptionModal.tsx": {
+      "requests": [],
+      "actions": [
+        "isDisabled={loading}",
+        "onClick={onClose}",
+        "onClick={onReset}",
+        "onClose={onClose}"
+      ],
+      "options": []
+    },
+    "src/components/Statistics.tsx": {
+      "requests": [
+        "fetch(\"/system\")",
+        "useQuery({\n    queryKey: StatisticsQueryKey,\n    queryFn: () => fetch(\"/system\"),\n    refetchInterval: 5000,\n    onSuccess: ({ version: currentVersion }) => {\n        if (version !== currentVersion)\n            useDashboard.setState({ version: currentVersion });\n    },\n})"
+      ],
+      "actions": [],
+      "options": []
+    },
+    "src/components/StatusBadge.tsx": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/components/Textarea.tsx": {
+      "requests": [],
+      "actions": [
+        "onBlur={onBlur}",
+        "onChange={onChange}",
+        "onClick={clear}",
+        "onClick={onClick}"
+      ],
+      "options": []
+    },
+    "src/components/UsageFilter.tsx": {
+      "requests": [],
+      "actions": [
+        "onChange={(index) => setTabIndex(index)}",
+        "onChange={onDateChange}",
+        "onClick={() => {\n        setStartDate(null);\n        setEndDate(null);\n        openCustom();\n    }}",
+        "onClick={openCustom}"
+      ],
+      "options": []
+    },
+    "src/components/UserDetailsDrawer.tsx": {
+      "requests": [
+        "fetch(\"/audit-logs\", { query: { target: username, offset: 0, limit: 25, sort: \"newest\" } })",
+        "fetch(`/device-limit/users/${encodeURIComponent(username)}`)",
+        "useQuery<AuditLogList, Error>([\"user-audit-drawer\", username], () => fetch(\"/audit-logs\", { query: { target: username, offset: 0, limit: 25, sort: \"newest\" } }), {\n    enabled: isOpen && Boolean(username) && tabIndex === auditTabIndex,\n    refetchOnWindowFocus: false,\n})",
+        "useQuery<DeviceLimitUserSummary, Error>([\"device-limit-user\", username], () => fetch(`/device-limit/users/${encodeURIComponent(username)}`), {\n    enabled: isOpen &&\n        Boolean(username) &&\n        canViewDevices &&\n        user?.concurrent_user_limit != null &&\n        tabIndex === deviceTabIndex,\n    refetchOnWindowFocus: false,\n})"
+      ],
+      "actions": [
+        "onChange={setTabIndex}",
+        "onClick={() => copy(absoluteSubscription, \"لینک اشتراک کپی شد\")}",
+        "onClick={() => copy(link)}",
+        "onClick={() => onDelete(user)}",
+        "onClick={() => onEdit(user)}",
+        "onClick={() => onRenew(user)}",
+        "onClick={() => onResetUsage(user)}",
+        "onClick={() => onRevokeSubscription(user)}",
+        "onClick={() => onShowQr(user)}",
+        "onClick={() => onToggleStatus(user)}",
+        "onClick={onClose}",
+        "onClose={onClose}"
+      ],
+      "options": []
+    },
+    "src/components/UserDeviceLimit.tsx": {
+      "requests": [
+        "fetch(`/device-limit/users/${encodeURIComponent(user.username)}/${action}`, { method: \"POST\" })",
+        "fetch(`/device-limit/users/${encodeURIComponent(user.username)}`)",
+        "useMutation((action: \"reset-strikes\" | \"unblock\") => fetch(`/device-limit/users/${encodeURIComponent(user.username)}/${action}`, { method: \"POST\" }), {\n    onSuccess: () => {\n        queryClient.invalidateQueries([\"device-limit-user\", user.username]);\n        queryClient.invalidateQueries(\"users\");\n        toast({ title: t(\"deviceLimit.userActionSaved\"), status: \"success\", duration: 3000 });\n    },\n    onError: (error: any) => {\n        toast({\n            title: t(\"deviceLimit.saveFailed\"),\n            description: localizedApiError(error),\n            status: \"error\",\n            duration: 5000,\n        });\n    },\n})",
+        "useQuery<DeviceLimitUserSummary, Error>([\"device-limit-user\", user.username], () => fetch(`/device-limit/users/${encodeURIComponent(user.username)}`), { enabled: disclosure.isOpen, refetchOnWindowFocus: false })"
+      ],
+      "actions": [
+        "onClick={() => stateMutation.mutate(\"reset-strikes\")}",
+        "onClick={() => stateMutation.mutate(\"unblock\")}",
+        "onClick={(event) => { event.stopPropagation(); disclosure.onOpen(); }}",
+        "onClick={disclosure.onClose}",
+        "onClose={disclosure.onClose}",
+        "onCopy={() => setCopiedSlot(slot.slot_index)}"
+      ],
+      "options": []
+    },
+    "src/components/UserDialog.tsx": {
+      "requests": [
+        "fetch(\"/access-groups\")",
+        "fetch(\"/account/summary\")",
+        "fetch(\"/admin/capabilities\")",
+        "fetch(`/user/${encodeURIComponent(savedUsername)}/set-owner`, {\n    method: \"PUT\",\n    query: { admin_username: requestedOwner },\n})",
+        "fetch(`/user/${encodeURIComponent(savedUsername)}`, {\n    method: \"DELETE\",\n})",
+        "fetch<ManagedAdminList>(`/admin-management?offset=${offset}&limit=100`)",
+        "useQuery<AccessGroup[], Error>([\"access-groups\", \"free-form\"], () => fetch(\"/access-groups\"), { enabled: isOpen && !isEditing, staleTime: 30000 })",
+        "useQuery<AccountSummary, Error>([\"account-summary\"], () => fetch(\"/account/summary\"), { enabled: isOpen, staleTime: 30000 })",
+        "useQuery<AdminCapabilities, Error>([\"admin-capabilities\"], () => fetch(\"/admin/capabilities\"), { enabled: isOpen, staleTime: 30000 })",
+        "useQuery<ManagedAdmin[], Error>([\"assignable-admins\"], fetchAssignableAdmins, { enabled: isOpen && userData.is_sudo, staleTime: 30000 })"
+      ],
+      "actions": [
+        "isDisabled={disabled || (restrictedCreate ? Number(dataLimit) <= 0 : (lacksCapacity || !modeAllowed))}",
+        "isDisabled={disabled || accessGroupsQuery.isLoading}",
+        "isDisabled={disabled || capabilitiesQuery.isLoading}",
+        "isDisabled={disabled || planOnlyEditLocked}",
+        "isDisabled={disabled}",
+        "isDisabled={disabled}",
+        "isDisabled={disabled}",
+        "onBlur={() => { if (!creationDurationValid)\n    notifyRequiredDuration(); }}",
+        "onChange={(date: Date) => {\n        if (!date)\n            notifyRequiredDuration();\n        form.setValue(\"on_hold_expire_duration\", null);\n        field.onChange({\n            target: {\n                value: date\n                    ? dayjs(dayjs(date)\n                        .set(\"hour\", 23)\n                        .set(\"minute\", 59)\n                        .set(\"second\", 59))\n                        .utc()\n                        .valueOf() / 1000\n                    : 0,\n                name: \"expire\",\n            },\n        });\n    }}",
+        "onChange={(event) => field.onChange(event.target.value === \"\" ? null : Number(event.target.value))}",
+        "onChange={(event) => field.onChange(event.target.value === \"\" ? null : Number(event.target.value))}",
+        "onChange={(event) => {\n        if (isEditing) {\n            field.onChange(event.target.checked ? \"active\" : \"disabled\");\n        }\n        else {\n            field.onChange(event.target.checked ? \"on_hold\" : \"active\");\n        }\n    }}",
+        "onChange={(event) => { setRestrictedDurationDays(event.target.value); if (!Number(event.target.value))\n    notifyRequiredDuration(); }}",
+        "onChange={(filter, query) => {\n        setUsageFilter(filter);\n        fetchUsageWithFilter(query);\n    }}",
+        "onChange={(on_hold) => {\n        form.setValue(\"expire\", null);\n        field.onChange({\n            target: {\n                value: on_hold,\n            },\n        });\n    }}",
+        "onChange={field.onChange}",
+        "onChange={field.onChange}",
+        "onClick={() => {\n        const randomUsername = createRandomUsername();\n        form.setValue(\"username\", randomUsername);\n        setTimeout(() => {\n            setrandomUsernameLoading(false);\n        }, 350);\n    }}",
+        "onClick={() => {\n        onDeletingUser(editingUser);\n        onClose();\n    }}",
+        "onClick={handleResetUsage}",
+        "onClick={handleRevokeSubscription}",
+        "onClick={handleUsageToggle}",
+        "onClick={onClose}",
+        "onClose={onClose}",
+        "onSubmit={form.handleSubmit(submit, () => { if (!creationDurationValid)\n    notifyRequiredDuration(); })}"
+      ],
+      "options": [
+        "<option key={admin.username} value={admin.username} disabled={isFull}>\n                                  {admin.username} ({admin.quota.current_users} / {admin.quota.max_users ?? t(\"unlimited\")})\n                                </option>",
+        "<option key={group.id} value={group.id}>{group.name}</option>",
+        "<option key={limit} value={limit} disabled={assignableCapacity !== null && limit > assignableCapacity}>\n                                    {t(\"userDialog.connectionLimitOption\", { count: limit })}\n                                  </option>",
+        "<option key={s.value} value={s.value}>\n                                        {t(\"userDialog.resetStrategy\" + s.title)}\n                                      </option>",
+        "<option value=\"\" disabled={!unlimitedDevicesAllowed}>\n                                  {unlimitedDevicesAllowed\n        ? t(\"unlimited\")\n        : t(\"userDialog.selectConnectionLimit\")}\n                                </option>",
+        "<option value=\"\">{t(\"userDialog.currentSudoOwner\")}</option>",
+        "<option value=\"\">بدون Access Group</option>"
+      ]
+    },
+    "src/components/UserSummaryCards.tsx": {
+      "requests": [
+        "fetch(\"/users/summary\")",
+        "useQuery<UsersSummary, Error>([\"users-summary\"], () => fetch(\"/users/summary\"), {\n    staleTime: 15000,\n    refetchInterval: 30000,\n    refetchOnWindowFocus: true,\n})"
+      ],
+      "actions": [],
+      "options": []
+    },
+    "src/components/UsersTable.tsx": {
+      "requests": [
+        "fetch(\"/account/summary\")",
+        "fetch(\"/account/summary\")",
+        "fetch(\"/user-plans\")",
+        "fetch(`/users/${user.username}/renew-from-plan`, {\n    method: \"POST\",\n    body: {\n        plan_id: planId,\n        idempotency_key: renewalRequest.current.id,\n    },\n})",
+        "useMutation(({ user, planId }: {\n    user: User;\n    planId: number;\n}) => {\n    const key = `${user.username}:${planId}`;\n    if (renewalRequest.current?.key !== key)\n        renewalRequest.current = { key, id: `renew-${crypto.randomUUID()}` };\n    return fetch(`/users/${user.username}/renew-from-plan`, {\n        method: \"POST\",\n        body: {\n            plan_id: planId,\n            idempotency_key: renewalRequest.current.id,\n        },\n    });\n}, {\n    onSuccess: () => {\n        refetchUsers();\n        queryClient.invalidateQueries(\"account-summary\");\n        renewalModal.onClose();\n        setRenewalUser(null);\n        setRenewalPlanId(\"\");\n        toast({ title: \"کاربر با پلن تمدید شد\", status: \"success\", duration: 3000 });\n    },\n    onError: (error: any) => {\n        toast({\n            title: \"تمدید انجام نشد\",\n            description: localizedApiError(error),\n            status: \"error\",\n            duration: 5000,\n        });\n    },\n})",
+        "useQuery<AccountSummary, Error>(\"account-summary\", () => fetch(\"/account/summary\"))",
+        "useQuery<AccountSummary, Error>(\"account-summary\", () => fetch(\"/account/summary\"))",
+        "useQuery<UserPlan[], Error>(\"user-plans\", () => fetch(\"/user-plans\"), { enabled: renewalModal.isOpen })"
+      ],
+      "actions": [
+        "isDisabled={!renewalUser || !renewalPlanId}",
+        "isDisabled={plans.isLoading || plans.isError || renew.isLoading || !!renewalRequest.current}",
+        "isDisabled={renew.isLoading}",
+        "isDisabled={renew.isLoading}",
+        "onChange={(event) => onSelectedChange(event.target.checked)}",
+        "onChange={(event) => setRenewalPlanId(event.target.value)}",
+        "onClear={() => setSelectedUsernames(new Set())}",
+        "onClick={() => onCreateUser(true)}",
+        "onClick={() => renewalUser && renewalPlanId && renew.mutate({ user: renewalUser, planId: Number(renewalPlanId) })}",
+        "onClick={() => setPlanCreateOpen(true)}",
+        "onClick={() => {\n        setQRCode(user.links);\n        setSubLink(user.subscription_url);\n    }}",
+        "onClick={(event) => event.stopPropagation()}",
+        "onClick={(event) => event.stopPropagation()}",
+        "onClick={(event) => event.stopPropagation()}",
+        "onClick={onEdit}",
+        "onClick={onRenew}",
+        "onClick={renewalModal.onClose}",
+        "onClose={() => setPlanCreateOpen(false)}",
+        "onClose={() => {\n        if (renew.isLoading)\n            return;\n        renewalModal.onClose();\n        setRenewalUser(null);\n        setRenewalPlanId(\"\");\n    }}",
+        "onCopy={() => setCopied([0, true])}",
+        "onCopy={() => setCopied([1, true])}",
+        "onEdit={onOpen}",
+        "onOpen={() => onEditingUser(user)}",
+        "onRenew={() => {\n        renewalRequest.current = null;\n        setRenewalUser(user);\n        setRenewalPlanId(\"\");\n        renewalModal.onOpen();\n    }}",
+        "onRenew={onRenew}",
+        "onSelectedChange={(selected) => setUserSelected(user.username, selected)}",
+        "onToggleAll={toggleAllVisible}"
+      ],
+      "options": [
+        "<option key={plan.id} value={plan.id}>\n                    {plan.name} · v{plan.version_number} · {formatBytes(plan.version.data_limit)} · {plan.version.duration_days} روز\n                  </option>",
+        "<option value=\"\">انتخاب پلن</option>"
+      ]
+    },
+    "src/components/UsersTablePro.tsx": {
+      "requests": [
+        "fetch(\"/account/summary\")",
+        "fetch(\"/user-plans\")",
+        "fetch(`/users/${user.username}/renew-from-plan`, {\n    method: \"POST\",\n    body: { plan_id: planId, idempotency_key: renewalRequest.current.id },\n})",
+        "useMutation(({ user, planId }: {\n    user: User;\n    planId: number;\n}) => {\n    const key = `${user.username}:${planId}`;\n    if (renewalRequest.current?.key !== key)\n        renewalRequest.current = { key, id: `renew-${crypto.randomUUID()}` };\n    return fetch(`/users/${user.username}/renew-from-plan`, {\n        method: \"POST\",\n        body: { plan_id: planId, idempotency_key: renewalRequest.current.id },\n    });\n}, {\n    onSuccess: () => {\n        refetchUsers();\n        queryClient.invalidateQueries(\"account-summary\");\n        queryClient.invalidateQueries([\"users-summary\"]);\n        renewalModal.onClose();\n        setRenewalUser(null);\n        setRenewalPlanId(\"\");\n        toast({ title: \"کاربر با پلن تمدید شد\", status: \"success\", duration: 2500 });\n    },\n    onError: (error) => {\n        toast({ title: \"تمدید انجام نشد\", description: localizedApiError(error), status: \"error\", duration: 5000 });\n    },\n})",
+        "useQuery<AccountSummary, Error>(\"account-summary\", () => fetch(\"/account/summary\"))",
+        "useQuery<UserPlan[], Error>(\"user-plans\", () => fetch(\"/user-plans\"), { enabled: renewalModal.isOpen })"
+      ],
+      "actions": [
+        "isDisabled={!renewalUser || !renewalPlanId}",
+        "isDisabled={busy}",
+        "isDisabled={busy}",
+        "isDisabled={busy}",
+        "isDisabled={busy}",
+        "isDisabled={disabled}",
+        "isDisabled={plans.isLoading || plans.isError || renew.isLoading}",
+        "isDisabled={renew.isLoading}",
+        "isDisabled={renew.isLoading}",
+        "onChange={(event) => setRenewalPlanId(event.target.value)}",
+        "onChange={(event) => setSelected(user, event.target.checked)}",
+        "onChange={(event) => toggleAllVisible(event.target.checked)}",
+        "onClear={() => setSelectedMap(new Map())}",
+        "onClick={() => copySubscription(user)}",
+        "onClick={() => navigate(`/audit-logs/?search=${encodeURIComponent(user.username)}`)}",
+        "onClick={() => onDeletingUser(user)}",
+        "onClick={() => onEditingUser(user)}",
+        "onClick={() => openRenewal(user)}",
+        "onClick={() => renewalUser && renewalPlanId && renew.mutate({ user: renewalUser, planId: Number(renewalPlanId) })}",
+        "onClick={() => resetUsage(user)}",
+        "onClick={() => revoke(user)}",
+        "onClick={() => setDrawerUsername(user.username)}",
+        "onClick={() => setDrawerUsername(user.username)}",
+        "onClick={() => showQr(user)}",
+        "onClick={() => toggleStatus(user)}",
+        "onClick={onClick}",
+        "onClick={renewalModal.onClose}",
+        "onClose={() => setDrawerUsername(null)}",
+        "onClose={() => {\n        if (renew.isLoading)\n            return;\n        renewalModal.onClose();\n        setRenewalUser(null);\n        setRenewalPlanId(\"\");\n    }}",
+        "onDelete={(user) => { setDrawerUsername(null); onDeletingUser(user); }}",
+        "onEdit={(user) => { setDrawerUsername(null); onEditingUser(user); }}",
+        "onRenew={(user) => { setDrawerUsername(null); openRenewal(user); }}",
+        "onResetUsage={resetUsage}",
+        "onRevokeSubscription={revoke}",
+        "onShowQr={showQr}",
+        "onToggleAll={toggleAllVisible}",
+        "onToggleStatus={toggleStatus}"
+      ],
+      "options": [
+        "<option key={plan.id} value={plan.id}>{plan.name} · v{plan.version_number} · {String(formatBytes(plan.version.data_limit))} · {plan.version.duration_days} روز</option>",
+        "<option value=\"\">انتخاب پلن</option>"
+      ]
+    },
+    "src/constants/NodesSettings.tsx": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/constants/Proxies.tsx": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/constants/UserSettings.tsx": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/contexts/CoreSettingsContext.tsx": {
+      "requests": [
+        "fetch(\"/core\")",
+        "fetch(\"/core/config\")",
+        "fetch(\"/core/config\", { method: \"PUT\", body })",
+        "fetch(\"/core/restart\", { method: \"POST\" })"
+      ],
+      "actions": [],
+      "options": []
+    },
+    "src/contexts/DashboardContext.tsx": {
+      "requests": [
+        "fetch(\"/inbounds\")",
+        "fetch(\"/users/management\", { query: requestQuery })",
+        "fetch(`/user/${body.username}/usage`, { method: \"GET\", query: requestQuery })",
+        "fetch(`/user/${body.username}`, { method: \"PUT\", body })",
+        "fetch(`/user/${user.username}/reset`, { method: \"POST\" })",
+        "fetch(`/user/${user.username}/revoke_sub`, {\n    method: \"POST\",\n})",
+        "fetch(`/users/reset`, { method: \"POST\" })",
+        "fetch<User>(`/user`, { method: \"POST\", body })",
+        "fetch<{\n    status?: string;\n    request_id?: number;\n    refund_toman?: number;\n}>(`/user/${user.username}`, { method: \"DELETE\" })"
+      ],
+      "actions": [],
+      "options": []
+    },
+    "src/contexts/HostsContext.tsx": {
+      "requests": [
+        "fetch<HostUpdateImpact>(\"/hosts/impact\", { method: \"POST\", body })",
+        "fetch<HostsSchema>(\"/hosts\")",
+        "fetch<HostsSchema>(`/hosts${query}`, { method: \"PUT\", body })"
+      ],
+      "actions": [],
+      "options": []
+    },
+    "src/contexts/NodesContext.tsx": {
+      "requests": [
+        "fetch(\"/node\", { method: \"POST\", body })",
+        "fetch(\"/nodes\")",
+        "fetch(\"/nodes/usage\", { query })",
+        "fetch(`/node/${body.id}/reconnect`, {\n    method: \"POST\",\n})",
+        "fetch(`/node/${body.id}`, {\n    method: \"PUT\",\n    body,\n})",
+        "fetch(`/node/${get().deletingNode?.id}`, {\n    method: \"DELETE\",\n})",
+        "useQuery({\n    queryKey: FetchNodesQueryKey,\n    queryFn: useNodes.getState().fetchNodes,\n    refetchInterval: isEditingNodes ? 3000 : undefined,\n    refetchOnWindowFocus: false,\n})"
+      ],
+      "actions": [],
+      "options": []
+    },
+    "src/hooks/useBranding.ts": {
+      "requests": [
+        "fetch(\"/branding/public\")",
+        "useQuery<SystemBranding, Error>(\"system-branding\", () => fetch(\"/branding/public\"), {\n    staleTime: 300000,\n    retry: 1,\n})"
+      ],
+      "actions": [],
+      "options": []
+    },
+    "src/hooks/useGetUser.tsx": {
+      "requests": [
+        "fetch(\"/admin\")",
+        "useQuery<UserApi, Error>(CurrentAdminQueryKey, fetchUser)"
+      ],
+      "actions": [],
+      "options": []
+    },
+    "src/index.tsx": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/locales/i18n.ts": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/pages/Admins.tsx": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/pages/AuditLogs.tsx": {
+      "requests": [
+        "fetch(\"/audit-logs/options\")",
+        "fetch(`/audit-logs?${queryString}`)",
+        "useQuery<AuditLogList, Error>([\"audit-logs\", queryString], () => fetch(`/audit-logs?${queryString}`), { keepPreviousData: true, enabled: !getUserIsPending })",
+        "useQuery<AuditLogOptions>(\"audit-log-options\", () => fetch(\"/audit-logs/options\"), { enabled: !getUserIsPending })"
+      ],
+      "actions": [
+        "isDisabled={(page + 1) * PAGE_SIZE >= total}",
+        "isDisabled={page === 0}",
+        "onChange={(e) => setFilter(\"action\", e.target.value)}",
+        "onChange={(e) => setFilter(\"admin\", e.target.value)}",
+        "onChange={(e) => setFilter(\"from\", e.target.value)}",
+        "onChange={(e) => setFilter(\"sort\", e.target.value)}",
+        "onChange={(e) => setFilter(\"target\", e.target.value)}",
+        "onChange={(e) => setFilter(\"to\", e.target.value)}",
+        "onChange={(event) => setSearchInput(event.target.value)}",
+        "onClick={() => logsQuery.refetch()}",
+        "onClick={() => setAdvancedFiltersOpen((value) => !value)}",
+        "onClick={() => setPage((value) => value + 1)}",
+        "onClick={() => setPage((value) => value - 1)}",
+        "onClick={() => showDetails(log)}",
+        "onClick={() => showDetails(log)}",
+        "onClick={clearFilters}",
+        "onClose={details.onClose}",
+        "onClose={onClose}"
+      ],
+      "options": [
+        "<option key={item} value={item}>{item}</option>",
+        "<option key={item} value={item}>{localizeAction(item)}</option>",
+        "<option value=\"\">{t(\"audit.allActions\")}</option>",
+        "<option value=\"\">{t(\"audit.allAdmins\")}</option>",
+        "<option value=\"newest\">{t(\"audit.newest\")}</option>",
+        "<option value=\"oldest\">{t(\"audit.oldest\")}</option>"
+      ]
+    },
+    "src/pages/Dashboard.tsx": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/pages/DeviceLimits.tsx": {
+      "requests": [
+        "fetch(\"/device-limit/penalty-stages\")",
+        "fetch(\"/device-limit/penalty-stages\", {\n    method: \"PUT\",\n    body: { stages: stageForm.map(({ id, ...stage }) => stage) },\n})",
+        "fetch(\"/device-limit/settings\")",
+        "fetch(`/device-limit/incidents?offset=${page * PAGE_SIZE}&limit=${PAGE_SIZE}&unresolved_only=${unresolved}`)",
+        "fetch(`/device-limit/warnings/${incidentId}`, { method: \"DELETE\" })",
+        "fetch<DeviceLimitSettings>(\"/device-limit/settings\", { method: \"PUT\", body: form })",
+        "useMutation(() => fetch(\"/device-limit/penalty-stages\", {\n    method: \"PUT\",\n    body: { stages: stageForm.map(({ id, ...stage }) => stage) },\n}), {\n    onSuccess: () => {\n        queryClient.invalidateQueries(\"device-limit-stages\");\n        toast({ title: t(\"deviceLimit.penaltiesSaved\"), status: \"success\", duration: 3000 });\n    },\n    onError: (error: any) => {\n        toast({\n            title: t(\"deviceLimit.saveFailed\"),\n            description: localizedApiError(error),\n            status: \"error\",\n            duration: 5000,\n        });\n    },\n})",
+        "useMutation(() => fetch<DeviceLimitSettings>(\"/device-limit/settings\", { method: \"PUT\", body: form }), {\n    onSuccess: () => {\n        queryClient.invalidateQueries(\"device-limit-settings\");\n        toast({ title: t(\"deviceLimit.settingsSaved\"), status: \"success\", duration: 3000 });\n    },\n    onError: (error: any) => {\n        toast({\n            title: t(\"deviceLimit.saveFailed\"),\n            description: localizedApiError(error),\n            status: \"error\",\n            duration: 5000,\n        });\n    },\n})",
+        "useMutation((incidentId: number) => fetch(`/device-limit/warnings/${incidentId}`, { method: \"DELETE\" }), {\n    onSuccess: () => {\n        queryClient.invalidateQueries(\"device-limit-incidents\");\n        toast({ title: t(\"deviceLimit.warningDeleted\"), status: \"success\", duration: 2500 });\n    },\n})",
+        "useQuery<DeviceLimitIncidentList, Error>([\"device-limit-incidents\", page, unresolved], () => fetch(`/device-limit/incidents?offset=${page * PAGE_SIZE}&limit=${PAGE_SIZE}&unresolved_only=${unresolved}`), { keepPreviousData: true })",
+        "useQuery<DeviceLimitPenaltyStage[], Error>(\"device-limit-stages\", () => fetch(\"/device-limit/penalty-stages\"), { enabled: !getUserIsPending && isOwner })",
+        "useQuery<DeviceLimitSettings, Error>(\"device-limit-settings\", () => fetch(\"/device-limit/settings\"), { enabled: !getUserIsPending && isOwner })"
+      ],
+      "actions": [
+        "isDisabled={!form.ip_detection_enabled}",
+        "isDisabled={!form.ip_detection_enabled}",
+        "isDisabled={!form.ip_detection_enabled}",
+        "isDisabled={!form.ip_detection_enabled}",
+        "isDisabled={(page + 1) * PAGE_SIZE >= total}",
+        "isDisabled={page === 0}",
+        "isDisabled={stage.action !== \"temporary_disable\"}",
+        "isDisabled={stageForm.length <= 1}",
+        "onChange={(event) => numberField(\"active_window_seconds\", event.target.value)}",
+        "onChange={(event) => numberField(\"audit_retention_days\", event.target.value)}",
+        "onChange={(event) => numberField(\"check_interval_seconds\", event.target.value)}",
+        "onChange={(event) => numberField(\"full_ip_retention_days\", event.target.value)}",
+        "onChange={(event) => numberField(\"handoff_grace_seconds\", event.target.value)}",
+        "onChange={(event) => numberField(\"incident_retention_days\", event.target.value)}",
+        "onChange={(event) => numberField(\"min_successful_connections\", event.target.value)}",
+        "onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.checked }))}",
+        "onChange={(event) => setForm((current) => ({ ...current, auto_delete_enabled: event.target.checked }))}",
+        "onChange={(event) => setForm((current) => ({ ...current, enabled: event.target.checked }))}",
+        "onChange={(event) => setForm((current) => ({ ...current, strike_reset_seconds: Number(event.target.value) * 86400 }))}",
+        "onChange={(event) => setForm((current) => ({ ...current, warning_auto_delete_seconds: Number(event.target.value) * 3600 }))}",
+        "onChange={(event) => updateStage(index, \"action\", event.target.value as PenaltyAction)}",
+        "onChange={(event) => updateStage(index, \"duration_seconds\", event.target.value ? Number(event.target.value) * 60 : null)}",
+        "onChange={(event) => updateStage(index, \"enabled\", event.target.checked)}",
+        "onChange={(event) => updateStage(index, \"violation_count\", Number(event.target.value))}",
+        "onChange={(event) => { setUnresolved(event.target.checked); setPage(0); }}",
+        "onClick={() => deleteWarning.mutate(incident.id)}",
+        "onClick={() => query.refetch()}",
+        "onClick={() => removeStage(index)}",
+        "onClick={() => saveStages.mutate()}",
+        "onClick={() => setPage((value) => value + 1)}",
+        "onClick={() => setPage((value) => value - 1)}",
+        "onClick={() => setStageForm((current) => [...current, { violation_count: Math.max(0, ...current.map((stage) => stage.violation_count)) + 1, action: \"warn\", duration_seconds: null, enabled: true }])}",
+        "onSubmit={submitSettings}"
+      ],
+      "options": [
+        "<option value=\"delete\">{t(\"deviceLimit.actionDelete\")}</option>",
+        "<option value=\"permanent_disable\">{t(\"deviceLimit.actionPermanent\")}</option>",
+        "<option value=\"temporary_disable\">{t(\"deviceLimit.actionTemporary\")}</option>",
+        "<option value=\"warn\">{t(\"deviceLimit.actionWarn\")}</option>"
+      ]
+    },
+    "src/pages/Login.tsx": {
+      "requests": [
+        "fetch(\"/admin/token\", { method: \"post\", body: formData })"
+      ],
+      "actions": [
+        "onSubmit={handleSubmit(login)}"
+      ],
+      "options": []
+    },
+    "src/pages/Plans.tsx": {
+      "requests": [
+        "fetch(\"/access-groups\")",
+        "fetch(\"/account/summary\")",
+        "fetch(\"/plan-categories\")",
+        "fetch(\"/plan-categories\", {\n    method: \"POST\",\n    body: { name: newCategoryName.trim(), description: null },\n})",
+        "fetch(\"/user-plans\")",
+        "fetch(\"/users/from-plan\", {\n    method: \"POST\",\n    body: { plan_id: plan.id, access_group_id: accessGroupId, username, status: \"active\", idempotency_key: `create-${plan.id}-${crypto.randomUUID()}` },\n})",
+        "fetch(`/plan-categories/${category.id}`, {\n    method: \"PUT\",\n    body: { name: name.trim(), description: category.description },\n})",
+        "fetch(`/plan-categories/${category.id}`, { method: \"DELETE\" })",
+        "fetch(`/user-plans/${plan.id}`, { method: \"DELETE\" })",
+        "fetch(editing ? `/user-plans/${editing.id}` : \"/user-plans\", { method: editing ? \"PUT\" : \"POST\", body: payload })",
+        "useMutation(() => fetch(\"/plan-categories\", {\n    method: \"POST\",\n    body: { name: newCategoryName.trim(), description: null },\n}), {\n    onSuccess: () => {\n        setNewCategoryName(\"\");\n        queryClient.invalidateQueries(\"plan-categories\");\n        toast({ title: \"دسته‌بندی ساخته شد\", status: \"success\", duration: 3000 });\n    },\n    onError: (error) => {\n        toast({ title: \"ساخت دسته‌بندی انجام نشد\", description: errorText(error), status: \"error\", duration: 5000 });\n    },\n})",
+        "useMutation(() => {\n    const payload = {\n        ...(editing ? {} : { name: draft.name.trim(), is_trial: draft.isTrial }),\n        description: draft.description.trim() || null,\n        category_id: draft.categoryId ? Number(draft.categoryId) : null,\n        version: {\n            price_toman: draft.isTrial ? 0 : Number(draft.priceToman),\n            data_limit: Math.round(Number(draft.dataGiB) * GIB),\n            duration_days: Number(draft.durationDays),\n            concurrent_user_limit: draft.deviceLimit ? Number(draft.deviceLimit) : null,\n            reset_strategy: draft.resetStrategy,\n            renewal_volume_strategy: \"replace\",\n            renewal_time_strategy: \"extend_max\",\n        },\n        allowed_admin_ids: editing ? editing.allowed_admin_ids : [],\n        include_subtree: editing ? editing.include_subtree : false,\n    };\n    return fetch(editing ? `/user-plans/${editing.id}` : \"/user-plans\", { method: editing ? \"PUT\" : \"POST\", body: payload });\n}, {\n    onSuccess: () => { queryClient.invalidateQueries(\"user-plans\"); modal.onClose(); toast({ title: \"پلن ذخیره شد\", status: \"success\", duration: 3000 }); },\n    onError: (error) => { toast({ title: \"ذخیره پلن انجام نشد\", description: errorText(error), status: \"error\", duration: 5000 }); },\n})",
+        "useMutation((category: PlanCategory) => fetch(`/plan-categories/${category.id}`, { method: \"DELETE\" }), {\n    onSuccess: () => {\n        queryClient.invalidateQueries(\"plan-categories\");\n        toast({ title: \"دسته‌بندی بایگانی شد\", status: \"success\", duration: 3000 });\n    },\n    onError: (error) => { toast({ title: \"بایگانی دسته‌بندی انجام نشد\", description: errorText(error), status: \"error\", duration: 5000 }); },\n})",
+        "useMutation((plan: UserPlan) => fetch(`/user-plans/${plan.id}`, { method: \"DELETE\" }), {\n    onSuccess: () => { queryClient.invalidateQueries(\"user-plans\"); archiveDialog.onClose(); toast({ title: \"پلن بایگانی شد\", status: \"success\", duration: 3000 }); },\n    onError: (error) => { toast({ title: \"بایگانی انجام نشد\", description: errorText(error), status: \"error\", duration: 5000 }); },\n})",
+        "useMutation(({ category, name }: {\n    category: PlanCategory;\n    name: string;\n}) => fetch(`/plan-categories/${category.id}`, {\n    method: \"PUT\",\n    body: { name: name.trim(), description: category.description },\n}), {\n    onSuccess: () => {\n        setEditingCategoryId(null);\n        setEditingCategoryName(\"\");\n        queryClient.invalidateQueries(\"plan-categories\");\n        toast({ title: \"دسته‌بندی ویرایش شد\", status: \"success\", duration: 3000 });\n    },\n    onError: (error) => { toast({ title: \"ویرایش دسته‌بندی انجام نشد\", description: errorText(error), status: \"error\", duration: 5000 }); },\n})",
+        "useMutation(({ plan, username, accessGroupId }: {\n    plan: UserPlan;\n    username: string;\n    accessGroupId: number;\n}) => fetch(\"/users/from-plan\", {\n    method: \"POST\",\n    body: { plan_id: plan.id, access_group_id: accessGroupId, username, status: \"active\", idempotency_key: `create-${plan.id}-${crypto.randomUUID()}` },\n}), {\n    onSuccess: (_, values) => { setUsernames((current) => ({ ...current, [values.plan.id]: \"\" })); setAccessGroupIds((current) => ({ ...current, [values.plan.id]: \"\" })); queryClient.invalidateQueries(\"users\"); queryClient.invalidateQueries(\"account-summary\"); toast({ title: \"کاربر از پلن ساخته شد\", status: \"success\", duration: 3000 }); },\n    onError: (error) => { toast({ title: \"ساخت کاربر انجام نشد\", description: errorText(error), status: \"error\", duration: 5000 }); },\n})",
+        "useQuery<AccessGroup[], Error>(\"access-groups\", () => fetch(\"/access-groups\"), { enabled: !getUserIsPending })",
+        "useQuery<AccountSummary, Error>(\"account-summary\", () => fetch(\"/account/summary\"), { enabled: !getUserIsPending })",
+        "useQuery<PlanCategory[], Error>(\"plan-categories\", () => fetch(\"/plan-categories\"), { enabled: !getUserIsPending })",
+        "useQuery<UserPlan[], Error>(\"user-plans\", () => fetch(\"/user-plans\"), { enabled: !getUserIsPending })"
+      ],
+      "actions": [
+        "isDisabled={!editingCategoryName.trim()}",
+        "isDisabled={!newCategoryName.trim()}",
+        "isDisabled={!usernames[plan.id]?.trim() || !accessGroupIds[plan.id]}",
+        "isDisabled={(categories.data || []).length === 0}",
+        "isDisabled={Boolean(editing)}",
+        "isDisabled={accessGroups.isLoading || accessGroups.isError}",
+        "isDisabled={draft.isTrial}",
+        "onChange={(event) => setAccessGroupIds((current) => ({ ...current, [plan.id]: event.target.value }))}",
+        "onChange={(event) => setDraft((current) => ({ ...current, categoryId: event.target.value }))}",
+        "onChange={(event) => setDraft((current) => ({ ...current, dataGiB: event.target.value }))}",
+        "onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))}",
+        "onChange={(event) => setDraft((current) => ({ ...current, deviceLimit: event.target.value }))}",
+        "onChange={(event) => setDraft((current) => ({ ...current, durationDays: event.target.value }))}",
+        "onChange={(event) => setDraft((current) => ({ ...current, isTrial: event.target.checked }))}",
+        "onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}",
+        "onChange={(event) => setDraft((current) => ({ ...current, priceToman: event.target.value }))}",
+        "onChange={(event) => setDraft((current) => ({ ...current, resetStrategy: event.target.value as PlanDraft[\"resetStrategy\"] }))}",
+        "onChange={(event) => setEditingCategoryName(event.target.value)}",
+        "onChange={(event) => setNewCategoryName(event.target.value)}",
+        "onChange={(event) => setUsernames((current) => ({ ...current, [plan.id]: event.target.value }))}",
+        "onClick={() => archiveTarget && archive.mutate(archiveTarget)}",
+        "onClick={() => category.plan_count > 0 ? toast({ title: \"این دسته‌بندی پلن فعال دارد\", description: \"ابتدا پلن‌های فعال را منتقل یا بایگانی کنید.\", status: \"warning\", duration: 5000 }) : archiveCategory.mutate(category)}",
+        "onClick={() => createCategory.mutate()}",
+        "onClick={() => createUser.mutate({ plan, username: usernames[plan.id].trim(), accessGroupId: Number(accessGroupIds[plan.id]) })}",
+        "onClick={() => document.getElementById(\"access-groups\")?.scrollIntoView({ behavior: \"smooth\", block: \"start\" })}",
+        "onClick={() => openEdit(plan)}",
+        "onClick={() => setEditingCategoryId(null)}",
+        "onClick={() => updateCategory.mutate({ category, name: editingCategoryName })}",
+        "onClick={() => { setArchiveTarget(plan); archiveDialog.onOpen(); }}",
+        "onClick={() => { setEditingCategoryId(category.id); setEditingCategoryName(category.name); }}",
+        "onClick={archiveDialog.onClose}",
+        "onClick={modal.onClose}",
+        "onClick={openCreate}",
+        "onClose={archiveDialog.onClose}",
+        "onClose={modal.onClose}",
+        "onSubmit={submit}"
+      ],
+      "options": [
+        "<option key={category.id} value={category.id}>{category.name}</option>",
+        "<option key={group.id} value={group.id}>{group.name}</option>",
+        "<option value=\"\">انتخاب دسترسی شبکه</option>",
+        "<option value=\"\">انتخاب دسته‌بندی</option>",
+        "<option value=\"day\">روزانه</option>",
+        "<option value=\"month\">ماهانه</option>",
+        "<option value=\"no_reset\">بدون ریست</option>",
+        "<option value=\"week\">هفتگی</option>",
+        "<option value=\"year\">سالانه</option>"
+      ]
+    },
+    "src/pages/Router.tsx": {
+      "requests": [
+        "fetch(\"/account/summary\")",
+        "fetch(\"/admin\", {\n    headers: { Authorization: `Bearer ${getAuthToken()}` },\n})",
+        "useQuery<AccountSummary, Error>(\"account-summary\", () => fetch(\"/account/summary\"), { enabled: getUserIsSuccess })"
+      ],
+      "actions": [
+        "onClick={() => window.location.reload()}"
+      ],
+      "options": []
+    },
+    "src/pages/Settings.tsx": {
+      "requests": [
+        "fetch(\"/branding/public\")",
+        "fetch(\"/owner/backups\", { method: \"POST\" })",
+        "fetch(\"/owner/backups/settings\")",
+        "fetch(\"/owner/pricing\")",
+        "fetch<BackupSettings>(\"/owner/backups/settings\", { method: \"PUT\", body: backup })",
+        "fetch<Pricing>(\"/owner/pricing\", { method: \"PUT\", body: pricing })",
+        "fetch<SystemBranding>(\"/branding/system\", { method: \"PUT\", body: branding })",
+        "fetch<SystemBranding>(`/branding/system/${kind}`, { method: \"POST\", body })",
+        "fetch<{\n    validation_token: string;\n    manifest: Record<string, unknown>;\n}>(\"/owner/backups/validate\", { method: \"POST\", body })",
+        "useMutation(() => fetch(\"/owner/backups\", { method: \"POST\" }), {\n    onSuccess: () => success(\"نسخه پشتیبان ساخته شد\"),\n    onError: failure,\n})",
+        "useMutation(() => fetch<BackupSettings>(\"/owner/backups/settings\", { method: \"PUT\", body: backup }), {\n    onSuccess: (value) => {\n        setBackup(value);\n        success(\"تنظیمات پشتیبان‌گیری ذخیره شد\");\n    },\n    onError: failure,\n})",
+        "useMutation(() => fetch<Pricing>(\"/owner/pricing\", { method: \"PUT\", body: pricing }), {\n    onSuccess: (value) => {\n        setPricing(value);\n        success(\"قیمت‌گذاری پایه ذخیره شد\");\n    },\n    onError: failure,\n})",
+        "useMutation(() => fetch<SystemBranding>(\"/branding/system\", { method: \"PUT\", body: branding }), {\n    onSuccess: (value) => {\n        setBranding(value);\n        queryClient.setQueryData(\"system-branding\", value);\n        success(\"تنظیمات هویت پنل ذخیره شد\");\n    },\n    onError: failure,\n})",
+        "useQuery<BackupSettings>(\"backup-settings\", () => fetch(\"/owner/backups/settings\"), {\n    refetchOnWindowFocus: false,\n})",
+        "useQuery<Pricing>(\"owner-pricing\", () => fetch(\"/owner/pricing\"), {\n    refetchOnWindowFocus: false,\n})",
+        "useQuery<SystemBranding>(\"system-branding\", () => fetch(\"/branding/public\"))"
+      ],
+      "actions": [
+        "isDisabled={uploading}",
+        "isDisabled={uploading}",
+        "isDisabled={uploading}",
+        "isDisabled={validating}",
+        "onChange={(event) => setBackup({ ...backup, destination: event.target.value as BackupSettings[\"destination\"] })}",
+        "onChange={(event) => setBackup({ ...backup, email_from: event.target.value })}",
+        "onChange={(event) => setBackup({ ...backup, email_to: event.target.value })}",
+        "onChange={(event) => setBackup({ ...backup, enabled: event.target.checked })}",
+        "onChange={(event) => setBackup({ ...backup, retention_count: Number(event.target.value) })}",
+        "onChange={(event) => setBackup({ ...backup, schedule: event.target.value })}",
+        "onChange={(event) => setBackup({ ...backup, smtp_host: event.target.value })}",
+        "onChange={(event) => setBackup({ ...backup, smtp_password: event.target.value || null })}",
+        "onChange={(event) => setBackup({ ...backup, smtp_port: event.target.value ? Number(event.target.value) : null })}",
+        "onChange={(event) => setBackup({ ...backup, smtp_use_tls: event.target.checked })}",
+        "onChange={(event) => setBackup({ ...backup, smtp_username: event.target.value })}",
+        "onChange={(event) => setBackup({ ...backup, telegram_bot_token: event.target.value || null })}",
+        "onChange={(event) => setBackup({ ...backup, telegram_chat_id: event.target.value })}",
+        "onChange={(event) => setBranding({ ...branding, description: event.target.value })}",
+        "onChange={(event) => setBranding({ ...branding, login_title: event.target.value })}",
+        "onChange={(event) => setBranding({ ...branding, panel_name: event.target.value })}",
+        "onChange={(event) => setPricing({ ...pricing, price_per_gib_toman: Number(event.target.value) })}",
+        "onChange={(event) => uploadBrand(\"favicon\", event)}",
+        "onChange={(event) => uploadBrand(\"logo\", event)}",
+        "onChange={(event) => {\n        setValidation(null);\n        const files = Array.from(event.target.files || []);\n        setRestoreFiles(files);\n        void validateRestore(files);\n    }}",
+        "onClick={() => createBackup.mutate()}",
+        "onClick={() => query.refetch()}",
+        "onClick={() => saveBackup.mutate()}",
+        "onClick={() => saveBranding.mutate()}",
+        "onClick={() => scrollTo(section.id)}",
+        "onSubmit={(event: FormEvent) => {\n        event.preventDefault();\n        savePricing.mutate();\n    }}"
+      ],
+      "options": [
+        "<option key={value} value={value}>{destinationLabels[value]}</option>",
+        "<option key={value} value={value}>{label}</option>"
+      ]
+    },
+    "src/pages/Users.tsx": {
+      "requests": [],
+      "actions": [
+        "onClick={() => setMobileUsersOpen((value) => !value)}"
+      ],
+      "options": []
+    },
+    "src/pages/admins/AdminTable.tsx": {
+      "requests": [],
+      "actions": [
+        "isDisabled={!canEdit(item)}",
+        "isDisabled={!canEdit(item)}",
+        "isDisabled={!validAmount || busy}",
+        "isDisabled={!validAmount || busy}",
+        "isDisabled={!validAmount || busy}",
+        "isDisabled={!validAmount || busy}",
+        "isDisabled={busy}",
+        "isDisabled={busy}",
+        "isDisabled={busy}",
+        "onChange={(event) => onCreditAmountChange(item.username, event.target.value)}",
+        "onChange={(event) => onCreditAmountChange(item.username, event.target.value)}",
+        "onClick={() => onCredit(item, \"grant\")}",
+        "onClick={() => onCredit(item, \"grant\")}",
+        "onClick={() => onCredit(item, \"reclaim\")}",
+        "onClick={() => onCredit(item, \"reclaim\")}",
+        "onClick={() => onDelete(item)}",
+        "onClick={() => onDelete(item)}",
+        "onClick={() => onEdit(item)}",
+        "onClick={() => onEdit(item)}",
+        "onClick={() => onStatus(item)}",
+        "onClick={() => onStatus(item)}",
+        "onClick={() => onTrialReset(item)}"
+      ],
+      "options": []
+    },
+    "src/pages/admins/AdminUi.tsx": {
+      "requests": [],
+      "actions": [
+        "onClick={onClick}"
+      ],
+      "options": []
+    },
+    "src/pages/admins/AdminsPage.tsx": {
+      "requests": [
+        "fetch(\"/admin/capabilities\")",
+        "fetch(`/admin-management/${encodeURIComponent(item.username)}/activate`, { method: \"POST\" })",
+        "fetch(`/admin-management/${encodeURIComponent(item.username)}/money/${operation}`, {\n    method: \"POST\",\n    body: {\n        amount_toman: Math.round(amount),\n        idempotency_key: creditRequest.current.id,\n    },\n})",
+        "fetch(`/admin-management/${item.username}/${operation}`, {\n    method: \"POST\",\n    body: operation === \"freeze\"\n        ? {\n            reason_id: 1,\n            idempotency_key: `freeze-${item.id}-${crypto.randomUUID()}`,\n            note: reason,\n        }\n        : { idempotency_key: `unfreeze-${item.id}-${crypto.randomUUID()}` },\n})",
+        "fetch(`/admin-management/${item.username}/resume`, { method: \"POST\" })",
+        "fetch(`/admin-management/${item.username}/trial-quota/reset`, {\n    method: \"POST\",\n    body: {\n        idempotency_key: `trial-reset-${item.id}-${crypto.randomUUID()}`,\n        note: \"بازنشانی سهمیه تست توسط ادمین بالاسری\",\n    },\n})",
+        "fetch(`/admin-management?${params.toString()}`)",
+        "fetch(`/admin/${username}`, { method: \"DELETE\", body: { strategy } })",
+        "useMutation(({ item, operation, amount }: {\n    item: ManagedAdmin;\n    operation: CreditOperation;\n    amount: number;\n}) => {\n    const key = JSON.stringify([item.username, operation, Math.round(amount)]);\n    if (creditRequest.current?.key !== key)\n        creditRequest.current = { key, id: `admin-money-${crypto.randomUUID()}` };\n    return fetch(`/admin-management/${encodeURIComponent(item.username)}/money/${operation}`, {\n        method: \"POST\",\n        body: {\n            amount_toman: Math.round(amount),\n            idempotency_key: creditRequest.current.id,\n        },\n    });\n}, {\n    onSuccess: (_data, variables) => {\n        creditRequest.current = null;\n        refreshAdminData();\n        setCreditAmounts((current) => ({ ...current, [variables.item.username]: \"\" }));\n        toast({\n            title: variables.operation === \"grant\" ? \"اعتبار افزایش یافت\" : \"اعتبار کاهش یافت\",\n            status: \"success\",\n            duration: 2200,\n        });\n    },\n    onError: (error) => {\n        toast({\n            title: \"تغییر اعتبار انجام نشد\",\n            description: localizedApiError(error),\n            status: \"error\",\n            duration: 5000,\n        });\n    },\n})",
+        "useMutation(({ item, operation, reason }: {\n    item: ManagedAdmin;\n    operation: \"activate\" | \"freeze\" | \"unfreeze\" | \"resume\" | \"trial-reset\";\n    reason?: string;\n}) => {\n    if (operation === \"trial-reset\") {\n        return fetch(`/admin-management/${item.username}/trial-quota/reset`, {\n            method: \"POST\",\n            body: {\n                idempotency_key: `trial-reset-${item.id}-${crypto.randomUUID()}`,\n                note: \"بازنشانی سهمیه تست توسط ادمین بالاسری\",\n            },\n        });\n    }\n    if (operation === \"resume\") {\n        return fetch(`/admin-management/${item.username}/resume`, { method: \"POST\" });\n    }\n    if (operation === \"activate\") {\n        return fetch(`/admin-management/${encodeURIComponent(item.username)}/activate`, { method: \"POST\" });\n    }\n    return fetch(`/admin-management/${item.username}/${operation}`, {\n        method: \"POST\",\n        body: operation === \"freeze\"\n            ? {\n                reason_id: 1,\n                idempotency_key: `freeze-${item.id}-${crypto.randomUUID()}`,\n                note: reason,\n            }\n            : { idempotency_key: `unfreeze-${item.id}-${crypto.randomUUID()}` },\n    });\n}, {\n    onSuccess: () => {\n        refreshAdminData();\n        freezeDisclosure.onClose();\n        setFreezeReason(\"\");\n        setFreezeTarget(null);\n        toast({ title: \"عملیات انجام شد\", status: \"success\", duration: 2500 });\n    },\n    onError: (error) => {\n        toast({\n            title: \"عملیات انجام نشد\",\n            description: localizedApiError(error),\n            status: \"error\",\n            duration: 5000,\n        });\n    },\n})",
+        "useMutation(({ username, strategy }: {\n    username: string;\n    strategy: DeleteStrategy;\n}) => fetch(`/admin/${username}`, { method: \"DELETE\", body: { strategy } }), {\n    onSuccess: () => {\n        refreshAdminData();\n        toast({ title: t(\"admins.deleted\"), status: \"success\", duration: 3000 });\n        deleteDisclosure.onClose();\n    },\n    onError: (error) => {\n        toast({\n            title: t(\"admins.deleteFailed\"),\n            description: localizedApiError(error),\n            status: \"error\",\n            duration: 5000,\n        });\n    },\n})",
+        "useQuery<AdminCapabilities, Error>([\"admin-capabilities\", userData.username], () => fetch(\"/admin/capabilities\"), { enabled: getUserIsSuccess })",
+        "useQuery<ManagedAdminList, Error>([\"admin-management\", page, search, billingFilter, statusFilter], () => {\n    const params = new URLSearchParams({\n        offset: String(page * PAGE_SIZE),\n        limit: String(PAGE_SIZE),\n        username: search,\n    });\n    if (billingFilter)\n        params.set(\"billing_mode\", billingFilter);\n    if (statusFilter)\n        params.set(\"account_status\", statusFilter);\n    return fetch(`/admin-management?${params.toString()}`);\n}, { keepPreviousData: true, enabled: canManage, refetchInterval: 15000 })"
+      ],
+      "actions": [
+        "isDisabled={!freezeReason.trim()}",
+        "isDisabled={(page + 1) * PAGE_SIZE >= total}",
+        "isDisabled={page === 0}",
+        "onChange={(event) => setDeleteStrategy(event.target.value as DeleteStrategy)}",
+        "onChange={(event) => setFreezeReason(event.target.value)}",
+        "onChange={(event) => setSearchInput(event.target.value)}",
+        "onClick={() => freezeTarget && quickAction.mutate({ item: freezeTarget, operation: \"freeze\", reason: freezeReason.trim() })}",
+        "onClick={() => query.refetch()}",
+        "onClick={() => selected && removeMutation.mutate({ username: selected.username, strategy: deleteStrategy })}",
+        "onClick={() => setPage((value) => value + 1)}",
+        "onClick={() => setPage((value) => value - 1)}",
+        "onClick={() => { setBillingFilter(\"\"); setPage(0); }}",
+        "onClick={() => { setBillingFilter(\"ALLOCATED_TRAFFIC\"); setPage(0); }}",
+        "onClick={() => { setBillingFilter(\"USED_TRAFFIC\"); setPage(0); }}",
+        "onClick={() => { setBillingFilter(\"USER_CREDIT\"); setPage(0); }}",
+        "onClick={() => { setStatusFilter(\"\"); setPage(0); }}",
+        "onClick={() => { setStatusFilter(\"ACTIVE\"); setPage(0); }}",
+        "onClick={() => { setStatusFilter(\"DISABLED\"); setPage(0); }}",
+        "onClick={() => { setStatusFilter(\"SUSPENDED\"); setPage(0); }}",
+        "onClick={deleteDisclosure.onClose}",
+        "onClick={freezeDisclosure.onClose}",
+        "onClick={openCreate}",
+        "onClose={deleteDisclosure.onClose}",
+        "onClose={formDisclosure.onClose}",
+        "onClose={freezeDisclosure.onClose}",
+        "onCredit={submitCredit}",
+        "onCreditAmountChange={(username, value) => setCreditAmounts((current) => ({ ...current, [username]: value }))}",
+        "onDelete={openDelete}",
+        "onEdit={openEdit}",
+        "onStatus={runStatusAction}",
+        "onTrialReset={trialReset}"
+      ],
+      "options": [
+        "<option value=\"delete_users\">{t(\"admins.deleteUsers\")}</option>",
+        "<option value=\"disable_users\">{t(\"admins.disableUsers\")}</option>",
+        "<option value=\"keep_users\">{t(\"admins.keepUsers\")}</option>"
+      ]
+    },
+    "src/pages/admins/RequestsAlerts.tsx": {
+      "requests": [
+        "fetch(`/admin-management/deletion-requests/${item.id}/decision`, { method: \"POST\", body: { approve, refund_toman: approve ? Number(amounts[item.id] ?? item.purchase_toman) : 0, note: notes[item.id]?.trim() || null } })",
+        "fetch(`/admin-management/requests-alerts?${new URLSearchParams({ ...(requestBefore ? { request_before_id: String(requestBefore) } : {}), ...(alertBefore ? { alert_before_id: String(alertBefore) } : {}) })}`)",
+        "useMutation(({ item, approve }: {\n    item: RequestItem;\n    approve: boolean;\n}) => fetch(`/admin-management/deletion-requests/${item.id}/decision`, { method: \"POST\", body: { approve, refund_toman: approve ? Number(amounts[item.id] ?? item.purchase_toman) : 0, note: notes[item.id]?.trim() || null } }), {\n    onSuccess: () => { client.invalidateQueries(\"admin-requests-alerts\"); client.invalidateQueries(\"admin-management\"); client.invalidateQueries(\"account-summary\"); client.invalidateQueries(\"users\"); toast({ title: \"تصمیم ثبت شد\", status: \"success\" }); },\n    onError: (error) => { toast({ title: \"ثبت تصمیم انجام نشد\", description: localizedApiError(error), status: \"error\" }); },\n})",
+        "useQuery<Data, Error>([\"admin-requests-alerts\", requestBefore, alertBefore], () => fetch(`/admin-management/requests-alerts?${new URLSearchParams({ ...(requestBefore ? { request_before_id: String(requestBefore) } : {}), ...(alertBefore ? { alert_before_id: String(alertBefore) } : {}) })}`), { refetchInterval: 60000, refetchIntervalInBackground: false })"
+      ],
+      "actions": [
+        "isDisabled={!/^\\d+$/.test(amounts[item.id] ?? String(item.purchase_toman)) || Number(amounts[item.id] ?? item.purchase_toman) > item.purchase_toman}",
+        "isDisabled={!alertBefore}",
+        "isDisabled={!requestBefore}",
+        "isDisabled={decide.isLoading}",
+        "isDisabled={query.data?.alerts.length !== 100}",
+        "isDisabled={query.data?.requests.length !== 100}",
+        "onChange={(e) => setAmounts((old) => ({ ...old, [item.id]: e.target.value }))}",
+        "onChange={(e) => setFilter(e.target.value)}",
+        "onChange={(e) => setNotes((old) => ({ ...old, [item.id]: e.target.value }))}",
+        "onClick={() => decide.mutate({ item, approve: false })}",
+        "onClick={() => decide.mutate({ item, approve: true })}",
+        "onClick={() => query.refetch()}",
+        "onClick={() => setAlertBefore(null)}",
+        "onClick={() => setAlertBefore(query.data?.alerts[query.data.alerts.length - 1]?.id || null)}",
+        "onClick={() => setRequestBefore(null)}",
+        "onClick={() => setRequestBefore(query.data?.requests[query.data.requests.length - 1]?.id || null)}"
+      ],
+      "options": [
+        "<option value=\"\">تاریخچه همه درخواست‌ها</option>",
+        "<option value=\"APPROVED\">تأییدشده</option>",
+        "<option value=\"PENDING\">در انتظار بررسی</option>",
+        "<option value=\"REJECTED\">ردشده</option>"
+      ]
+    },
+    "src/service/http.ts": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/types/Admin.ts": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/types/Audit.ts": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/types/Dashboard.ts": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/types/DeviceLimit.ts": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/types/ProxyHosts.ts": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/types/User.ts": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/utils/accessGroupScope.ts": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/utils/adminHierarchyAuthorization.ts": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/utils/apiError.ts": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/utils/authStorage.ts": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/utils/color.ts": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/utils/dateFormatter.ts": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/utils/formatByte.tsx": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/utils/hostsForm.ts": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/utils/react-query.ts": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/utils/themeColor.ts": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/utils/toastHandler.ts": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/utils/userPreferenceStorage.ts": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    },
+    "src/vite-env.d.ts": {
+      "requests": [],
+      "actions": [],
+      "options": []
+    }
+  }
+}

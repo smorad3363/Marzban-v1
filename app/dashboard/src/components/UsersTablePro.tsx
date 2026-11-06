@@ -146,10 +146,10 @@ const UsageCell: FC<{ user: User }> = ({ user }) => {
   return (
     <Stack spacing={1.25} minW={0} w="full">
       <HStack justify="space-between" spacing={2} minW={0}>
-        <Text dir="ltr" textAlign="start" fontSize="10px" fontWeight="800" noOfLines={1} sx={{ unicodeBidi: "isolate" }}>
+        <Text dir="ltr" textAlign="start" fontSize="xs" fontWeight="700" noOfLines={1} sx={{ unicodeBidi: "isolate" }}>
           {String(formatBytes(used))} / {user.data_limit ? String(formatBytes(user.data_limit)) : "∞"}
         </Text>
-        <Text flexShrink={0} color={unlimited ? "var(--panel-accent)" : color} fontSize="9px" fontWeight="850">
+        <Text flexShrink={0} color={unlimited ? "var(--panel-accent)" : color} fontSize="xs" fontWeight="700">
           {unlimited ? "∞" : `${Math.round(percent)}٪`}
         </Text>
       </HStack>
@@ -163,7 +163,7 @@ const StatusPill: FC<{ status: User["status"] }> = ({ status }) => {
   return (
     <HStack w="fit-content" spacing={1.5} px={2.5} py={1} borderRadius="full" bg={meta.bg} borderWidth="1px" borderColor={meta.border}>
       <Box boxSize="6px" borderRadius="full" bg={meta.dot} />
-      <Text color={meta.color} fontSize="10px" fontWeight="750">{meta.label}</Text>
+      <Text color={meta.color} fontSize="xs" fontWeight="700">{meta.label}</Text>
     </HStack>
   );
 };
@@ -368,7 +368,7 @@ export const UsersTablePro: FC = () => {
   if (users.length === 0) {
     return (
       <Stack py={12} align="center" spacing={2}>
-        <Text fontWeight="800">کاربری برای نمایش نیست</Text>
+        <Text fontWeight="700">کاربری برای نمایش نیست</Text>
         <Text color="var(--panel-text-muted)" fontSize="sm">فیلترها را تغییر دهید یا کاربر جدید بسازید.</Text>
         <Pagination />
       </Stack>
@@ -408,7 +408,7 @@ export const UsersTablePro: FC = () => {
               onClear={() => setSelectedMap(new Map())}
             />
             {selectedUsers.length > users.filter((user) => selectedMap.has(user.username)).length && (
-              <Text pb={2} color="var(--panel-warning)" fontSize="10px">
+              <Text pb={2} color="var(--panel-warning)" fontSize="xs">
                 انتخاب‌ها بین صفحه‌ها حفظ شده‌اند؛ مجموع انتخاب‌شده: {selectedUsers.length.toLocaleString("fa-IR")}
               </Text>
             )}
@@ -423,7 +423,7 @@ export const UsersTablePro: FC = () => {
           bg="var(--panel-nested)"
           borderBottomWidth="1px"
           borderColor="var(--panel-border)"
-          fontSize="10px"
+          fontSize="xs"
           lineHeight="1.6"
         >
           برای جزئیات روی نام کاربر بزنید؛ جدول در موبایل افقی پیمایش می‌شود.
@@ -475,10 +475,10 @@ export const UsersTablePro: FC = () => {
                     bg={selectedMap.has(user.username) ? "var(--panel-accent-soft)" : undefined}
                   >
                     {!readOnly && <Td><Checkbox isChecked={selectedMap.has(user.username)} onChange={(event) => setSelected(user, event.target.checked)} colorScheme="primary" /></Td>}
-                    <Td textAlign="center" color="var(--panel-text-muted)" fontSize="10px" fontWeight="800">{((filters.offset || 0) + index + 1).toLocaleString("fa-IR")}</Td>
+                    <Td textAlign="center" color="var(--panel-text-muted)" fontSize="xs" fontWeight="700">{((filters.offset || 0) + index + 1).toLocaleString("fa-IR")}</Td>
                     <Td>
                       <HStack spacing={2.5} minW={0}>
-                        <Box w="30px" h="30px" display="grid" placeItems="center" borderRadius="full" bg="var(--panel-accent-soft)" color="var(--panel-accent)" fontSize="11px" fontWeight="900" flexShrink={0}>
+                        <Box w="30px" h="30px" display="grid" placeItems="center" borderRadius="full" bg="var(--panel-accent-soft)" color="var(--panel-accent)" fontSize="xs" fontWeight="700" flexShrink={0}>
                           {user.username.slice(0, 1).toUpperCase()}
                         </Box>
                         <Box minW={0}>
@@ -488,14 +488,14 @@ export const UsersTablePro: FC = () => {
                             minW={0}
                             maxW="full"
                             color="var(--panel-accent)"
-                            fontSize="11px"
-                            fontWeight="900"
+                            fontSize="xs"
+                            fontWeight="700"
                             justifyContent="flex-start"
                             onClick={() => setDrawerUsername(user.username)}
                           >
                             <Text dir="ltr" textAlign="start" noOfLines={1} sx={{ unicodeBidi: "isolate" }}>{user.username}</Text>
                           </Button>
-                          <Text mt={0.5} color="var(--panel-text-muted)" fontSize="9px" noOfLines={1}>{user.note || "بدون توضیح"}</Text>
+                          <Text mt={0.5} color="var(--panel-text-muted)" fontSize="xs" noOfLines={1}>{user.note || "بدون توضیح"}</Text>
                         </Box>
                       </HStack>
                     </Td>
@@ -504,25 +504,25 @@ export const UsersTablePro: FC = () => {
                       {planMeta ? (
                         <Stack spacing={0.5}>
                           <HStack spacing={1.5} minW={0}>
-                            <Text fontSize="10px" fontWeight="850" noOfLines={1}>{planMeta.plan_name}</Text>
-                            {planMeta.is_trial && <Badge colorScheme="yellow" variant="subtle" fontSize="8px">آزمایشی</Badge>}
+                            <Text fontSize="xs" fontWeight="700" noOfLines={1}>{planMeta.plan_name}</Text>
+                            {planMeta.is_trial && <Badge colorScheme="yellow" variant="subtle" fontSize="xs">آزمایشی</Badge>}
                           </HStack>
-                          <Text color="var(--panel-text-muted)" fontSize="8px">نسخه {planMeta.version_number.toLocaleString("fa-IR")}</Text>
+                          <Text color="var(--panel-text-muted)" fontSize="xs">نسخه {planMeta.version_number.toLocaleString("fa-IR")}</Text>
                         </Stack>
-                      ) : <Text color="var(--panel-text-muted)" fontSize="10px">بدون پلن</Text>}
+                      ) : <Text color="var(--panel-text-muted)" fontSize="xs">بدون پلن</Text>}
                     </Td>
                     <Td><UsageCell user={user} /></Td>
                     <Td>
                       <Tooltip label={fmtExpire(user.expire)} hasArrow>
                         <Stack spacing={0.5}>
-                          <Text fontSize="10px" fontWeight="800" color={user.status === "expired" ? "var(--panel-danger)" : "var(--panel-text-body)"}>{relativeExpiry(user.expire)}</Text>
-                          <Text color="var(--panel-text-muted)" fontSize="8px">{fmtExpire(user.expire)}</Text>
+                          <Text fontSize="xs" fontWeight="700" color={user.status === "expired" ? "var(--panel-danger)" : "var(--panel-text-body)"}>{relativeExpiry(user.expire)}</Text>
+                          <Text color="var(--panel-text-muted)" fontSize="xs">{fmtExpire(user.expire)}</Text>
                         </Stack>
                       </Tooltip>
                     </Td>
                     <Td>
                       <HStack spacing={1.5}>
-                        <Text dir="ltr" fontSize="10px" fontWeight="850" sx={{ unicodeBidi: "isolate" }}>{user.concurrent_user_limit ?? "∞"}</Text>
+                        <Text dir="ltr" fontSize="xs" fontWeight="700" sx={{ unicodeBidi: "isolate" }}>{user.concurrent_user_limit ?? "∞"}</Text>
                         {deviceWarned && <Box boxSize="6px" borderRadius="full" bg="var(--panel-warning)" title="هشدار دستگاه" />}
                         {!readOnly && isOwner && user.concurrent_user_limit != null && <UserDeviceLimit user={user} compact />}
                       </HStack>
@@ -530,12 +530,12 @@ export const UsersTablePro: FC = () => {
                     <Td>
                       <Tooltip label={fmtDateTime(user.online_at)} hasArrow>
                         <Stack spacing={0.5}>
-                          <Text fontSize="10px" fontWeight="750">{relativeActivity(user.online_at)}</Text>
-                          <Text color="var(--panel-text-muted)" fontSize="8px">{fmtDateTime(user.online_at)}</Text>
+                          <Text fontSize="xs" fontWeight="700">{relativeActivity(user.online_at)}</Text>
+                          <Text color="var(--panel-text-muted)" fontSize="xs">{fmtDateTime(user.online_at)}</Text>
                         </Stack>
                       </Tooltip>
                     </Td>
-                    {isOwner && <Td><Text dir="ltr" textAlign="start" fontSize="10px" fontWeight="800" noOfLines={1} sx={{ unicodeBidi: "isolate" }}>{user.admin?.username || "—"}</Text></Td>}
+                    {isOwner && <Td><Text dir="ltr" textAlign="start" fontSize="xs" fontWeight="700" noOfLines={1} sx={{ unicodeBidi: "isolate" }}>{user.admin?.username || "—"}</Text></Td>}
                     <Td textAlign="end">
                       <HStack justify="end" gap={1} dir="ltr" maxW="full">
                         <Action label="کپی لینک اشتراک" icon={<CopyIcon />} onClick={() => copySubscription(user)} tone="green" />
@@ -606,7 +606,7 @@ export const UsersTablePro: FC = () => {
         }}
         isCentered
       >
-        <ModalOverlay bg="rgba(0,0,0,.72)" />
+        <ModalOverlay bg="var(--panel-overlay)" />
         <ModalContent dir={i18n.dir()} mx={3} bg="var(--panel-surface)" color="var(--panel-text)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="16px">
           <ModalHeader>تمدید «{renewalUser?.username}» با پلن</ModalHeader>
           <ModalCloseButton isDisabled={renew.isLoading} />

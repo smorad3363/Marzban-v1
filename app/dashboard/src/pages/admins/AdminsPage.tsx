@@ -1,3 +1,4 @@
+import { PageHeader } from "design-system/Console";
 import {
   Alert,
   AlertDialog,
@@ -303,21 +304,13 @@ export const AdminsPage: FC = () => {
   return (
     <AppShell>
       <Stack spacing={5}>
-        <Stack direction={{ base: "column", md: "row" }} justify="space-between" align={{ md: "center" }} gap={4}>
-          <Box>
-            <Text as="h1" fontSize={{ base: "2xl", md: "3xl" }} fontWeight="800" letterSpacing="-0.035em">
-              {t("admins.title")}
-            </Text>
-            <Text mt={1} color="var(--panel-text-muted)" fontSize="sm" maxW="680px">
-              مدیریت ادمین‌ها، اعتبار، وضعیت و دسترسی‌ها در یک نمای سریع و عملیاتی.
-            </Text>
-          </Box>
+        <PageHeader eyebrow="مدیریت تیم" title={t("admins.title")} description="مدیریت ادمین‌ها، اعتبار، وضعیت و دسترسی‌ها در یک فضای کاری." actions={<>
           {canCreate && (
             <Button
               minH="42px"
               px={5}
               flexShrink={0}
-              colorScheme="blue"
+              colorScheme="primary"
               leftIcon={<AddIcon />}
               onClick={openCreate}
               borderRadius="10px"
@@ -328,13 +321,13 @@ export const AdminsPage: FC = () => {
               {t("admins.create")}
             </Button>
           )}
-        </Stack>
+        </>} />
 
         {!hierarchyReady && (
           <Alert status="warning" borderRadius="12px" alignItems="flex-start">
             <AlertIcon mt={0.5} />
             <Box>
-              <Text fontWeight="800">ساختار ادمین‌ها روی سرور فعال نشده است.</Text>
+              <Text fontWeight="700">ساختار ادمین‌ها روی سرور فعال نشده است.</Text>
               <Text mt={1} fontSize="sm">تا فعال‌سازی، مدیریت سلسله‌مراتب و بعضی دسترسی‌ها محدود است.</Text>
               <Text mt={2} fontSize="sm">Use command-line administration to promote an Owner.</Text>
             </Box>
@@ -367,7 +360,7 @@ export const AdminsPage: FC = () => {
           >
             <Stack direction={{ base: "column", md: "row" }} spacing={3} align={{ md: "center" }} flex="1" minW={0}>
               <HStack spacing={1.5} flexWrap="wrap">
-                <Text color="var(--panel-text-muted)" fontSize="11px" fontWeight="800">وضعیت:</Text>
+                <Text color="var(--panel-text-muted)" fontSize="xs" fontWeight="700">وضعیت:</Text>
                 <FilterButton active={statusFilter === ""} onClick={() => { setStatusFilter(""); setPage(0); }}>همه</FilterButton>
                 <FilterButton active={statusFilter === "ACTIVE"} onClick={() => { setStatusFilter("ACTIVE"); setPage(0); }}>فعال</FilterButton>
                 <FilterButton active={statusFilter === "SUSPENDED"} onClick={() => { setStatusFilter("SUSPENDED"); setPage(0); }}>فریز</FilterButton>
@@ -377,7 +370,7 @@ export const AdminsPage: FC = () => {
               <Divider display={{ base: "none", md: "block" }} orientation="vertical" h="28px" borderColor="whiteAlpha.200" />
 
               <HStack spacing={1.5} flexWrap="wrap">
-                <Text color="var(--panel-text-muted)" fontSize="11px" fontWeight="800">نوع اعتبار:</Text>
+                <Text color="var(--panel-text-muted)" fontSize="xs" fontWeight="700">نوع اعتبار:</Text>
                 <FilterButton active={billingFilter === ""} onClick={() => { setBillingFilter(""); setPage(0); }}>همه</FilterButton>
                 <FilterButton active={billingFilter === "ALLOCATED_TRAFFIC"} onClick={() => { setBillingFilter("ALLOCATED_TRAFFIC"); setPage(0); }}>حجم ساخته‌شده</FilterButton>
                 <FilterButton active={billingFilter === "USED_TRAFFIC"} onClick={() => { setBillingFilter("USED_TRAFFIC"); setPage(0); }}>مصرف واقعی</FilterButton>
@@ -438,7 +431,7 @@ export const AdminsPage: FC = () => {
               <Text color="var(--panel-text-muted)" fontSize="xs">{t("admins.page", { current: page + 1, total: Math.ceil(total / PAGE_SIZE) })}</Text>
               <HStack>
                 <Button size="sm" variant="ghost" minW="40px" isDisabled={page === 0} onClick={() => setPage((value) => value - 1)}>{t("previous")}</Button>
-                <Box minW="34px" h="34px" display="grid" placeItems="center" borderRadius="9px" bg="var(--panel-accent-soft)" borderWidth="1px" borderColor="var(--panel-accent-border)" color="var(--panel-accent)" fontSize="sm" fontWeight="800">{(page + 1).toLocaleString("fa-IR")}</Box>
+                <Box minW="34px" h="34px" display="grid" placeItems="center" borderRadius="9px" bg="var(--panel-accent-soft)" borderWidth="1px" borderColor="var(--panel-accent-border)" color="var(--panel-accent)" fontSize="sm" fontWeight="700">{(page + 1).toLocaleString("fa-IR")}</Box>
                 <Button size="sm" variant="ghost" minW="40px" isDisabled={(page + 1) * PAGE_SIZE >= total} onClick={() => setPage((value) => value + 1)}>{t("next")}</Button>
               </HStack>
             </HStack>

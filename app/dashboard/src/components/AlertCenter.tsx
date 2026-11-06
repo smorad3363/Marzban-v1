@@ -94,7 +94,7 @@ export function AlertCenter() {
   [...(query.data?.items || [])].sort((a,b)=>Number(b.severity==="critical")-Number(a.severity==="critical")).forEach(i=>groups.set(i.admin_username,[...(groups.get(i.admin_username)||[]),i]));
   return <Box position="sticky" top={2} zIndex={20} mb={5} borderWidth="1px" borderColor={counts?.critical ? "var(--panel-danger-border)" : "var(--panel-border)"} borderRadius="12px" bg="var(--panel-surface)" aria-label="مرکز هشدارها">
     <HStack p={3} flexWrap="wrap" justify="space-between" aria-live="polite">
-      <HStack flexWrap="wrap"><Text fontWeight="850">هشدارهای فعال</Text><Badge colorScheme="red">حیاتی: {counts ? fa(counts.critical) : "—"}</Badge><Badge colorScheme="orange">مهم: {counts ? fa(counts.warning) : "—"}</Badge></HStack>
+      <HStack flexWrap="wrap"><Text fontWeight="700">هشدارهای فعال</Text><Badge colorScheme="red">حیاتی: {counts ? fa(counts.critical) : "—"}</Badge><Badge colorScheme="orange">مهم: {counts ? fa(counts.warning) : "—"}</Badge></HStack>
       <Button size="sm" onClick={()=>setOpen(!open)} aria-expanded={open}>{open ? "جمع‌کردن جزئیات" : "بررسی هشدارها"}</Button>
     </HStack>
     <Text px={3} pb={2} fontSize="xs" color="var(--panel-text-muted)">{live?"دریافت تغییرات متصل است":"تازه‌سازی دوره‌ای هر ۶۰ ثانیه"} · {summary.data?.checked_at ? `آخرین بررسی جامع: ${new Date(summary.data.checked_at+"Z").toLocaleTimeString("fa-IR")}`:"در انتظار بررسی جامع"}</Text>
@@ -113,8 +113,8 @@ export function AlertCenter() {
       {query.isLoading && <Text>در حال دریافت…</Text>}
       {query.isSuccess && query.data?.items.length===0 && <Text>هشداری با این فیلتر وجود ندارد.</Text>}
       <Stack spacing={4} maxH={{base:"55vh",md:"500px"}} overflowY="auto">
-        {[...groups].map(([name,items])=><Box key={name}><Text fontWeight="850" mb={2} dir="ltr">{name}</Text><Stack spacing={2}>{items.map(item=><Box key={item.id} borderWidth="1px" borderRadius="10px" p={3} borderColor={item.severity==="critical" && !item.resolved_at ? "var(--panel-danger-border)":"var(--panel-border)"}>
-          <HStack justify="space-between" flexWrap="wrap"><Text fontWeight="750">{labels[item.resource] || item.resource} · {states[item.state] || item.state}</Text><Badge colorScheme={item.resolved_at?"green":item.severity==="critical"?"red":"orange"}>{item.resolved_at?"رفع‌شده":item.severity==="critical"?"حیاتی":"مهم"}</Badge></HStack>
+        {[...groups].map(([name,items])=><Box key={name}><Text fontWeight="700" mb={2} dir="ltr">{name}</Text><Stack spacing={2}>{items.map(item=><Box key={item.id} borderWidth="1px" borderRadius="10px" p={3} borderColor={item.severity==="critical" && !item.resolved_at ? "var(--panel-danger-border)":"var(--panel-border)"}>
+          <HStack justify="space-between" flexWrap="wrap"><Text fontWeight="700">{labels[item.resource] || item.resource} · {states[item.state] || item.state}</Text><Badge colorScheme={item.resolved_at?"green":item.severity==="critical"?"red":"orange"}>{item.resolved_at?"رفع‌شده":item.severity==="critical"?"حیاتی":"مهم"}</Badge></HStack>
           <Box my={2}><Details item={item}/></Box>
           <HStack flexWrap="wrap"><Button size="xs" isDisabled={item.seen} isLoading={busy===item.id} onClick={()=>markSeen(item)}>{item.seen?"دیده شده؛ وضعیت همچنان ثبت است":"دیده شد"}</Button><Text fontSize="xs" color="var(--panel-text-muted)">{new Date(item.opened_at+"Z").toLocaleString("fa-IR")}</Text></HStack>
         </Box>)}</Stack></Box>)}

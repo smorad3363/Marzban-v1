@@ -82,7 +82,7 @@ const StatisticCard: FC<PropsWithChildren<StatisticCardProps>> = ({
           {title}
         </Text>
       </HStack>
-      <Box fontSize={{ base: "2xl", xl: "3xl" }} fontWeight="800" letterSpacing="-0.035em" mt={{ base: 0, xl: 5 }}>
+      <Box fontSize={{ base: "2xl", xl: "3xl" }} fontWeight="700" letterSpacing="-0.035em" mt={{ base: 0, xl: 5 }}>
         {content}
       </Box>
     </Card>

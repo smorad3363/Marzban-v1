@@ -74,8 +74,8 @@ const StatusButton: FC<{
       borderColor={active ? palette.border : "var(--panel-border)"}
       bg={active ? palette.bg : "var(--panel-surface)"}
       color={active ? palette.color : "var(--panel-text-body)"}
-      fontSize="11px"
-      fontWeight="750"
+      fontSize="xs"
+      fontWeight="700"
       whiteSpace="nowrap"
       flexShrink={0}
       onClick={onClick}
@@ -103,8 +103,8 @@ const FilterChip: FC<{
     borderColor={active ? "var(--panel-accent-border)" : "var(--panel-border)"}
     bg={active ? "var(--panel-accent-soft)" : "var(--panel-nested)"}
     color={active ? "var(--panel-accent)" : "var(--panel-text-muted)"}
-    fontSize="10px"
-    fontWeight="800"
+    fontSize="xs"
+    fontWeight="700"
     whiteSpace="nowrap"
     flexShrink={0}
     aria-pressed={active}
@@ -211,7 +211,7 @@ export const UserManagementControls: FC = () => {
             w="170px"
             flexShrink={0}
             borderRadius="12px"
-            fontSize="11px"
+            fontSize="xs"
             fontWeight="700"
             {...control}
             sx={{ option: { background: "var(--panel-surface)", color: "var(--panel-text)" } }}
@@ -230,7 +230,7 @@ export const UserManagementControls: FC = () => {
           w="190px"
           flexShrink={0}
           borderRadius="12px"
-          fontSize="11px"
+          fontSize="xs"
           fontWeight="700"
           {...control}
           sx={{ option: { background: "var(--panel-surface)", color: "var(--panel-text)" } }}
@@ -251,7 +251,7 @@ export const UserManagementControls: FC = () => {
           w="175px"
           flexShrink={0}
           borderRadius="12px"
-          fontSize="11px"
+          fontSize="xs"
           fontWeight="700"
           {...control}
           sx={{ option: { background: "var(--panel-surface)", color: "var(--panel-text)" } }}
@@ -273,7 +273,7 @@ export const UserManagementControls: FC = () => {
       >
         <HStack spacing={1} color="var(--panel-text-muted)" flexShrink={0}>
           <FilterIcon />
-          <Text fontSize="10px" fontWeight="800" whiteSpace="nowrap">فیلتر هوشمند</Text>
+          <Text fontSize="xs" fontWeight="700" whiteSpace="nowrap">فیلتر هوشمند</Text>
         </HStack>
         <FilterChip
           active={Boolean(filters.attention)}
@@ -332,7 +332,7 @@ export const UserManagementControls: FC = () => {
             color="var(--panel-text-muted)"
             leftIcon={<ClearIcon />}
             onClick={clearAdvanced}
-            fontSize="10px"
+            fontSize="xs"
           >
             پاک کردن
           </Button>
@@ -384,7 +384,7 @@ export const FiltersCompact: FC = () => {
               leftIcon={<AddIcon />}
               onClick={() => onCreateUser(true)}
               borderRadius="12px"
-              fontSize="11px"
+              fontSize="xs"
             >
               افزودن کاربر
             </Button>
@@ -400,7 +400,7 @@ export const FiltersCompact: FC = () => {
               leftIcon={<AddIcon />}
               onClick={() => setPlanCreateOpen(true)}
               borderRadius="12px"
-              fontSize="11px"
+              fontSize="xs"
             >
               ساخت از پلن
             </Button>
@@ -454,7 +454,7 @@ export const FiltersCompact: FC = () => {
               updateSearch(event.target.value.trim());
             }}
             placeholder="جستجو در نام کاربری یا توضیحات..."
-            fontSize="11px"
+            fontSize="xs"
             borderRadius="12px"
             {...control}
           />

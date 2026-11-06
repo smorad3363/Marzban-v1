@@ -24,7 +24,7 @@ export const RequestsAlerts = () => {
     onError: (error) => { toast({ title: "ثبت تصمیم انجام نشد", description: localizedApiError(error), status: "error" }); },
   });
   return <Box borderWidth="1px" borderColor="var(--panel-border)" borderRadius="16px" p={4}>
-    <Text as="h2" fontWeight="800">درخواست‌ها و هشدارها</Text>
+    <Text as="h2" fontWeight="700">درخواست‌ها و هشدارها</Text>
     <Text fontSize="sm" mt={2}>درخواست‌های بیشتر از ۱٪ مصرف فقط توسط ادمین بالادستی مستقیم بررسی می‌شوند. تا تأیید، کاربر حذف نمی‌شود.</Text>
     {query.isError && <Alert status="error" mt={3}><AlertIcon />{localizedApiError(query.error)}<Button ms={2} onClick={() => query.refetch()}>تلاش مجدد</Button></Alert>}
     <Select aria-label="وضعیت درخواست" my={3} value={filter} onChange={(e) => setFilter(e.target.value)} maxW="240px"><option value="">تاریخچه همه درخواست‌ها</option><option value="PENDING">در انتظار بررسی</option><option value="APPROVED">تأییدشده</option><option value="REJECTED">ردشده</option></Select>

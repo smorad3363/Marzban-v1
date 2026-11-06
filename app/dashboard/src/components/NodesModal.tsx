@@ -28,7 +28,7 @@ export const NodesDialog: FC = () => {
         scrollBehavior="inside"
         size="full"
       >
-        <ModalOverlay bg="blackAlpha.400" backdropFilter="blur(10px)" />
+        <ModalOverlay bg="var(--panel-overlay)" backdropFilter="blur(5px)" />
         <ModalContent
           mx={{ base: 2, md: 4 }}
           my={{ base: 2, md: 4 }}
@@ -52,7 +52,7 @@ export const NodesDialog: FC = () => {
               <Icon color="primary">
                 <SquaresPlusIcon width="20px" />
               </Icon>
-              <Text fontSize="lg" fontWeight="900">
+              <Text fontSize="lg" fontWeight="700">
                 مدیریت گره‌ها
               </Text>
             </HStack>

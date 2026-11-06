@@ -1,3 +1,4 @@
+import { PageHeader } from "design-system/Console";
 import {
   Box,
   Button,
@@ -32,24 +33,7 @@ export const Users: FC = () => {
   return (
     <AppShell>
       <Stack spacing={5}>
-        <Card
-          px={{ base: 4, md: 5 }}
-          py={{ base: 4, md: 5 }}
-          bg="linear-gradient(145deg, var(--panel-surface), var(--panel-nested))"
-          color="inherit"
-          borderWidth="1px"
-          borderColor="var(--panel-border)"
-          borderRadius="18px"
-          boxShadow="var(--shadow-panel)"
-        >
-          <Text color="var(--panel-accent)" fontSize="11px" fontWeight="900">کاربران</Text>
-          <Text as="h1" mt={1} fontSize={{ base: "2xl", md: "3xl" }} fontWeight="900" letterSpacing="-0.04em">
-            مدیریت کاربران
-          </Text>
-          <Text mt={2} color="var(--panel-text-muted)" fontSize="sm">
-            جستجو، فیلتر و مدیریت کاربران بدون شلوغی
-          </Text>
-        </Card>
+        <PageHeader eyebrow="مدیریت سرویس" title="مدیریت کاربران" description="وضعیت، مصرف و دسترسی کاربران؛ همه در یک فضای منظم." />
 
         <UserSummaryCards />
 
@@ -66,8 +50,8 @@ export const Users: FC = () => {
             <Stack px={{ base: 3, md: 4 }} pt={3.5} spacing={2.5}>
               <HStack justify="space-between" align="start" gap={3} flexWrap="wrap">
                 <Box flex="1" minW={0}>
-                  <Text id="user-operations-title" as="h2" fontSize="lg" fontWeight="850">عملیات کاربران</Text>
-                  <Text mt={1} color="var(--panel-text-muted)" fontSize="11px">
+                  <Text id="user-operations-title" as="h2" fontSize="lg" fontWeight="700">عملیات کاربران</Text>
+                  <Text mt={1} color="var(--panel-text-muted)" fontSize="xs">
                     اطلاعات، وضعیت، مصرف و عملیات هر کاربر بدون شلوغ‌کردن داشبورد اصلی.
                   </Text>
                 </Box>

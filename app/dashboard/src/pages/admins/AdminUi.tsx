@@ -1,3 +1,4 @@
+import { Metric } from "design-system/Console";
 import { Box, Button, Card, HStack, Text, chakra } from "@chakra-ui/react";
 import { UserGroupIcon } from "@heroicons/react/24/outline";
 import { FC, ReactNode } from "react";
@@ -36,21 +37,7 @@ export const SummaryStat: FC<{ label: string; value: string; hint: string; tone?
   hint,
   tone = "var(--panel-text)",
 }) => (
-  <Card
-    p={{ base: 3, md: 4 }}
-    minH="104px"
-    bg={panel.bg}
-    borderWidth="1px"
-    borderColor={panel.borderColor}
-    borderRadius="16px"
-    boxShadow="none"
-  >
-    <Text color="var(--panel-text-muted)" fontSize="xs" fontWeight="700">{label}</Text>
-    <Text mt={2} color={tone} fontSize={{ base: "xl", md: "2xl" }} fontWeight="800" sx={{ fontVariantNumeric: "tabular-nums" }}>
-      {value}
-    </Text>
-    <Text mt={1.5} color="var(--panel-text-muted)" fontSize="11px">{hint}</Text>
-  </Card>
+  <Metric label={label} value={value} hint={hint} tone={tone} />
 );
 
 export const AdminAvatar: FC<{ username: string; owner: boolean }> = ({ username, owner }) => (
@@ -65,7 +52,7 @@ export const AdminAvatar: FC<{ username: string; owner: boolean }> = ({ username
     borderWidth="1px"
     borderColor={owner ? "var(--panel-accent-border)" : "var(--panel-border)"}
     color={owner ? "var(--panel-accent)" : "var(--panel-text-body)"}
-    fontWeight="800"
+    fontWeight="700"
     textTransform="uppercase"
     transition="transform .16s ease, border-color .16s ease"
     _groupHover={{ transform: "translateY(-1px)", borderColor: "var(--panel-accent)" }}
@@ -79,7 +66,7 @@ export const StatusPill: FC<{ status: keyof typeof statusMeta }> = ({ status }) 
   return (
     <HStack w="fit-content" spacing={1.5} px={2.5} py={1.25} bg={meta.bg} borderWidth="1px" borderColor={meta.border} borderRadius="full">
       <Box boxSize="6px" borderRadius="full" bg={meta.dot} />
-      <Text color={meta.text} fontSize="12px" fontWeight="800">{meta.label}</Text>
+      <Text color={meta.text} fontSize="12px" fontWeight="700">{meta.label}</Text>
     </HStack>
   );
 };
@@ -120,7 +107,7 @@ export const DetailChip: FC<{ label: string; value: string; tone?: string }> = (
     borderRadius="12px"
     whiteSpace="nowrap"
   >
-    <Text color="var(--panel-text-muted)" fontSize="10px" fontWeight="700">{label}</Text>
-    <Text color={tone} fontSize="11px" fontWeight="700">{value}</Text>
+    <Text color="var(--panel-text-muted)" fontSize="xs" fontWeight="700">{label}</Text>
+    <Text color={tone} fontSize="xs" fontWeight="700">{value}</Text>
   </HStack>
 );

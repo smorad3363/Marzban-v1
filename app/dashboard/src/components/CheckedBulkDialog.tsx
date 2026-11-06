@@ -97,7 +97,7 @@ export const CheckedBulkDialog: FC<Props> = ({ users, action, isOpen, onClose, o
   };
 
   return <Modal isOpen={isOpen} onClose={busy ? () => undefined : onClose} isCentered size="xl">
-    <ModalOverlay bg="blackAlpha.700" backdropFilter="blur(6px)" />
+    <ModalOverlay bg="var(--panel-overlay)" backdropFilter="blur(6px)" />
     <ModalContent dir={i18n.dir()} mx={3}>
       <ModalHeader>Bulk actions · {users.length} selected</ModalHeader><ModalCloseButton isDisabled={busy} />
       <ModalBody><Stack as="fieldset" disabled={busy || !!execution.current} minW={0} spacing={5}>

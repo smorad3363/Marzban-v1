@@ -85,7 +85,7 @@ export const AdminHierarchyPanel: FC = () => {
   return (
     <Card mb={4} bg="var(--panel-surface)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="14px" overflow="hidden">
       <HStack p={3} justify="space-between" align={{ base: "start", md: "center" }} flexWrap="wrap" borderBottomWidth="1px" borderColor="var(--panel-border)">
-        <Box><Text fontWeight="800">زیرمجموعه‌ها</Text><Text mt={0.5} color="var(--panel-text-muted)" fontSize="xs">انتخاب، اعتبار، فریز و ریست تست؛ بدون بازکردن فرم‌های بزرگ.</Text></Box>
+        <Box><Text fontWeight="700">زیرمجموعه‌ها</Text><Text mt={0.5} color="var(--panel-text-muted)" fontSize="xs">انتخاب، اعتبار، فریز و ریست تست؛ بدون بازکردن فرم‌های بزرگ.</Text></Box>
         <Select aria-label="دسته‌بندی نوع اعتبار" value={modeFilter} maxW={{ base: "full", md: "230px" }} size="sm" onChange={(event) => { setModeFilter(event.target.value); setSelectedIds([]); }}>
           <option value="">همه نوع‌های اعتبار</option><option value="USED_TRAFFIC">مصرف واقعی</option><option value="ALLOCATED_TRAFFIC">حجم ساخته‌شده</option><option value="USER_CREDIT">نامحدود با سقف اکانت</option>
         </Select>
@@ -94,7 +94,7 @@ export const AdminHierarchyPanel: FC = () => {
       {selected.length > 0 && (
         <HStack position="sticky" top={0} zIndex={1} p={3} bg="var(--panel-nested)" borderBottomWidth="1px" borderColor="var(--panel-border)" flexWrap="wrap">
           <Badge colorScheme={mixed ? "red" : "yellow"}>{selected.length} انتخاب</Badge>
-          {mixed ? <Text fontSize="xs" color="red.200">برای عملیات گروهی، نوع واحد اعتبار باید یکسان باشد.</Text> : <>
+          {mixed ? <Text fontSize="xs" color="var(--panel-danger)">برای عملیات گروهی، نوع واحد اعتبار باید یکسان باشد.</Text> : <>
             <Input aria-label="مقدار عملیات گروهی" type="number" min={1} step={resource(selected[0].billing_mode) === "traffic" ? 0.1 : 1} value={amount} onChange={(event) => setAmount(event.target.value)} placeholder={`مقدار (${unitLabel(selected[0].billing_mode)})`} maxW="190px" size="sm" />
             <Button size="sm" colorScheme="primary" isLoading={busy} isDisabled={Number(amount) <= 0} onClick={() => runBulk("grant_credit")}>افزودن اعتبار</Button>
             <Button size="sm" variant="outline" isLoading={busy} isDisabled={Number(amount) <= 0} onClick={() => runBulk("reclaim_credit")}>پس‌گرفتن</Button>
@@ -111,7 +111,7 @@ export const AdminHierarchyPanel: FC = () => {
             <SimpleGrid columns={{ base: 1, lg: 2 }} gap={2} alignItems="center">
               <HStack minW={0} flexWrap="wrap">
                 {canAct && <Checkbox aria-label={`انتخاب ${node.username}`} isChecked={selectedIds.includes(node.id)} onChange={(event) => setSelectedIds((current) => event.target.checked ? [...new Set([...current, node.id])] : current.filter((id) => id !== node.id))} />}
-                <Text dir="ltr" fontWeight="750">{node.username}</Text>
+                <Text dir="ltr" fontWeight="700">{node.username}</Text>
                 <Badge>{roleLabels[node.role] || node.role}</Badge>
                 <Badge variant="outline" colorScheme={node.billing_mode === "USER_CREDIT" ? "purple" : "yellow"}>{billingLabels[node.billing_mode] || node.billing_mode}</Badge>
                 {frozen && <Badge colorScheme="orange">فریز</Badge>}
