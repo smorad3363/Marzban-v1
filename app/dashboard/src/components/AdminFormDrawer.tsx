@@ -88,6 +88,7 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
   const { inbounds } = useDashboard();
   const usernameRef = useRef<HTMLInputElement>(null);
   const creditRequest = useRef<{ key: string; id: string } | null>(null);
+  const saveInFlight = useRef(false);
   const [form, setForm] = useState<ManagedAdminPayload>(emptyAdmin());
   const [billingMode, setBillingMode] = useState<BillingMode | "">("");
   const [inboundSearch, setInboundSearch] = useState("");
@@ -96,6 +97,7 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
   const [creditReason, setCreditReason] = useState("");
   const [creditBalance, setCreditBalance] = useState<number | null>(null);
   const [trialAmount, setTrialAmount] = useState("");
+  const [saveError, setSaveError] = useState<string | null>(null);
   const trialRequest = useRef<{ key: string; id: string } | null>(null);
   const isEditing = Boolean(admin);
 
@@ -138,6 +140,7 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
     setInboundSearch(""); setNewUserLimit(""); setCreditAmount(""); setCreditReason("");
     setCreditBalance(admin?.policy.money_balance_toman ?? null);
     setTrialAmount(""); trialRequest.current = null;
+    setSaveError(null);
   }, [admin, isOpen]);
 
   const availableInbounds = useMemo(() => [...inbounds.values()].flat().filter((item) =>
@@ -146,7 +149,7 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
 
   const mutation = useMutation<ManagedAdmin, Error, ManagedAdminPayload>((payload) => fetch(
     isEditing ? `/admin-management/${admin?.username}` : "/admin-management",
-    { method: isEditing ? "PUT" : "POST", body: payload }
+    { method: isEditing ? "PUT" : "POST", body: payload, timeout: 30000, retry: 0 }
   ), {
     onSuccess: (savedAdmin) => {
       if (isEditing) {
@@ -162,7 +165,12 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
       toast({ title: t(isEditing ? "admins.updated" : "admins.created"), status: "success", duration: 3000 });
       onClose();
     },
-    onError: (error) => { toast({ title: t("admins.saveFailed"), description: localizedApiError(error), status: "error", duration: 5000 }); },
+    onError: (error) => {
+      const message = localizedApiError(error);
+      setSaveError(message);
+      toast({ title: t("admins.saveFailed"), description: message, status: "error", duration: 5000 });
+    },
+    onSettled: () => { saveInFlight.current = false; },
   });
 
   const creditMutation = useMutation<{ target_balance_toman: number }, Error, { operation: "grant" | "reclaim"; amount: number }>(
@@ -246,7 +254,7 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
           ? ["FORM_ONLY"]
           : ["PLAN_ONLY"];
 
-  const showWarning = (title: string) => { toast({ title, status: "warning", duration: 3000 }); return false; };
+  const showWarning = (title: string) => { setSaveError(title); return false; };
   const validate = () => {
     if (!form.username.trim()) return showWarning("نام کاربری را وارد کنید");
     if (!isEditing && !form.password) return showWarning(t("admins.passwordRequired"));
@@ -264,6 +272,8 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
+    if (saveInFlight.current) return;
+    setSaveError(null);
     if (!validate()) return;
     const payload = {
       ...form,
@@ -281,6 +291,7 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
       },
     };
     if (isEditing && !payload.password) delete payload.password;
+    saveInFlight.current = true;
     mutation.mutate(payload);
   };
 
@@ -327,15 +338,15 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
   ];
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="5xl" scrollBehavior="inside" initialFocusRef={usernameRef} isCentered>
+    <Modal isOpen={isOpen} onClose={() => { if (!mutation.isLoading) onClose(); }} closeOnOverlayClick={!mutation.isLoading} closeOnEsc={!mutation.isLoading} size="5xl" scrollBehavior="inside" initialFocusRef={usernameRef} isCentered>
       <ModalOverlay bg="rgba(0,0,0,.72)" backdropFilter="blur(4px)" />
       <ModalContent as="form" onSubmit={submit} dir={i18n.dir()} mx={3} my={3} maxH="calc(100dvh - 24px)" overflow="hidden" bg="var(--panel-surface)" color="var(--panel-text)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px" boxShadow="elevated">
-        <ModalHeader px={{ base: 4, md: 5 }} py={4} borderBottomWidth="1px" borderColor="var(--panel-border)">
-          <ModalCloseButton top={4} insetInlineStart={4} insetInlineEnd="auto" />
+        <ModalHeader flexShrink={0} px={{ base: 4, md: 5 }} py={4} borderBottomWidth="1px" borderColor="var(--panel-border)">
+          <ModalCloseButton isDisabled={mutation.isLoading} top={4} insetInlineStart={4} insetInlineEnd="auto" />
           <Box pe={12}><Text fontSize="lg" fontWeight="800">{t(isEditing ? "admins.editTitle" : "admins.createTitle")}</Text><Text mt={1} color="var(--panel-text-muted)" fontSize="xs">فرم فشرده؛ همه تنظیمات اصلی و محدودیت‌های دسترسی یکجا.</Text></Box>
         </ModalHeader>
 
-        <ModalBody px={{ base: 4, md: 5 }} py={4} overflowY="auto">
+        <ModalBody minH={0} px={{ base: 4, md: 5 }} py={4} overflowY="auto">
           {capabilitiesQuery.isLoading ? <Skeleton h="240px" borderRadius="12px" /> : capabilitiesQuery.isError ? <Alert status="error"><AlertIcon />مجوزهای حساب بارگذاری نشد.</Alert> : (
             <Stack spacing={3}>
               {!hierarchyReady && (
@@ -472,8 +483,13 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
           )}
         </ModalBody>
 
-        <ModalFooter gap={2} px={{ base: 4, md: 5 }} py={3} borderTopWidth="1px" borderColor="var(--panel-border)" bg="var(--panel-surface)">
-          <Button type="button" variant="ghost" onClick={onClose}>{t("cancel")}</Button><Box flex={1} /><Button type="submit" colorScheme="primary" isLoading={mutation.isLoading} isDisabled={capabilitiesQuery.isLoading || capabilitiesQuery.isError || accountQuery.isLoading || accountQuery.isError || !hierarchyReady}>{t("save")}</Button>
+        <ModalFooter display="block" flexShrink={0} px={{ base: 4, md: 5 }} py={3} borderTopWidth="1px" borderColor="var(--panel-border)" bg="var(--panel-surface)">
+          {saveError && <Alert status="error" mb={3} borderRadius="10px"><AlertIcon /><Text fontSize="sm">{saveError}</Text></Alert>}
+          <HStack spacing={2}>
+            <Button type="button" variant="ghost" onClick={onClose} isDisabled={mutation.isLoading}>{t("cancel")}</Button>
+            <Box flex={1} />
+            <Button type="submit" colorScheme="primary" isLoading={mutation.isLoading} loadingText={isEditing ? "در حال ذخیره..." : "در حال ساخت..."} isDisabled={capabilitiesQuery.isLoading || capabilitiesQuery.isError || accountQuery.isLoading || accountQuery.isError || !hierarchyReady}>{t(isEditing ? "save" : "admins.create")}</Button>
+          </HStack>
         </ModalFooter>
       </ModalContent>
     </Modal>
