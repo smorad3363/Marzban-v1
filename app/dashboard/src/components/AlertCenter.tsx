@@ -124,7 +124,7 @@ export function AlertCenter({ children }: { children: (ui: { trigger: ReactNode;
     {getUserIsSuccess && <Drawer isOpen={open} onClose={()=>setOpen(false)} placement="left" size="md" finalFocusRef={triggerRef}>
       <DrawerOverlay bg="blackAlpha.600" />
       <DrawerContent style={{margin:0}} w={{base:"100vw",md:"full"}} borderRadius={{base:0,md:"var(--radius-panel)"}} bg="var(--panel-surface)" color="var(--panel-text)" maxW={{base:"100vw",md:"520px"}} h="100dvh" maxH="100dvh" motionProps={reduceMotion ? {initial:false,animate:{x:0,y:0},exit:{x:0,y:0},transition:{duration:0}} : {transition:{type:"tween",duration:0.18,ease:[0.2,0.8,0.2,1]}}}>
-        <DrawerCloseButton aria-label="بستن مرکز هشدارها" insetEnd={3} top={4} minW="44px" minH="44px" />
+        <DrawerCloseButton aria-label="بستن مرکز هشدارها" style={{left:12,right:"auto"}} top={4} minW="44px" minH="44px" />
         <DrawerHeader flexShrink={0} borderBottomWidth="1px" borderColor="var(--panel-border)" pe={16} pt={6}>
           <Text>مرکز هشدارها</Text><Text fontSize="xs" fontWeight="400" color="var(--panel-text-muted)" mt={2}>{isOwner ? "هشدار همه ادمین‌ها؛ به تفکیک حساب" : "هشدارهای خودتان و زیرمجموعه‌هایتان"}</Text>
           <HStack mt={3} flexWrap="wrap" aria-live="polite"><Badge colorScheme="red">حیاتی: {counts ? fa(counts.critical) : "—"}</Badge><Badge colorScheme="orange">مهم: {counts ? fa(counts.warning) : "—"}</Badge></HStack>
