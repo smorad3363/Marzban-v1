@@ -23,7 +23,7 @@ LAST_XRAY_CORES=10
 # Fork configuration
 # Override at runtime, e.g. MARZBAN_GITHUB_REPO=another-user/Marzban marzban install
 # =============================================================================
-CLI_RELEASE_VERSION="v1.1.21"
+CLI_RELEASE_VERSION="v1.1.22"
 V1_LINEAGE_SOURCE_VERSION="5.2.0"
 V1_LINEAGE_SOURCE_IMAGE="ghcr.io/smorad3363/marzban-vnext:v5.2.0"
 V1_LINEAGE_TARGET_VERSION="v1.0.0"
@@ -1106,6 +1106,21 @@ install_marzban() {
 
     colorized_echo blue "Fetching xray config file"
     github_download -fsSL "$files_url_prefix/xray_config.json" -o "$DATA_DIR/xray_config.json"
+    # Materialize the SS2022 server PSK only on fresh installation; never
+    # publish it in the source and never regenerate an existing installation.
+    python3 - "$DATA_DIR/xray_config.json" <<'PY_SS2022'
+import base64, json, os, pathlib, secrets, sys
+path = pathlib.Path(sys.argv[1])
+data = json.loads(path.read_text())
+for inbound in data.get("inbounds", []):
+    settings = inbound.get("settings", {})
+    if settings.get("method") == "2022-blake3-aes-256-gcm" and settings.get("password") == "__AUTO_SS2022_SERVER_KEY__":
+        settings["password"] = base64.b64encode(secrets.token_bytes(32)).decode()
+temp = path.with_suffix(".json.tmp")
+temp.write_text(json.dumps(data, indent=2) + "\n")
+os.chmod(temp, 0o600)
+os.replace(temp, path)
+PY_SS2022
     colorized_echo green "File saved in $DATA_DIR/xray_config.json"
     colorized_echo green "Marzban's files downloaded successfully"
 }

@@ -14,7 +14,9 @@ from app.device_limit.slots import enabled_device_slots, slot_email
 from app.utils.concurrency import threaded_function
 from app.xray.node import XRayNode
 from xray_api import XRay as XRayAPI
-from xray_api.types.account import Account, XTLSFlows
+from xray_api.types.account import Account, XTLSFlows, Shadowsocks2022Account
+from app.models.proxy import ProxyTypes
+from app.utils.shadowsocks2022 import METHOD as SS2022_METHOD
 
 if TYPE_CHECKING:
     from app.db import User as DBUser
@@ -91,7 +93,12 @@ def add_user(dbuser: "DBUser"):
                 proxy_settings = credentials.get(proxy_type.value)
                 if not proxy_settings:
                     continue
-                account = proxy_type.account_model(
+                account_model = (
+                    Shadowsocks2022Account if proxy_type == ProxyTypes.Shadowsocks
+                    and inbound.get("ss2022_method") == SS2022_METHOD
+                    else proxy_type.account_model
+                )
+                account = account_model(
                     email=slot_email(dbuser.id, dbuser.username, slot_index),
                     **proxy_settings,
                 )
@@ -203,7 +210,12 @@ def update_user(dbuser: "DBUser"):
                 proxy_settings = credentials.get(proxy_type.value)
                 if not proxy_settings:
                     continue
-                account = proxy_type.account_model(
+                account_model = (
+                    Shadowsocks2022Account if proxy_type == ProxyTypes.Shadowsocks
+                    and inbound.get("ss2022_method") == SS2022_METHOD
+                    else proxy_type.account_model
+                )
+                account = account_model(
                     email=slot_email(dbuser.id, dbuser.username, slot_index),
                     **proxy_settings,
                 )

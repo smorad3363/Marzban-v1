@@ -5,9 +5,10 @@ from enum import Enum
 from typing import Optional, Union
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.utils.system import random_password
+from app.utils.shadowsocks2022 import generate_key, METHOD, require_key
 from xray_api.types.account import (
     ShadowsocksAccount,
     ShadowsocksMethods,
@@ -89,11 +90,17 @@ class TrojanSettings(ProxySettings):
 
 
 class ShadowsocksSettings(ProxySettings):
-    password: str = Field(default_factory=random_password)
-    method: ShadowsocksMethods = ShadowsocksMethods.CHACHA20_POLY1305
+    password: str = Field(default_factory=generate_key)
+    method: ShadowsocksMethods = ShadowsocksMethods.SS2022_AES_256_GCM
+
+    @model_validator(mode="after")
+    def validate_ss2022_key(self):
+        if getattr(self.method, "value", self.method) == METHOD:
+            require_key(self.password, "Shadowsocks 2022 user key")
+        return self
 
     def revoke(self):
-        self.password = random_password()
+        self.password = generate_key()
 
 
 class ProxyHostSecurity(str, Enum):

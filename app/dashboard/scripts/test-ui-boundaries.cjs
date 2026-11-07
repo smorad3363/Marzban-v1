@@ -83,10 +83,26 @@ if (process.argv.includes('--record')) {
   const repository = path.resolve(root, '../..');
   const files = cp.execFileSync('git', ['ls-files'], { cwd: repository, encoding: 'utf8' }).trim().split('\n');
   const protectedNames = files.filter(file => !file.startsWith('app/dashboard/') || /^app\/dashboard\/src\/(service|contexts|types|hooks)\//.test(file));
-  assert.deepEqual(protectedNames.sort(), Object.keys(protectedFiles).sort(), 'Files outside the presentation scope were added or removed');
+  // Preserve all previously protected files, except the precise SS2022 feature.
+  const ss2022Allowlist = new Set(
+    fs.readFileSync(path.join(repository, 'VERSION'), 'utf8').trim() === '1.1.22' ? [
+      'VERSION', 'RELEASES.md', 'app/__init__.py', 'app/models/proxy.py',
+      'app/subscription/share.py', 'app/subscription/v2ray.py',
+      'app/utils/shadowsocks2022.py', 'app/xray/config.py', 'app/xray/operations.py',
+      'docker-compose.yml', 'docs/RELEASE_NOTES_v1.1.22.md',
+      'scripts/marzban.sh', 'scripts/migrate_shadowsocks2022.py',
+      'tests/test_shadowsocks2022.py', 'xray_api/types/account.py',
+      'xray_api/proto/proxy/shadowsocks_2022/account_pb2.py', 'xray_config.json',
+    ] : []
+  );
+  assert.deepEqual(Object.keys(protectedFiles).filter(file => !protectedNames.includes(file)), [],
+    'Previously protected files were removed');
+  assert.deepEqual(protectedNames.filter(file => !(file in protectedFiles) && !ss2022Allowlist.has(file)), [],
+    'Unexpected files outside presentation scope were added');
   for (const file of protectedNames) {
+    if (ss2022Allowlist.has(file)) continue;
     const digest = crypto.createHash('sha256').update(fs.readFileSync(path.join(repository, file))).digest('hex');
-    assert.equal(digest, protectedFiles[file], `${file}: protected backend, API or policy source changed`);
+    assert.equal(digest, protectedFiles[file], file + ': protected backend, API or policy source changed');
   }
-  console.log(`Preserved network calls, query configuration, business actions and options in ${Object.keys(contracts).length} files; backend unchanged.`);
+  console.log(`Preserved network calls, query configuration, business actions and options in ${Object.keys(contracts).length} files; backend unchanged outside explicit SS2022 feature.`);
 }

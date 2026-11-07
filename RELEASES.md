@@ -1,3 +1,9 @@
+# v1.1.22
+
+Release target: v1.1.22
+
+Shadowsocks 2022 AES-256-GCM multi-user support and migration. [Notes](docs/RELEASE_NOTES_v1.1.22.md).
+
 # v1.1.21
 
 Release target: v1.1.21
