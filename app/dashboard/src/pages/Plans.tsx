@@ -4,7 +4,7 @@ import { catalogPage, filterPlans } from "components/plans/presentation";
 import { useSearchParams } from "react-router-dom";
 import {
   Alert,
-  Flex, Menu, MenuButton, MenuList, MenuItem, Table, Tbody, Td, Th, Thead, Tr,
+  Flex, Menu, MenuButton, MenuList, MenuItem, Portal, Table, Tbody, Td, Th, Thead, Tr,
   Tabs, TabList, Tab, TabPanels, TabPanel,
   AlertDialog,
   AlertDialogBody,
@@ -260,10 +260,10 @@ export const Plans: FC = () => {
     {accountActive && <Button size="sm" minH="44px" variant="outline" colorScheme="primary" onClick={() => openUserCreate(plan)}>ساخت کاربر</Button>}
     <Menu isLazy placement="bottom-end">
       <MenuButton as={Button} size="sm" minH="44px" minW="44px" p={2} variant="ghost" aria-label={`عملیات پلن ${plan.name}`}><Icon as={EllipsisHorizontalIcon} boxSize={5} /></MenuButton>
-      <MenuList><MenuItem onClick={() => setDetailsPlan(plan)}>جزئیات پلن</MenuItem>
+      <Portal><MenuList><MenuItem onClick={() => setDetailsPlan(plan)}>جزئیات پلن</MenuItem>
         {canManage && <MenuItem onClick={() => openEdit(plan)}>ویرایش پلن</MenuItem>}
         {canManage && <MenuItem color="var(--panel-danger)" onClick={() => { setArchiveTarget(plan); archiveDialog.onOpen(); }}>بایگانی</MenuItem>}
-      </MenuList>
+      </MenuList></Portal>
     </Menu>
   </HStack>;
   const renderQuickCreate = (plan: UserPlan) => <>

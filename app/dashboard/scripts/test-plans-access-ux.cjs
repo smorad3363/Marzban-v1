@@ -22,6 +22,7 @@ const fetch = (url, options) => options?.method
   ? new Promise((resolve, reject) => requests.push({ url, options, resolve, reject }))
   : Promise.resolve(fixtures[url] ?? (() => { throw Error(`Unexpected GET ${url}`); })());
 const layoutNames = ['Alert', 'AlertIcon', 'Badge', 'Box', 'Button', 'Card', 'Checkbox', 'Flex', 'FormControl', 'FormHelperText', 'FormLabel', 'HStack', 'Icon', 'Input', 'Modal', 'ModalBody', 'ModalCloseButton', 'ModalContent', 'ModalFooter', 'ModalHeader', 'ModalOverlay', 'Select', 'SimpleGrid', 'Skeleton', 'Stack', 'Text', 'Textarea', 'Menu', 'MenuButton', 'MenuList', 'MenuItem', 'Table', 'Tbody', 'Td', 'Th', 'Thead', 'Tr', 'Tabs', 'TabList', 'Tab', 'TabPanels', 'TabPanel', 'AlertDialog', 'AlertDialogOverlay', 'AlertDialogContent', 'AlertDialogHeader', 'AlertDialogBody', 'AlertDialogFooter'];
+layoutNames.push('Portal');
 const native = { Input: 'input', Textarea: 'textarea', Select: 'select', Button: 'button', MenuButton: 'button', MenuItem: 'button', Checkbox: 'mock-checkbox', FormControl: 'mock-field', FormLabel: 'label', ModalFooter: 'footer' };
 const mockChakra = {
   useToast: () => () => {},

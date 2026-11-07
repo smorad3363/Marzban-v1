@@ -20,6 +20,8 @@ The immutable v1.1.21 behavior baseline remains intact. Exactly two presentation
 
 KEEP: backend/API/business sources and existing Plan/Access Group options. MERGE: catalog display/search helpers and shared pagination. REPLACE: generated hashed bundles. The unused generated UserPlusIcon chunk is removed by Vite tree shaking; source/build parity checks verify the resulting graph.
 
-Canonical build: `/home/runner/work/Marzban-v1/Marzban-v1/app/dashboard`, `VITE_BASE_API=/api/ npm run build`. Reviewed bundle SHA256: `54dc31225ae5598e084af81318ced74f79adab98d64f41baeb740505646ccd24` (48 files).
+Canonical build: `/home/runner/work/Marzban-v1/Marzban-v1/app/dashboard`, `VITE_BASE_API=/api/ npm run build`. Reviewed bundle SHA256: `c69bd356ff4f6ceb254afdf02952b7093aaaddf3e2ad7e784e4bd27da7d8dd46` (48 files).
 
 Final browser acceptance, exact PR-head gates and production read-back evidence are recorded in the pull request description. Physical-phone testing is separate from browser viewport testing. Deploy only the static bundle with `scripts/deploy-ui.py`, preserving backend v1.1.21, database and environment.
+
+The single-result browser review reproduced a clipped Plan action menu inside the scrolling table. Rendering the existing menu through Chakra Portal moves the popup outside that clipping container; all actions and handlers are preserved.
