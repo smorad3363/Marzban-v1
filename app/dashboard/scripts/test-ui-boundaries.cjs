@@ -85,10 +85,10 @@ if (process.argv.includes('--record')) {
   const protectedNames = files.filter(file => !file.startsWith('app/dashboard/') || /^app\/dashboard\/src\/(service|contexts|types|hooks)\//.test(file));
   // Preserve all previously protected files, except the precise SS2022 feature.
   const ss2022Allowlist = new Set(
-    fs.readFileSync(path.join(repository, 'VERSION'), 'utf8').trim() === '1.1.22' ? [
+    ['1.1.22', '1.1.23'].includes(fs.readFileSync(path.join(repository, 'VERSION'), 'utf8').trim()) ? [
       'VERSION', 'RELEASES.md', 'app/__init__.py', 'app/models/proxy.py',
       'app/subscription/share.py', 'app/subscription/v2ray.py',
-      'app/utils/shadowsocks2022.py', 'app/xray/config.py', 'app/xray/operations.py',
+      'app/utils/shadowsocks2022.py', 'app/xray/config.py', 'app/xray/operations.py', 'app/xray/node.py', 'docs/RELEASE_NOTES_v1.1.23.md',
       'docker-compose.yml', 'docs/RELEASE_NOTES_v1.1.22.md',
       'scripts/marzban.sh', 'scripts/migrate_shadowsocks2022.py',
       'tests/test_shadowsocks2022.py', 'xray_api/types/account.py',

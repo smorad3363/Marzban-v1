@@ -16,6 +16,7 @@ from requests.packages.urllib3.poolmanager import PoolManager
 from websocket import WebSocketConnectionClosedException, WebSocketTimeoutException, create_connection
 
 from app.xray.config import XRayConfig
+from app.utils.shadowsocks2022 import normalize_inbound_clients
 from app.xray.node_protocol_v2 import RuntimeProtocolError, parse_event_batch, parse_runtime_handshake
 from xray_api import XRay as XRayAPI
 
@@ -100,6 +101,9 @@ class ReSTXRayNode:
                         ]
                         del certificate['keyFile']
 
+        # Guard the exact JSON sent to Xray on nodes, including legacy clients.
+        for inbound in config.get("inbounds", []):
+            normalize_inbound_clients(inbound)
         return config
 
     def make_request(self, path: str, timeout: int, **params):
@@ -525,6 +529,9 @@ class RPyCXRayNode:
                         ]
                         del certificate['keyFile']
 
+        # Guard the exact JSON sent to Xray on nodes, including legacy clients.
+        for inbound in config.get("inbounds", []):
+            normalize_inbound_clients(inbound)
         return config
 
     def start(self, config: XRayConfig):

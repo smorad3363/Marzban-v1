@@ -25,6 +25,17 @@
         "clients": [],
         "method": "2022-blake3-aes-256-gcm"
       }
+    },
+    {
+      "tag": "Shadowsocks TCP",
+      "listen": "0.0.0.0",
+      "port": 1080,
+      "protocol": "shadowsocks",
+      "settings": {
+        "method": "chacha20-ietf-poly1305",
+        "network": "tcp,udp",
+        "clients": []
+      }
     }
   ],
   "outbounds": [

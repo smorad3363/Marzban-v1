@@ -1,3 +1,9 @@
+# v1.1.23
+
+Release target: v1.1.23
+
+Fix SS2022 node config and support simultaneous legacy and SS2022 inbounds. [Notes](docs/RELEASE_NOTES_v1.1.23.md).
+
 # v1.1.22
 
 Release target: v1.1.22
