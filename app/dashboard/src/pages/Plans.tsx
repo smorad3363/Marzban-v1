@@ -1,6 +1,11 @@
-import { PageHeader } from "design-system/Console";
+import { EmptyState, PageHeader, Surface } from "design-system/Console";
+import { CatalogPager } from "components/plans/CatalogPager";
+import { catalogPage, filterPlans } from "components/plans/presentation";
+import { useSearchParams } from "react-router-dom";
 import {
   Alert,
+  Flex, Menu, MenuButton, MenuList, MenuItem, Portal, Table, Tbody, Td, Th, Thead, Tr,
+  Tabs, TabList, Tab, TabPanels, TabPanel,
   AlertDialog,
   AlertDialogBody,
   AlertDialogContent,
@@ -11,7 +16,6 @@ import {
   Badge,
   Box,
   Button,
-  Card,
   Checkbox,
   FormControl,
   FormHelperText,
@@ -36,23 +40,16 @@ import {
   useToast,
 } from "@chakra-ui/react";
 import {
+  EllipsisHorizontalIcon,
   ArchiveBoxIcon,
-  BoltIcon,
-  CalendarDaysIcon,
   CircleStackIcon,
-  CpuChipIcon,
-  CubeTransparentIcon,
   PencilSquareIcon,
   PlusIcon,
-  RocketLaunchIcon,
-  SparklesIcon,
-  Squares2X2Icon,
-  UserPlusIcon,
 } from "@heroicons/react/24/outline";
 import { AccessGroupManager } from "components/AccessGroupManager";
 import { AppShell } from "components/AppShell";
 import useGetUser from "hooks/useGetUser";
-import { FC, FormEvent, useEffect, useRef, useState } from "react";
+import { FC, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "react-query";
 import { fetch } from "service/http";
 import { AccessGroup, AccountSummary, PlanCategory, UserPlan } from "types/Admin";
@@ -73,13 +70,6 @@ type PlanDraft = {
   isTrial: boolean;
 };
 
-type Accent = {
-  color: string;
-  soft: string;
-  border: string;
-  glow: string;
-};
-
 const emptyDraft = (): PlanDraft => ({
   name: "",
   description: "",
@@ -92,22 +82,12 @@ const emptyDraft = (): PlanDraft => ({
   isTrial: false,
 });
 
-const categoryAccents: Accent[] = ["accent", "info", "warning", "success"].map(tone => ({ color: `var(--panel-${tone})`, soft: `var(--panel-${tone}-soft)`, border: `var(--panel-${tone}-border)`, glow: "transparent" }));
-const trialAccent: Accent = { color: "var(--panel-info)", soft: "var(--panel-info-soft)", border: "var(--panel-info-border)", glow: "transparent" };
-
 const resetLabels: Record<PlanDraft["resetStrategy"], string> = {
   no_reset: "بدون ریست",
   day: "روزانه",
   week: "هفتگی",
   month: "ماهانه",
   year: "سالانه",
-};
-
-const getCategoryAccent = (index: number) => categoryAccents[index % categoryAccents.length];
-
-const getPlanAccent = (plan: UserPlan, index: number) => {
-  if (plan.is_trial) return trialAccent;
-  return categoryAccents[(plan.category_id ?? index) % categoryAccents.length];
 };
 
 const errorText = localizedApiError;
@@ -117,8 +97,17 @@ export const Plans: FC = () => {
   const queryClient = useQueryClient();
   const { getUserIsPending } = useGetUser();
   const modal = useDisclosure();
+  const categoryModal = useDisclosure();
+  const quickCreate = useDisclosure();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [page, setPage] = useState(0);
+  const [creationPlan, setCreationPlan] = useState<UserPlan | null>(null);
+  const [detailsPlan, setDetailsPlan] = useState<UserPlan | null>(null);
   const archiveDialog = useDisclosure();
   const cancelRef = useRef<HTMLButtonElement>(null);
+  const submitLock = useRef(false);
   const [editing, setEditing] = useState<UserPlan | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<UserPlan | null>(null);
   const [draft, setDraft] = useState<PlanDraft>(emptyDraft());
@@ -238,113 +227,149 @@ export const Plans: FC = () => {
     }
   );
 
-  const openCreate = () => { setEditing(null); modal.onOpen(); };
-  const openEdit = (plan: UserPlan) => { setEditing(plan); modal.onOpen(); };
+  const isOwner = account.data?.role === "OWNER";
+  const tabIndex = isOwner && searchParams.get("view") === "access-groups" ? 1 : 0;
+  const filteredPlans = useMemo(() => filterPlans(plans.data || [], search, categoryFilter), [plans.data, search, categoryFilter]);
+  const currentPage = catalogPage(filteredPlans, page);
+  const changeTab = (index: number) => setSearchParams((current) => {
+    const next = new URLSearchParams(current);
+    if (index === 1 && isOwner) next.set("view", "access-groups");
+    else next.delete("view");
+    return next;
+  }, { preventScrollReset: true });
+  const openUserCreate = (plan: UserPlan) => { createUser.reset(); setCreationPlan(plan); quickCreate.onOpen(); };
+  useEffect(() => { if (createUser.isSuccess) quickCreate.onClose(); }, [createUser.isSuccess, quickCreate.onClose]);
+  useEffect(() => { setPage(0); }, [search, categoryFilter]);
+
+  useEffect(() => { if (!save.isLoading) submitLock.current = false; }, [save.isLoading]);
+
+  const openCreate = () => { save.reset(); setEditing(null); modal.onOpen(); };
+  const openEdit = (plan: UserPlan) => { save.reset(); setEditing(plan); modal.onOpen(); };
   const submit = (event: FormEvent) => {
     event.preventDefault();
+    if (save.isLoading || submitLock.current) return;
     if (!draft.categoryId) {
       toast({ title: "دسته‌بندی پلن را انتخاب کنید", status: "warning", duration: 3000 });
       return;
     }
+    submitLock.current = true;
     save.mutate();
   };
 
+  const renderActions = (plan: UserPlan) => <HStack spacing={1} justify="flex-end" flexWrap="wrap">
+    {accountActive && <Button size="sm" minH="44px" variant="outline" colorScheme="primary" onClick={() => openUserCreate(plan)}>ساخت کاربر</Button>}
+    <Menu isLazy placement="bottom-end">
+      <MenuButton as={Button} size="sm" minH="44px" minW="44px" p={2} variant="ghost" aria-label={`عملیات پلن ${plan.name}`}><Icon as={EllipsisHorizontalIcon} boxSize={5} /></MenuButton>
+      <Portal><MenuList><MenuItem onClick={() => setDetailsPlan(plan)}>جزئیات پلن</MenuItem>
+        {canManage && <MenuItem onClick={() => openEdit(plan)}>ویرایش پلن</MenuItem>}
+        {canManage && <MenuItem color="var(--panel-danger)" onClick={() => { setArchiveTarget(plan); archiveDialog.onOpen(); }}>بایگانی</MenuItem>}
+      </MenuList></Portal>
+    </Menu>
+  </HStack>;
+  const renderQuickCreate = (plan: UserPlan) => <>
+    <ModalOverlay /><ModalContent mx={3} my={3} maxH="calc(100dvh - 24px)">
+      <ModalHeader ps={14}>ساخت کاربر از پلن</ModalHeader><ModalCloseButton isDisabled={createUser.isLoading} />
+      <ModalBody><Stack spacing={4}>
+        <Box p={3} bg="var(--panel-nested)" borderRadius="12px"><Text fontWeight="700">{plan.name}</Text><Text mt={1} fontSize="sm" color="var(--panel-text-muted)">{formatBytes(plan.version.data_limit)} · {plan.version.duration_days.toLocaleString("fa-IR")} روز · {(plan.is_trial ? 0 : plan.effective_price_toman).toLocaleString("fa-IR")} تومان</Text></Box>
+        {createUser.isError && <Alert status="error" role="alert"><AlertIcon />{errorText(createUser.error)}</Alert>}
+        <FormControl isRequired><FormLabel fontSize="sm">گروه دسترسی</FormLabel><Select minH="44px" value={accessGroupIds[plan.id] || ""} isDisabled={accessGroups.isLoading || accessGroups.isError} onChange={(event) => setAccessGroupIds((current) => ({ ...current, [plan.id]: event.target.value }))}><option value="">انتخاب دسترسی شبکه</option>{(accessGroups.data || []).map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}</Select><FormHelperText>پلن مشخصات اشتراک را تعیین می‌کند؛ گروه، مسیر اتصال را.</FormHelperText></FormControl>
+        {accessGroups.isError && <Alert status="error"><AlertIcon />گروه‌های دسترسی دریافت نشدند.<Button variant="ghost" size="sm" onClick={() => accessGroups.refetch()}>تلاش دوباره</Button></Alert>}
+        {!accessGroups.isLoading && !accessGroups.isError && !accessGroups.data?.length && <Alert status="warning"><AlertIcon /><Box>گروه دسترسی قابل استفاده‌ای وجود ندارد.{isOwner && <Button mt={2} variant="outline" size="sm" onClick={() => { quickCreate.onClose(); changeTab(1); }}>مدیریت گروه‌های دسترسی</Button>}</Box></Alert>}
+        <FormControl isRequired><FormLabel fontSize="sm">نام کاربری جدید</FormLabel><Input minH="44px" dir="ltr" value={usernames[plan.id] || ""} placeholder="username" onChange={(event) => setUsernames((current) => ({ ...current, [plan.id]: event.target.value }))} /></FormControl>
+      </Stack></ModalBody>
+      <ModalFooter gap={2} flexShrink={0}><Button variant="ghost" isDisabled={createUser.isLoading} onClick={quickCreate.onClose}>انصراف</Button><Button colorScheme="primary" isDisabled={!usernames[plan.id]?.trim() || !accessGroupIds[plan.id]} isLoading={createUser.isLoading} loadingText="در حال ساخت" onClick={() => createUser.mutate({ plan, username: usernames[plan.id].trim(), accessGroupId: Number(accessGroupIds[plan.id]) })}>ساخت کاربر</Button></ModalFooter>
+    </ModalContent>
+  </>;
+
   return (
     <AppShell>
-      <Stack spacing={{ base: 5, md: 7 }}>
-        <PageHeader eyebrow="مدیریت اشتراک" title="پلن‌های کاربر" description="پلن‌ها، دسته‌بندی‌ها و دسترسی‌های شبکه را در کنار هم مدیریت کنید." actions={
-          <HStack spacing={2.5} flexWrap="wrap" position="relative">
-            {account.data?.role === "OWNER" && <Button onClick={() => document.getElementById("access-groups")?.scrollIntoView({ behavior: "smooth", block: "start" })} minH="46px" px={5} variant="outline" borderColor="var(--panel-border)" color="var(--panel-text)" bg="rgba(255,255,255,.015)" _hover={{ borderColor: "var(--panel-accent-border)", bg: "var(--panel-accent-soft)", color: "var(--panel-accent)" }}>گروه‌های دسترسی</Button>}
-            {canManage && <Button minH="46px" px={5} bg="var(--panel-accent)" color="var(--panel-accent-contrast)" leftIcon={<Icon as={PlusIcon} boxSize="18px" />} onClick={openCreate} isDisabled={(categories.data || []).length === 0} _hover={{ filter: "brightness(1.05)", boxShadow: "0 12px 30px var(--panel-accent-soft)" }} _active={{ transform: "translateY(0)" }}>پلن جدید</Button>}
-          </HStack>
-        } />
-
-        {canManage && (
-          <Card p={{ base: 4, md: 6 }} bg="var(--panel-surface)" color="var(--panel-text)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius={{ base: "18px", md: "22px" }} boxShadow="var(--shadow-panel)">
-            <Stack spacing={5}>
-              <HStack align="start" spacing={3}>
-                <Box display="grid" placeItems="center" w="44px" h="44px" borderRadius="14px" bg="var(--panel-accent-soft)" borderWidth="1px" borderColor="var(--panel-accent-border)" flexShrink={0}><Icon as={Squares2X2Icon} boxSize="21px" color="var(--panel-accent)" /></Box>
-                <Box><Text fontWeight="700" fontSize={{ base: "lg", md: "xl" }}>دسته‌بندی پلن‌ها</Text><Text color="var(--panel-text-muted)" fontSize="sm" mt={1} lineHeight="1.9">با دسته‌بندی مناسب، مدیریت پلن‌ها را ساده‌تر کنید. هر پلن را در یک دسته قرار دهید.</Text></Box>
-              </HStack>
-              <Stack direction={{ base: "column", lg: "row" }} align={{ lg: "end" }} gap={3} p={{ base: 4, md: 5 }} borderRadius="16px" borderWidth="1px" borderColor="var(--panel-border)" bg="var(--panel-bg)">
-                <FormControl maxW={{ lg: "430px" }}><FormLabel fontSize="sm" fontWeight="700">نام دسته‌بندی جدید</FormLabel><Input minH="46px" value={newCategoryName} placeholder="مثلاً: سازمانی" onChange={(event) => setNewCategoryName(event.target.value)} maxLength={128} borderColor="var(--panel-border)" bg="var(--panel-surface)" _hover={{ borderColor: "var(--panel-accent-border)" }} _focusVisible={{ borderColor: "var(--panel-accent)", boxShadow: "0 0 0 1px var(--panel-accent)" }} /></FormControl>
-                <Button minH="46px" px={5} bg="var(--panel-accent)" color="var(--panel-accent-contrast)" leftIcon={<Icon as={PlusIcon} boxSize="17px" />} isDisabled={!newCategoryName.trim()} isLoading={createCategory.isLoading} onClick={() => createCategory.mutate()} _hover={{ filter: "brightness(1.05)" }}>افزودن دسته</Button>
-              </Stack>
-              <SimpleGrid columns={{ base: 1, md: 2, xl: 4 }} gap={3}>
-                {(categories.data || []).map((category, index) => {
-                  const accent = getCategoryAccent(index);
-                  const isEditingCategory = editingCategoryId === category.id;
-                  return (
-                    <Box key={category.id} p={4} minH="150px" borderRadius="16px" borderWidth="1px" borderColor={accent.border} bg={`linear-gradient(145deg, ${accent.soft} 0%, var(--panel-bg) 72%)`} transition="transform .2s ease, border-color .2s ease, box-shadow .2s ease" _hover={{ boxShadow: "var(--shadow-panel)" }}>
-                      <Stack h="full" spacing={3}>
-                        <HStack justify="space-between" align="start"><Box display="grid" placeItems="center" w="36px" h="36px" borderRadius="12px" bg={accent.soft} borderWidth="1px" borderColor={accent.border}><Icon as={CubeTransparentIcon} boxSize="18px" color={accent.color} /></Box><Badge px={2.5} py={1} borderRadius="full" bg={accent.soft} color={accent.color} borderWidth="1px" borderColor={accent.border}>{category.plan_count.toLocaleString("fa-IR")} پلن</Badge></HStack>
-                        {isEditingCategory ? <Input value={editingCategoryName} maxLength={128} minH="42px" bg="var(--panel-surface)" borderColor={accent.border} onChange={(event) => setEditingCategoryName(event.target.value)} /> : <Text fontWeight="700" fontSize="md" noOfLines={2}>{category.name}</Text>}
-                        <HStack mt="auto" spacing={2} flexWrap="wrap">
-                          {isEditingCategory ? <><Button size="sm" variant="outline" borderColor={accent.border} color={accent.color} isDisabled={!editingCategoryName.trim()} isLoading={updateCategory.isLoading} onClick={() => updateCategory.mutate({ category, name: editingCategoryName })}>ذخیره</Button><Button size="sm" variant="ghost" onClick={() => setEditingCategoryId(null)}>انصراف</Button></> : <Button size="sm" variant="ghost" leftIcon={<Icon as={PencilSquareIcon} boxSize="15px" />} onClick={() => { setEditingCategoryId(category.id); setEditingCategoryName(category.name); }}>ویرایش</Button>}
-                          <Button size="sm" variant="ghost" colorScheme="red" leftIcon={<Icon as={ArchiveBoxIcon} boxSize="15px" />} isLoading={archiveCategory.isLoading} onClick={() => category.plan_count > 0 ? toast({ title: "این دسته‌بندی پلن فعال دارد", description: "ابتدا پلن‌های فعال را منتقل یا بایگانی کنید.", status: "warning", duration: 5000 }) : archiveCategory.mutate(category)}>بایگانی</Button>
-                        </HStack>
-                      </Stack>
+      <PageHeader title="پلن‌ها و گروه‌های دسترسی" description="پلن برای شرایط اشتراک؛ گروه برای شبکه و مجوز استفاده." />
+      <Tabs index={tabIndex} onChange={changeTab} isLazy lazyBehavior="keepMounted" isManual variant="line" colorScheme="primary">
+        <TabList gap={2} borderColor="var(--panel-border)" mb={5}>
+          <Tab minH="48px" flex={{ base: 1, md: "initial" }} px={{ base: 2, md: 4 }} fontSize={{ base: "sm", md: "md" }} fontWeight="600">پلن‌ها <Badge ms={2} display={{ base: "none", sm: "inline-flex" }}>{(plans.data || []).length.toLocaleString("fa-IR")}</Badge></Tab>
+          {account.data?.role === "OWNER" && <Tab minH="48px" flex={{ base: 1, md: "initial" }} px={{ base: 2, md: 4 }} fontSize={{ base: "sm", md: "md" }} fontWeight="600">گروه‌های دسترسی <Badge ms={2} display={{ base: "none", sm: "inline-flex" }}>{(accessGroups.data || []).length.toLocaleString("fa-IR")}</Badge></Tab>}
+        </TabList>
+        <TabPanels>
+          <TabPanel p={0}>
+            <Stack spacing={4}>
+              <Flex justify="space-between" align="center" gap={3} flexWrap="wrap">
+                <Box><Text as="h2" fontSize="lg" fontWeight="700">فهرست پلن‌ها</Text></Box>
+                {canManage && <HStack flexWrap="wrap" gap={2} spacing={0}>
+                  <Button variant="outline" onClick={categoryModal.onOpen}>مدیریت دسته‌ها</Button>
+                  <Button colorScheme="primary" leftIcon={<Icon as={PlusIcon} boxSize={4} />} onClick={openCreate} isDisabled={(categories.data || []).length === 0}>پلن جدید</Button>
+                </HStack>}
+              </Flex>
+              {canManage && !categories.isLoading && !categories.isError && !categories.data?.length && <Alert status="info"><AlertIcon /><Box>برای ساخت اولین پلن، ابتدا یک دسته‌بندی ایجاد کنید.<Button ms={2} variant="outline" size="sm" onClick={categoryModal.onOpen}>ساخت دسته‌بندی</Button></Box></Alert>}
+              {categories.isError && <Alert status="error"><AlertIcon />دسته‌بندی‌ها دریافت نشدند.<Button variant="ghost" size="sm" onClick={() => categories.refetch()}>تلاش دوباره</Button></Alert>}
+              {plans.isError && <Alert status="error"><AlertIcon />پلن‌ها دریافت نشدند.<Button variant="ghost" size="sm" onClick={() => plans.refetch()}>تلاش دوباره</Button></Alert>}
+              <Surface p={{ base: 3, md: 4 }}>
+                <Stack direction={{ base: "column", md: "row" }} spacing={3} mb={4}>
+                  <Input type="search" aria-label="جستجوی پلن" placeholder="جستجوی نام یا توضیح پلن…" value={search} onChange={(event) => setSearch(event.target.value)} />
+                  <Select aria-label="فیلتر دسته‌بندی پلن" maxW={{ md: "240px" }} value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}><option value="">همه دسته‌بندی‌ها</option>{(categories.data || []).map(category => <option key={category.id} value={category.id}>{category.name}</option>)}</Select>
+                  {(search || categoryFilter) && <Button variant="ghost" onClick={() => { setSearch(""); setCategoryFilter(""); }}>پاک‌کردن فیلترها</Button>}
+                </Stack>
+                {plans.isLoading ? <Stack spacing={3}>{[1, 2, 3, 4].map(value => <Skeleton key={value} h="76px" borderRadius="12px" />)}</Stack> : !plans.isError && <>
+                  {!!currentPage.items.length && <>
+                    <Box display={{ base: "none", xl: "block" }} overflowX="auto">
+                      <Table size="sm" sx={{ th: { whiteSpace: "nowrap", fontSize: "12px" }, td: { py: 3, fontSize: "sm" } }}>
+                        <Thead><Tr><Th textAlign="start">پلن</Th><Th textAlign="start">حجم</Th><Th textAlign="start">مدت</Th><Th textAlign="start">دستگاه</Th><Th textAlign="start">قیمت</Th><Th textAlign="end">عملیات</Th></Tr></Thead>
+                        <Tbody>{currentPage.items.map(plan => <Tr key={plan.id} _hover={{ bg: "var(--panel-row-hover)" }}>
+                          <Td maxW="240px"><Text fontWeight="600" noOfLines={2} title={plan.name}>{plan.name}</Text><HStack mt={1} spacing={2} flexWrap="wrap"><Text fontSize="xs" color="var(--panel-text-muted)">{plan.category_name || "بدون دسته"}</Text>{plan.is_trial && <Badge colorScheme="blue">تست رایگان</Badge>}</HStack></Td>
+                          <Td><Text dir="auto" whiteSpace="nowrap">{formatBytes(plan.version.data_limit)}</Text></Td><Td>{plan.version.duration_days.toLocaleString("fa-IR")} روز</Td><Td>{plan.version.concurrent_user_limit === null ? "نامحدود" : plan.version.concurrent_user_limit.toLocaleString("fa-IR")}</Td>
+                          <Td><Text fontWeight="600" whiteSpace="nowrap">{(plan.is_trial ? 0 : plan.effective_price_toman).toLocaleString("fa-IR")} <Text as="span" fontSize="xs" color="var(--panel-text-muted)">تومان</Text></Text></Td><Td>{renderActions(plan)}</Td>
+                        </Tr>)}</Tbody>
+                      </Table>
                     </Box>
-                  );
-                })}
-              </SimpleGrid>
-              {!categories.isLoading && (categories.data || []).length === 0 && <Box py={8} textAlign="center" borderWidth="1px" borderStyle="dashed" borderColor="var(--panel-border)" borderRadius="16px"><Text color="var(--panel-text-muted)" fontSize="sm">ابتدا یک دسته‌بندی بسازید.</Text></Box>}
-            </Stack>
-          </Card>
-        )}
-
-        {categories.isError && <Alert status="error" borderRadius="14px"><AlertIcon />دسته‌بندی‌ها دریافت نشدند.</Alert>}
-        {plans.isError && <Alert status="error" borderRadius="14px"><AlertIcon />پلن‌ها دریافت نشدند.</Alert>}
-
-        {plans.isLoading ? (
-          <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} gap={5}>{[1, 2, 3].map((value) => <Skeleton key={value} h="620px" borderRadius="22px" />)}</SimpleGrid>
-        ) : (
-          <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} gap={5} alignItems="stretch">
-            {(plans.data || []).map((plan, index) => {
-              const accent = getPlanAccent(plan, index);
-              const planPrice = plan.is_trial ? 0 : plan.effective_price_toman;
-              return (
-                <Card key={plan.id} p={0} overflow="hidden" bg="var(--panel-surface)" color="var(--panel-text)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius={{ base: "18px", md: "22px" }} boxShadow="var(--shadow-panel)" transition="transform .22s ease, border-color .22s ease, box-shadow .22s ease" _hover={{ borderColor: accent.border, boxShadow: "var(--shadow-panel)" }}>
-                  <Box h="3px" bg={`linear-gradient(90deg, ${accent.color}, transparent)`} />
-                  <Stack p={{ base: 4, md: 5 }} spacing={5} h="full">
-                    <HStack justify="space-between" align="start" spacing={3}>
-                      <HStack align="start" spacing={3} minW={0}><Box display="grid" placeItems="center" w="44px" h="44px" borderRadius="14px" bg={accent.soft} borderWidth="1px" borderColor={accent.border} flexShrink={0}><Icon as={plan.is_trial ? SparklesIcon : RocketLaunchIcon} boxSize="21px" color={accent.color} /></Box><Box minW={0}><Text as="h2" fontSize="lg" fontWeight="700" overflowWrap="anywhere" noOfLines={2}>{plan.name}</Text><HStack mt={2} spacing={1.5} flexWrap="wrap"><Badge variant="outline" borderColor={accent.border} color={accent.color} bg={accent.soft} borderRadius="full" px={2.5} py={1}>{plan.category_name || "بدون دسته"}</Badge>{plan.is_trial && <Badge color="var(--panel-info)" bg="rgba(255, 92, 135, .10)" borderWidth="1px" borderColor="rgba(255, 112, 150, .24)" borderRadius="full" px={2.5} py={1}>تست رایگان</Badge>}</HStack></Box></HStack>
-                      <Badge variant="subtle" bg="var(--panel-bg)" color="var(--panel-text-muted)" borderRadius="full" px={2.5} py={1} flexShrink={0}>v{plan.version_number.toLocaleString("fa-IR")}</Badge>
-                    </HStack>
-                    <Box><Text color="var(--panel-text-muted)" fontSize="xs" fontWeight="700">قیمت پلن</Text><HStack align="baseline" mt={1} spacing={2} flexWrap="wrap"><Text fontSize={{ base: "2xl", md: "3xl" }} fontWeight="700" color={plan.is_trial ? "var(--panel-info)" : "var(--panel-accent)"} letterSpacing="-.02em">{planPrice.toLocaleString("fa-IR")}</Text><Text fontSize="sm" color="var(--panel-text-body)" fontWeight="700">تومان</Text></HStack>{plan.description && <Text mt={3} color="var(--panel-text-body)" fontSize="sm" lineHeight="1.9" noOfLines={2} minH={{ md: "53px" }}>{plan.description}</Text>}</Box>
-                    <SimpleGrid columns={3} gap={2.5}>
-                      <Box p={3} bg="var(--panel-bg)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="14px" minW={0}><Icon as={CircleStackIcon} boxSize="16px" color={accent.color} mb={2} /><Text color="var(--panel-text-muted)" fontSize="xs">حجم</Text><Text mt={1} fontWeight="700" fontSize="sm" noOfLines={1}>{formatBytes(plan.version.data_limit)}</Text></Box>
-                      <Box p={3} bg="var(--panel-bg)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="14px" minW={0}><Icon as={CalendarDaysIcon} boxSize="16px" color={accent.color} mb={2} /><Text color="var(--panel-text-muted)" fontSize="xs">مدت</Text><Text mt={1} fontWeight="700" fontSize="sm" noOfLines={1}>{plan.version.duration_days.toLocaleString("fa-IR")} روز</Text></Box>
-                      <Box p={3} bg="var(--panel-bg)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="14px" minW={0}><Icon as={CpuChipIcon} boxSize="16px" color={accent.color} mb={2} /><Text color="var(--panel-text-muted)" fontSize="xs">دستگاه</Text><Text mt={1} fontWeight="700" fontSize="sm">{plan.version.concurrent_user_limit === null ? "∞" : plan.version.concurrent_user_limit.toLocaleString("fa-IR")}</Text></Box>
+                    <SimpleGrid columns={{ base: 1, md: 2 }} gap={3} display={{ base: "grid", xl: "none" }} aria-label="کارت‌های پلن">
+                      {currentPage.items.map(plan => <Box key={plan.id} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="14px" p={4} minW={0}>
+                        <Flex gap={2} align="start" justify="space-between"><Box minW={0}><Text as="h3" fontWeight="700" noOfLines={2} title={plan.name}>{plan.name}</Text><Text fontSize="xs" color="var(--panel-text-muted)" mt={1}>{plan.category_name || "بدون دسته"}</Text></Box>{plan.is_trial && <Badge colorScheme="blue" flexShrink={0}>تست رایگان</Badge>}</Flex>
+                        <SimpleGrid columns={3} gap={2} my={4} fontSize="sm"><Box><Text fontSize="xs" color="var(--panel-text-muted)">حجم</Text><Text dir="auto" mt={1}>{formatBytes(plan.version.data_limit)}</Text></Box><Box><Text fontSize="xs" color="var(--panel-text-muted)">مدت</Text><Text mt={1}>{plan.version.duration_days.toLocaleString("fa-IR")} روز</Text></Box><Box><Text fontSize="xs" color="var(--panel-text-muted)">دستگاه</Text><Text mt={1}>{plan.version.concurrent_user_limit === null ? "نامحدود" : plan.version.concurrent_user_limit.toLocaleString("fa-IR")}</Text></Box></SimpleGrid>
+                        <Text fontWeight="700" mb={3}>{(plan.is_trial ? 0 : plan.effective_price_toman).toLocaleString("fa-IR")} <Text as="span" fontWeight="400" fontSize="xs" color="var(--panel-text-muted)">تومان</Text></Text>{renderActions(plan)}
+                      </Box>)}
                     </SimpleGrid>
-                    <HStack justify="space-between" py={3} px={3.5} bg="var(--panel-bg)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="14px"><HStack spacing={2}><Icon as={BoltIcon} boxSize="17px" color={accent.color} /><Text color="var(--panel-text-muted)" fontSize="sm">ریست حجم</Text></HStack><Text fontSize="sm" fontWeight="700">{resetLabels[plan.version.reset_strategy]}</Text></HStack>
-                    {canManage && <SimpleGrid columns={2} gap={2.5}><Button minH="44px" size="sm" bg="var(--panel-accent)" color="var(--panel-accent-contrast)" leftIcon={<Icon as={PencilSquareIcon} boxSize="16px" />} onClick={() => openEdit(plan)} _hover={{ filter: "brightness(1.05)", }}>ویرایش پلن</Button><Button minH="44px" size="sm" variant="outline" colorScheme="red" leftIcon={<Icon as={ArchiveBoxIcon} boxSize="16px" />} onClick={() => { setArchiveTarget(plan); archiveDialog.onOpen(); }}>بایگانی</Button></SimpleGrid>}
-                    {accountActive && (
-                      <Stack mt="auto" pt={5} spacing={3.5} borderTopWidth="1px" borderColor="var(--panel-border)">
-                        <HStack spacing={3} align="start"><Box display="grid" placeItems="center" w="36px" h="36px" borderRadius="12px" bg={accent.soft} borderWidth="1px" borderColor={accent.border} flexShrink={0}><Icon as={UserPlusIcon} boxSize="18px" color={accent.color} /></Box><Box><Text fontWeight="700" fontSize="sm">ساخت سریع کاربر</Text><Text color="var(--panel-text-muted)" fontSize="xs" mt={1} lineHeight="1.8">با این پلن یک کاربر جدید سریع ایجاد کنید.</Text></Box></HStack>
-                        <FormControl><FormLabel fontSize="xs" color="var(--panel-text-muted)">گروه دسترسی</FormLabel><Select minH="44px" value={accessGroupIds[plan.id] || ""} isDisabled={accessGroups.isLoading || accessGroups.isError} onChange={(event) => setAccessGroupIds((current) => ({ ...current, [plan.id]: event.target.value }))} borderColor="var(--panel-border)" bg="var(--panel-bg)"><option value="">انتخاب دسترسی شبکه</option>{(accessGroups.data || []).map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}</Select></FormControl>
-                        <FormControl><FormLabel fontSize="xs" color="var(--panel-text-muted)">نام کاربری جدید</FormLabel><Input minH="44px" dir="ltr" value={usernames[plan.id] || ""} placeholder="username" onChange={(event) => setUsernames((current) => ({ ...current, [plan.id]: event.target.value }))} borderColor="var(--panel-border)" bg="var(--panel-bg)" /></FormControl>
-                        <Button minH="44px" w="full" bg={accent.soft} color={accent.color} borderWidth="1px" borderColor={accent.border} leftIcon={<Icon as={UserPlusIcon} boxSize="16px" />} isDisabled={!usernames[plan.id]?.trim() || !accessGroupIds[plan.id]} isLoading={createUser.isLoading} onClick={() => createUser.mutate({ plan, username: usernames[plan.id].trim(), accessGroupId: Number(accessGroupIds[plan.id]) })} _hover={{ bg: accent.soft, filter: "brightness(1.12)" }}>ساخت کاربر</Button>
-                      </Stack>
-                    )}
-                  </Stack>
-                </Card>
-              );
-            })}
-          </SimpleGrid>
-        )}
+                  </>}
+                  {!currentPage.items.length && <EmptyState text={search || categoryFilter ? "پلنی با این فیلتر پیدا نشد" : "پلنی در دسترس نیست"} description={search || categoryFilter ? "نام دیگری جستجو کنید یا فیلتر دسته‌بندی را تغییر دهید." : "مالک پنل یا مدیر مجاز می‌تواند نخستین پلن را بسازد."} />}
+                  <CatalogPager count={filteredPlans.length} page={currentPage.current} onPageChange={setPage} noun="پلن" />
+                </>}
+              </Surface>
+            </Stack>
+          </TabPanel>
+          {account.data?.role === "OWNER" && <TabPanel p={0} id="access-groups"><AccessGroupManager /></TabPanel>}
+        </TabPanels>
+      </Tabs>
 
-        {!plans.isLoading && !plans.isError && (plans.data || []).length === 0 && <Card p={10} bg="var(--panel-surface)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="20px" textAlign="center"><Box mx="auto" display="grid" placeItems="center" w="54px" h="54px" borderRadius="16px" bg="var(--panel-accent-soft)" borderWidth="1px" borderColor="var(--panel-accent-border)" mb={4}><Icon as={RocketLaunchIcon} boxSize="24px" color="var(--panel-accent)" /></Box><Text fontWeight="700">پلنی در دسترس نیست.</Text><Text color="var(--panel-text-muted)" mt={2}>مالک پنل یا مدیر مجاز باید نخستین پلن را بسازد.</Text></Card>}
+      <Modal isOpen={categoryModal.isOpen} onClose={categoryModal.onClose} size="xl" scrollBehavior="inside" closeOnOverlayClick={!createCategory.isLoading && !updateCategory.isLoading && !archiveCategory.isLoading}>
+        <ModalOverlay /><ModalContent mx={3} my={3} maxH="calc(100dvh - 24px)"><ModalHeader ps={14}>دسته‌بندی پلن‌ها</ModalHeader><ModalCloseButton />
+          <ModalBody><Stack spacing={4}>
+            <Text fontSize="sm" color="var(--panel-text-muted)">دسته‌ها برای مرتب‌کردن پلن‌ها هستند. دسته‌بندی هر پلن در فرم همان پلن انتخاب می‌شود.</Text>
+            <Stack direction={{ base: "column", sm: "row" }} align={{ sm: "end" }} spacing={2}>
+              <FormControl><FormLabel fontSize="sm">نام دسته‌بندی جدید</FormLabel><Input value={newCategoryName} placeholder="مثلاً: سازمانی" onChange={(event) => setNewCategoryName(event.target.value)} maxLength={128} /></FormControl>
+              <Button colorScheme="primary" flexShrink={0} isDisabled={!newCategoryName.trim()} isLoading={createCategory.isLoading} onClick={() => createCategory.mutate()}>افزودن دسته</Button>
+            </Stack>
+            {(categories.data || []).map(category => <Box key={category.id} p={3} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px">
+              <Flex gap={3} justify="space-between" align="center" flexWrap="wrap">
+                <Box minW={0} flex="1">{editingCategoryId === category.id ? <Input aria-label="نام جدید دسته‌بندی" value={editingCategoryName} maxLength={128} onChange={(event) => setEditingCategoryName(event.target.value)} /> : <Text fontWeight="600" overflowWrap="anywhere">{category.name}</Text>}<Text mt={1} fontSize="xs" color="var(--panel-text-muted)">{category.plan_count.toLocaleString("fa-IR")} پلن</Text></Box>
+                <HStack spacing={1} flexWrap="wrap">{editingCategoryId === category.id ? <><Button size="sm" colorScheme="primary" isDisabled={!editingCategoryName.trim()} isLoading={updateCategory.isLoading} onClick={() => updateCategory.mutate({ category, name: editingCategoryName })}>ذخیره</Button><Button size="sm" variant="ghost" onClick={() => setEditingCategoryId(null)}>انصراف</Button></> : <Button size="sm" variant="ghost" onClick={() => { setEditingCategoryId(category.id); setEditingCategoryName(category.name); }}>ویرایش</Button>}
+                  <Button size="sm" variant="ghost" colorScheme="red" isLoading={archiveCategory.isLoading} onClick={() => category.plan_count > 0 ? toast({ title: "این دسته‌بندی پلن فعال دارد", description: "ابتدا پلن‌های فعال را منتقل یا بایگانی کنید.", status: "warning", duration: 5000 }) : archiveCategory.mutate(category)}>بایگانی</Button>
+                </HStack>
+              </Flex>
+            </Box>)}
+            {!categories.isLoading && !categories.data?.length && <EmptyState text="هنوز دسته‌بندی ساخته نشده است" description="نام نخستین دسته را در همین پنجره وارد کنید." />}
+          </Stack></ModalBody><ModalFooter><Button variant="outline" onClick={categoryModal.onClose}>بستن</Button></ModalFooter>
+        </ModalContent>
+      </Modal>
+      <Modal isOpen={quickCreate.isOpen} onClose={quickCreate.onClose} size="md" scrollBehavior="inside" closeOnOverlayClick={!createUser.isLoading} closeOnEsc={!createUser.isLoading}>{creationPlan && renderQuickCreate(creationPlan)}</Modal>
+      <Modal isOpen={Boolean(detailsPlan)} onClose={() => setDetailsPlan(null)} size="md" scrollBehavior="inside"><ModalOverlay /><ModalContent mx={3} my={3} maxH="calc(100dvh - 24px)"><ModalHeader ps={14}>جزئیات پلن</ModalHeader><ModalCloseButton /><ModalBody>{detailsPlan && <Stack spacing={4}><Text fontSize="lg" fontWeight="700">{detailsPlan.name}</Text><Text fontSize="sm" whiteSpace="pre-wrap">{detailsPlan.description || "توضیحی ثبت نشده است."}</Text><SimpleGrid columns={2} gap={4}>{[
+        ["دسته‌بندی", detailsPlan.category_name || "بدون دسته"], ["نسخه", `v${detailsPlan.version_number.toLocaleString("fa-IR")}`], ["حجم", formatBytes(detailsPlan.version.data_limit)], ["مدت", `${detailsPlan.version.duration_days.toLocaleString("fa-IR")} روز`], ["دستگاه", detailsPlan.version.concurrent_user_limit === null ? "نامحدود" : detailsPlan.version.concurrent_user_limit.toLocaleString("fa-IR")], ["ریست حجم", resetLabels[detailsPlan.version.reset_strategy]], ["قیمت", `${(detailsPlan.is_trial ? 0 : detailsPlan.effective_price_toman).toLocaleString("fa-IR")} تومان`], ["نوع پلن", detailsPlan.is_trial ? "تست رایگان" : "اشتراک"],
+      ].map(([label, value]) => <Box key={String(label)} minW={0}><Text fontSize="xs" color="var(--panel-text-muted)">{label}</Text><Text fontSize="sm" mt={1} overflowWrap="anywhere">{value}</Text></Box>)}</SimpleGrid></Stack>}</ModalBody><ModalFooter><Button variant="outline" onClick={() => setDetailsPlan(null)}>بستن</Button></ModalFooter></ModalContent></Modal>
 
-        {account.data?.role === "OWNER" && <Box id="access-groups" pt={3}><Card p={{ base: 4, md: 6 }} bg="var(--panel-surface)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius={{ base: "18px", md: "22px" }}><Stack spacing={1} mb={5}><HStack spacing={2}><Icon as={CubeTransparentIcon} boxSize="17px" color="var(--panel-accent)" /><Text color="var(--panel-accent)" fontSize="xs" fontWeight="700">دسترسی شبکه</Text></HStack><Text as="h2" fontSize="xl" fontWeight="700">گروه‌های دسترسی</Text><Text color="var(--panel-text-muted)" fontSize="sm" lineHeight="1.9">هر گروه مشخص می‌کند یک کاربر از کدام اینباندها، هاست‌ها و نودها استفاده کند و کدام ادمین‌ها اجازه استفاده از آن گروه را داشته باشند. شرایط مالی همچنان در خود پلن مدیریت می‌شود.</Text></Stack><AccessGroupManager /></Card></Box>}
-      </Stack>
-
-      <Modal isOpen={modal.isOpen} onClose={modal.onClose} size="2xl" scrollBehavior="inside">
+      <Modal isOpen={modal.isOpen} onClose={modal.onClose} size="2xl" scrollBehavior="inside" closeOnOverlayClick={!save.isLoading} closeOnEsc={!save.isLoading}>
         <ModalOverlay bg="var(--panel-overlay)" backdropFilter="blur(6px)" />
         <ModalContent as="form" onSubmit={submit} mx={3} my={3} maxH="calc(100dvh - 24px)" overflow="hidden" bg="var(--panel-surface)" color="var(--panel-text)" borderWidth="1px" borderColor="var(--panel-accent-border)" borderRadius={{ base: "18px", md: "22px" }} boxShadow="var(--shadow-elevated)">
           <ModalHeader ps={14} py={5} borderBottomWidth="1px" borderColor="var(--panel-border)"><HStack spacing={3}><Box display="grid" placeItems="center" w="38px" h="38px" borderRadius="12px" bg="var(--panel-accent-soft)" borderWidth="1px" borderColor="var(--panel-accent-border)"><Icon as={editing ? PencilSquareIcon : PlusIcon} boxSize="18px" color="var(--panel-accent)" /></Box><Box><Text fontSize="lg" fontWeight="700">{editing ? "ویرایش پلن" : "پلن جدید"}</Text><Text color="var(--panel-text-muted)" fontSize="xs" mt={1}>{editing ? "تغییرات به‌صورت نسخه جدید ذخیره می‌شوند." : "مشخصات پلن اشتراک جدید را تکمیل کنید."}</Text></Box></HStack></ModalHeader>
-          <ModalCloseButton top={4} insetInlineStart={3} insetInlineEnd="auto" />
+          <ModalCloseButton isDisabled={save.isLoading} top={4} insetInlineStart={3} insetInlineEnd="auto" />
           <ModalBody overflowY="auto" py={5}><Stack spacing={5}>
+            {save.isError && <Alert status="error" role="alert"><AlertIcon />{errorText(save.error)}</Alert>}
             <Box p={{ base: 4, md: 5 }} bg="var(--panel-bg)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="16px"><Stack spacing={4}>
               <FormControl isRequired><FormLabel>نام پلن</FormLabel><Input minH="46px" value={draft.name} isReadOnly={Boolean(editing)} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} /></FormControl>
               <FormControl><FormLabel>توضیح</FormLabel><Textarea minH="100px" resize="vertical" value={draft.description} onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))} /></FormControl>
@@ -360,7 +385,7 @@ export const Plans: FC = () => {
             </SimpleGrid></Box>
             <Alert status="info" variant="left-accent" borderRadius="14px" bg="var(--panel-accent-soft)" borderColor="var(--panel-accent-border)"><AlertIcon color="var(--panel-accent)" />این پلن فقط حجم، مدت، قیمت و محدودیت دستگاه را نسخه‌بندی می‌کند. شبکه از Access Group کاربر می‌آید.</Alert>
           </Stack></ModalBody>
-          <ModalFooter flexShrink={0} gap={2} px={{ base: 3, md: 6 }} py={4} borderTopWidth="1px" borderColor="var(--panel-border)" bg="var(--panel-bg)"><Button minH="44px" variant="ghost" onClick={modal.onClose}>انصراف</Button><Button minH="44px" type="submit" bg="var(--panel-accent)" color="var(--panel-accent-contrast)" isLoading={save.isLoading} _hover={{ filter: "brightness(1.05)" }}>ذخیره</Button></ModalFooter>
+          <ModalFooter flexShrink={0} gap={2} px={{ base: 3, md: 6 }} py={4} borderTopWidth="1px" borderColor="var(--panel-border)" bg="var(--panel-bg)"><Button minH="44px" variant="ghost" onClick={modal.onClose} isDisabled={save.isLoading}>انصراف</Button><Button minH="44px" type="submit" bg="var(--panel-accent)" color="var(--panel-accent-contrast)" isLoading={save.isLoading} _hover={{ filter: "brightness(1.05)" }}>ذخیره</Button></ModalFooter>
         </ModalContent>
       </Modal>
 

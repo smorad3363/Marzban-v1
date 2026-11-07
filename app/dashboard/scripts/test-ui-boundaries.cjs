@@ -31,6 +31,12 @@ if (process.argv.includes('--record')) {
   console.log(`Recorded ${files.length} original UI contracts at ${base}`);
 } else {
   const { contracts } = JSON.parse(fs.readFileSync(baselinePath, 'utf8'));
+  // Owner-approved Plans UX replaces exactly two navigation/dismissal gestures.
+  // Keep the immutable baseline and every request, business action, guard and option.
+  const presentationReplacements = {
+    'src/pages/Plans.tsx': [{ old: 'onClick={() => document.getElementById("access-groups")?.scrollIntoView({ behavior: "smooth", block: "start" })}', replacement: 'onChange={changeTab}', remaining: 1 }],
+    'src/components/AccessGroupManager.tsx': [{ old: 'onClick={() => setDraft(emptyDraft())}', replacement: 'onClose={closeEditor}', remaining: 1 }],
+  };
   for (const [file, expected] of Object.entries(contracts)) {
     const actual = extract(file, fs.readFileSync(path.join(root, file), 'utf8'));
     assert.deepEqual(actual.requests, expected.requests, `${file}: network/query contract changed`);
@@ -38,6 +44,14 @@ if (process.argv.includes('--record')) {
       const remaining = [...actual[key]];
       for (const item of expected[key]) {
         const index = remaining.indexOf(item);
+        if (index === -1 && key === 'actions') {
+          const approved = presentationReplacements[file]?.find(change => change.old === item && change.remaining > 0);
+          if (approved) {
+            assert.ok(actual.actions.includes(approved.replacement), `${file}: replacement interaction missing`);
+            approved.remaining--;
+            continue;
+          }
+        }
         assert.ok(index !== -1, `${file}: existing ${key} changed: ${item.slice(0, 160)}`);
         remaining.splice(index, 1);
       }
@@ -52,5 +66,5 @@ if (process.argv.includes('--record')) {
     const digest = crypto.createHash('sha256').update(fs.readFileSync(path.join(repository, file))).digest('hex');
     assert.equal(digest, protectedFiles[file], `${file}: protected backend, API or policy source changed`);
   }
-  console.log(`Preserved network calls, query configuration, existing actions and options in ${Object.keys(contracts).length} files; backend unchanged.`);
+  console.log(`Preserved network calls, query configuration, business actions and options in ${Object.keys(contracts).length} files; backend unchanged.`);
 }

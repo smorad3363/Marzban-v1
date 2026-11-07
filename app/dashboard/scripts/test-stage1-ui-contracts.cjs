@@ -149,3 +149,6 @@ assert.ok(alertCenter.includes("visibilitychange") && alertCenter.includes("gene
 // Every CI UI contract run also guards the untouched backend and original actions.
 require("./test-ui-boundaries.cjs");
 require("./test-ui-presentation.cjs");
+
+// Exercise the real reorganized forms and mutation hooks with a synthetic transport.
+require("node:child_process").execFileSync(process.execPath, [path.join(__dirname, "test-plans-access-ux.cjs")], { stdio: "inherit" });

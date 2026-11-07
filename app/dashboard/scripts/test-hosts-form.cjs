@@ -39,8 +39,23 @@ function loadComponent(name, overrides = {}) {
   return module.exports;
 }
 const scopes = loadComponent('utils/accessGroupScope.ts');
+// Keep real Chakra inputs/checkboxes; render the now-on-demand dialog inline
+// because portals do not emit their body in server-rendered markup.
+const chakra = require('@chakra-ui/react');
+const inline = ({children}) => React.createElement('div', null, children);
+let firstBoolean = true;
 const { AccessGroupManager } = loadComponent('components/AccessGroupManager.tsx', {
-  react: {...React, useState: () => React.useState(draft)},
+  react: {...React, useState: (initial) => {
+    if (typeof initial === 'function') return React.useState(draft);
+    if (typeof initial === 'boolean' && firstBoolean) { firstBoolean = false; return React.useState(true); }
+    return React.useState(initial);
+  }},
+  '@chakra-ui/react': {...chakra, Modal: inline, ModalBody: inline, ModalHeader: inline, ModalFooter: inline,
+    ModalOverlay: () => null, ModalCloseButton: () => null,
+    ModalContent: ({children, onSubmit}) => React.createElement('form', {onSubmit}, children)},
+  'design-system/Console': {EmptyState: inline, Surface: inline},
+  'components/plans/CatalogPager': loadComponent('components/plans/CatalogPager.tsx'),
+  'components/plans/presentation': loadComponent('components/plans/presentation.ts'),
   'service/http': {fetch: () => Promise.resolve([])},
   'utils/apiError': {localizedApiError: () => 'error'},
   'utils/accessGroupScope': scopes,
@@ -58,5 +73,11 @@ const checkboxes = html.match(/<input\b[^>]*type="checkbox"[^>]*>/g) || [];
 assert.ok(checkboxes.length >= 3, 'must exercise selected Host plus an unchecked Inbound');
 assert.ok(checkboxes.every(input => !/\srequired(?:=|\s|>)/.test(input)), 'optional network choices must not trigger browser required validation');
 assert.ok(html.includes('required=""'), 'the group name must still be required');
+const searches = html.match(/<input\b[^>]*type="search"[^>]*>/g) || [];
+assert.ok(searches.length >= 2, 'must exercise network and Admin searches');
+assert.ok(searches.every(input => !/\srequired(?:=|\s|>)/.test(input)), 'search fields must not become required choices');
+const inputIds = [...html.matchAll(/<input\b[^>]*\bid="([^"]+)"/g)].map(match => match[1]);
+assert.equal(new Set(inputIds).size, inputIds.length, 'searches and optional choices must have distinct label targets');
+
 client.clear();
 console.log('Access Group checkbox native validation: passed');
