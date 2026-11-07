@@ -1,5 +1,5 @@
 {
-  "version": "ui-v1.1.22",
+  "version": "ui-v1.1.23",
   "design_system": "marzban-console",
   "backend_baseline": "1.1.21",
   "themes": ["light", "dark"]
