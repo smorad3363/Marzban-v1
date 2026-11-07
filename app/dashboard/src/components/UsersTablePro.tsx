@@ -526,7 +526,7 @@ export const UsersTablePro: FC = () => {
                 return (
                   <Tr
                     key={user.username}
-                    opacity={user.status === "disabled" ? 0.72 : 1}
+                    data-disabled={user.status === "disabled" ? "true" : undefined}
                     bg={selectedMap.has(user.username) ? "var(--panel-accent-soft)" : undefined}
                   >
                     {!readOnly && <Td><Checkbox aria-label={`انتخاب ${user.username}`} isChecked={selectedMap.has(user.username)} onChange={(event) => setSelected(user, event.target.checked)} colorScheme="primary" /></Td>}

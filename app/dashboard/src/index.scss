@@ -120,7 +120,7 @@ button:disabled, [aria-disabled="true"] { cursor: not-allowed; }
 .chakra-table th { color: var(--panel-text-muted); font-weight: 500; letter-spacing: 0; text-transform: none; }
 .chakra-table tbody tr:last-child td { border-bottom: 0; }
 .chakra-table tbody tr[data-selected="true"] > td { background: var(--panel-accent-soft); }
-.chakra-table tbody tr[data-disabled="true"] > td { opacity: .6; }
+.chakra-table tbody tr[data-disabled="true"] > td { background: var(--panel-muted-soft); }
 .chakra-select option { color: var(--panel-text); background: var(--panel-surface); }
 .chakra-select__icon-wrapper { inset-inline-start: auto !important; inset-inline-end: .65rem !important; }
 .chakra-input, .chakra-textarea { min-width: 0; }

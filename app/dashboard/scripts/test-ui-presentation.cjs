@@ -1,6 +1,8 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const ts = require('typescript');
+const vm = require('node:vm');
 const root = path.resolve(__dirname, '..');
 const css = fs.readFileSync(path.join(root, 'src/index.scss'), 'utf8');
 const luminosity = hex => {
@@ -20,6 +22,21 @@ for(const [index,region] of regions.entries()) {
   }
   assert.ok(contrast(colors.accent,colors['accent-contrast'])>=4.5,'Primary button text must remain readable');checks++;
   assert.ok(contrast(colors['border-strong'],colors.input)>=3,'Input boundaries must have at least 3:1 contrast');checks++;
+}
+// Resolve the actual Chakra variants, including inherited component defaults.
+const compiled = ts.transpileModule(fs.readFileSync(path.join(root,'chakra.config.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText;
+const themeModule={exports:{}};
+vm.runInNewContext(compiled,{module:themeModule,exports:themeModule.exports,require});
+const theme=themeModule.exports.theme;
+for(const [index,region] of regions.entries()) {
+  const colors=Object.fromEntries([...region.matchAll(/--panel-([\w-]+): (#[\da-f]{6});/g)].map(m=>[m[1],m[2]]));
+  const resolve=value=>{const key=/var\(--panel-([\w-]+)\)/.exec(value)?.[1];return key?colors[key]:value;};
+  for(const colorScheme of ['primary','red','green','orange','yellow','blue','cyan']) {
+    const style=theme.components.Button.variants.solid({theme,colorScheme,colorMode:index?'dark':'light'});
+    for(const bg of [style.bg,style._hover.bg]) {
+      assert.ok(contrast(resolve(style.color),resolve(bg))>=4.5,`${colorScheme} solid button contrast failed in mode ${index}`);checks++;
+    }
+  }
 }
 assert.ok(!css.includes('fonts.googleapis.com'),'Fonts must not depend on a remote stylesheet');
 for(const file of ['vazirmatn-arabic.woff2','inter-latin.woff2','vazirmatn-LICENSE.txt','inter-LICENSE.txt']) assert.ok(fs.statSync(path.join(root,'public/statics/fonts',file)).size>1000,'Local licensed font missing');

@@ -18,6 +18,21 @@ const closeButton = {
   color: "var(--panel-text-body)", bg: "var(--panel-nested)", borderRadius: "10px",
   _hover: { bg: "var(--panel-row-hover)" },
 };
+const semanticTone = (scheme: string): string | undefined => (({ primary: "accent", green: "success", red: "danger", orange: "warning", yellow: "warning", blue: "info", cyan: "info" } as Record<string, string>)[scheme]);
+const solidButton = (p: any) => {
+  const tone = semanticTone(p.colorScheme);
+  if (!tone) return { bg: "var(--panel-nested)", color: "var(--panel-text)", _hover: { bg: "var(--panel-row-hover)" } };
+  const bg = `var(--panel-${tone})`;
+  return { bg, color: "var(--panel-accent-contrast)", boxShadow: "0 1px 2px rgb(0 0 0 / .08)", _hover: { bg: tone === "accent" ? "var(--panel-accent-hover)" : bg, boxShadow: `0 0 0 3px var(--panel-${tone}-soft)`, _disabled: { bg, boxShadow: "none" } }, _active: { bg, transform: "translateY(1px)" } };
+};
+const outlineButton = (p: any) => {
+  const tone = semanticTone(p.colorScheme);
+  return { bg: "transparent", borderColor: tone ? `var(--panel-${tone}-border)` : "var(--panel-border-strong)", color: tone ? `var(--panel-${tone})` : "var(--panel-text-body)", _hover: { bg: tone ? `var(--panel-${tone}-soft)` : "var(--panel-row-hover)", borderColor: tone ? `var(--panel-${tone})` : "var(--panel-accent-border)" }, _active: { bg: "var(--panel-muted-soft)" } };
+};
+const badgeVariant = (variant: "solid" | "subtle" | "outline") => (p: any) => {
+  const tone = semanticTone(p.colorScheme);
+  return { bg: variant === "outline" ? "transparent" : tone ? `var(--panel-${tone}${variant === "subtle" ? "-soft" : ""})` : "var(--panel-muted-soft)", color: tone ? variant === "solid" ? "var(--panel-accent-contrast)" : `var(--panel-${tone})` : "var(--panel-text-body)", borderWidth: "1px", borderColor: tone ? `var(--panel-${tone}-border)` : "var(--panel-border)" };
+};
 export const theme = extendTheme({
   config: { initialColorMode: "dark", useSystemColorMode: false },
   fonts: { heading: "Inter, Vazirmatn, sans-serif", body: "Inter, Vazirmatn, sans-serif", mono: "ui-monospace, SFMono-Regular, Consolas, monospace" },
@@ -25,7 +40,7 @@ export const theme = extendTheme({
   shadows: { outline: "0 0 0 3px var(--panel-accent-soft)", panel: "var(--shadow-panel)", elevated: "var(--shadow-elevated)" },
   radii: { md: "10px", lg: "12px", xl: "16px", '2xl': "20px" },
   styles: { global: {
-    body: { bg: "var(--panel-bg)", color: "var(--panel-text)", lineHeight: 1.75 },
+    body: { bg: "var(--panel-bg)", color: "var(--panel-text)", lineHeight: 1.75, overflowWrap: "anywhere" },
     'html[lang^="fa"]': { "--chakra-fonts-heading": "Vazirmatn, Inter, sans-serif", "--chakra-fonts-body": "Vazirmatn, Inter, sans-serif" },
     "::selection": { bg: "var(--panel-accent-soft-strong)", color: "var(--panel-text)" },
   } },
@@ -34,8 +49,8 @@ export const theme = extendTheme({
       baseStyle: { borderRadius: "var(--radius-control)", fontWeight: "600", lineHeight: 1.6, whiteSpace: "normal", flexShrink: 0, gap: 1, transition: "background-color 140ms ease, color 140ms ease, border-color 140ms ease, box-shadow 140ms ease", _disabled: { opacity: .45, cursor: "not-allowed", boxShadow: "none" } },
       sizes: { xs: { minH: "32px", h: "auto", py: 1, px: 2.5, fontSize: "xs" }, sm: { minH: "40px", h: "auto", py: 2, px: 3.5, fontSize: "sm" }, md: { minH: "44px", h: "auto", py: 2.5, px: 4, fontSize: "sm" }, lg: { minH: "48px", h: "auto", py: 3, px: 5, fontSize: "md" } },
       variants: {
-        solid: (p: any) => p.colorScheme === "primary" ? { bg: "var(--panel-accent)", color: "var(--panel-accent-contrast)", boxShadow: "0 1px 2px rgb(0 0 0 / .08)", _hover: { bg: "var(--panel-accent-hover)", _disabled: { bg: "var(--panel-accent)" } }, _active: { bg: "var(--panel-accent-hover)", transform: "translateY(1px)" } } : p.colorScheme === "gray" ? { bg: "var(--panel-nested)", color: "var(--panel-text)", _hover: { bg: "var(--panel-row-hover)" } } : {},
-        outline: { bg: "transparent", borderColor: "var(--panel-border-strong)", color: "var(--panel-text-body)", _hover: { bg: "var(--panel-row-hover)", borderColor: "var(--panel-accent-border)" }, _active: { bg: "var(--panel-muted-soft)" } },
+        solid: solidButton,
+        outline: outlineButton,
         ghost: { color: "var(--panel-text-body)", _hover: { bg: "var(--panel-muted-soft)" }, _active: { bg: "var(--panel-row-hover)" } },
       },
     },
@@ -49,7 +64,7 @@ export const theme = extendTheme({
     FormLabel: { baseStyle: { fontSize: "sm", fontWeight: 500, mb: 2, lineHeight: 1.8, whiteSpace: "normal", overflowWrap: "anywhere", color: "var(--panel-text-body)" } },
     Form: { baseStyle: { helperText: { fontSize: "xs", lineHeight: 1.9, color: "var(--panel-text-muted)" } } },
     Alert: { baseStyle: { container: { borderRadius: "12px", fontSize: "sm", lineHeight: 1.9, borderWidth: "1px" } } },
-    Badge: { baseStyle: { borderRadius: "6px", textTransform: "none", fontWeight: 600, px: 2, py: .5, whiteSpace: "normal", lineHeight: 1.8 } },
+    Badge: { variants: { solid: badgeVariant("solid"), subtle: badgeVariant("subtle"), outline: badgeVariant("outline") }, baseStyle: { borderRadius: "6px", textTransform: "none", fontWeight: 600, px: 2, py: .5, whiteSpace: "normal", lineHeight: 1.8 } },
     Menu: { baseStyle: { list: { ...dialog, borderRadius: "14px", p: 1.5, minW: "210px" }, item: { bg: "transparent", borderRadius: "8px", py: 2.5, fontSize: "sm", _focus: { bg: "var(--panel-accent-soft)" }, _active: { bg: "var(--panel-accent-soft-strong)" } } } },
     Popover: { baseStyle: { content: { ...dialog, borderRadius: "14px" }, header: { borderColor: "var(--panel-border)" }, footer: { borderColor: "var(--panel-border)" } } },
     Tooltip: { baseStyle: { bg: "var(--panel-text)", color: "var(--panel-bg)", borderRadius: "8px", px: 3, py: 2, fontSize: "xs", boxShadow: "var(--shadow-panel)" } },

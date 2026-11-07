@@ -87,7 +87,7 @@ export const UserSummaryCards: FC = () => {
   const failed = summary.isError && !data;
 
   return (
-    <SimpleGrid columns={{ base: 1, sm: 2, xl: 4 }} gap={3} aria-live="polite">
+    <SimpleGrid columns={{ base: 2, xl: 4 }} gap={3} aria-live="polite">
       <SummaryCard
         title="کل کاربران"
         value={data?.total_users}

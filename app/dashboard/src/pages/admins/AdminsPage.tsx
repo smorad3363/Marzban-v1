@@ -231,7 +231,7 @@ export const AdminsPage: FC = () => {
   );
 
   if (!getUserIsPending && !capabilities.isLoading && !canManage) {
-    return <AppShell><RequestsAlerts /></AppShell>;
+    return <AppShell><PageHeader eyebrow="حساب شما" title="درخواست‌ها و هشدارها" description="درخواست‌های حساب و هشدارهای مربوط به خودتان و زیرمجموعه‌ها را پیگیری کنید." /><RequestsAlerts showTitle={false} /></AppShell>;
   }
 
   const rawAdmins = query.data?.admins || [];
