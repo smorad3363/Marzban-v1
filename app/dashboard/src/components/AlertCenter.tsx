@@ -123,13 +123,13 @@ export function AlertCenter({ children }: { children: (ui: { trigger: ReactNode;
     {children({trigger,summary:dashboardSummary})}
     {getUserIsSuccess && <Drawer isOpen={open} onClose={()=>setOpen(false)} placement="left" size="md" finalFocusRef={triggerRef}>
       <DrawerOverlay bg="blackAlpha.600" />
-      <DrawerContent bg="var(--panel-surface)" color="var(--panel-text)" maxW={{base:"100vw",md:"520px"}} h="100dvh" maxH="100dvh" motionProps={reduceMotion ? {initial:false,animate:{x:0,y:0},exit:{x:0,y:0},transition:{duration:0}} : {transition:{type:"tween",duration:0.18,ease:[0.2,0.8,0.2,1]}}}>
+      <DrawerContent style={{margin:0}} w={{base:"100vw",md:"full"}} borderRadius={{base:0,md:"var(--radius-panel)"}} bg="var(--panel-surface)" color="var(--panel-text)" maxW={{base:"100vw",md:"520px"}} h="100dvh" maxH="100dvh" motionProps={reduceMotion ? {initial:false,animate:{x:0,y:0},exit:{x:0,y:0},transition:{duration:0}} : {transition:{type:"tween",duration:0.18,ease:[0.2,0.8,0.2,1]}}}>
         <DrawerCloseButton aria-label="بستن مرکز هشدارها" insetEnd={3} top={4} minW="44px" minH="44px" />
-        <DrawerHeader borderBottomWidth="1px" borderColor="var(--panel-border)" pe={16} pt={6}>
+        <DrawerHeader flexShrink={0} borderBottomWidth="1px" borderColor="var(--panel-border)" pe={16} pt={6}>
           <Text>مرکز هشدارها</Text><Text fontSize="xs" fontWeight="400" color="var(--panel-text-muted)" mt={2}>{isOwner ? "هشدار همه ادمین‌ها؛ به تفکیک حساب" : "هشدارهای خودتان و زیرمجموعه‌هایتان"}</Text>
           <HStack mt={3} flexWrap="wrap" aria-live="polite"><Badge colorScheme="red">حیاتی: {counts ? fa(counts.critical) : "—"}</Badge><Badge colorScheme="orange">مهم: {counts ? fa(counts.warning) : "—"}</Badge></HStack>
         </DrawerHeader>
-        <DrawerBody p={{base:4,md:5}} overscrollBehavior="contain">
+        <DrawerBody minH={0} p={{base:4,md:5}} overscrollBehavior="contain">
           {inherited && <Alert status="error" mb={4} alignItems="start"><AlertIcon /><Text fontSize="sm">محدودیت از حساب بالادستی اعمال شده است؛ برای رفع آن با ادمین بالادستی پیگیری کنید.</Text></Alert>}
           {summary.isError && <Alert status="error" mb={4} flexWrap="wrap"><AlertIcon /><Text fontSize="sm" flex="1">دریافت هشدارها ناموفق است؛ اطلاعات قبلی ممکن است قدیمی باشد.</Text><Button size="sm" onClick={()=>summary.refetch()}>تلاش مجدد</Button></Alert>}
           {stale && summary.isSuccess && <Alert status="warning" mb={4} alignItems="start"><AlertIcon /><Text fontSize="sm">اطلاعات هشدارها ممکن است قدیمی باشد. جزئیات دریافت را بررسی کنید.</Text></Alert>}
@@ -155,7 +155,7 @@ export function AlertCenter({ children }: { children: (ui: { trigger: ReactNode;
           </Stack>
           <HStack mt={5} justify="space-between" flexWrap="wrap" gap={2}><Button size="sm" onClick={()=>setBefore(null)} isDisabled={before===null}>جدیدترین</Button><Button size="sm" isDisabled={!query.data?.next_before} onClick={()=>setBefore(query.data?.next_before || null)}>موارد قدیمی‌تر</Button></HStack>
         </DrawerBody>
-        <DrawerFooter display="block" borderTopWidth="1px" borderColor="var(--panel-border)" px={5} py={3} pb="max(12px, env(safe-area-inset-bottom))">
+        <DrawerFooter flexShrink={0} display="block" borderTopWidth="1px" borderColor="var(--panel-border)" px={5} py={3} pb="max(12px, env(safe-area-inset-bottom))">
           <Button size="sm" variant="ghost" aria-expanded={diagnosticsOpen} aria-controls="alert-center-diagnostics" onClick={()=>setDiagnosticsOpen(!diagnosticsOpen)}>وضعیت دریافت هشدارها</Button>
           <Box id="alert-center-diagnostics" hidden={!diagnosticsOpen} pt={2}><Text fontSize="xs" lineHeight="1.9" color="var(--panel-text-muted)">{live?"دریافت تغییرات متصل است":"تازه‌سازی دوره‌ای هر ۶۰ ثانیه"}<br />آخرین بررسی جامع: {alertTime(summary.data?.checked_at || null)}</Text></Box>
         </DrawerFooter>

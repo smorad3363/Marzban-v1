@@ -20,3 +20,5 @@ MERGE: the compact trigger, dashboard summary and Drawer share one query owner t
 REPLACE: generated hashed frontend bundles; old unreachable hashed files are removed only through the canonical Vite build and parity checks. No runtime dependency or backend version is added or changed.
 
 `test-alert-center.cjs` verifies persistent, per-viewer critical notification receipts, reload, escalation, resolution, seen state, malformed/unavailable storage, unchanged transport, real React Query refresh/receipt failure/retry, filters, pagination, inherited restrictions, healthy states and closed-panel behavior. It runs inside the existing UI CI gate. Browser acceptance and exact-head production evidence are recorded in the pull request. Physical-device testing is not implied by browser viewport testing.
+
+Browser review reproduced inherited mobile modal margins pushing the full-height Drawer footer below the viewport. The alert Drawer alone explicitly resets its margin, uses viewport width on mobile and keeps its header/footer from shrinking. Shared modal styles remain unchanged.

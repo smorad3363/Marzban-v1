@@ -33,12 +33,12 @@ function fixtures(session) {
   const logs = users.slice(0,6).map((u,i)=>({id:i+1,admin_id:1,admin_username:username,action:['user.create','admin.update','credit.grant'][i%3],target_type:'user',target_id:String(i+1),target_name:u.username,description:'فعالیت آزمایشی',ip_address:'2001:db8:85a3::8a2e:370:7334',created_at:now(),previous_value:{status:'disabled'},new_value:{status:'active'},details:{request_id:'6f986b18-14e6-4dda-a7ba-88b8d2eef475',note:u.note}}));
   const device = { enabled:true,enforcement_mode:'hybrid',device_slots_enabled:true,ip_detection_enabled:true,client_fingerprint_enabled:true,check_interval_seconds:60,active_window_seconds:120,hit_threshold:3,min_successful_connections:2,handoff_grace_seconds:90,warning_auto_delete_seconds:86400,strike_reset_seconds:86400,full_ip_retention_days:7,incident_retention_days:30,audit_retention_days:90,auto_delete_enabled:false,updated_at:now() };
   const alertNames = owner ? ['reza_preview','sales_tehran','support_team'] : role === 'manager' ? [username,'sub_admin'] : [username];
-  const incidents = Array.from({length:mode==='empty'?0:mode==='one'?1:mode==='huge'?65:6},(_,i)=>({
-    id:1000-i,admin_id:i%alertNames.length+2,admin_username:mode==='worst' && i===0 ? 'admin_'+'long_name_'.repeat(18) : alertNames[i%alertNames.length],
-    resource:['financial','expiry','traffic'][i%3],state:i%3===0?(mode==='escalated'?'disabled':'frozen'):i%3===1?'near_limit':'exhausted',
-    severity:i%3===1?'warning':'critical',revision:mode==='escalated'?3:2,seen:session.alertReceipts?.[1000-i]===(mode==='escalated'?3:2),
+  const incidents = Array.from({length:mode==='empty'?0:mode==='one'?1:mode==='huge'&&manager?65:6},(_,i)=>({
+    id:1000-i,admin_id:i%alertNames.length+2,admin_username:mode==='worst' && i===0 ? 'admin_'+'long_name_'.repeat(18) : mode==='huge'&&manager ? (owner?'admin_':'sub_admin_')+(Math.floor(i/6)+1) : alertNames[Math.floor(i/2)%alertNames.length],
+    resource:['financial','expiry','traffic','account','provisioning_volume','accounts'][i%6],state:i%6===0?(mode==='escalated'&&i===0?'disabled':'frozen'):['frozen','near_limit','exhausted','suspended','near_limit','exhausted'][i%6],
+    severity:i%3===1?'warning':'critical',revision:mode==='escalated'&&i===0?3:2,seen:session.alertReceipts?.[1000-i]===(mode==='escalated'&&i===0?3:2),
     opened_at:'2026-11-07T07:00:00',resolved_at:i===5?'2026-11-07T07:30:00':null,
-    details:i%3===0?{balance_toman:-125000,basis_toman:1000000,debt_percent:12.5,freeze_percent:10,cutoff_percent:40,remaining_to_freeze_toman:0,remaining_to_cutoff_toman:275000}:i%3===1?{remaining_days:3,expiry_date:'2026-11-10'}:{used:1024*gib,limit:1024*gib,remaining:0,percent:100,unit:'bytes'}
+    details:i%6===0?{balance_toman:-125000,basis_toman:1000000,debt_percent:12.5,freeze_percent:10,cutoff_percent:40,remaining_to_freeze_toman:0,remaining_to_cutoff_toman:275000}:i%6===1?{remaining_days:3,expiry_date:'2026-11-10'}:i%6===3?{}:i%6===4?{used:80*gib,limit:100*gib,remaining:20*gib,percent:80,unit:'bytes'}:{used:1024*gib,limit:1024*gib,remaining:0,percent:100,unit:'bytes'}
   }));
   return { owner,manager,username,count,quota,policy,account,capabilities,admins,users,categories,plans,groups,logs,device,incidents };
 
