@@ -16,7 +16,7 @@ from app.xray.node import XRayNode
 from xray_api import XRay as XRayAPI
 from xray_api.types.account import Account, XTLSFlows, Shadowsocks2022Account
 from app.models.proxy import ProxyTypes
-from app.utils.shadowsocks2022 import METHOD as SS2022_METHOD
+from app.utils.shadowsocks2022 import METHOD as SS2022_METHOD, client_settings
 
 if TYPE_CHECKING:
     from app.db import User as DBUser
@@ -100,7 +100,8 @@ def add_user(dbuser: "DBUser"):
                 )
                 account = account_model(
                     email=slot_email(dbuser.id, dbuser.username, slot_index),
-                    **proxy_settings,
+                    **(client_settings(proxy_settings, inbound.get("ss2022_method"))
+                       if proxy_type == ProxyTypes.Shadowsocks else proxy_settings),
                 )
 
                 # XTLS currently only supports transmission methods of TCP and mKCP
@@ -217,7 +218,8 @@ def update_user(dbuser: "DBUser"):
                 )
                 account = account_model(
                     email=slot_email(dbuser.id, dbuser.username, slot_index),
-                    **proxy_settings,
+                    **(client_settings(proxy_settings, inbound.get("ss2022_method"))
+                       if proxy_type == ProxyTypes.Shadowsocks else proxy_settings),
                 )
                 if getattr(account, "flow", None) and (
                     inbound.get("network", "tcp") not in ("tcp", "kcp")

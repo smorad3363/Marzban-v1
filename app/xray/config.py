@@ -12,7 +12,7 @@ from sqlalchemy import func
 from app.db import GetDB
 from app.db import models as db_models
 from app.models.proxy import ProxyTypes
-from app.utils.shadowsocks2022 import METHOD as SS2022_METHOD, client_settings, generate_key
+from app.utils.shadowsocks2022 import METHOD as SS2022_METHOD, client_settings, generate_key, normalize_inbound_clients
 from app.models.user import UserStatus
 from app.utils.crypto import get_cert_SANs
 from config import DEBUG, XRAY_EXCLUDE_INBOUND_TAGS, XRAY_FALLBACKS_INBOUND_TAG
@@ -153,6 +153,7 @@ class XRayConfig(dict):
                 inbound['settings'] = {}
             if not inbound['settings'].get('clients'):
                 inbound['settings']['clients'] = []
+            normalize_inbound_clients(inbound)
 
             settings = {
                 "tag": inbound["tag"],
@@ -519,6 +520,11 @@ class XRayConfig(dict):
                         "email": "ss2022-bootstrap-" + generate_key()[:10].replace("/", "a").replace("+", "b") + "@invalid.local",
                         "password": generate_key(),
                     }]
+
+        # Defense-in-depth: node and master must always receive an inbound-
+        # compatible method even after combining inherited/user slot clients.
+        for inbound in config.get("inbounds", []):
+            normalize_inbound_clients(inbound)
 
         if DEBUG:
             with open('generated_config-debug.json', 'w') as f:

@@ -73,4 +73,7 @@ export const XTLSFlows = [
 
 export const shadowsocksMethods = [
   "2022-blake3-aes-256-gcm",
+  "chacha20-ietf-poly1305",
+  "aes-256-gcm",
+  "aes-128-gcm",
 ];
