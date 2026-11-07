@@ -1,3 +1,4 @@
+import { Metric } from "design-system/Console";
 import {
   Box,
   HStack,
@@ -67,54 +68,7 @@ const SummaryCard: FC<{
   failed: boolean;
 }> = ({ title, value, description, icon, tone, loading, failed }) => {
   const palette = tones[tone];
-  return (
-    <Box
-      minW={0}
-      px={{ base: 3.5, md: 4 }}
-      py={{ base: 3.5, md: 4 }}
-      bg="linear-gradient(145deg, var(--panel-surface), var(--panel-nested))"
-      borderWidth="1px"
-      borderColor="var(--panel-border)"
-      borderRadius="16px"
-      boxShadow="var(--shadow-panel)"
-    >
-      <HStack align="start" justify="space-between" spacing={3}>
-        <Stack spacing={1} minW={0}>
-          <Text color="var(--panel-text-muted)" fontSize="10px" fontWeight="800">
-            {title}
-          </Text>
-          {loading ? (
-            <Skeleton h="30px" w="82px" borderRadius="8px" />
-          ) : (
-            <Text
-              fontSize={{ base: "xl", md: "2xl" }}
-              lineHeight="1.2"
-              fontWeight="900"
-              letterSpacing="-0.03em"
-            >
-              {failed ? "—" : (value ?? 0).toLocaleString("fa-IR")}
-            </Text>
-          )}
-          <Text color="var(--panel-text-muted)" fontSize="9px" lineHeight="1.7" noOfLines={2}>
-            {description}
-          </Text>
-        </Stack>
-        <Box
-          display="grid"
-          placeItems="center"
-          boxSize="42px"
-          flexShrink={0}
-          borderRadius="13px"
-          color={palette.color}
-          bg={palette.bg}
-          borderWidth="1px"
-          borderColor={palette.border}
-        >
-          {icon}
-        </Box>
-      </HStack>
-    </Box>
-  );
+  return <Metric label={title} value={loading ? <Skeleton h="32px" w="80px" /> : failed ? "—" : (value ?? 0).toLocaleString("fa-IR")} hint={description} icon={icon} tone={palette.color} />;
 };
 
 export const UserSummaryCards: FC = () => {
@@ -133,7 +87,7 @@ export const UserSummaryCards: FC = () => {
   const failed = summary.isError && !data;
 
   return (
-    <SimpleGrid columns={{ base: 1, sm: 2, xl: 4 }} gap={3} aria-live="polite">
+    <SimpleGrid columns={{ base: 2, xl: 4 }} gap={3} aria-live="polite">
       <SummaryCard
         title="کل کاربران"
         value={data?.total_users}

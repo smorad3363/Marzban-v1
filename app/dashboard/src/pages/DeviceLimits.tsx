@@ -1,3 +1,4 @@
+import { PageHeader } from "design-system/Console";
 import {
   Alert,
   AlertIcon,
@@ -144,9 +145,9 @@ const SettingsSection: FC<{
         overflow="hidden"
       >
         <HStack p={{ base: 4, md: 5 }} borderBottomWidth="1px" borderColor="var(--panel-border)" align="start">
-          <Box p={2.5} borderRadius="11px" bg="rgba(34,197,94,.1)" color="green.200"><TuneIcon /></Box>
+          <Box p={2.5} borderRadius="11px" bg="rgba(34,197,94,.1)" color="var(--panel-success)"><TuneIcon /></Box>
           <Box minW={0}>
-            <Text fontWeight="800">{t("deviceLimit.runtimeSettings")}</Text>
+            <Text fontWeight="700">{t("deviceLimit.runtimeSettings")}</Text>
             <Text color="var(--panel-text-muted)" fontSize="sm" mt={1}>{t("deviceLimit.runtimeSettingsHelp")}</Text>
           </Box>
           <Switch
@@ -161,7 +162,7 @@ const SettingsSection: FC<{
         </HStack>
 
         <Box p={{ base: 4, md: 5 }}>
-          <Text fontWeight="800" mb={3}>{t("deviceLimit.capabilities")}</Text>
+          <Text fontWeight="700" mb={3}>{t("deviceLimit.capabilities")}</Text>
           <SimpleGrid columns={{ base: 1, md: 3 }} gap={3} mb={5}>
             {([
               ["device_slots_enabled", "deviceLimit.capabilitySlots", "deviceLimit.capabilitySlotsHelp"],
@@ -176,7 +177,7 @@ const SettingsSection: FC<{
               </FormControl>
             ))}
           </SimpleGrid>
-          <Text fontWeight="800" mb={3}>{t("deviceLimit.detectionTiming")}</Text>
+          <Text fontWeight="700" mb={3}>{t("deviceLimit.detectionTiming")}</Text>
           <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} gap={5}>
             <FormControl isDisabled={!form.ip_detection_enabled}>
               <FormLabel>{t("deviceLimit.checkInterval")}</FormLabel>
@@ -231,9 +232,9 @@ const SettingsSection: FC<{
 
       <Card bg="var(--panel-surface)" color="var(--panel-text)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius={{ base: "16px", md: "20px" }} boxShadow="panel" overflow="hidden">
         <HStack p={{ base: 4, md: 5 }} borderBottomWidth="1px" borderColor="var(--panel-border)">
-          <Box p={2.5} borderRadius="11px" bg="rgba(234,179,8,.1)" color="yellow.200"><WarningIcon /></Box>
+          <Box p={2.5} borderRadius="11px" bg="rgba(234,179,8,.1)" color="var(--panel-warning)"><WarningIcon /></Box>
           <Box>
-            <Text fontWeight="800">{t("deviceLimit.penaltyStages")}</Text>
+            <Text fontWeight="700">{t("deviceLimit.penaltyStages")}</Text>
             <Text color="var(--panel-text-muted)" fontSize="sm" mt={1}>{t("deviceLimit.penaltyStagesHelp")}</Text>
           </Box>
         </HStack>
@@ -298,9 +299,9 @@ const IncidentSection: FC = () => {
   return (
     <Card mt={5} bg="var(--panel-surface)" color="var(--panel-text)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius={{ base: "16px", md: "20px" }} boxShadow="panel" overflow="hidden">
       <HStack p={{ base: 4, md: 5 }} borderBottomWidth="1px" borderColor="var(--panel-border)" align="start" flexWrap="wrap">
-        <Box p={2.5} borderRadius="11px" bg="rgba(239,68,68,.1)" color="red.200"><WarningIcon /></Box>
+        <Box p={2.5} borderRadius="11px" bg="rgba(239,68,68,.1)" color="var(--panel-danger)"><WarningIcon /></Box>
         <Box minW={0}>
-          <Text fontWeight="800">{t("deviceLimit.incidents")}</Text>
+          <Text fontWeight="700">{t("deviceLimit.incidents")}</Text>
           <Text color="var(--panel-text-muted)" fontSize="sm" mt={1}>{t("deviceLimit.incidentsHelp", { count: total })}</Text>
         </Box>
         <HStack ms="auto">
@@ -312,7 +313,7 @@ const IncidentSection: FC = () => {
       {query.isLoading ? (
         <Stack p={5}>{Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} h="112px" borderRadius="11px" />)}</Stack>
       ) : incidents.length === 0 ? (
-        <VStack py={14} px={5}><LimitIcon color="green.200" /><Text fontWeight="700">{t("deviceLimit.noIncidents")}</Text></VStack>
+        <VStack py={14} px={5}><LimitIcon color="var(--panel-success)" /><Text fontWeight="700">{t("deviceLimit.noIncidents")}</Text></VStack>
       ) : (
         <Stack p={{ base: 4, md: 5 }} spacing={3} divider={<Divider borderColor="rgba(148,163,184,.12)" />}>
           {incidents.map((incident) => (
@@ -320,7 +321,7 @@ const IncidentSection: FC = () => {
               <HStack justify="space-between" align="start" gap={3} flexWrap="wrap">
                 <Box minW={0}>
                   <HStack spacing={2} flexWrap="wrap">
-                    <Text dir="ltr" fontFamily="mono" fontWeight="800" sx={{ unicodeBidi: "isolate" }}>{incident.username}</Text>
+                    <Text dir="ltr" fontFamily="mono" fontWeight="700" sx={{ unicodeBidi: "isolate" }}>{incident.username}</Text>
                     <Badge colorScheme={incident.resolved_at ? "gray" : "red"} variant="subtle">{t(`deviceLimit.action.${incident.action}`)}</Badge>
                     <Badge colorScheme="yellow" variant="outline">{t("deviceLimit.stage", { count: incident.stage })}</Badge>
                   </HStack>
@@ -336,7 +337,7 @@ const IncidentSection: FC = () => {
                 <Text dir="ltr" color="var(--panel-text-muted)" fontSize="xs">{new Intl.DateTimeFormat(i18n.language, { dateStyle: "medium", timeStyle: "short" }).format(new Date(`${incident.created_at}Z`))}</Text>
               </HStack>
               <SimpleGrid columns={{ base: 1, sm: 3 }} gap={2} mt={3}>
-                <Box p={2.5} bg="var(--panel-nested)" borderRadius="9px"><Text fontSize="xs" color="var(--panel-text-muted)">{t("deviceLimit.observed")}</Text><Text mt={1} fontFamily="mono" fontWeight="800" dir="ltr">{incident.observed_count} / {incident.configured_limit}</Text></Box>
+                <Box p={2.5} bg="var(--panel-nested)" borderRadius="9px"><Text fontSize="xs" color="var(--panel-text-muted)">{t("deviceLimit.observed")}</Text><Text mt={1} fontFamily="mono" fontWeight="700" dir="ltr">{incident.observed_count} / {incident.configured_limit}</Text></Box>
                 <Box p={2.5} bg="var(--panel-nested)" borderRadius="9px" minW={0}><Text fontSize="xs" color="var(--panel-text-muted)">{t("deviceLimit.ipAddresses")}</Text><Text mt={1} fontFamily="mono" fontSize="xs" dir="ltr" overflowWrap="anywhere">{incident.ip_addresses?.join(" · ") || "—"}</Text></Box>
                 <Box p={2.5} bg="var(--panel-nested)" borderRadius="9px" minW={0}><Text fontSize="xs" color="var(--panel-text-muted)">{t("deviceLimit.sources")}</Text><Text mt={1} fontFamily="mono" fontSize="xs" dir="ltr" overflowWrap="anywhere">{incident.source_nodes?.join(" · ") || "—"}</Text></Box>
               </SimpleGrid>
@@ -366,14 +367,9 @@ export const DeviceLimits: FC = () => {
 
   return (
     <AppShell>
-      <Stack direction={{ base: "column", md: "row" }} justify="space-between" align={{ md: "end" }} gap={4} mb={6}>
-        <Box>
-          <HStack color="green.200" spacing={2}><LimitIcon /><Text fontSize="xs" fontWeight="800" letterSpacing=".13em" textTransform="uppercase">{t("deviceLimit.eyebrow")}</Text></HStack>
-          <Text as="h1" fontSize={{ base: "2xl", md: "3xl" }} fontWeight="800" letterSpacing="-.035em" mt={2}>{t("deviceLimit.title")}</Text>
-          <Text color="var(--panel-text-body)" mt={1} maxW="720px">{t("deviceLimit.subtitle")}</Text>
-        </Box>
+      <PageHeader eyebrow={t("deviceLimit.eyebrow")} icon={<LimitIcon />} title={t("deviceLimit.title")} description={t("deviceLimit.subtitle")} actions={<>
         {isOwner && <Badge px={3} py={2} borderRadius="full" colorScheme={settings.data?.enabled ? "green" : "gray"} textTransform="none">{t(settings.data?.enabled ? "deviceLimit.active" : "deviceLimit.inactive")}</Badge>}
-      </Stack>
+      </>} />
       {isOwner && (settings.isError || stages.isError) && <Alert status="error" mb={4}><AlertIcon />{t("deviceLimit.loadFailed")}</Alert>}
       {isOwner && (settings.data && stages.data ? <SettingsSection settings={settings.data} stages={stages.data} /> : <Stack>{Array.from({ length: 3 }).map((_, index) => <Skeleton key={index} h="180px" borderRadius="18px" />)}</Stack>)}
       <IncidentSection />

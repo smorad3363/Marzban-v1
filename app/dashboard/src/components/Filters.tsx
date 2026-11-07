@@ -74,11 +74,11 @@ export const Filters: FC<FilterProps> = ({ ...props }) => {
   const [planCreateOpen, setPlanCreateOpen] = useState(false);
   const controlStyle = {
     bg: "rgba(2, 6, 23, .58)",
-    color: "gray.100",
+    color: "var(--panel-text-muted)",
     borderColor: "rgba(148, 163, 184, .2)",
     _hover: { borderColor: "rgba(34, 197, 94, .42)" },
     _focusVisible: {
-      borderColor: "green.400",
+      borderColor: "var(--panel-success)",
       boxShadow: "0 0 0 2px rgba(34, 197, 94, .2)",
     },
   } as const;
@@ -167,7 +167,7 @@ export const Filters: FC<FilterProps> = ({ ...props }) => {
             color="var(--panel-text-body)"
             bg="rgba(2, 6, 23, .5)"
             borderColor="rgba(148, 163, 184, .2)"
-            _hover={{ color: "green.200", borderColor: "green.500" }}
+            _hover={{ color: "var(--panel-success)", borderColor: "var(--panel-success)" }}
           >
             <ReloadIcon
               className={classNames({
@@ -208,7 +208,7 @@ export const Filters: FC<FilterProps> = ({ ...props }) => {
         <HStack spacing={3} justify="flex-end" flexWrap="wrap" fontSize="sm">
           <Text
             color="var(--panel-text-muted)"
-            _dark={{ color: "gray.300" }}
+            _dark={{ color: "var(--panel-text-muted)" }}
             fontWeight="medium"
             whiteSpace="nowrap"
             w={{ base: "full", sm: "auto" }}

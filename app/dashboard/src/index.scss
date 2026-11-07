@@ -1,318 +1,190 @@
-@import url("https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@400;500;600;700&family=Vazirmatn:wght@400;500;600;700&display=swap");
-
-:root {
-  --panel-bg: #F8FAFC;
-  --panel-surface: #FFFFFF;
-  --panel-sidebar: #F1F5F9;
-  --panel-nested: #F1F5F9;
-  --panel-border: #E2E8F0;
-  --panel-border-strong: #CBD5E1;
-  --panel-text: #0F172A;
-  --panel-text-body: #334155;
-  --panel-text-muted: #64748B;
-  --panel-accent: #2563EB;
-  --panel-accent-hover: #1D4ED8;
-  --chakra-colors-primary-500: #2563EB;
-  --chakra-colors-primary-600: #1D4ED8;
-  --panel-accent-contrast: #FFFFFF;
-  --panel-accent-soft: rgba(37, 99, 235, .08);
-  --panel-accent-soft-strong: rgba(37, 99, 235, .13);
-  --panel-accent-border: rgba(37, 99, 235, .28);
-  --panel-success: #16A34A;
-  --panel-success-soft: rgba(22, 163, 74, .08);
-  --panel-success-border: rgba(22, 163, 74, .30);
-  --panel-warning: #D97706;
-  --panel-warning-soft: rgba(217, 119, 6, .08);
-  --panel-warning-border: rgba(217, 119, 6, .30);
-  --panel-danger: #DC2626;
-  --panel-danger-soft: rgba(220, 38, 38, .07);
-  --panel-danger-border: rgba(220, 38, 38, .28);
-  --panel-info: #0891B2;
-  --panel-info-soft: rgba(8, 145, 178, .08);
-  --panel-info-border: rgba(8, 145, 178, .28);
-  --panel-muted-soft: rgba(100, 116, 139, .08);
-  --panel-row-alt: rgba(241, 245, 249, .62);
-  --panel-row-hover: rgba(37, 99, 235, .055);
-  --radius-panel: 16px;
-  --radius-control: 12px;
-  --shadow-panel: 0 1px 2px rgba(15, 23, 42, .04), 0 12px 30px rgba(15, 23, 42, .06);
-  --shadow-elevated: 0 18px 48px rgba(15, 23, 42, .14);
-  --shadow-row: 0 1px 2px rgba(15, 23, 42, .035);
+/* Console tokens are the single visual source for every page and overlay. */
+@font-face { font-family: Vazirmatn; font-style: normal; font-weight: 100 900; font-display: swap; src: url('/statics/fonts/vazirmatn-arabic.woff2') format('woff2'); unicode-range: U+0600-06FF,U+0750-077F,U+08A0-08FF,U+200C-200E,U+202A-202E,U+FB50-FDFF,U+FE70-FEFC; }
+@font-face { font-family: Inter; font-style: normal; font-weight: 100 900; font-display: swap; src: url('/statics/fonts/inter-latin.woff2') format('woff2'); }
+:root, .chakra-ui-light {
+  color-scheme: light;
+  --panel-bg: #f4f6f3;
+  --panel-surface: #ffffff;
+  --panel-glass: rgba(255,255,255,.84);
+  --panel-sidebar: rgba(250,252,249,.9);
+  --panel-nested: #f1f5f1;
+  --panel-input: #ffffff;
+  --panel-border: #e0e7e1;
+  --panel-border-strong: #7f9386;
+  --panel-text: #18251e;
+  --panel-text-body: #354b3f;
+  --panel-text-muted: #5c6f62;
+  --panel-accent: #0b7560;
+  --panel-accent-hover: #095e4e;
+  --panel-accent-contrast: #ffffff;
+  --panel-accent-soft: rgba(11,117,96,.07);
+  --panel-accent-soft-strong: rgba(11,117,96,.13);
+  --panel-accent-border: #90bfae;
+  --panel-success: #187244;
+  --panel-success-soft: rgba(24,114,68,.08);
+  --panel-success-border: #a0cbb0;
+  --panel-warning: #8b5c15;
+  --panel-warning-soft: rgba(139,92,21,.08);
+  --panel-warning-border: #d9bf8c;
+  --panel-danger: #b63232;
+  --panel-danger-soft: rgba(182,50,50,.07);
+  --panel-danger-border: #e7b0a9;
+  --panel-info: #246b97;
+  --panel-info-soft: rgba(36,107,151,.07);
+  --panel-info-border: #a7c9dd;
+  --panel-muted-soft: rgba(56,79,63,.045);
+  --panel-row-alt: rgba(56,79,63,.018);
+  --panel-row-hover: rgba(11,117,96,.05);
+  --panel-overlay: rgba(14,25,19,.35);
+  --panel-glow: rgba(96,171,130,.055);
+  --radius-panel: 18px;
+  --radius-control: 10px;
+  --shadow-panel: 0 1px 2px rgba(24,37,30,.025), 0 4px 20px rgba(24,37,30,.025);
+  --shadow-elevated: 0 12px 48px rgba(24,37,30,.16), 0 2px 8px rgba(24,37,30,.05);
+  --shadow-row: 0 1px 2px rgba(24,37,30,.025);
+  --ease-out: cubic-bezier(.23,1,.32,1);
 }
-
 .chakra-ui-dark {
-  --panel-bg: #0B0F19;
-  --panel-surface: #131826;
-  --panel-sidebar: #0F1420;
-  --panel-nested: #0F1420;
-  --panel-border: #1F2937;
-  --panel-border-strong: #334155;
-  --panel-text: #F1F5F9;
-  --panel-text-body: #CBD5E1;
-  --panel-text-muted: #7C8AA0;
-  --panel-accent: #3B82F6;
-  --panel-accent-hover: #60A5FA;
-  --chakra-colors-primary-500: #3B82F6;
-  --chakra-colors-primary-600: #60A5FA;
-  --panel-accent-contrast: #FFFFFF;
-  --panel-accent-soft: rgba(59, 130, 246, .10);
-  --panel-accent-soft-strong: rgba(59, 130, 246, .16);
-  --panel-accent-border: rgba(96, 165, 250, .30);
-  --panel-success: #22C55E;
-  --panel-success-soft: rgba(34, 197, 94, .09);
-  --panel-success-border: rgba(34, 197, 94, .30);
-  --panel-warning: #F59E0B;
-  --panel-warning-soft: rgba(245, 158, 11, .09);
-  --panel-warning-border: rgba(245, 158, 11, .30);
-  --panel-danger: #EF4444;
-  --panel-danger-soft: rgba(239, 68, 68, .09);
-  --panel-danger-border: rgba(239, 68, 68, .30);
-  --panel-info: #22D3EE;
-  --panel-info-soft: rgba(34, 211, 238, .09);
-  --panel-info-border: rgba(34, 211, 238, .28);
-  --panel-muted-soft: rgba(124, 138, 160, .09);
-  --panel-row-alt: rgba(15, 20, 32, .56);
-  --panel-row-hover: rgba(59, 130, 246, .075);
-  --shadow-panel: 0 1px 2px rgba(0, 0, 0, .20), 0 12px 30px rgba(0, 0, 0, .16);
-  --shadow-elevated: 0 18px 48px rgba(0, 0, 0, .28);
-  --shadow-row: 0 1px 2px rgba(0, 0, 0, .12);
+  color-scheme: dark;
+  --panel-bg: #0b100e;
+  --panel-surface: #141b18;
+  --panel-glass: rgba(20,27,24,.88);
+  --panel-sidebar: rgba(15,22,18,.94);
+  --panel-nested: #1b2520;
+  --panel-input: #111915;
+  --panel-border: #2a372f;
+  --panel-border-strong: #5c7063;
+  --panel-text: #edf3ee;
+  --panel-text-body: #c1cfc5;
+  --panel-text-muted: #a1b0a6;
+  --panel-accent: #65d6bd;
+  --panel-accent-hover: #87e3ce;
+  --panel-accent-contrast: #08251c;
+  --panel-accent-soft: rgba(101,214,189,.08);
+  --panel-accent-soft-strong: rgba(101,214,189,.14);
+  --panel-accent-border: #3f7d6b;
+  --panel-success: #79d6a2;
+  --panel-success-soft: rgba(121,214,162,.09);
+  --panel-success-border: #3c7150;
+  --panel-warning: #edc37c;
+  --panel-warning-soft: rgba(237,195,124,.08);
+  --panel-warning-border: #79623d;
+  --panel-danger: #ff9e98;
+  --panel-danger-soft: rgba(255,158,152,.08);
+  --panel-danger-border: #80544e;
+  --panel-info: #8ac5ed;
+  --panel-info-soft: rgba(138,197,237,.08);
+  --panel-info-border: #426982;
+  --panel-muted-soft: rgba(193,207,197,.045);
+  --panel-row-alt: rgba(193,207,197,.015);
+  --panel-row-hover: rgba(101,214,189,.045);
+  --panel-overlay: rgba(0,8,4,.64);
+  --panel-glow: rgba(96,171,130,.035);
+  --shadow-panel: 0 1px 2px rgba(0,0,0,.1);
+  --shadow-elevated: 0 20px 64px rgba(0,0,0,.4), 0 2px 8px rgba(0,0,0,.2);
+  --shadow-row: none;
 }
-
-
-.operations-sidebar[data-color-mode="light"] {
-  --panel-sidebar: #F1F5F9;
-  --panel-nested: #F1F5F9;
-  --panel-border: #E2E8F0;
-  --panel-border-strong: #CBD5E1;
-  --panel-text: #0F172A;
-  --panel-text-body: #334155;
-  --panel-text-muted: #64748B;
-  --panel-row-hover: rgba(37, 99, 235, .055);
-  background: #F1F5F9 !important;
-  color: #0F172A !important;
+html { scroll-padding-block: 100px; }
+body, #root { min-height: 100vh; min-height: 100dvh; }
+body { overflow-wrap: anywhere; background: var(--panel-bg); color: var(--panel-text); -webkit-font-smoothing: antialiased; }
+html[lang^="fa"] body, html[lang^="fa"] button, html[lang^="fa"] input, html[lang^="fa"] select, html[lang^="fa"] textarea { font-family: Vazirmatn, Inter, sans-serif; }
+html[lang^="fa"] .chakra-table th, html[lang^="fa"] .chakra-form__label { letter-spacing: normal; text-transform: none; }
+* { scrollbar-color: var(--panel-border-strong) transparent; scrollbar-width: thin; }
+a, button, [role="button"] { touch-action: manipulation; }
+button, [role="button"] { user-select: none; }
+button:disabled, [aria-disabled="true"] { cursor: not-allowed; }
+:focus-visible { outline: 2px solid var(--panel-accent); outline-offset: 3px; }
+.console-skip-link { position: fixed; top: -100px; inset-inline-start: 20px; z-index: 2000; padding: 12px 20px; color: var(--panel-accent-contrast); background: var(--panel-accent); border-radius: 10px; }
+.console-skip-link:focus { top: 12px; }
+.operations-shell { background-image: radial-gradient(ellipse at 70% 0%, var(--panel-glow), transparent 55%); }
+.operations-sidebar { backdrop-filter: blur(12px); }
+.operations-sidebar nav .chakra-button { min-height: 46px; font-size: 13px; font-weight: 500; padding-inline: 14px; gap: 4px; border: 1px solid transparent; }
+.operations-sidebar nav [aria-current="page"] { background: var(--panel-accent-soft-strong); border-color: var(--panel-accent-border); color: var(--panel-accent); box-shadow: inset 0 1px 0 var(--panel-accent-soft); }
+.operations-sidebar nav .chakra-button__icon { margin-inline-end: 8px; }
+.console-brand-symbol { width: 38px; height: 38px; display: grid; place-items: center; color: var(--panel-accent); background: var(--panel-accent-soft); border: 1px solid var(--panel-accent-border); border-radius: 12px; flex-shrink: 0; }
+.console-workspace-bar { min-height: 65px; padding-block: 12px; margin-bottom: 28px; border-bottom: 1px solid var(--panel-border); gap: 16px; }
+.console-page-header { margin-bottom: 24px; padding-block: 4px 8px; }
+.console-page-header + .console-page-header { display: none; }
+.console-metric { position: relative; overflow: hidden; }
+.console-metric-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: var(--panel-nested); }
+.console-empty { color: var(--panel-text-body); }
+.console-empty-symbol { display: grid; place-items: center; width: 48px; height: 48px; border: 1px solid var(--panel-border); border-radius: 15px; color: var(--panel-accent); background: var(--panel-nested); }
+.console-technical { unicode-bidi: isolate; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.chakra-card { color: var(--panel-text); }
+.chakra-modal__content, .chakra-drawer__content { color: var(--panel-text); }
+.chakra-modal__close-btn { z-index: 30; pointer-events: auto; }
+.chakra-modal__header, .chakra-drawer__header { overflow-wrap: anywhere; }
+.chakra-modal__body, .chakra-drawer__body { scrollbar-gutter: stable; }
+.chakra-modal__footer, .chakra-drawer__footer { background: var(--panel-surface); }
+.chakra-table__container { max-width: 100%; overscroll-behavior-inline: contain; border-radius: 12px; border: 1px solid var(--panel-border); }
+.chakra-table th { color: var(--panel-text-muted); font-weight: 500; letter-spacing: 0; text-transform: none; }
+.chakra-table tbody tr:last-child td { border-bottom: 0; }
+.chakra-table tbody tr[data-selected="true"] > td { background: var(--panel-accent-soft); }
+.chakra-table tbody tr[data-disabled="true"] > td { background: var(--panel-muted-soft); }
+.chakra-select option { color: var(--panel-text); background: var(--panel-surface); }
+.chakra-select__icon-wrapper { inset-inline-start: auto !important; inset-inline-end: .65rem !important; }
+.chakra-input, .chakra-textarea { min-width: 0; }
+.chakra-input__group { min-width: 0; }
+.chakra-popover__popper { z-index: 1401; max-width: calc(100vw - 24px); }
+.inbound-item .chakra-checkbox__label { max-width: 100%; width: 100%; overflow-wrap: anywhere; }
+.apexcharts-tooltip, .apexcharts-xaxistooltip { background: var(--panel-surface) !important; border-color: var(--panel-border-strong) !important; color: var(--panel-text) !important; box-shadow: var(--shadow-elevated) !important; }
+.apexcharts-tooltip-title { background: var(--panel-nested) !important; border-color: var(--panel-border) !important; }
+.react-datepicker-wrapper, .react-datepicker__input-container { width: 100%; }
+.slick-prev { left: -32px; } .slick-next { right: -32px; } .slick-prev, .slick-next { z-index: 2; }
+.green { background: var(--panel-success); } .red { background: var(--panel-danger); } .orange { background: var(--panel-warning); }
+.circle { min-width: 7px; min-height: 7px; border-radius: 50%; }
+.flex-status { display: flex; align-items: center; justify-content: start; gap: .7rem; }
+.bg-blue-animate { backdrop-filter: blur(5px); }
+.animate-spin { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.console-login { min-height: 100dvh; background: var(--panel-bg); }
+.console-login-story { background: var(--panel-nested); border: 1px solid var(--panel-border); border-radius: 28px; position: relative; isolation: isolate; }
+.console-login-story::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: radial-gradient(ellipse at 30% 0%, var(--panel-accent-soft-strong), transparent 60%); }
+.console-login-diagram { border: 1px solid var(--panel-border-strong); border-radius: 20px; background: var(--panel-glass); box-shadow: var(--shadow-panel); padding: 24px; }
+@media (hover: hover) and (pointer: fine) {
+  .chakra-table tbody tr:hover > td { background: var(--panel-row-hover); }
+  .operations-sidebar nav .chakra-button:not([aria-current="page"]):hover { background: var(--panel-muted-soft); }
 }
-
-.operations-sidebar[data-color-mode="dark"] {
-  --panel-sidebar: #0F1420;
-  --panel-nested: #0F1420;
-  --panel-border: #1F2937;
-  --panel-border-strong: #334155;
-  --panel-text: #F1F5F9;
-  --panel-text-body: #CBD5E1;
-  --panel-text-muted: #7C8AA0;
-  --panel-row-hover: rgba(59, 130, 246, .075);
-  background: #0F1420 !important;
-  color: #F1F5F9 !important;
+@media (pointer: coarse) {
+  .chakra-input, .chakra-select, .chakra-textarea { font-size: 16px !important; }
+  .chakra-button, .chakra-menu__menuitem { min-height: 44px; }
+  .chakra-checkbox__control, .chakra-radio__control { min-width: 22px; min-height: 22px; }
+  .chakra-checkbox, .chakra-radio { min-height: 44px; }
 }
-
-.chakra-modal__close-btn {
-  z-index: 30 !important;
-  pointer-events: auto !important;
+@media (max-width: 61.99em) {
+  .operations-sidebar { padding-top: max(12px, env(safe-area-inset-top)); }
+  .console-workspace-bar { min-height: 48px; margin-bottom: 20px; padding-block: 8px 12px; }
+  .console-page-header { margin-bottom: 20px; }
 }
-
-
-body {
-  background-color: var(--panel-bg) !important;
-  color: var(--panel-text) !important;
-  background-image: none;
+@media (max-width: 30em) {
+  .chakra-modal__content { margin: 12px 8px; max-width: calc(100vw - 16px); max-height: calc(100dvh - 24px); }
+  .chakra-modal__body, .chakra-modal__header, .chakra-modal__footer { padding-inline: 16px; }
+  .chakra-modal__header { padding-inline-end: 60px; }
+  .console-page-actions { width: 100%; }
+  .console-page-actions > .chakra-button { flex: 1; }
 }
-
-
-
-.chakra-card {
-  background-color: var(--panel-surface);
-  border-color: var(--panel-border);
+@supports not (backdrop-filter: blur(1px)) {
+  .operations-sidebar, .console-login-diagram { background: var(--panel-surface); }
 }
-
-.chakra-modal__content,
-.chakra-drawer__content {
-  border-color: var(--panel-border-strong);
-}
-
-
-
-
-
-html {
-  scroll-behavior: smooth;
-}
-
-body,
-#root {
-  min-height: 100vh;
-}
-
-html[lang^="fa"] body,
-html[lang^="fa"] button,
-html[lang^="fa"] input,
-html[lang^="fa"] select,
-html[lang^="fa"] textarea {
-  font-family: "Vazirmatn", "Fira Sans", sans-serif;
-}
-
-html[lang^="fa"] body {
-  font-feature-settings: "kern" 1;
-  text-rendering: optimizeLegibility;
-}
-
-html[lang^="fa"] .chakra-form__helper-text,
-html[lang^="fa"] .chakra-form__error-message {
-  line-height: 1.8;
-}
-
-html[lang^="fa"] .chakra-table th,
-html[lang^="fa"] .chakra-form__label {
-  letter-spacing: normal;
-  text-transform: none;
-}
-
-.react-datepicker-wrapper,
-.react-datepicker__input-container {
-  width: 100%;
-}
-
-.chakra-ui-dark .chakra-select option {
-  color: var(--panel-text);
-  background: var(--panel-surface);
-}
-
-// Follow the element's actual direction, including local LTR controls in RTL pages.
-.chakra-select__icon-wrapper {
-  inset-inline-start: auto !important;
-  inset-inline-end: 0.5rem !important;
-}
-
-* {
-  scrollbar-color: rgba(100, 116, 139, 0.45) transparent;
-  scrollbar-width: thin;
-}
-
-button,
-a,
-[role="button"] {
-  cursor: pointer;
-  touch-action: manipulation;
-}
-
-:focus-visible {
-  outline: 2px solid var(--panel-accent) !important;
-  outline-offset: 2px;
-}
-
-.operations-shell::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background: none;
-  z-index: -1;
-}
-
-.operations-grid {
-  background-image: none;
-}
-
 @media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
 
-.bg-blue-animate {
-  animation: blur-animate 200ms ease-in;
-  backdrop-filter: blur(10px);
-}
-
-@keyframes blur-animate {
-  from {
-    backdrop-filter: blur(1px);
-  }
-
-  to {
-    backdrop-filter: blur(10px);
-  }
-}
-
-.animate-spin {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-table thead {
-  th:first-of-type {
-    border-start-start-radius: 8px;
-  }
-
-  th:last-of-type {
-    border-start-end-radius: 8px;
-  }
-}
-
-.last-row {
-  td:first-of-type {
-    border-end-start-radius: 8px;
-  }
-
-  td:last-of-type {
-    border-end-end-radius: 8px;
-  }
-}
-
-.slick-prev {
-  left: -40px;
-}
-
-.slick-next {
-  right: -40px;
-}
-
-.slick-prev,
-.slick-next {
-  z-index: 100;
-}
-
-.chakra-popover__popper {
-  z-index: 9999 !important;
-}
-
-.inbound-item .chakra-checkbox__label {
-  max-width: 100%;
-  width: 100%;
-}
-
-// data picker
 .react-datepicker__navigation.react-datepicker__navigation--previous,
 .react-datepicker__navigation.react-datepicker__navigation--next {
   padding-top: 6px;
 }
 
 .react-datepicker {
-  background-color: var(--chakra-colors-white) !important;
-  border: 1px solid var(--chakra-colors-gray-200);
+  background-color: var(--panel-surface) !important;
+  border: 1px solid var(--panel-border);
   border-radius: var(--chakra-radii-md) !important;
   position: relative;
 }
 
 .chakra-ui-dark .react-datepicker {
-  background-color: var(--chakra-colors-gray-700) !important;
-  border: 1px solid var(--chakra-colors-gray-600);
+  background-color: var(--panel-surface) !important;
+  border: 1px solid var(--panel-border);
   border-radius: var(--chakra-radii-md) !important;
   position: relative;
 }
@@ -321,31 +193,31 @@ table thead {
   text-align: center;
   background-color: unset;
   position: relative;
-  border-bottom: 1px solid var(--chakra-colors-gray-200);
+  border-bottom: 1px solid var(--panel-border);
 }
 
 .chakra-ui-dark .react-datepicker__header {
-  border-bottom: 1px solid var(--chakra-colors-gray-600);
+  border-bottom: 1px solid var(--panel-border);
 }
 
 .react-datepicker-popper[data-placement^=bottom] .react-datepicker__triangle::after {
   border-top: none;
-  border-bottom-color: var(--chakra-colors-white);
+  border-bottom-color: var(--panel-surface);
 }
 
 .react-datepicker-popper[data-placement^=bottom] .react-datepicker__triangle::before {
   top: -1px;
-  border-bottom-color: var(--chakra-colors-gray-200);
+  border-bottom-color: var(--panel-border);
 }
 
 .chakra-ui-dark .react-datepicker-popper[data-placement^=bottom] .react-datepicker__triangle::after {
   border-top: none;
-  border-bottom-color: var(--chakra-colors-gray-700);
+  border-bottom-color: var(--panel-surface);
 }
 
 .chakra-ui-dark .react-datepicker-popper[data-placement^=bottom] .react-datepicker__triangle::before {
   top: -1px;
-  border-bottom-color: var(--chakra-colors-gray-600);
+  border-bottom-color: var(--panel-border);
 }
 
 .react-datepicker__current-month,
@@ -357,13 +229,13 @@ table thead {
 .chakra-ui-dark .react-datepicker__current-month,
 .chakra-ui-dark .react-datepicker__day-name,
 .chakra-ui-dark .react-datepicker__day {
-  color: var(--chakra-colors-gray-300) !important;
+  color: var(--panel-text-body) !important;
 }
 
 .react-datepicker__day:hover {
   border-radius: 0.3rem;
   background-color: var(--chakra-colors-primary-300) !important;
-  color: var(--chakra-colors-white) !important;
+  color: var(--panel-surface) !important;
 }
 
 .chakra-ui-dark .react-datepicker__day:hover {
@@ -396,7 +268,7 @@ table thead {
 .react-datepicker__day--in-range {
   border-radius: 0.3rem;
   background-color: var(--chakra-colors-primary-500) !important;
-  color: var(--chakra-colors-white) !important;
+  color: var(--panel-surface) !important;
 }
 
 .chakra-ui-dark .react-datepicker__day--keyboard-selected,
@@ -430,209 +302,3 @@ table thead {
   position: relative;
 }
 
-.green {
-  background: #66ff99;
-}
-
-.red {
-  background: #e53e3e;
-}
-
-.orange {
-  background: #fbd38d;
-}
-
-.bx-shadow {
-  box-shadow: 0px 0px 8px 3px rgb(230 221 221 / 10%);
-}
-
-.circle {
-  min-width: 10px;
-  min-height: 10px;
-  border-radius: 50%;
-
-  box-shadow: 0px 0px 1px 1px #0000001a;
-}
-
-.pulse {
-  animation: pulse-animation 3s infinite;
-}
-.pulse.green {
-  animation: green-pulse-animation 3s infinite;
-}
-.pulse.red{
-  animation: red-pulse-animation 3s infinite;
-}
-.pulse.orange{
-  animation: orange-pulse-animation 3s infinite;
-}
-
-@keyframes pulse-animation {
-  0% {
-    box-shadow: 0 0 0 0px rgba(0, 0, 0, 0.4);
-  }
-
-  100% {
-    box-shadow: 0 0 0 10px rgba(0, 0, 0, 0);
-  }
-}
-@keyframes green-pulse-animation {
-  0% {
-    box-shadow: 0 0 0 0px #66ff9975;
-  }
-
-  100% {
-    box-shadow: 0 0 0 10px #66ff9900;
-  }
-}
-@keyframes red-pulse-animation {
-  0% {
-    box-shadow: 0 0 0 0px #e53e3e8c;
-  }
-
-  100% {
-    box-shadow: 0 0 0 10px #e53e3e00;
-  }
-}
-@keyframes orange-pulse-animation {
-  0% {
-    box-shadow: 0 0 0 0px #fbd38d85;
-  }
-
-  100% {
-    box-shadow: 0 0 0 10px #fbd38d00;
-  }
-}
-
-.flex-status {
-  display: flex;
-  align-items: center;
-  justify-content: start;
-  gap: .7rem;
-}
-
-
-/* dashboard palette normalization */
-:root {
-  --panel-bg: #f5f7fa;
-  --panel-surface: #ffffff;
-  --panel-nested: #eef2f6;
-  --panel-border: #d7e0ea;
-  --panel-border-strong: #b7c4d3;
-  --panel-text: #111827;
-  --panel-text-muted: #64748b;
-  --panel-accent: #2563eb;
-  --panel-accent-soft: rgba(37, 99, 235, .09);
-  --panel-accent-soft-strong: rgba(37, 99, 235, .14);
-  --panel-accent-border: rgba(37, 99, 235, .28);
-  --panel-accent-contrast: #ffffff;
-  --panel-sidebar: #0f172a;
-  --panel-success: #15803d;
-  --panel-success-soft: rgba(21, 128, 61, .10);
-  --panel-success-border: rgba(21, 128, 61, .25);
-  --panel-warning: #b45309;
-  --panel-warning-soft: rgba(180, 83, 9, .10);
-  --panel-warning-border: rgba(180, 83, 9, .25);
-  --panel-danger: #dc2626;
-  --panel-danger-soft: rgba(220, 38, 38, .09);
-  --panel-danger-border: rgba(220, 38, 38, .24);
-  --panel-muted-soft: rgba(100, 116, 139, .08);
-  --panel-row-hover: rgba(15, 23, 42, .035);
-  --panel-glow: transparent;
-  --shadow-panel: 0 1px 2px rgba(15, 23, 42, .05), 0 10px 28px rgba(15, 23, 42, .07);
-}
-
-.chakra-ui-dark {
-  --panel-bg: #0b1220;
-  --panel-surface: #111a2b;
-  --panel-nested: #162235;
-  --panel-border: #2a3a52;
-  --panel-border-strong: #40536f;
-  --panel-text: #e8eef7;
-  --panel-text-muted: #94a3b8;
-  --panel-accent: #60a5fa;
-  --panel-accent-soft: rgba(96, 165, 250, .10);
-  --panel-accent-soft-strong: rgba(96, 165, 250, .16);
-  --panel-accent-border: rgba(96, 165, 250, .30);
-  --panel-accent-contrast: #07111f;
-  --panel-sidebar: #09111f;
-  --panel-success: #67c587;
-  --panel-success-soft: rgba(103, 197, 135, .10);
-  --panel-success-border: rgba(103, 197, 135, .25);
-  --panel-warning: #e0a458;
-  --panel-warning-soft: rgba(224, 164, 88, .10);
-  --panel-warning-border: rgba(224, 164, 88, .25);
-  --panel-danger: #ef8580;
-  --panel-danger-soft: rgba(239, 133, 128, .10);
-  --panel-danger-border: rgba(239, 133, 128, .25);
-  --panel-muted-soft: rgba(148, 163, 184, .07);
-  --panel-row-hover: rgba(255, 255, 255, .025);
-  --shadow-panel: 0 1px 2px rgba(0, 0, 0, .22), 0 12px 30px rgba(0, 0, 0, .18);
-}
-
-
-body {
-  color: var(--panel-text) !important;
-  background-color: var(--panel-bg) !important;
-  background-image: none !important;
-}
-
-.operations-shell::before,
-.operations-grid {
-  background-image: none !important;
-}
-
-
-
-
-
-
-/* v1.0.6 unified visual language */
-.chakra-card,
-.chakra-modal__content,
-.chakra-drawer__content {
-  background: var(--panel-surface) !important;
-  color: var(--panel-text) !important;
-  border-color: var(--panel-border) !important;
-  border-radius: var(--radius-panel) !important;
-}
-
-.chakra-button,
-.chakra-input,
-.chakra-select,
-.chakra-textarea,
-.chakra-menu__menuitem {
-  border-radius: var(--radius-control) !important;
-}
-
-.chakra-table__container {
-  border-radius: var(--radius-panel) !important;
-}
-
-.chakra-table th {
-  color: var(--panel-text-muted) !important;
-  font-weight: 600 !important;
-  letter-spacing: 0 !important;
-  text-transform: none !important;
-  border-bottom: 0 !important;
-}
-
-.chakra-table tbody td {
-  border-bottom: 0 !important;
-}
-
-.chakra-table tbody tr:nth-of-type(even) > td {
-  background: var(--panel-row-alt);
-}
-
-.chakra-table tbody tr:hover > td {
-  background: var(--panel-row-hover);
-}
-
-.chakra-table tbody tr[data-selected="true"] > td {
-  background: var(--panel-accent-soft) !important;
-}
-
-.chakra-table tbody tr[data-disabled="true"] > td {
-  opacity: .62;
-}

@@ -40,6 +40,7 @@ import { fetch } from "service/http";
 import { removeAuthToken } from "utils/authStorage";
 import { updateThemeColor } from "utils/themeColor";
 import { BrandingControls } from "./BrandingControls";
+import { BrandMark } from "./BrandMark";
 import { AccountSummary, AdminCapabilities } from "types/Admin";
 
 const iconProps = { baseStyle: { w: 4, h: 4, flexShrink: 0 } };
@@ -132,10 +133,10 @@ export const Header: FC = () => {
       as="aside"
       className="operations-sidebar"
       data-color-mode={colorMode}
-      w={{ base: "full", lg: "272px" }}
-      minW={{ lg: "272px" }}
-      minH={{ lg: "100vh" }}
-      h={{ lg: "100vh" }}
+      w={{ base: "full", lg: "248px" }}
+      minW={{ lg: "248px" }}
+      minH={{ lg: "100dvh" }}
+      h={{ lg: "100dvh" }}
       overflowY={{ lg: "auto" }}
       sx={{ "& > *": { flexShrink: 0 } }}
       position={{ base: "relative", lg: "sticky" }}
@@ -147,11 +148,12 @@ export const Header: FC = () => {
       borderEndWidth={{ lg: "1px" }}
       borderBottomWidth={{ base: "1px", lg: "0" }}
       borderColor="var(--panel-border)"
-      backdropFilter="blur(16px)"
+      backdropFilter="blur(12px)"
       px={{ base: 4, lg: 4 }}
       py={{ base: 3, lg: 5 }}
     >
-      <HStack justify={showSidebarBrand ? "space-between" : "flex-end"} align="center" gap={3}>
+      <HStack justify="space-between" align="center" gap={3} minH="48px">
+        {!showSidebarBrand && <HStack spacing={3} minW={0}><Box className="console-brand-symbol"><BrandMark boxSize="24px" aria-hidden="true" /></Box><Box minW={0}><Text fontSize="sm" fontWeight="700">Marzban</Text><Text fontSize="xs" color="var(--panel-text-muted)" letterSpacing=".08em">MANAGEMENT CONSOLE</Text></Box></HStack>}
         {showSidebarBrand && (
           <HStack spacing={3} minW={0}>
             {sidebarLogo && (
@@ -164,7 +166,7 @@ export const Header: FC = () => {
               />
             )}
             {showSidebarName && (
-              <Text fontSize="sm" fontWeight="800" letterSpacing="-0.01em" color="var(--panel-text)" noOfLines={1}>
+              <Text fontSize="sm" fontWeight="700" letterSpacing="-0.01em" color="var(--panel-text)" noOfLines={1}>
                 {sidebarName}
               </Text>
             )}
@@ -176,7 +178,7 @@ export const Header: FC = () => {
         </HStack>
       </HStack>
 
-      <Text display={{ base: "none", lg: "block" }} mt={8} mb={2} px={2} fontSize="xs" color="var(--panel-text-muted)">ناوبری</Text>
+      <Text display={{ base: "none", lg: "block" }} mt={8} mb={3} px={3} fontSize="xs" fontWeight="500" color="var(--panel-text-muted)">فضای کاری</Text>
       <Collapse in={mobileMenuOpen} animateOpacity style={{ overflow: "visible" }}>
       <SimpleGrid as="nav" aria-label="ناوبری اصلی" display={{ base: "grid", lg: "none" }} columns={{ base: 2, sm: 4 }} spacing={2} mt={4}>
         <Button
@@ -265,7 +267,7 @@ export const Header: FC = () => {
       <SimpleGrid as="nav" aria-label="ناوبری اصلی دسکتاپ" display={{ base: "none", lg: "grid" }} columns={1} spacing={2}>
         <Button as={Link} to="/" size="md" variant={isDashboardPage ? "solid" : "ghost"} colorScheme={isDashboardPage ? "primary" : "gray"} color={isDashboardPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<DashboardNavIcon />} justifyContent="flex-start" aria-current={isDashboardPage ? "page" : undefined}>داشبورد</Button>
         <Button as={Link} to="/users/" size="md" variant={isUsersPage ? "solid" : "ghost"} colorScheme={isUsersPage ? "primary" : "gray"} color={isUsersPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<UsersNavIcon />} justifyContent="flex-start" aria-current={isUsersPage ? "page" : undefined}>{t("users")}</Button>
-        <Button hidden={!canAccessPlans} as={Link} to="/plans/" size="md" variant={isPlansPage ? "solid" : "ghost"} colorScheme={isPlansPage ? "primary" : "gray"} color={isPlansPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<PlansNavIcon />} justifyContent="flex-start" aria-current={isPlansPage ? "page" : undefined}>Plans</Button>
+        <Button hidden={!canAccessPlans} as={Link} to="/plans/" size="md" variant={isPlansPage ? "solid" : "ghost"} colorScheme={isPlansPage ? "primary" : "gray"} color={isPlansPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<PlansNavIcon />} justifyContent="flex-start" aria-current={isPlansPage ? "page" : undefined}>پلن‌ها</Button>
         {<Button as={Link} to="/admins/" size="md" variant={isAdminsPage ? "solid" : "ghost"} colorScheme={isAdminsPage ? "primary" : "gray"} color={isAdminsPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<AdminsNavIcon />} justifyContent="flex-start" aria-current={isAdminsPage ? "page" : undefined}>{canManage ? t("admins.nav") : "درخواست‌ها و هشدارها"}</Button>}
         {isOwner && <Button as={Link} to="/device-limits/" size="md" variant={isDeviceLimitPage ? "solid" : "ghost"} colorScheme={isDeviceLimitPage ? "primary" : "gray"} color={isDeviceLimitPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<DeviceLimitNavIcon />} justifyContent="flex-start" aria-current={isDeviceLimitPage ? "page" : undefined}>{t("deviceLimit.nav")}</Button>}
         <Button as={Link} to="/audit-logs/" size="md" variant={isAuditPage ? "solid" : "ghost"} colorScheme={isAuditPage ? "primary" : "gray"} color={isAuditPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<AuditNavIcon />} justifyContent="flex-start" aria-current={isAuditPage ? "page" : undefined}>{t("audit.nav")}</Button>

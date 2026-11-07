@@ -1,6 +1,7 @@
-import { Box, Flex } from "@chakra-ui/react";
+import { Badge, Box, Flex, HStack, Text } from "@chakra-ui/react";
 import useGetUser from "hooks/useGetUser";
 import { FC, PropsWithChildren, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { CoreSettingsModal } from "./CoreSettingsModal";
 import { Footer } from "./Footer";
 import { AlertCenter } from "./AlertCenter";
@@ -27,6 +28,9 @@ const suppressCredentialAutofillIn = (root: ParentNode) => {
 export const AppShell: FC<PropsWithChildren> = ({ children }) => {
   const { userData, getUserIsPending } = useGetUser();
   const isOwner = !getUserIsPending && (userData.is_sudo || userData.role === "OWNER");
+  const { pathname } = useLocation();
+  const workspace = pathname.startsWith("/users") ? "کاربران" : pathname.startsWith("/admins") ? "ادمین‌ها و حسابداری" : pathname.startsWith("/plans") ? "پلن‌ها و دسترسی" : pathname.startsWith("/settings") ? "پیکربندی" : pathname.startsWith("/audit-logs") ? "تاریخچه فعالیت‌ها" : pathname.startsWith("/device-limits") ? "محدودیت دستگاه" : "نمای کلی";
+  useEffect(() => { window.scrollTo({ top: 0, behavior: "auto" }); }, [pathname]);
 
   useEffect(() => {
     suppressCredentialAutofillIn(document);
@@ -45,7 +49,8 @@ export const AppShell: FC<PropsWithChildren> = ({ children }) => {
 
   return (
     <>
-      <Flex minH="100vh" align="stretch" direction={{ base: "column", lg: "row" }} className="operations-shell">
+      <a href="#main-content" className="console-skip-link" onClick={(event) => { event.preventDefault(); document.getElementById("main-content")?.focus(); }}>رفتن به محتوای اصلی</a>
+      <Flex minH="100dvh" align="stretch" direction={{ base: "column", lg: "row" }} className="operations-shell">
         <Header />
         <Flex
           as="main"
@@ -53,10 +58,16 @@ export const AppShell: FC<PropsWithChildren> = ({ children }) => {
           flex="1"
           direction="column"
           id="main-content"
+          tabIndex={-1}
           px={{ base: 4, md: 7, xl: 9 }}
-          py={{ base: 5, md: 7 }}
+          pt={{ base: 0, lg: 1 }}
+          pb="max(24px, env(safe-area-inset-bottom))"
         >
-          <Box w="full" maxW="none" minW={0} flex="1">
+          <Box w="full" maxW="1680px" mx="auto" minW={0} flex="1">
+            <HStack className="console-workspace-bar" justify="space-between" flexWrap="wrap">
+              <HStack spacing={2} fontSize="xs" color="var(--panel-text-muted)"><Text display={{ base: "none", sm: "block" }}>فضای مدیریت</Text><Text aria-hidden="true" display={{ base: "none", sm: "block" }} opacity={.5}>/</Text><Text color="var(--panel-text-body)" fontWeight="500">{workspace}</Text></HStack>
+              <HStack spacing={2} minW={0} maxW="70%"><Text dir="ltr" noOfLines={1} fontSize="xs" color="var(--panel-text-muted)">{userData.username}</Text><Badge bg="var(--panel-accent-soft)" color="var(--panel-accent)" fontSize="xs" flexShrink={0}>{isOwner ? "مالک" : "ادمین"}</Badge></HStack>
+            </HStack>
             <AlertCenter />
             {children}
           </Box>

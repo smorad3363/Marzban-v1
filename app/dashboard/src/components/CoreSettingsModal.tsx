@@ -318,10 +318,10 @@ const CoreSettingModalContent: FC = () => {
           <Box
             border="1px solid"
             borderColor="gray.300"
-            bg="#F9F9F9"
+            bg="var(--panel-nested)"
             _dark={{
               borderColor: "gray.500",
-              bg: "#2e3440",
+              bg: "var(--panel-nested)",
             }}
             borderRadius={5}
             minHeight="200px"
@@ -383,7 +383,7 @@ export const CoreSettingsModal: FC = () => {
 
   return (
     <Modal isOpen={isEditingCore} onClose={onClose} size="3xl" scrollBehavior="inside">
-      <ModalOverlay bg="blackAlpha.300" backdropFilter="blur(10px)" />
+      <ModalOverlay bg="var(--panel-overlay)" backdropFilter="blur(5px)" />
       <ModalContent mx="3" w="calc(100% - 24px)">
         <ModalHeader pt={6}>
           <HStack gap={2}>

@@ -315,7 +315,7 @@ const BulkActionDialog: FC<BulkActionDialogProps> = ({
       onClose={isSubmitting ? () => undefined : onClose}
       isCentered
     >
-      <ModalOverlay bg="blackAlpha.700" backdropFilter="blur(5px)" />
+      <ModalOverlay bg="var(--panel-nested)" backdropFilter="blur(5px)" />
       <ModalContent dir={i18n.dir()} mx={3} maxW="640px">
         <ModalHeader pe={12}>{t(action.labelKey)}</ModalHeader>
         <ModalCloseButton isDisabled={isSubmitting} />
@@ -605,7 +605,7 @@ const ExpiredCleanupDialog: FC<ExpiredCleanupDialogProps> = ({
       onClose={isDeleting ? () => undefined : onClose}
       isCentered
     >
-      <ModalOverlay bg="blackAlpha.700" backdropFilter="blur(5px)" />
+      <ModalOverlay bg="var(--panel-nested)" backdropFilter="blur(5px)" />
       <ModalContent dir={i18n.dir()} mx={3} maxW="500px">
         <ModalHeader pe={12}>{trialOnly ? "پاک‌سازی اکانت‌های تست منقضی" : t("usersTable.cleanupExpired")}</ModalHeader>
         <ModalCloseButton isDisabled={isDeleting} />

@@ -28,14 +28,14 @@ export const NodesDialog: FC = () => {
         scrollBehavior="inside"
         size="full"
       >
-        <ModalOverlay bg="blackAlpha.400" backdropFilter="blur(10px)" />
+        <ModalOverlay bg="var(--panel-overlay)" backdropFilter="blur(5px)" />
         <ModalContent
           mx={{ base: 2, md: 4 }}
           my={{ base: 2, md: 4 }}
           w={{ base: "calc(100% - 16px)", md: "calc(100% - 32px)" }}
           maxW="7xl"
-          h={{ base: "calc(100vh - 16px)", md: "calc(100vh - 32px)" }}
-          maxH={{ base: "calc(100vh - 16px)", md: "calc(100vh - 32px)" }}
+          h={{ base: "calc(100dvh - 16px)", md: "calc(100dvh - 32px)" }}
+          maxH={{ base: "calc(100dvh - 16px)", md: "calc(100dvh - 32px)" }}
           borderWidth="1px"
           borderColor="var(--panel-border)"
           borderRadius={{ base: "12px", md: "16px" }}
@@ -52,7 +52,7 @@ export const NodesDialog: FC = () => {
               <Icon color="primary">
                 <SquaresPlusIcon width="20px" />
               </Icon>
-              <Text fontSize="lg" fontWeight="900">
+              <Text fontSize="lg" fontWeight="700">
                 مدیریت گره‌ها
               </Text>
             </HStack>

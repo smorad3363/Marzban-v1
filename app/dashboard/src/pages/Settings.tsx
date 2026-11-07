@@ -1,3 +1,4 @@
+import { PageHeader } from "design-system/Console";
 import {
   Alert,
   AlertIcon,
@@ -106,7 +107,7 @@ const Section: FC<{
   >
     <Stack spacing={1}>
       <Heading size="md">{title}</Heading>
-      <Text color="var(--panel-text-muted)" _dark={{ color: "gray.400" }} fontSize="sm" lineHeight="1.9">
+      <Text color="var(--panel-text-muted)" _dark={{ color: "var(--panel-text-muted)" }} fontSize="sm" lineHeight="1.9">
         {description}
       </Text>
     </Stack>
@@ -258,22 +259,7 @@ export const Settings: FC = () => {
   return (
     <AppShell>
       <Stack spacing={6}>
-        <Card
-          p={{ base: 4, md: 6 }}
-          borderWidth="1px"
-          borderColor="var(--panel-border)"
-          borderRadius="var(--radius-panel)"
-          bg="var(--panel-surface)"
-        >
-          <Stack spacing={2}>
-            <Text color="primary.400" fontSize="xs" fontWeight="800" letterSpacing=".08em">
-              پیکربندی مالک پنل
-            </Text>
-            <Heading size="lg">پیکربندی</Heading>
-            <Text color="var(--panel-text-muted)" _dark={{ color: "gray.400" }} maxW="820px" lineHeight="1.9">
-              این صفحه فقط تنظیمات سراسری و واقعی سیستم را نگه می‌دارد. سیاست هر ادمین هنگام ساخت یا ویرایش همان ادمین
-              تعیین می‌شود و پلن‌های تجاری نیز در صفحه پلن‌ها مدیریت می‌شوند.
-            </Text>
+        <PageHeader eyebrow="تنظیمات فضای کاری" title="پیکربندی" description="تنظیمات سراسری پنل، ظاهر، قیمت‌گذاری و پشتیبان‌گیری." actions={
             <HStack pt={2} spacing={2} wrap="wrap">
               <Button as={RouterLink} to="/admins/?create=1" colorScheme="primary" size="sm">
                 ساخت ادمین
@@ -282,8 +268,7 @@ export const Settings: FC = () => {
                 مدیریت پلن‌ها
               </Button>
             </HStack>
-          </Stack>
-        </Card>
+        } />
 
         <Grid templateColumns={{ base: "1fr", xl: "250px minmax(0, 1fr)" }} gap={5} alignItems="start">
           <Card
@@ -354,7 +339,7 @@ export const Settings: FC = () => {
                   </SimpleGrid>
 
                   <Box p={4} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px">
-                    <Text fontWeight="800">ضریب خودکار مدت</Text>
+                    <Text fontWeight="700">ضریب خودکار مدت</Text>
                     <Text mt={2} fontSize="sm">تا {pricing.duration_base_days} روز ضریب ۱ است. افزایش روزانه به‌تدریج کمتر می‌شود؛ پس از شش ماه بسیار جزئی است و از {pricing.duration_cap_days} روز به بعد روی {pricing.duration_max_multiplier} ثابت می‌ماند.</Text>
                     <Text mt={2} fontSize="sm">برای ساخت هر اکانت، تنظیم مدت مشخص الزامی است.</Text>
                     <SimpleGrid mt={3} columns={{ base: 2, md: 4 }} gap={2}>
@@ -385,7 +370,7 @@ export const Settings: FC = () => {
                   <Card p={4} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px" bg="var(--panel-nested)">
                     <HStack justify="space-between" align="start" gap={4}>
                       <Box>
-                        <Text fontWeight="800">پشتیبان‌گیری خودکار</Text>
+                        <Text fontWeight="700">پشتیبان‌گیری خودکار</Text>
                         <Text color="var(--panel-text-muted)" fontSize="sm" mt={1}>
                           حتی در صورت خطای ارسال، نسخه محلی قابل بازیابی نگه داشته می‌شود.
                         </Text>
@@ -435,7 +420,7 @@ export const Settings: FC = () => {
 
                   {backup.destination.includes("TELEGRAM") && (
                     <Card p={4} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px" bg="var(--panel-nested)">
-                      <Text fontWeight="800" mb={3}>ارسال به تلگرام</Text>
+                      <Text fontWeight="700" mb={3}>ارسال به تلگرام</Text>
                       <SimpleGrid columns={{ base: 1, md: 2 }} gap={3}>
                         <FormControl>
                           <FormLabel>توکن ربات</FormLabel>
@@ -459,7 +444,7 @@ export const Settings: FC = () => {
 
                   {backup.destination.includes("EMAIL") && (
                     <Card p={4} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px" bg="var(--panel-nested)">
-                      <Text fontWeight="800" mb={3}>ارسال به ایمیل</Text>
+                      <Text fontWeight="700" mb={3}>ارسال به ایمیل</Text>
                       <SimpleGrid columns={{ base: 1, md: 2 }} gap={3}>
                         <FormControl>
                           <FormLabel>نام کاربری SMTP</FormLabel>
@@ -539,7 +524,7 @@ export const Settings: FC = () => {
                   </HStack>
 
                   <Box pt={5} borderTopWidth="1px" borderColor="var(--panel-border)">
-                    <Text fontWeight="800">اعتبارسنجی فایل برای بازیابی آفلاین</Text>
+                    <Text fontWeight="700">اعتبارسنجی فایل برای بازیابی آفلاین</Text>
                     <Alert mt={3} status="warning" borderRadius="12px" alignItems="start">
                       <AlertIcon mt={1} />
                       بازیابی آنلاین برای حفاظت از داده فعال غیرفعال است. این مرحله فقط سلامت آرشیو را بررسی می‌کند و هیچ داده‌ای را بازیابی نمی‌کند.

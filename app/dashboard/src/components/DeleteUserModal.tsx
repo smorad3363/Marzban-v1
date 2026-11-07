@@ -56,7 +56,7 @@ export const DeleteUserModal: FC<DeleteUserModalProps> = () => {
   };
   return (
     <Modal isCentered isOpen={!!user} onClose={onClose} size="sm">
-      <ModalOverlay bg="blackAlpha.300" backdropFilter="blur(10px)" />
+      <ModalOverlay bg="var(--panel-overlay)" backdropFilter="blur(5px)" />
       <ModalContent mx="3">
         <ModalHeader pt={6}>
           <Icon color="red">
@@ -72,7 +72,7 @@ export const DeleteUserModal: FC<DeleteUserModalProps> = () => {
             <Text
               mt={1}
               fontSize="sm"
-              _dark={{ color: "gray.400" }}
+              _dark={{ color: "var(--panel-text-muted)" }}
               color="var(--panel-text-muted)"
             >
               <Trans components={{ b: <b /> }}>

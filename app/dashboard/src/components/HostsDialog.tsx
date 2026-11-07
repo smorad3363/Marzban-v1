@@ -123,7 +123,7 @@ const InfoIcon = chakra(InformationCircleIcon, {
   baseStyle: {
     w: 4,
     h: 4,
-    color: "gray.400",
+    color: "var(--panel-text-muted)",
     cursor: "pointer",
   },
 });
@@ -131,7 +131,7 @@ const InfoIcon = chakra(InformationCircleIcon, {
 
 const Error = chakra(FormErrorMessage, {
   baseStyle: {
-    color: "red.400",
+    color: "var(--panel-danger)",
     display: "block",
     textAlign: "left",
     w: "100%",
@@ -228,7 +228,7 @@ const AccordionInbound: FC<AccordionInboundType> = ({
           flex="1"
           textAlign="left"
           color="var(--panel-text-body)"
-          _dark={{ color: "gray.300" }}
+          _dark={{ color: "var(--panel-text-muted)" }}
         >
           {hostKey}
         </Text>
@@ -1288,7 +1288,7 @@ export const HostsDialog: FC = () => {
   return (
     <Fragment>
     <Modal isOpen={isEditingHosts} onClose={onClose} scrollBehavior="inside">
-      <ModalOverlay bg="blackAlpha.300" backdropFilter="blur(10px)" />
+      <ModalOverlay bg="var(--panel-overlay)" backdropFilter="blur(5px)" />
       <ModalContent mx="3" w={{ base: "calc(100% - 24px)", md: "fit-content" }} maxW="3xl">
         <ModalHeader pt={6}>
           <Icon color="primary">
@@ -1349,7 +1349,7 @@ export const HostsDialog: FC = () => {
       </ModalContent>
     </Modal>
     <Modal isOpen={Boolean(impact)} onClose={() => { setImpact(null); setPendingHosts(null); }} isCentered>
-      <ModalOverlay bg="blackAlpha.500" />
+      <ModalOverlay bg="var(--panel-overlay)" />
       <ModalContent mx={3} dir="rtl" maxW="lg">
         <ModalHeader fontSize="lg">اثر تغییر Host روی Access Groupها</ModalHeader>
         <ModalCloseButton insetInlineStart={3} insetInlineEnd="auto" />

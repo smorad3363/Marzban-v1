@@ -99,7 +99,7 @@ const SectionHeader: FC<{ title: string; description: string }> = ({
     <Text
       color="var(--panel-accent)"
       fontSize="xs"
-      fontWeight="800"
+      fontWeight="700"
       letterSpacing="0.06em"
       lineHeight="1.8"
     >
@@ -721,7 +721,7 @@ export const UserDialog: FC<UserDialogProps> = () => {
                 </Icon>
                 <Box minW={0} flex="1">
                   <HStack spacing={2} flexWrap="wrap">
-                    <Text fontWeight="800" fontSize={{ base: "md", sm: "xl" }} lineHeight="1.7">
+                    <Text fontWeight="700" fontSize={{ base: "md", sm: "xl" }} lineHeight="1.7">
                       {isEditing
                         ? t("userDialog.editUserTitle")
                         : t("createNewUser")}
@@ -983,7 +983,7 @@ export const UserDialog: FC<UserDialogProps> = () => {
                               </Select>
                             )}
                           />
-                          <FormHelperText color={lacksCapacity ? "red.300" : "gray.400"}>
+                          <FormHelperText color={lacksCapacity ? "var(--panel-danger)" : "gray.400"}>
                             {t("userDialog.capacityCost", {
                               cost: requestedCapacity,
                               remaining: assignableCapacity ?? t("unlimited"),
@@ -1334,10 +1334,10 @@ export const UserDialog: FC<UserDialogProps> = () => {
                           <UserUsageIcon />
                         </IconButton>
                       </Tooltip>}
-                      {editingUser?.used_traffic !== null && <Button onClick={handleResetUsage} size="sm" whiteSpace="normal" minH="44px" variant="outline" borderColor="#475f50">
+                      {editingUser?.used_traffic !== null && <Button onClick={handleResetUsage} size="sm" whiteSpace="normal" minH="44px" variant="outline" borderColor="var(--panel-border-strong)">
                         {t("userDialog.resetUsage")}
                       </Button>}
-                      <Button onClick={handleRevokeSubscription} size="sm" whiteSpace="normal" minH="44px" variant="outline" borderColor="#475f50">
+                      <Button onClick={handleRevokeSubscription} size="sm" whiteSpace="normal" minH="44px" variant="outline" borderColor="var(--panel-border-strong)">
                         {t("userDialog.revokeSubscription")}
                       </Button>
                     </>

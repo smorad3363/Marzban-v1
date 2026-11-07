@@ -82,8 +82,8 @@ const Detail: FC<{ label: string; value: React.ReactNode; dir?: "ltr" | "rtl" }>
   dir,
 }) => (
   <Box minW={0} p={3} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px" bg="var(--panel-nested)">
-    <Text color="var(--panel-text-muted)" fontSize="9px" fontWeight="800">{label}</Text>
-    <Box mt={1.5} dir={dir} fontSize="12px" fontWeight="750" overflowWrap="anywhere">
+    <Text color="var(--panel-text-muted)" fontSize="xs" fontWeight="700">{label}</Text>
+    <Box mt={1.5} dir={dir} fontSize="12px" fontWeight="700" overflowWrap="anywhere">
       {value}
     </Box>
   </Box>
@@ -200,19 +200,19 @@ export const UserDetailsDrawer: FC<UserDetailsDrawerProps> = ({
               borderRadius="full"
               bg="var(--panel-accent-soft)"
               color="var(--panel-accent)"
-              fontWeight="900"
+              fontWeight="700"
             >
               {user.username.slice(0, 1).toUpperCase()}
             </Box>
             <Box minW={0}>
-              <Text dir="ltr" textAlign="start" fontSize="lg" fontWeight="900" sx={{ unicodeBidi: "isolate" }}>
+              <Text dir="ltr" textAlign="start" fontSize="lg" fontWeight="700" sx={{ unicodeBidi: "isolate" }}>
                 {user.username}
               </Text>
               <HStack mt={1} spacing={2} flexWrap="wrap">
                 <Badge colorScheme={user.status === "active" ? "green" : user.status === "expired" ? "red" : "yellow"} textTransform="none">
                   {statusLabel[user.status]}
                 </Badge>
-                <Text color="var(--panel-text-muted)" fontSize="10px">
+                <Text color="var(--panel-text-muted)" fontSize="xs">
                   {planMeta ? `${planMeta.plan_name} · v${planMeta.version_number}` : "بدون پلن"}
                 </Text>
               </HStack>
@@ -223,12 +223,12 @@ export const UserDetailsDrawer: FC<UserDetailsDrawerProps> = ({
         <DrawerBody p={0} overflow="hidden">
           <Tabs index={tabIndex} onChange={setTabIndex} display="flex" flexDirection="column" h="full" colorScheme="primary" isLazy>
             <TabList px={4} pt={2} overflowX="auto" borderColor="var(--panel-border)">
-              <Tab fontSize="11px" whiteSpace="nowrap">نمای کلی</Tab>
-              <Tab fontSize="11px" whiteSpace="nowrap">اشتراک</Tab>
+              <Tab fontSize="xs" whiteSpace="nowrap">نمای کلی</Tab>
+              <Tab fontSize="xs" whiteSpace="nowrap">اشتراک</Tab>
               {canViewDevices && user.concurrent_user_limit != null && (
-                <Tab fontSize="11px" whiteSpace="nowrap">دستگاه‌ها</Tab>
+                <Tab fontSize="xs" whiteSpace="nowrap">دستگاه‌ها</Tab>
               )}
-              <Tab fontSize="11px" whiteSpace="nowrap">فعالیت</Tab>
+              <Tab fontSize="xs" whiteSpace="nowrap">فعالیت</Tab>
             </TabList>
             <TabPanels flex="1" overflowY="auto">
               <TabPanel p={{ base: 3, md: 4 }}>
@@ -246,18 +246,18 @@ export const UserDetailsDrawer: FC<UserDetailsDrawerProps> = ({
                   <Box p={3.5} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px" bg="var(--panel-nested)">
                     <HStack justify="space-between" align="end">
                       <Box>
-                        <Text color="var(--panel-text-muted)" fontSize="9px" fontWeight="800">مصرف ترافیک</Text>
-                        <Text dir="ltr" mt={1} fontSize="13px" fontWeight="900" sx={{ unicodeBidi: "isolate" }}>
+                        <Text color="var(--panel-text-muted)" fontSize="xs" fontWeight="700">مصرف ترافیک</Text>
+                        <Text dir="ltr" mt={1} fontSize="13px" fontWeight="700" sx={{ unicodeBidi: "isolate" }}>
                           {String(formatBytes(used))} / {user.data_limit ? String(formatBytes(user.data_limit)) : "∞"}
                         </Text>
                       </Box>
-                      <Text color={usageTone} fontSize="11px" fontWeight="900">{unlimited ? "∞" : `${Math.round(usagePercent)}٪`}</Text>
+                      <Text color={usageTone} fontSize="xs" fontWeight="700">{unlimited ? "∞" : `${Math.round(usagePercent)}٪`}</Text>
                     </HStack>
                     {!unlimited && <Progress mt={2.5} value={usagePercent} h="5px" borderRadius="full" bg="var(--panel-surface)" sx={{ "& > div": { background: usageTone } }} />}
                   </Box>
 
                   <Box p={3.5} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px" bg="var(--panel-nested)">
-                    <Text color="var(--panel-text-muted)" fontSize="9px" fontWeight="800">توضیحات</Text>
+                    <Text color="var(--panel-text-muted)" fontSize="xs" fontWeight="700">توضیحات</Text>
                     <Text mt={2} fontSize="12px" lineHeight="1.9" whiteSpace="pre-wrap">{user.note || "توضیحی ثبت نشده است."}</Text>
                   </Box>
 
@@ -268,8 +268,8 @@ export const UserDetailsDrawer: FC<UserDetailsDrawerProps> = ({
 
                   {user.next_plan && (
                     <Box p={3.5} borderWidth="1px" borderColor="var(--panel-accent-border)" borderRadius="12px" bg="var(--panel-accent-soft)">
-                      <Text color="var(--panel-accent)" fontSize="10px" fontWeight="900">پلن بعدی تنظیم‌شده</Text>
-                      <Text mt={1.5} fontSize="11px">
+                      <Text color="var(--panel-accent)" fontSize="xs" fontWeight="700">پلن بعدی تنظیم‌شده</Text>
+                      <Text mt={1.5} fontSize="xs">
                         حجم: {user.next_plan.data_limit ? String(formatBytes(user.next_plan.data_limit)) : "نامحدود"} · انقضا: {fmtExpire(user.next_plan.expire)}
                       </Text>
                     </Box>
@@ -280,9 +280,9 @@ export const UserDetailsDrawer: FC<UserDetailsDrawerProps> = ({
               <TabPanel p={{ base: 3, md: 4 }}>
                 <Stack spacing={4}>
                   <Box p={3.5} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px" bg="var(--panel-nested)">
-                    <Text color="var(--panel-text-muted)" fontSize="9px" fontWeight="800">لینک اشتراک</Text>
+                    <Text color="var(--panel-text-muted)" fontSize="xs" fontWeight="700">لینک اشتراک</Text>
                     <Tooltip label={absoluteSubscription} hasArrow>
-                      <Text dir="ltr" textAlign="start" mt={2} fontFamily="mono" fontSize="10px" noOfLines={2} overflowWrap="anywhere" sx={{ unicodeBidi: "isolate" }}>
+                      <Text dir="ltr" textAlign="start" mt={2} fontFamily="mono" fontSize="xs" noOfLines={2} overflowWrap="anywhere" sx={{ unicodeBidi: "isolate" }}>
                         {absoluteSubscription}
                       </Text>
                     </Tooltip>
@@ -298,12 +298,12 @@ export const UserDetailsDrawer: FC<UserDetailsDrawerProps> = ({
                   </Box>
 
                   <Box>
-                    <Text fontSize="11px" fontWeight="900">لینک‌های اتصال</Text>
+                    <Text fontSize="xs" fontWeight="700">لینک‌های اتصال</Text>
                     <Stack mt={2.5} spacing={2}>
-                      {user.links.length === 0 && <Text color="var(--panel-text-muted)" fontSize="11px">لینکی موجود نیست.</Text>}
+                      {user.links.length === 0 && <Text color="var(--panel-text-muted)" fontSize="xs">لینکی موجود نیست.</Text>}
                       {user.links.map((link, index) => (
                         <HStack key={`${index}-${link.slice(0, 12)}`} p={2.5} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="10px" bg="var(--panel-nested)" align="center">
-                          <Text flex="1" minW={0} dir="ltr" textAlign="start" fontFamily="mono" fontSize="9px" noOfLines={1} sx={{ unicodeBidi: "isolate" }}>{link}</Text>
+                          <Text flex="1" minW={0} dir="ltr" textAlign="start" fontFamily="mono" fontSize="xs" noOfLines={1} sx={{ unicodeBidi: "isolate" }}>{link}</Text>
                           <Button size="xs" variant="ghost" onClick={() => copy(link)}>کپی</Button>
                         </HStack>
                       ))}
@@ -327,23 +327,23 @@ export const UserDetailsDrawer: FC<UserDetailsDrawerProps> = ({
                         <Detail label="اسلات‌ها" value={devices.data.slots.length.toLocaleString("fa-IR")} />
                       </SimpleGrid>
                       {devices.data.state.last_reason && (
-                        <Alert status="warning" borderRadius="10px"><AlertIcon /><Text fontSize="11px">{devices.data.state.last_reason}</Text></Alert>
+                        <Alert status="warning" borderRadius="10px"><AlertIcon /><Text fontSize="xs">{devices.data.state.last_reason}</Text></Alert>
                       )}
                       <Box>
-                        <Text fontSize="11px" fontWeight="900">دستگاه‌های ثبت‌شده</Text>
+                        <Text fontSize="xs" fontWeight="700">دستگاه‌های ثبت‌شده</Text>
                         <Stack mt={2.5} spacing={2}>
-                          {devices.data.slots.length === 0 && <Text color="var(--panel-text-muted)" fontSize="11px">اسلات فعالی ثبت نشده است.</Text>}
+                          {devices.data.slots.length === 0 && <Text color="var(--panel-text-muted)" fontSize="xs">اسلات فعالی ثبت نشده است.</Text>}
                           {devices.data.slots.map((slot) => (
                             <Box key={slot.id} p={3} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="11px" bg="var(--panel-nested)">
                               <HStack justify="space-between" align="start">
                                 <Box minW={0}>
-                                  <Text fontSize="11px" fontWeight="850">{slot.label || `دستگاه ${slot.slot_index.toLocaleString("fa-IR")}`}</Text>
-                                  <Text dir="ltr" textAlign="start" mt={1} color="var(--panel-text-muted)" fontSize="9px" sx={{ unicodeBidi: "isolate" }}>{slot.last_ip || "—"}</Text>
+                                  <Text fontSize="xs" fontWeight="700">{slot.label || `دستگاه ${slot.slot_index.toLocaleString("fa-IR")}`}</Text>
+                                  <Text dir="ltr" textAlign="start" mt={1} color="var(--panel-text-muted)" fontSize="xs" sx={{ unicodeBidi: "isolate" }}>{slot.last_ip || "—"}</Text>
                                 </Box>
-                                <Text color="var(--panel-text-muted)" fontSize="9px">{fmtDateTime(slot.last_seen_at)}</Text>
+                                <Text color="var(--panel-text-muted)" fontSize="xs">{fmtDateTime(slot.last_seen_at)}</Text>
                               </HStack>
                               {slot.client_observations[0] && (
-                                <Text mt={2} dir="ltr" textAlign="start" color="var(--panel-text-body)" fontSize="9px" sx={{ unicodeBidi: "isolate" }}>
+                                <Text mt={2} dir="ltr" textAlign="start" color="var(--panel-text-body)" fontSize="xs" sx={{ unicodeBidi: "isolate" }}>
                                   {slot.client_observations[0].client_name} {slot.client_observations[0].client_version || ""} · {slot.client_observations[0].platform || slot.client_observations[0].os_token || "—"}
                                 </Text>
                               )}
@@ -363,19 +363,19 @@ export const UserDetailsDrawer: FC<UserDetailsDrawerProps> = ({
                     <Detail label="آخرین دریافت اشتراک" value={fmtDateTime(user.sub_updated_at)} />
                   </SimpleGrid>
                   <Divider borderColor="var(--panel-border)" />
-                  <Text fontSize="11px" fontWeight="900">گزارش فعالیت مدیریتی</Text>
+                  <Text fontSize="xs" fontWeight="700">گزارش فعالیت مدیریتی</Text>
                   {audit.isLoading && <Stack>{Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} h="64px" borderRadius="10px" />)}</Stack>}
                   {audit.isError && <Alert status="error" borderRadius="10px"><AlertIcon />دریافت گزارش فعالیت انجام نشد.</Alert>}
-                  {audit.data?.logs.length === 0 && <Text color="var(--panel-text-muted)" fontSize="11px">فعالیت مدیریتی برای این کاربر ثبت نشده است.</Text>}
+                  {audit.data?.logs.length === 0 && <Text color="var(--panel-text-muted)" fontSize="xs">فعالیت مدیریتی برای این کاربر ثبت نشده است.</Text>}
                   {audit.data?.logs.map((log) => (
                     <Box key={log.id} p={3} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="11px" bg="var(--panel-nested)">
                       <HStack justify="space-between" align="start" gap={3}>
                         <Box minW={0}>
-                          <Text dir="ltr" textAlign="start" color="var(--panel-accent)" fontSize="9px" fontWeight="850" sx={{ unicodeBidi: "isolate" }}>{log.action}</Text>
-                          <Text mt={1} fontSize="10px" lineHeight="1.8">{log.description}</Text>
-                          <Text mt={1} color="var(--panel-text-muted)" fontSize="9px">توسط {log.admin_username}</Text>
+                          <Text dir="ltr" textAlign="start" color="var(--panel-accent)" fontSize="xs" fontWeight="700" sx={{ unicodeBidi: "isolate" }}>{log.action}</Text>
+                          <Text mt={1} fontSize="xs" lineHeight="1.8">{log.description}</Text>
+                          <Text mt={1} color="var(--panel-text-muted)" fontSize="xs">توسط {log.admin_username}</Text>
                         </Box>
-                        <Text flexShrink={0} color="var(--panel-text-muted)" fontSize="9px">{fmtDateTime(log.created_at)}</Text>
+                        <Text flexShrink={0} color="var(--panel-text-muted)" fontSize="xs">{fmtDateTime(log.created_at)}</Text>
                       </HStack>
                     </Box>
                   ))}

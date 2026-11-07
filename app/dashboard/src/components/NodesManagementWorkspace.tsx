@@ -280,7 +280,7 @@ const SummaryCard: FC<{
         <Text fontSize="xs" color="var(--panel-text-muted)" fontWeight="700">
           {label}
         </Text>
-        <Text mt={1} fontSize={{ base: "lg", md: "xl" }} fontWeight="900" dir="ltr" textAlign="start">
+        <Text mt={1} fontSize={{ base: "lg", md: "xl" }} fontWeight="700" dir="ltr" textAlign="start">
           {value}
         </Text>
         {hint && (
@@ -358,7 +358,7 @@ const WatchdogPanel: FC = () => {
         onClick={() => setExpanded((value) => !value)}
       >
         <Box textAlign="start">
-          <Text fontSize="sm" fontWeight="800">نگهبان نودها</Text>
+          <Text fontSize="sm" fontWeight="700">نگهبان نودها</Text>
           <Text fontSize="xs" color="var(--panel-text-muted)">هشدار قطعی و اعلان تلگرام</Text>
         </Box>
         <Badge colorScheme={settings?.enabled ? "green" : "gray"}>
@@ -528,9 +528,9 @@ const NodeEditor: FC<{
       <Box p={4} borderBottomWidth="1px" borderColor="var(--panel-border)">
         <HStack justify="space-between" align="start" gap={3}>
           <Box minW={0}>
-            <Text fontSize="xs" color="var(--panel-accent)" fontWeight="800">جزئیات نود</Text>
+            <Text fontSize="xs" color="var(--panel-accent)" fontWeight="700">جزئیات نود</Text>
             <HStack mt={1} spacing={2}>
-              <Text fontSize="lg" fontWeight="900" noOfLines={1} dir="ltr">{isNew ? "نود جدید" : node?.name || "—"}</Text>
+              <Text fontSize="lg" fontWeight="700" noOfLines={1} dir="ltr">{isNew ? "نود جدید" : node?.name || "—"}</Text>
               {!isNew && <NodeModalStatusBadge status={nodeStatus} compact />}
             </HStack>
             {!isNew && bandwidth && (
@@ -550,7 +550,7 @@ const NodeEditor: FC<{
           <Alert status="error" mb={4} borderRadius="10px" alignItems="start">
             <AlertIcon mt={0.5} />
             <Box>
-              <Text fontSize="sm" fontWeight="800">خطا در اتصال نود</Text>
+              <Text fontSize="sm" fontWeight="700">خطا در اتصال نود</Text>
               <Text mt={1} fontSize="xs">{node?.message || "اتصال با نود برقرار نیست."}</Text>
             </Box>
           </Alert>
@@ -579,9 +579,9 @@ const NodeEditor: FC<{
                   mt={2}
                   p={2}
                   borderRadius="8px"
-                  bg="blackAlpha.300"
+                  bg="var(--panel-nested)"
                   fontFamily="mono"
-                  fontSize="10px"
+                  fontSize="xs"
                   whiteSpace="pre"
                   overflow="auto"
                   dir="ltr"
@@ -793,8 +793,8 @@ const NodeOperationalDetail: FC<{ row: NodeRow }> = ({ row }) => {
     <Box borderWidth="1px" borderColor="var(--panel-border)" borderRadius="14px" bg="var(--panel-surface)" p={4}>
       <HStack justify="space-between" align="start" gap={3}>
         <Box minW={0}>
-          <Text color="var(--panel-accent)" fontSize="xs" fontWeight="800">عملیات و تله‌متری</Text>
-          <Text mt={1} fontSize="lg" fontWeight="900">{row.name}</Text>
+          <Text color="var(--panel-accent)" fontSize="xs" fontWeight="700">عملیات و تله‌متری</Text>
+          <Text mt={1} fontSize="lg" fontWeight="700">{row.name}</Text>
           <Text mt={1} fontSize="xs" color="var(--panel-text-muted)">
             میانگین‌های پایدار، تاریخچه ۲۴ ساعت و رخدادهای sanitize‌شده
           </Text>
@@ -831,7 +831,7 @@ const NodeOperationalDetail: FC<{ row: NodeRow }> = ({ row }) => {
       <Box mt={3} p={3} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px" bg="var(--panel-nested)">
         <HStack justify="space-between" mb={2}>
           <Box>
-            <Text fontSize="sm" fontWeight="800">تاریخچه ترافیک ۲۴ ساعت</Text>
+            <Text fontSize="sm" fontWeight="700">تاریخچه ترافیک ۲۴ ساعت</Text>
             <Text fontSize="xs" color="var(--panel-text-muted)">داده persisted و downsample‌شده؛ بدون polling جدید Xray</Text>
           </Box>
           <Badge variant="outline">{new Intl.NumberFormat("fa-IR").format(points.length)} نقطه</Badge>
@@ -841,11 +841,11 @@ const NodeOperationalDetail: FC<{ row: NodeRow }> = ({ row }) => {
         ) : historyQuery.isError ? (
           <Alert status="warning" borderRadius="8px"><AlertIcon /><AlertDescription fontSize="xs">تاریخچه ترافیک در دسترس نیست.</AlertDescription></Alert>
         ) : points.length ? (
-          <Box color="cyan.300">
+          <Box color="var(--panel-info)">
             <Sparkline values={points.map((point) => point.total_bps)} label="روند ترافیک ۲۴ ساعت" />
             <HStack justify="space-between" mt={1}>
-              <Text fontSize="10px" color="var(--panel-text-muted)">{sampledAtLabel(points[0]?.bucket_start)}</Text>
-              <Text fontSize="10px" color="var(--panel-text-muted)">{sampledAtLabel(points[points.length - 1]?.bucket_start)}</Text>
+              <Text fontSize="xs" color="var(--panel-text-muted)">{sampledAtLabel(points[0]?.bucket_start)}</Text>
+              <Text fontSize="xs" color="var(--panel-text-muted)">{sampledAtLabel(points[points.length - 1]?.bucket_start)}</Text>
             </HStack>
           </Box>
         ) : (
@@ -856,7 +856,7 @@ const NodeOperationalDetail: FC<{ row: NodeRow }> = ({ row }) => {
       <Box mt={3} p={3} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px" bg="var(--panel-nested)">
         <HStack justify="space-between" mb={2}>
           <Box>
-            <Text fontSize="sm" fontWeight="800">رخدادهای اخیر</Text>
+            <Text fontSize="sm" fontWeight="700">رخدادهای اخیر</Text>
             <Text fontSize="xs" color="var(--panel-text-muted)">Timeline تشخیصی sanitize‌شده</Text>
           </Box>
           <Badge variant="outline">{new Intl.NumberFormat("fa-IR").format(eventsQuery.data?.total || 0)}</Badge>
@@ -872,9 +872,9 @@ const NodeOperationalDetail: FC<{ row: NodeRow }> = ({ row }) => {
                 <HStack justify="space-between" align="start" gap={2}>
                   <HStack spacing={2} minW={0}>
                     <Badge colorScheme={severityScheme(event.severity)}>{event.severity}</Badge>
-                    <Text fontSize="xs" fontWeight="800" dir="ltr" noOfLines={1}>{event.event_type}</Text>
+                    <Text fontSize="xs" fontWeight="700" dir="ltr" noOfLines={1}>{event.event_type}</Text>
                   </HStack>
-                  <Text fontSize="10px" color="var(--panel-text-muted)" whiteSpace="nowrap">{sampledAtLabel(event.occurred_at)}</Text>
+                  <Text fontSize="xs" color="var(--panel-text-muted)" whiteSpace="nowrap">{sampledAtLabel(event.occurred_at)}</Text>
                 </HStack>
                 {(event.previous_state || event.new_state) && (
                   <Text mt={1} fontSize="xs" color="var(--panel-text-muted)" dir="ltr" textAlign="start">
@@ -1055,8 +1055,8 @@ export const NodesManagementWorkspace: FC = () => {
       >
         <HStack justify="space-between" align="start" gap={3} flexWrap="wrap">
           <Box>
-            <Text color="var(--panel-accent)" fontSize="xs" fontWeight="800">زیرساخت</Text>
-            <Text mt={1} fontSize={{ base: "xl", md: "2xl" }} fontWeight="900">مدیریت گره‌ها</Text>
+            <Text color="var(--panel-accent)" fontSize="xs" fontWeight="700">زیرساخت</Text>
+            <Text mt={1} fontSize={{ base: "xl", md: "2xl" }} fontWeight="700">مدیریت گره‌ها</Text>
             <Text mt={1} fontSize="sm" color="var(--panel-text-muted)">
               وضعیت عملیاتی، ترافیک زنده، میانگین‌های پایدار، تاریخچه رخداد و تنظیمات هر نود را از یک نما مدیریت کنید.
             </Text>
@@ -1098,7 +1098,7 @@ export const NodesManagementWorkspace: FC = () => {
             <Box p={4} borderBottomWidth="1px" borderColor="var(--panel-border)">
               <HStack justify="space-between" align="start" gap={3} flexWrap="wrap">
                 <Box>
-                  <Text fontSize="lg" fontWeight="900">لیست گره‌ها</Text>
+                  <Text fontSize="lg" fontWeight="700">لیست گره‌ها</Text>
                   <Text mt={1} fontSize="xs" color="var(--panel-text-muted)">برای ویرایش، روی ردیف نود کلیک کنید.</Text>
                 </Box>
                 <HStack flexWrap="wrap" justify="flex-end">
@@ -1167,12 +1167,12 @@ export const NodesManagementWorkspace: FC = () => {
                   borderBottomWidth="1px"
                   borderColor="var(--panel-border)"
                 >
-                  <Text fontSize="xs" fontWeight="800" color="var(--panel-text-muted)">نام نود / وضعیت</Text>
-                  <Text fontSize="xs" fontWeight="800" color="var(--panel-text-muted)">دانلود</Text>
-                  <Text fontSize="xs" fontWeight="800" color="var(--panel-text-muted)">آپلود</Text>
-                  <Text fontSize="xs" fontWeight="800" color="var(--panel-text-muted)">آخرین نمونه</Text>
-                  <Text fontSize="xs" fontWeight="800" color="var(--panel-text-muted)">روند زنده</Text>
-                  <Text fontSize="xs" fontWeight="800" color="var(--panel-text-muted)">عملیات</Text>
+                  <Text fontSize="xs" fontWeight="700" color="var(--panel-text-muted)">نام نود / وضعیت</Text>
+                  <Text fontSize="xs" fontWeight="700" color="var(--panel-text-muted)">دانلود</Text>
+                  <Text fontSize="xs" fontWeight="700" color="var(--panel-text-muted)">آپلود</Text>
+                  <Text fontSize="xs" fontWeight="700" color="var(--panel-text-muted)">آخرین نمونه</Text>
+                  <Text fontSize="xs" fontWeight="700" color="var(--panel-text-muted)">روند زنده</Text>
+                  <Text fontSize="xs" fontWeight="700" color="var(--panel-text-muted)">عملیات</Text>
                 </Grid>
 
                 {isLoading ? (
@@ -1181,13 +1181,13 @@ export const NodesManagementWorkspace: FC = () => {
                   </Stack>
                 ) : visibleRows.length === 0 ? (
                   <Box p={8} textAlign="center">
-                    <Text fontWeight="800">نودی با این فیلتر پیدا نشد.</Text>
+                    <Text fontWeight="700">نودی با این فیلتر پیدا نشد.</Text>
                     <Text mt={1} fontSize="sm" color="var(--panel-text-muted)">فیلتر یا عبارت جستجو را تغییر دهید.</Text>
                   </Box>
                 ) : (
                   visibleRows.map((row) => {
                     const selectedRow = selectedKey === row.key;
-                    const color = row.status === "connected" ? "green.300" : row.status === "connecting" ? "yellow.300" : row.status === "disabled" ? "gray.400" : "red.300";
+                    const color = row.status === "connected" ? "var(--panel-success)" : row.status === "connecting" ? "var(--panel-warning)" : row.status === "disabled" ? "gray.400" : "var(--panel-danger)";
                     return (
                       <Grid
                         key={row.key}
@@ -1206,7 +1206,7 @@ export const NodesManagementWorkspace: FC = () => {
                       >
                         <Box minW={0}>
                           <HStack spacing={2} minW={0}>
-                            <Text fontWeight="900" noOfLines={1} dir="ltr">{row.name}</Text>
+                            <Text fontWeight="700" noOfLines={1} dir="ltr">{row.name}</Text>
                             <NodeModalStatusBadge status={row.status} compact />
                             {row.operation && (
                               <Badge colorScheme={operationalStateScheme(row.operation.operational_state)} variant="subtle">
@@ -1218,11 +1218,11 @@ export const NodesManagementWorkspace: FC = () => {
                             {row.node?.address || (row.key === "master" ? "Local core" : "—")}
                           </Text>
                         </Box>
-                        <Text fontSize="sm" fontWeight="800" dir="ltr" textAlign="start">{formatRate(row.bandwidth?.downlink_bps)}</Text>
-                        <Text fontSize="sm" fontWeight="800" dir="ltr" textAlign="start">{formatRate(row.bandwidth?.uplink_bps)}</Text>
+                        <Text fontSize="sm" fontWeight="700" dir="ltr" textAlign="start">{formatRate(row.bandwidth?.downlink_bps)}</Text>
+                        <Text fontSize="sm" fontWeight="700" dir="ltr" textAlign="start">{formatRate(row.bandwidth?.uplink_bps)}</Text>
                         <Box>
                           <Text fontSize="xs" fontWeight="700">{sampleAgeLabel(row.bandwidth?.sample_age_seconds)}</Text>
-                          <Text mt={1} fontSize="10px" color="var(--panel-text-muted)" dir="ltr" textAlign="start">{sampledAtLabel(row.bandwidth?.sampled_at)}</Text>
+                          <Text mt={1} fontSize="xs" color="var(--panel-text-muted)" dir="ltr" textAlign="start">{sampledAtLabel(row.bandwidth?.sampled_at)}</Text>
                         </Box>
                         <Box color={color} minW={0}>
                           <Sparkline values={history[row.key] || []} />
@@ -1277,9 +1277,9 @@ export const NodesManagementWorkspace: FC = () => {
             </Stack>
           ) : selected ? (
             <Box borderWidth="1px" borderColor="var(--panel-border)" borderRadius="14px" bg="var(--panel-surface)" p={4}>
-              <Text color="var(--panel-accent)" fontSize="xs" fontWeight="800">جزئیات گره سیستمی</Text>
+              <Text color="var(--panel-accent)" fontSize="xs" fontWeight="700">جزئیات گره سیستمی</Text>
               <HStack mt={1} spacing={2}>
-                <Text fontSize="lg" fontWeight="900" dir="ltr">{selected.name}</Text>
+                <Text fontSize="lg" fontWeight="700" dir="ltr">{selected.name}</Text>
                 <NodeModalStatusBadge status={selected.status} compact />
               </HStack>
               <Text mt={2} fontSize="sm" color="var(--panel-text-muted)">
@@ -1292,7 +1292,7 @@ export const NodesManagementWorkspace: FC = () => {
             </Box>
           ) : (
             <Box borderWidth="1px" borderColor="var(--panel-border)" borderRadius="14px" bg="var(--panel-surface)" p={6} textAlign="center">
-              <Text fontWeight="800">یک نود را از لیست انتخاب کنید.</Text>
+              <Text fontWeight="700">یک نود را از لیست انتخاب کنید.</Text>
             </Box>
           )}
         </Box>

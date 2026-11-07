@@ -73,7 +73,7 @@ const emptyAdmin = (): ManagedAdminPayload => ({
 
 const Section: FC<{ title: string; description?: string; children: ReactNode }> = ({ title, description, children }) => (
   <Box p={{ base: 3, md: 4 }} bg="var(--panel-nested)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px">
-    <Text as="h3" fontWeight="800" fontSize="sm">{title}</Text>
+    <Text as="h3" fontWeight="700" fontSize="sm">{title}</Text>
     {description && <Text color="var(--panel-text-muted)" fontSize="xs" mt={1}>{description}</Text>}
     <Box mt={4}>{children}</Box>
   </Box>
@@ -339,11 +339,11 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
 
   return (
     <Modal isOpen={isOpen} onClose={() => { if (!mutation.isLoading) onClose(); }} closeOnOverlayClick={!mutation.isLoading} closeOnEsc={!mutation.isLoading} size="5xl" scrollBehavior="inside" initialFocusRef={usernameRef} isCentered>
-      <ModalOverlay bg="rgba(0,0,0,.72)" backdropFilter="blur(4px)" />
+      <ModalOverlay bg="var(--panel-overlay)" backdropFilter="blur(4px)" />
       <ModalContent as="form" onSubmit={submit} dir={i18n.dir()} mx={3} my={3} maxH="calc(100dvh - 24px)" overflow="hidden" bg="var(--panel-surface)" color="var(--panel-text)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px" boxShadow="elevated">
         <ModalHeader flexShrink={0} px={{ base: 4, md: 5 }} py={4} borderBottomWidth="1px" borderColor="var(--panel-border)">
           <ModalCloseButton isDisabled={mutation.isLoading} top={4} insetInlineStart={4} insetInlineEnd="auto" />
-          <Box pe={12}><Text fontSize="lg" fontWeight="800">{t(isEditing ? "admins.editTitle" : "admins.createTitle")}</Text><Text mt={1} color="var(--panel-text-muted)" fontSize="xs">فرم فشرده؛ همه تنظیمات اصلی و محدودیت‌های دسترسی یکجا.</Text></Box>
+          <Box pe={12}><Text fontSize="lg" fontWeight="700">{t(isEditing ? "admins.editTitle" : "admins.createTitle")}</Text><Text mt={1} color="var(--panel-text-muted)" fontSize="xs">فرم فشرده؛ همه تنظیمات اصلی و محدودیت‌های دسترسی یکجا.</Text></Box>
         </ModalHeader>
 
         <ModalBody minH={0} px={{ base: 4, md: 5 }} py={4} overflowY="auto">
@@ -353,7 +353,7 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
                 <Alert status="warning" alignItems="flex-start" borderRadius="12px">
                   <AlertIcon mt={0.5} />
                   <Box>
-                    <Text fontWeight="800">ساختار ادمین‌ها هنوز روی سرور فعال نشده است.</Text>
+                    <Text fontWeight="700">ساختار ادمین‌ها هنوز روی سرور فعال نشده است.</Text>
                     <Text mt={1} fontSize="sm">ابتدا روی سرور این دستور را اجرا کنید؛ سپس این فرم را دوباره باز کنید:</Text>
                     <Text mt={2}>Use command-line administration to promote an Owner.</Text>
                   </Box>
@@ -367,12 +367,12 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
                 </SimpleGrid>
 
                 <Box mt={4} pt={4} borderTopWidth="1px" borderColor="var(--panel-border)">
-                  <Text fontSize="sm" fontWeight="800">نوع حساب</Text>
+                  <Text fontSize="sm" fontWeight="700">نوع حساب</Text>
                   {isEditing ? <Box><HStack mt={2}><Badge colorScheme="primary">{billingLabels[mode].title}</Badge><Text color="var(--panel-text-muted)" fontSize="xs">{billingLabels[mode].help}</Text></HStack>{mode === "USED_TRAFFIC" && <FormControl mt={3} isRequired maxW="360px"><FormLabel>قیمت خرید هر گیگ (تومان)</FormLabel><Input type="number" min={0} step={1000} dir="ltr" value={form.policy.used_traffic_price_per_gib_toman ?? ""} onChange={(e) => setPolicy("used_traffic_price_per_gib_toman", nullableNumber(e))} /></FormControl>}</Box> : (
                     <SimpleGrid mt={2} columns={{ base: 1, md: Math.min(Math.max(allowedModes.length, 1), 3) }} gap={2}>
                       {allowedModes.map((item) => (
                         <Button key={item} type="button" minH="68px" h="auto" py={2.5} px={3} whiteSpace="normal" textAlign="start" justifyContent="flex-start" variant={billingMode === item ? "solid" : "outline"} colorScheme={billingMode === item ? "green" : "gray"} onClick={() => selectBillingMode(item)}>
-                          <Box><Text fontWeight="800">{billingLabels[item].title}</Text><Text mt={1} fontSize="xs" fontWeight="400" opacity={0.78}>{billingLabels[item].help}</Text></Box>
+                          <Box><Text fontWeight="700">{billingLabels[item].title}</Text><Text mt={1} fontSize="xs" fontWeight="400" opacity={0.78}>{billingLabels[item].help}</Text></Box>
                         </Button>
                       ))}
                     </SimpleGrid>
@@ -390,12 +390,12 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
                 </Box>
 
                 <Box mt={4} pt={4} borderTopWidth="1px" borderColor="var(--panel-border)">
-                  <Text fontSize="sm" fontWeight="800">روش ساخت کاربر</Text>
+                  <Text fontSize="sm" fontWeight="700">روش ساخت کاربر</Text>
                   <Text mt={1} color="var(--panel-text-muted)" fontSize="xs">مشخص کنید این ادمین با فرم دلخواه، پلن‌های مجاز یا هر دو روش بتواند کاربر بسازد.</Text>
                   <SimpleGrid mt={2} columns={{ base: 1, md: Math.min(Math.max(allowedCreationModes.length, 1), 3) }} gap={2}>
                     {allowedCreationModes.map((item) => (
                       <Button key={item} type="button" minH="66px" h="auto" py={2.5} px={3} whiteSpace="normal" textAlign="start" justifyContent="flex-start" variant={normalizedCreationMode === item ? "solid" : "outline"} colorScheme={normalizedCreationMode === item ? "primary" : "gray"} onClick={() => setField("user_creation_mode", item)}>
-                        <Box><Text fontWeight="800">{creationModeLabels[item].title}</Text><Text mt={1} fontSize="xs" fontWeight="400" opacity={0.78}>{creationModeLabels[item].help}</Text></Box>
+                        <Box><Text fontWeight="700">{creationModeLabels[item].title}</Text><Text mt={1} fontSize="xs" fontWeight="400" opacity={0.78}>{creationModeLabels[item].help}</Text></Box>
                       </Button>
                     ))}
                   </SimpleGrid>
@@ -403,7 +403,7 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
                 </Box>
 
                 <Box mt={4} pt={4} borderTopWidth="1px" borderColor="var(--panel-border)">
-                  <Text fontSize="sm" fontWeight="800">دسترسی پلن</Text>
+                  <Text fontSize="sm" fontWeight="700">دسترسی پلن</Text>
                   <Text mt={1} color="var(--panel-text-muted)" fontSize="xs">دسته‌بندی‌هایی را انتخاب کنید که پلن‌هایشان برای این ادمین قابل مشاهده باشد. در حالت «فقط فرم دلخواه»، این دسترسی فقط فهرست پلن‌ها را فراهم می‌کند و اجازه ساخت کاربر از پلن را فعال نمی‌کند.</Text>
                     {categoriesQuery.isLoading ? <Skeleton mt={2} h="52px" borderRadius="10px" /> : categoriesQuery.isError ? (
                       <Alert mt={2} status="error" borderRadius="10px"><AlertIcon />دسته‌بندی‌های پلن بارگذاری نشد.</Alert>
@@ -424,7 +424,7 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
                 <SimpleGrid mt={4} pt={4} borderTopWidth="1px" borderColor="var(--panel-border)" columns={{ base: 1, lg: 2 }} gap={3}>
                   {mode !== "USED_TRAFFIC" && <HStack justify="space-between" p={3} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="10px"><Box><Text fontSize="sm" fontWeight="700">اجازه مدیریت پلن</Text><Text color="var(--panel-text-muted)" fontSize="xs">ساخت و ویرایش پلن با مجوز والد.</Text></Box><Switch isChecked={form.can_manage_plans} isDisabled={!capabilitiesQuery.data?.can_delegate_plan_management} onChange={(e) => setField("can_manage_plans", e.target.checked)} /></HStack>}
                   <Box>
-                    <HStack justify="space-between" minH="44px" p={3} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="10px"><Box><Text fontSize="sm" fontWeight="800">اجازه ساخت زیرمدیر</Text><Text color="var(--panel-text-muted)" fontSize="xs">سهم باقی‌مانده: {capabilitiesQuery.data?.admin_creation_remaining ?? "نامحدود"}</Text></Box><Switch colorScheme="primary" isChecked={form.can_create_admins} isDisabled={!capabilitiesQuery.data?.can_delegate_admin_creation} onChange={(e) => setForm((current) => ({ ...current, can_create_admins: e.target.checked, can_delegate_admin_creation: e.target.checked ? current.can_delegate_admin_creation : false, admin_creation_limit: e.target.checked ? current.admin_creation_limit : 0 }))} /></HStack>
+                    <HStack justify="space-between" minH="44px" p={3} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="10px"><Box><Text fontSize="sm" fontWeight="700">اجازه ساخت زیرمدیر</Text><Text color="var(--panel-text-muted)" fontSize="xs">سهم باقی‌مانده: {capabilitiesQuery.data?.admin_creation_remaining ?? "نامحدود"}</Text></Box><Switch colorScheme="primary" isChecked={form.can_create_admins} isDisabled={!capabilitiesQuery.data?.can_delegate_admin_creation} onChange={(e) => setForm((current) => ({ ...current, can_create_admins: e.target.checked, can_delegate_admin_creation: e.target.checked ? current.can_delegate_admin_creation : false, admin_creation_limit: e.target.checked ? current.admin_creation_limit : 0 }))} /></HStack>
                     {form.can_create_admins && <Stack mt={2} spacing={2}><FormControl><FormLabel>تعداد مدیر قابل ساخت</FormLabel><Input type="number" min={0} dir="ltr" value={form.admin_creation_limit ?? ""} onChange={(e) => setField("admin_creation_limit", nullableNumber(e))} /></FormControl><HStack justify="space-between" p={3} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="10px"><Text fontSize="sm">اجازه واگذاری ساخت زیرمدیر</Text><Switch isChecked={form.can_delegate_admin_creation} isDisabled={!capabilitiesQuery.data?.can_delegate_admin_creation} onChange={(e) => setField("can_delegate_admin_creation", e.target.checked)} /></HStack>{mode === "USED_TRAFFIC" && capabilitiesQuery.data?.can_create_allocated_children && <HStack justify="space-between" p={3} borderWidth="1px" borderColor="var(--panel-border)" borderRadius="10px"><Text fontSize="sm">اجازه ساخت فرزند «حجم ساخته‌شده»</Text><Switch isChecked={form.can_create_allocated_children} onChange={(e) => setField("can_create_allocated_children", e.target.checked)} /></HStack>}</Stack>}
                   </Box>
                 </SimpleGrid>
@@ -468,7 +468,7 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
               </Section>
 
               <Box p={{ base: 3, md: 4 }} bg="var(--panel-nested)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px">
-                <Text as="h3" fontWeight="800" fontSize="sm">پلن‌ها و محدودیت دسترسی</Text>
+                <Text as="h3" fontWeight="700" fontSize="sm">پلن‌ها و محدودیت دسترسی</Text>
                 <Text color="var(--panel-text-muted)" fontSize="xs" mt={1}>این بخش همیشه باز است؛ ورودی، دستگاه و عملیات مجاز را تعیین می‌کند. قیمت هر پلن فقط داخل همان پلن تنظیم می‌شود.</Text>
                 <Stack mt={4} spacing={3}>
                   <SimpleGrid columns={{ base: 1, lg: 2 }} gap={3}>

@@ -13,7 +13,8 @@
     "test:v1.1.3": "node scripts/test-v1.1.3-regressions.cjs",
     "preview": "vite preview --port 3000",
     "gen:theme-typings": "chakra-cli tokens ./chakra.config.ts",
-    "postinstall": "npm run gen:theme-typings"
+    "postinstall": "npm run gen:theme-typings",
+    "test:ui": "node scripts/test-stage1-ui-contracts.cjs && node scripts/test-admin-ux.cjs && node scripts/test-hosts-form.cjs && node scripts/test-admin-form-submit.cjs && python3 scripts/test-ui-deploy.py"
   },
   "dependencies": {
     "@chakra-ui/react": "2.10.10",

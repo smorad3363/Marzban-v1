@@ -1,3 +1,4 @@
+import { PageHeader } from "design-system/Console";
 import {
   Alert,
   AlertIcon,
@@ -117,12 +118,12 @@ const formatAuditDate = (value: string) => {
 };
 
 const actionTone = (action: string, status: string) => {
-  if (status === "failed") return { bg: "rgba(239,68,68,.15)", color: "red.200", border: "rgba(248,113,113,.35)" };
-  if (action.includes("delete") || action.includes("deactivate")) return { bg: "rgba(239,68,68,.12)", color: "red.200", border: "rgba(248,113,113,.3)" };
-  if (action.includes("create") || action.includes("activate")) return { bg: "rgba(34,197,94,.12)", color: "green.200", border: "rgba(74,222,128,.3)" };
-  if (action.includes("traffic") || action.includes("expiration") || action.includes("renew")) return { bg: "rgba(6,182,212,.13)", color: "cyan.200", border: "rgba(34,211,238,.3)" };
-  if (action.startsWith("bulk")) return { bg: "rgba(59,130,246,.14)", color: "blue.200", border: "rgba(96,165,250,.34)" };
-  return { bg: "whiteAlpha.100", color: "gray.200", border: "whiteAlpha.200" };
+  if (status === "failed") return { bg: "rgba(239,68,68,.15)", color: "var(--panel-danger)", border: "rgba(248,113,113,.35)" };
+  if (action.includes("delete") || action.includes("deactivate")) return { bg: "rgba(239,68,68,.12)", color: "var(--panel-danger)", border: "rgba(248,113,113,.3)" };
+  if (action.includes("create") || action.includes("activate")) return { bg: "rgba(34,197,94,.12)", color: "var(--panel-success)", border: "rgba(74,222,128,.3)" };
+  if (action.includes("traffic") || action.includes("expiration") || action.includes("renew")) return { bg: "rgba(6,182,212,.13)", color: "var(--panel-info)", border: "rgba(34,211,238,.3)" };
+  if (action.startsWith("bulk")) return { bg: "rgba(59,130,246,.14)", color: "var(--panel-info)", border: "rgba(96,165,250,.34)" };
+  return { bg: "var(--panel-muted-soft)", color: "var(--panel-text-body)", border: "var(--panel-border)" };
 };
 
 const prettyJson = (value: AuditValue) => value == null ? "—" : JSON.stringify(value, null, 2);
@@ -130,15 +131,15 @@ const prettyJson = (value: AuditValue) => value == null ? "—" : JSON.stringify
 const ActionBadge: FC<{ log: AuditLog }> = ({ log }) => {
   const tone = actionTone(log.action, log.status);
   return (
-    <Badge px={2.5} py={1} borderRadius="full" textTransform="none" bg={tone.bg} color={tone.color} borderWidth="1px" borderColor={tone.border} fontFamily="mono" fontSize="10px">
+    <Badge px={2.5} py={1} borderRadius="full" textTransform="none" bg={tone.bg} color={tone.color} borderWidth="1px" borderColor={tone.border} fontFamily="mono" fontSize="xs">
       {localizeAction(log.action)}
     </Badge>
   );
 };
 
 const ValuePanel: FC<{ title: string; value: AuditValue; accent: string }> = ({ title, value, accent }) => (
-  <Box minW={0} bg="#0b1511" borderWidth="1px" borderColor="#2b4437" borderRadius="12px" overflow="hidden">
-    <Text px={4} py={2.5} color={accent} bg="whiteAlpha.50" fontSize="xs" fontWeight="800" letterSpacing=".04em">{title}</Text>
+  <Box minW={0} bg="var(--panel-nested)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px" overflow="hidden">
+    <Text px={4} py={2.5} color={accent} bg="var(--panel-muted-soft)" fontSize="xs" fontWeight="700" letterSpacing=".04em">{title}</Text>
     <Code display="block" maxH="280px" overflow="auto" p={4} bg="transparent" color="var(--panel-text-body)" whiteSpace="pre-wrap" wordBreak="break-word" fontSize="xs" lineHeight="1.8" dir="ltr">
       {prettyJson(value)}
     </Code>
@@ -150,8 +151,8 @@ const AuditDetails: FC<{ log: AuditLog | null; isOpen: boolean; onClose: () => v
   if (!log) return null;
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="4xl" scrollBehavior="inside">
-      <ModalOverlay bg="rgba(0,0,0,.76)" backdropFilter="blur(5px)" />
-      <ModalContent dir={i18n.dir()} mx={3} my={3} maxH="calc(100dvh - 24px)" bg="var(--panel-surface)" color="var(--panel-text)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="16px" boxShadow="0 28px 80px rgba(0,0,0,.55)">
+      <ModalOverlay bg="var(--panel-overlay)" backdropFilter="blur(5px)" />
+      <ModalContent dir={i18n.dir()} mx={3} my={3} maxH="calc(100dvh - 24px)" bg="var(--panel-surface)" color="var(--panel-text)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="16px" boxShadow="var(--shadow-elevated)">
         <ModalHeader pe={14}>
           <HStack flexWrap="wrap"><ActionBadge log={log} /><Text fontSize="lg">{t("audit.detailsTitle")}</Text></HStack>
         </ModalHeader>
@@ -168,10 +169,10 @@ const AuditDetails: FC<{ log: AuditLog | null; isOpen: boolean; onClose: () => v
               </SimpleGrid>
             </Box>
             <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
-              <ValuePanel title={t("audit.previousValue")} value={log.previous_value} accent="orange.200" />
-              <ValuePanel title={t("audit.newValue")} value={log.new_value} accent="green.200" />
+              <ValuePanel title={t("audit.previousValue")} value={log.previous_value} accent="var(--panel-warning)" />
+              <ValuePanel title={t("audit.newValue")} value={log.new_value} accent="var(--panel-success)" />
             </SimpleGrid>
-            <ValuePanel title={t("audit.metadata")} value={log.details} accent="cyan.200" />
+            <ValuePanel title={t("audit.metadata")} value={log.details} accent="var(--panel-info)" />
           </Stack>
         </ModalBody>
       </ModalContent>
@@ -220,19 +221,14 @@ export const AuditLogs: FC = () => {
 
   return (
     <AppShell>
-      <Stack direction={{ base: "column", md: "row" }} justify="space-between" align={{ md: "end" }} gap={4} mb={6}>
-        <Box>
-          <HStack color="cyan.200" spacing={2}><AuditIcon /><Text fontSize="xs" fontWeight="800" letterSpacing=".13em" textTransform="uppercase">{t("audit.eyebrow")}</Text></HStack>
-          <Text as="h1" fontSize={{ base: "2xl", md: "3xl" }} fontWeight="800" letterSpacing="-.035em" mt={2}>{t("audit.title")}</Text>
-          <Text color="var(--panel-text-body)" mt={1} maxW="680px">{t("audit.subtitle")}</Text>
-        </Box>
-        <HStack bg="rgba(34,197,94,.08)" color="green.200" borderWidth="1px" borderColor="rgba(74,222,128,.25)" borderRadius="full" px={3} py={2} fontSize="xs">
+      <PageHeader eyebrow={t("audit.eyebrow")} icon={<AuditIcon />} title={t("audit.title")} description={t("audit.subtitle")} actions={
+        <HStack bg="rgba(34,197,94,.08)" color="var(--panel-success)" borderWidth="1px" borderColor="rgba(74,222,128,.25)" borderRadius="full" px={3} py={2} fontSize="xs">
           <ShieldCheckIcon width={16} aria-hidden="true" /><Text>{t("audit.appendOnly")}</Text>
         </HStack>
-      </Stack>
+      } />
 
       <Card bg="var(--panel-surface)" color="var(--panel-text)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius={{ base: "16px", md: "20px" }} boxShadow="panel" overflow="hidden">
-        <Box p={{ base: 4, md: 5 }} borderBottomWidth="1px" borderColor="#2b4437">
+        <Box p={{ base: 4, md: 5 }} borderBottomWidth="1px" borderColor="var(--panel-border)">
           <HStack mb={3} color="var(--panel-text-body)"><FilterIcon /><Text fontWeight="700">{t("audit.filters")}</Text><Text ms="auto" fontSize="xs" color="var(--panel-text-muted)">{t("audit.resultCount", { count: total })}</Text></HStack>
           <HStack align="stretch" gap={2} flexWrap={{ base: "wrap", md: "nowrap" }}>
           <InputGroup flex="1" minW={{ base: "100%", md: "260px" }}>
@@ -258,27 +254,27 @@ export const AuditLogs: FC = () => {
 
         {logsQuery.isError && <Alert status="error" m={4} w="auto"><AlertIcon />{t("audit.loadFailed")}<Button size="sm" ms="auto" onClick={() => logsQuery.refetch()}>{t("retry")}</Button></Alert>}
         {logsQuery.isLoading ? (
-          <Stack p={5}>{Array.from({ length: 6 }).map((_, index) => <Skeleton key={index} startColor="#14231b" endColor="#243d31" h="56px" borderRadius="9px" />)}</Stack>
+          <Stack p={5}>{Array.from({ length: 6 }).map((_, index) => <Skeleton key={index} startColor="var(--panel-nested)" endColor="var(--panel-border)" h="56px" borderRadius="9px" />)}</Stack>
         ) : logs.length === 0 ? (
-          <VStack py={16} px={5} spacing={3}><Box p={3} borderRadius="full" bg="rgba(6,182,212,.1)" color="cyan.200"><AuditIcon /></Box><Text fontWeight="700">{t("audit.empty")}</Text><Text color="var(--panel-text-muted)" fontSize="sm" textAlign="center">{t("audit.emptyHelp")}</Text></VStack>
+          <VStack py={16} px={5} spacing={3}><Box p={3} borderRadius="full" bg="rgba(6,182,212,.1)" color="var(--panel-info)"><AuditIcon /></Box><Text fontWeight="700">{t("audit.empty")}</Text><Text color="var(--panel-text-muted)" fontSize="sm" textAlign="center">{t("audit.emptyHelp")}</Text></VStack>
         ) : (
           <>
             <TableContainer display={{ base: "none", lg: "block" }}>
               <Table size="sm"><Thead><Tr><Th>{t("audit.admin")}</Th><Th>{t("audit.action")}</Th><Th>{t("audit.target")}</Th><Th>{t("audit.description")}</Th><Th>{t("audit.date")}</Th><Th textAlign="end">{t("audit.details")}</Th></Tr></Thead>
                 <Tbody>{logs.map((log) => <Tr key={log.id} _hover={{ bg: "rgba(6,182,212,.035)" }}>
-                  <Td><Text color="white" fontWeight="700">{log.admin_username}</Text><Text color="var(--panel-text-muted)" fontSize="xs" dir="ltr">{log.ip_address || "—"}</Text></Td>
+                  <Td><Text color="var(--panel-text)" fontWeight="700">{log.admin_username}</Text><Text color="var(--panel-text-muted)" fontSize="xs" dir="ltr">{log.ip_address || "—"}</Text></Td>
                   <Td><ActionBadge log={log} /></Td>
                   <Td py={2}><Text maxW="170px" noOfLines={1}>{log.target_name || log.target_id || "—"}</Text><Text color="var(--panel-text-muted)" fontSize="xs">{localizeTarget(log.target_type)}</Text></Td>
                   <Td py={2} maxW="430px"><Text noOfLines={1} lineHeight="1.6">{localizeDescription(log)}</Text></Td>
-                  <Td whiteSpace="nowrap"><HStack spacing={1.5}><ClockIcon width={15} color="#67e8f9" aria-hidden="true" /><Text dir="ltr" fontSize="xs">{formatAuditDate(log.created_at)}</Text></HStack></Td>
+                  <Td whiteSpace="nowrap"><HStack spacing={1.5}><ClockIcon width={15} color="var(--panel-info)" aria-hidden="true" /><Text dir="ltr" fontSize="xs">{formatAuditDate(log.created_at)}</Text></HStack></Td>
                   <Td textAlign="end"><Button size="xs" variant="outline" borderColor="var(--panel-border-strong)" onClick={() => showDetails(log)}>{t("audit.details")}</Button></Td>
                 </Tr>)}</Tbody>
               </Table>
             </TableContainer>
 
-            <Stack display={{ base: "flex", lg: "none" }} divider={<Divider borderColor="#2b4437" />} spacing={0}>
+            <Stack display={{ base: "flex", lg: "none" }} divider={<Divider borderColor="var(--panel-border)" />} spacing={0}>
               {logs.map((log) => <Box key={log.id} p={3} role="group">
-                <HStack justify="space-between" align="start" gap={3}><Box minW={0}><Text color="white" fontWeight="750" noOfLines={1}>{log.admin_username}</Text><Text color="var(--panel-text-muted)" fontSize="xs" mt={1} noOfLines={1}>{log.target_name || log.target_id || log.target_type}</Text></Box><ActionBadge log={log} /></HStack>
+                <HStack justify="space-between" align="start" gap={3}><Box minW={0}><Text color="var(--panel-text)" fontWeight="700" noOfLines={1}>{log.admin_username}</Text><Text color="var(--panel-text-muted)" fontSize="xs" mt={1} noOfLines={1}>{log.target_name || log.target_id || log.target_type}</Text></Box><ActionBadge log={log} /></HStack>
                 <Text my={2} lineHeight="1.6" fontSize="sm">{localizeDescription(log)}</Text>
                 <HStack justify="space-between" align="center" gap={3}><Text dir="ltr" color="var(--panel-text-muted)" fontSize="xs">{formatAuditDate(log.created_at)}</Text><Button size="sm" minH="40px" variant="outline" borderColor="var(--panel-border-strong)" onClick={() => showDetails(log)}>{t("audit.details")}</Button></HStack>
               </Box>)}
@@ -286,7 +282,7 @@ export const AuditLogs: FC = () => {
           </>
         )}
 
-        <HStack justify="space-between" p={4} borderTopWidth="1px" borderColor="#2b4437" gap={3}>
+        <HStack justify="space-between" p={4} borderTopWidth="1px" borderColor="var(--panel-border)" gap={3}>
           <Text fontSize="sm" color="var(--panel-text-muted)">{t("audit.page", { current: page + 1, total: pages })}</Text>
           <HStack><Button aria-label={t("previous")} size="sm" minW="40px" variant="outline" borderColor="var(--panel-border-strong)" isDisabled={page === 0} onClick={() => setPage((value) => value - 1)}><ChevronRightIcon width={16} /></Button><Button aria-label={t("next")} size="sm" minW="40px" variant="outline" borderColor="var(--panel-border-strong)" isDisabled={(page + 1) * PAGE_SIZE >= total} onClick={() => setPage((value) => value + 1)}><ChevronLeftIcon width={16} /></Button></HStack>
         </HStack>

@@ -1,3 +1,4 @@
+import { EmptyState, Metric, PageHeader, SectionHeader, Surface, useChartPalette } from "design-system/Console";
 import {
   Alert,
   AlertIcon,
@@ -97,68 +98,9 @@ const relativeTime = (value: string) => {
   return `${fa(Math.round(seconds / 86400))} روز پیش`;
 };
 
-const Panel: FC<{ children: React.ReactNode; minH?: string | number }> = ({ children, minH }) => (
-  <Card
-    minH={minH}
-    p={{ base: 4, md: 5 }}
-    bg="var(--panel-surface)"
-    color="var(--panel-text)"
-    borderWidth="1px"
-    borderColor="var(--panel-border)"
-    borderRadius="16px"
-    boxShadow="var(--shadow-panel)"
-  >
-    {children}
-  </Card>
-);
-
-const MetricCard: FC<{
-  label: string;
-  value: string;
-  hint: string;
-  icon: ReactElement;
-  tone?: "gold" | "green" | "blue" | "red";
-}> = ({ label, value, hint, icon, tone = "gold" }) => {
-  const tones = {
-    gold: { color: "var(--panel-accent)", bg: "var(--panel-accent-soft)", border: "var(--panel-accent-border)" },
-    green: { color: "var(--panel-success)", bg: "var(--panel-success-soft)", border: "var(--panel-success-border)" },
-    blue: { color: "#38aaf8", bg: "rgba(56,170,248,.10)", border: "rgba(56,170,248,.28)" },
-    red: { color: "var(--panel-danger)", bg: "var(--panel-danger-soft)", border: "var(--panel-danger-border)" },
-  } as const;
-  const palette = tones[tone];
-  return (
-    <Panel>
-      <HStack justify="space-between" align="start" gap={3}>
-        <Box minW={0}>
-          <Text fontSize="xs" fontWeight="750" color="var(--panel-text-muted)">{label}</Text>
-          <Text mt={2} fontSize={{ base: "2xl", xl: "3xl" }} fontWeight="900" letterSpacing="-0.03em" sx={{ fontVariantNumeric: "tabular-nums" }}>
-            {value}
-          </Text>
-        </Box>
-        <Box p={2.5} borderWidth="1px" borderColor={palette.border} bg={palette.bg} color={palette.color} borderRadius="12px">
-          {icon}
-        </Box>
-      </HStack>
-      <Text mt={3} fontSize="11px" color="var(--panel-text-muted)" noOfLines={1}>{hint}</Text>
-    </Panel>
-  );
-};
-
-const SectionTitle: FC<{ title: string; subtitle: string; action?: React.ReactNode }> = ({ title, subtitle, action }) => (
-  <HStack justify="space-between" align="start" gap={3} mb={4}>
-    <Box minW={0}>
-      <Text as="h2" fontSize="lg" fontWeight="900">{title}</Text>
-      <Text mt={1} fontSize="11px" color="var(--panel-text-muted)">{subtitle}</Text>
-    </Box>
-    {action}
-  </HStack>
-);
-
-const EmptyState: FC<{ text: string }> = ({ text }) => (
-  <Box py={10} textAlign="center" borderWidth="1px" borderStyle="dashed" borderColor="var(--panel-border)" borderRadius="12px">
-    <Text fontSize="sm" color="var(--panel-text-muted)">{text}</Text>
-  </Box>
-);
+const Panel: FC<{ children: React.ReactNode; minH?: string | number }> = ({ children, minH }) => <Surface minH={minH} p={{ base: 4, md: 5 }}>{children}</Surface>;
+const MetricCard: FC<{ label: string; value: string; hint: string; icon: ReactElement; tone?: "gold" | "green" | "blue" | "red" }> = ({ tone = "gold", ...props }) => <Metric {...props} tone={tone === "green" ? "var(--panel-success)" : tone === "red" ? "var(--panel-danger)" : tone === "blue" ? "var(--panel-info)" : "var(--panel-accent)"} />;
+const SectionTitle = SectionHeader;
 
 const AttentionList: FC<{ items: DashboardAttentionUser[]; onOpen: (username: string) => void }> = ({ items, onOpen }) => (
   <Stack spacing={0}>
@@ -170,6 +112,9 @@ const AttentionList: FC<{ items: DashboardAttentionUser[]; onOpen: (username: st
         borderColor="var(--panel-border)"
         _last={{ borderBottomWidth: 0 }}
         cursor="pointer"
+        role="button"
+        tabIndex={0}
+        onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpen(item.username); } }}
         onClick={() => onOpen(item.username)}
         justify="space-between"
         gap={3}
@@ -177,11 +122,11 @@ const AttentionList: FC<{ items: DashboardAttentionUser[]; onOpen: (username: st
         <HStack minW={0}>
           <Box boxSize="8px" borderRadius="full" bg={item.priority === "critical" ? "var(--panel-danger)" : item.priority === "high" ? "var(--panel-warning)" : "var(--panel-accent)"} />
           <Box minW={0}>
-            <Text dir="ltr" textAlign="start" fontSize="sm" fontWeight="800" noOfLines={1}>{item.username}</Text>
-            <Text fontSize="10px" color="var(--panel-text-muted)">{statusLabel(item.status)}</Text>
+            <Text dir="ltr" textAlign="start" fontSize="sm" fontWeight="700" noOfLines={1}>{item.username}</Text>
+            <Text fontSize="xs" color="var(--panel-text-muted)">{statusLabel(item.status)}</Text>
           </Box>
         </HStack>
-        <Text fontSize="11px" fontWeight="800" color={item.priority === "critical" ? "var(--panel-danger)" : item.priority === "high" ? "var(--panel-warning)" : "var(--panel-text-body)"}>
+        <Text fontSize="xs" fontWeight="700" color={item.priority === "critical" ? "var(--panel-danger)" : item.priority === "high" ? "var(--panel-warning)" : "var(--panel-text-body)"}>
           {reasonLabel(item)}
         </Text>
       </HStack>
@@ -194,12 +139,12 @@ const TopConsumers: FC<{ items: DashboardUserSummary[]; onOpen: (username: strin
   return (
     <Stack spacing={2}>
       {items.length === 0 ? <EmptyState text="هنوز مصرف ثبت‌شده‌ای وجود ندارد." /> : items.map((item, index) => (
-        <HStack key={item.username} py={1.5} gap={3} cursor="pointer" onClick={() => onOpen(item.username)}>
+        <HStack key={item.username} py={1.5} gap={3} cursor="pointer" role="button" tabIndex={0} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpen(item.username); } }} onClick={() => onOpen(item.username)}>
           <Text w="18px" fontSize="xs" color="var(--panel-text-muted)">{fa(index + 1)}</Text>
           <Box flex="1" minW={0}>
             <HStack justify="space-between" mb={1.5}>
-              <Text dir="ltr" fontSize="sm" fontWeight="750" noOfLines={1}>{item.username}</Text>
-              <Text dir="ltr" fontSize="11px" color="var(--panel-text-body)">{formatTraffic(item.used_traffic)}</Text>
+              <Text dir="ltr" fontSize="sm" fontWeight="700" noOfLines={1}>{item.username}</Text>
+              <Text dir="ltr" fontSize="xs" color="var(--panel-text-body)">{formatTraffic(item.used_traffic)}</Text>
             </HStack>
             <Progress value={(item.used_traffic / max) * 100} size="xs" borderRadius="full" colorScheme="blue" bg="var(--panel-nested)" />
           </Box>
@@ -212,6 +157,7 @@ const TopConsumers: FC<{ items: DashboardUserSummary[]; onOpen: (username: strin
 export const DashboardOverview: FC = () => {
   const { userData, getUserIsSuccess } = useGetUser();
   const navigate = useNavigate();
+  const chartPalette = useChartPalette();
   const timezoneOffset = -new Date().getTimezoneOffset();
   const [range, setRange] = useState<DashboardRange>("24h");
   const [planCreateOpen, setPlanCreateOpen] = useState(false);
@@ -251,16 +197,16 @@ export const DashboardOverview: FC = () => {
   }], [data?.traffic_history]);
   const trafficOptions = useMemo<ApexOptions>(() => ({
     chart: { toolbar: { show: false }, zoom: { enabled: false }, animations: { enabled: false }, background: "transparent", fontFamily: "Vazirmatn" },
-    colors: ["#d7ad54"],
+    colors: [chartPalette.accent],
     dataLabels: { enabled: false },
     stroke: { curve: "smooth", width: 2.4 },
     fill: { type: "gradient", gradient: { shadeIntensity: 0.25, opacityFrom: 0.24, opacityTo: 0.02, stops: [0, 90, 100] } },
-    grid: { borderColor: "rgba(148,163,184,.10)", strokeDashArray: 3 },
-    xaxis: { type: "datetime", labels: { style: { colors: "#8b949e", fontSize: "10px" }, datetimeUTC: false }, axisBorder: { show: false }, axisTicks: { show: false } },
-    yaxis: { labels: { style: { colors: "#8b949e", fontSize: "10px" }, formatter: (value) => formatTraffic(value) } },
-    tooltip: { theme: "dark", x: { format: range === "24h" ? "HH:mm" : "yyyy/MM/dd" }, y: { formatter: (value) => formatTraffic(value) } },
+    grid: { borderColor: chartPalette.grid, strokeDashArray: 3 },
+    xaxis: { type: "datetime", labels: { style: { colors: chartPalette.text, fontSize: "10px" }, datetimeUTC: false }, axisBorder: { show: false }, axisTicks: { show: false } },
+    yaxis: { labels: { style: { colors: chartPalette.text, fontSize: "10px" }, formatter: (value) => formatTraffic(value) } },
+    tooltip: { theme: chartPalette.mode, x: { format: range === "24h" ? "HH:mm" : "yyyy/MM/dd" }, y: { formatter: (value) => formatTraffic(value) } },
     legend: { show: false },
-  }), [range]);
+  }), [range, chartPalette.accent, chartPalette.text, chartPalette.mode]);
 
   if (!getUserIsSuccess || overview.isLoading) {
     return <Stack spacing={4}><Skeleton height="110px" borderRadius="16px" /><Skeleton height="150px" borderRadius="16px" /><Skeleton height="430px" borderRadius="16px" /></Stack>;
@@ -276,11 +222,11 @@ export const DashboardOverview: FC = () => {
   }
 
   const statusItems = [
-    { label: "فعال", value: data.active_users, color: "#2fd788" },
-    { label: "منقضی", value: data.expired_users, color: "#ef5d67" },
-    { label: "غیرفعال", value: data.disabled_users, color: "#748094" },
-    { label: "در انتظار", value: data.on_hold_users, color: "#d7ad54" },
-    { label: "محدود", value: data.limited_users, color: "#9b7ad8" },
+    { label: "فعال", value: data.active_users, color: chartPalette.success },
+    { label: "منقضی", value: data.expired_users, color: chartPalette.danger },
+    { label: "غیرفعال", value: data.disabled_users, color: chartPalette.text },
+    { label: "در انتظار", value: data.on_hold_users, color: chartPalette.warning },
+    { label: "محدود", value: data.limited_users, color: chartPalette.info },
   ];
   const statusOptions: ApexOptions = {
     chart: { animations: { enabled: false }, background: "transparent", fontFamily: "Vazirmatn" },
@@ -288,9 +234,9 @@ export const DashboardOverview: FC = () => {
     labels: statusItems.map((item) => item.label),
     legend: { show: false },
     dataLabels: { enabled: false },
-    stroke: { width: 2, colors: ["var(--panel-surface)"] },
-    plotOptions: { pie: { donut: { size: "72%", labels: { show: true, name: { show: true, color: "#8b949e" }, value: { show: true, color: "#f5f5f4", formatter: (value) => fa(Number(value)) }, total: { show: true, label: "کاربر", color: "#8b949e", formatter: () => fa(data.total_users) } } } } },
-    tooltip: { theme: "dark" },
+    stroke: { width: 2, colors: [chartPalette.surface] },
+    plotOptions: { pie: { donut: { size: "72%", labels: { show: true, name: { show: true, color: chartPalette.text }, value: { show: true, color: chartPalette.text, formatter: (value) => fa(Number(value)) }, total: { show: true, label: "کاربر", color: chartPalette.text, formatter: () => fa(data.total_users) } } } } },
+    tooltip: { theme: chartPalette.mode },
   };
 
   const accountData = account.data;
@@ -302,18 +248,7 @@ export const DashboardOverview: FC = () => {
 
   return (
     <Stack spacing={4} dir="rtl" aria-live="polite">
-      <HStack justify="space-between" align="start" gap={4} flexWrap="wrap" px={{ base: 1, md: 0 }}>
-        <Box>
-          <HStack spacing={2} color="var(--panel-accent)">
-            {isOwner ? <AdminIcon /> : <UsersMetricIcon />}
-            <Text as="h1" fontSize={{ base: "2xl", md: "3xl" }} fontWeight="950">
-              {isOwner ? "داشبورد مدیریتی" : "داشبورد کاربران"}
-            </Text>
-          </HStack>
-          <Text mt={2} fontSize="sm" color="var(--panel-text-muted)">
-            {isOwner ? "نمای کلی وضعیت سیستم، کاربران و عملیات مهم" : "خلاصه وضعیت کاربران، اعتبار و فعالیت‌های روزانه شما"}
-          </Text>
-        </Box>
+      <PageHeader eyebrow={isOwner ? "مرکز مدیریت" : "فضای کاری شما"} title={isOwner ? "داشبورد مدیریتی" : "داشبورد کاربران"} description={isOwner ? "وضعیت کاربران، سلامت سرویس و فعالیت‌های مهم در یک نگاه." : "خلاصهٔ کاربران، اعتبار و فعالیت‌های روزانهٔ شما."} actions={
         <HStack flexWrap="wrap">
           {isOwner ? (
             <>
@@ -327,13 +262,13 @@ export const DashboardOverview: FC = () => {
             </>
           )}
         </HStack>
-      </HStack>
+      } />
 
       {!isOwner && accountData && accountData.account_status !== "ACTIVE" && (
         <Alert status="warning" borderRadius="12px"><AlertIcon />حساب شما در وضعیت {accountData.account_status === "SUSPENDED" ? "فریز" : "غیرفعال"} است؛ عملیات ساخت کاربر در دسترس نیست.</Alert>
       )}
 
-      <SimpleGrid columns={{ base: 1, sm: 2, xl: 5 }} gap={3}>
+      <SimpleGrid columns={{ base: 2, xl: 5 }} gap={3}>
         <MetricCard label={isOwner ? "کل کاربران" : "کاربران من"} value={fa(data.total_users)} hint={isOwner ? "کل کاربران قابل مشاهده" : "در محدوده مجاز حساب شما"} icon={<UsersMetricIcon />} />
         <MetricCard label="آنلاین الآن" value={fa(data.online_users)} hint={`فعالیت ثبت‌شده در ${fa(data.online_window_seconds)} ثانیه اخیر`} icon={<OnlineMetricIcon />} tone="blue" />
         <MetricCard label="فعال" value={fa(data.active_users)} hint="کاربران با وضعیت فعال" icon={<ActiveMetricIcon />} tone="green" />
@@ -346,13 +281,13 @@ export const DashboardOverview: FC = () => {
       </SimpleGrid>
 
       <SimpleGrid columns={{ base: 1, xl: 12 }} gap={4} alignItems="stretch">
-        <Box gridColumn={{ xl: "span 7" }}>
+        <Box gridColumn={{ xl: "span 6" }}>
           <Panel minH="390px">
             <SectionTitle
               title={isOwner ? "مصرف کل کاربران" : "مصرف کاربران من"}
-              subtitle="ترافیک واقعی ثبت‌شده توسط collector موجود؛ بدون polling اضافه از Xray"
+              description="روند مصرف ترافیک در بازهٔ انتخاب‌شده"
               action={
-                <HStack spacing={1}>
+                <HStack spacing={1} flexWrap="wrap">
                   {(["24h", "7d", "30d"] as DashboardRange[]).map((item) => (
                     <Button key={item} size="xs" h="32px" px={3} variant={range === item ? "solid" : "ghost"} colorScheme={range === item ? "primary" : undefined} color={range === item ? "var(--panel-accent-contrast)" : "var(--panel-text-muted)"} onClick={() => setRange(item)}>
                       {item === "24h" ? "۲۴ ساعت" : item === "7d" ? "۷ روز" : "۳۰ روز"}
@@ -370,19 +305,19 @@ export const DashboardOverview: FC = () => {
           </Panel>
         </Box>
 
-        <Box gridColumn={{ xl: "span 2" }}>
+        <Box gridColumn={{ xl: "span 3" }}>
           <Panel minH="390px">
-            <SectionTitle title={isOwner ? "وضعیت کاربران" : "وضعیت کاربران من"} subtitle="توزیع وضعیت‌های واقعی کاربران" />
+            <SectionTitle title={isOwner ? "وضعیت کاربران" : "وضعیت کاربران من"} description="توزیع وضعیت‌های واقعی کاربران" />
             <Box maxW="230px" mx="auto"><Chart type="donut" height={220} options={statusOptions} series={statusItems.map((item) => item.value)} /></Box>
             <Stack spacing={1.5} mt={1}>
-              {statusItems.map((item) => <HStack key={item.label} justify="space-between"><HStack><Box boxSize="7px" bg={item.color} borderRadius="full" /><Text fontSize="11px" color="var(--panel-text-muted)">{item.label}</Text></HStack><Text fontSize="11px" fontWeight="800">{fa(item.value)}</Text></HStack>)}
+              {statusItems.map((item) => <HStack key={item.label} justify="space-between"><HStack><Box boxSize="7px" bg={item.color} borderRadius="full" /><Text fontSize="xs" color="var(--panel-text-muted)">{item.label}</Text></HStack><Text fontSize="xs" fontWeight="700">{fa(item.value)}</Text></HStack>)}
             </Stack>
           </Panel>
         </Box>
 
         <Box gridColumn={{ xl: "span 3" }}>
           <Panel minH="390px">
-            <SectionTitle title={isOwner ? "نیازمند توجه" : "نیازمند تمدید / توجه"} subtitle="مهم‌ترین موارد در محدوده مجاز" action={<Button size="xs" variant="ghost" color="var(--panel-accent)" onClick={openUsers}>مشاهده همه</Button>} />
+            <SectionTitle title={isOwner ? "نیازمند توجه" : "نیازمند تمدید / توجه"} description="مهم‌ترین موارد در محدوده مجاز" action={<Button size="xs" variant="ghost" color="var(--panel-accent)" onClick={openUsers}>مشاهده همه</Button>} />
             <AttentionList items={data.attention_users} onOpen={openUser} />
           </Panel>
         </Box>
@@ -391,29 +326,29 @@ export const DashboardOverview: FC = () => {
       {isOwner ? (
         <SimpleGrid columns={{ base: 1, lg: 3 }} gap={4}>
           <Panel>
-            <SectionTitle title="بیشترین مصرف" subtitle="۵ کاربر با بیشترین مصرف ثبت‌شده" />
+            <SectionTitle title="بیشترین مصرف" description="۵ کاربر با بیشترین مصرف ثبت‌شده" />
             <TopConsumers items={data.top_consumers} onOpen={openUser} />
           </Panel>
           <Panel>
-            <SectionTitle title="وضعیت نودها" subtitle="خلاصه اتصال نودهای سیستم" action={<Button size="xs" variant="ghost" color="var(--panel-accent)" onClick={() => useDashboard.getState().onEditingNodes(true)}>مشاهده جزئیات نودها</Button>} />
+            <SectionTitle title="وضعیت نودها" description="خلاصه اتصال نودهای سیستم" action={<Button size="xs" variant="ghost" color="var(--panel-accent)" onClick={() => useDashboard.getState().onEditingNodes(true)}>مشاهده جزئیات نودها</Button>} />
             {data.node_summary && data.node_summary.total > 0 ? (
               <SimpleGrid columns={2} gap={2}>
-                <Box p={3} bg="var(--panel-success-soft)" borderWidth="1px" borderColor="var(--panel-success-border)" borderRadius="12px"><Text fontSize="xl" fontWeight="900">{fa(data.node_summary.healthy)}</Text><Text fontSize="10px" color="var(--panel-text-muted)">سالم</Text></Box>
-                <Box p={3} bg="var(--panel-accent-soft)" borderWidth="1px" borderColor="var(--panel-accent-border)" borderRadius="12px"><Text fontSize="xl" fontWeight="900">{fa(data.node_summary.reconnecting)}</Text><Text fontSize="10px" color="var(--panel-text-muted)">در حال اتصال</Text></Box>
-                <Box p={3} bg="var(--panel-danger-soft)" borderWidth="1px" borderColor="var(--panel-danger-border)" borderRadius="12px"><Text fontSize="xl" fontWeight="900">{fa(data.node_summary.error)}</Text><Text fontSize="10px" color="var(--panel-text-muted)">خطا</Text></Box>
-                <Box p={3} bg="var(--panel-nested)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px"><Text fontSize="xl" fontWeight="900">{fa(data.node_summary.disabled)}</Text><Text fontSize="10px" color="var(--panel-text-muted)">غیرفعال</Text></Box>
+                <Box p={3} bg="var(--panel-success-soft)" borderWidth="1px" borderColor="var(--panel-success-border)" borderRadius="12px"><Text fontSize="xl" fontWeight="700">{fa(data.node_summary.healthy)}</Text><Text fontSize="xs" color="var(--panel-text-muted)">سالم</Text></Box>
+                <Box p={3} bg="var(--panel-accent-soft)" borderWidth="1px" borderColor="var(--panel-accent-border)" borderRadius="12px"><Text fontSize="xl" fontWeight="700">{fa(data.node_summary.reconnecting)}</Text><Text fontSize="xs" color="var(--panel-text-muted)">در حال اتصال</Text></Box>
+                <Box p={3} bg="var(--panel-danger-soft)" borderWidth="1px" borderColor="var(--panel-danger-border)" borderRadius="12px"><Text fontSize="xl" fontWeight="700">{fa(data.node_summary.error)}</Text><Text fontSize="xs" color="var(--panel-text-muted)">خطا</Text></Box>
+                <Box p={3} bg="var(--panel-nested)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px"><Text fontSize="xl" fontWeight="700">{fa(data.node_summary.disabled)}</Text><Text fontSize="xs" color="var(--panel-text-muted)">غیرفعال</Text></Box>
               </SimpleGrid>
             ) : <EmptyState text="نودی ثبت نشده است." />}
           </Panel>
           <Panel>
-            <SectionTitle title="ادمین‌ها" subtitle="خلاصه مدیریت ادمین‌های سیستم" action={<Button size="xs" variant="ghost" color="var(--panel-accent)" onClick={() => navigate("/admins/")}>مدیریت ادمین‌ها</Button>} />
+            <SectionTitle title="ادمین‌ها" description="خلاصه مدیریت ادمین‌های سیستم" action={<Button size="xs" variant="ghost" color="var(--panel-accent)" onClick={() => navigate("/admins/")}>مدیریت ادمین‌ها</Button>} />
             {data.admin_summary ? (
               <Stack spacing={3}>
-                <HStack justify="space-between" p={3} bg="var(--panel-nested)" borderRadius="12px"><Text fontSize="sm" color="var(--panel-text-muted)">کل ادمین‌ها</Text><Text fontSize="xl" fontWeight="900">{fa(data.admin_summary.total)}</Text></HStack>
+                <HStack justify="space-between" p={3} bg="var(--panel-nested)" borderRadius="12px"><Text fontSize="sm" color="var(--panel-text-muted)">کل ادمین‌ها</Text><Text fontSize="xl" fontWeight="700">{fa(data.admin_summary.total)}</Text></HStack>
                 <SimpleGrid columns={3} gap={2}>
-                  <Box textAlign="center" p={2.5} borderWidth="1px" borderColor="var(--panel-success-border)" borderRadius="10px"><Text fontWeight="900" color="var(--panel-success)">{fa(data.admin_summary.active)}</Text><Text fontSize="9px" color="var(--panel-text-muted)">فعال</Text></Box>
-                  <Box textAlign="center" p={2.5} borderWidth="1px" borderColor="var(--panel-warning-border)" borderRadius="10px"><Text fontWeight="900" color="var(--panel-warning)">{fa(data.admin_summary.suspended)}</Text><Text fontSize="9px" color="var(--panel-text-muted)">فریز</Text></Box>
-                  <Box textAlign="center" p={2.5} borderWidth="1px" borderColor="var(--panel-danger-border)" borderRadius="10px"><Text fontWeight="900" color="var(--panel-danger)">{fa(data.admin_summary.disabled)}</Text><Text fontSize="9px" color="var(--panel-text-muted)">غیرفعال</Text></Box>
+                  <Box textAlign="center" p={2.5} borderWidth="1px" borderColor="var(--panel-success-border)" borderRadius="10px"><Text fontWeight="700" color="var(--panel-success)">{fa(data.admin_summary.active)}</Text><Text fontSize="xs" color="var(--panel-text-muted)">فعال</Text></Box>
+                  <Box textAlign="center" p={2.5} borderWidth="1px" borderColor="var(--panel-warning-border)" borderRadius="10px"><Text fontWeight="700" color="var(--panel-warning)">{fa(data.admin_summary.suspended)}</Text><Text fontSize="xs" color="var(--panel-text-muted)">فریز</Text></Box>
+                  <Box textAlign="center" p={2.5} borderWidth="1px" borderColor="var(--panel-danger-border)" borderRadius="10px"><Text fontWeight="700" color="var(--panel-danger)">{fa(data.admin_summary.disabled)}</Text><Text fontSize="xs" color="var(--panel-text-muted)">غیرفعال</Text></Box>
                 </SimpleGrid>
               </Stack>
             ) : <EmptyState text="اطلاعات ادمین‌ها در دسترس نیست." />}
@@ -422,34 +357,34 @@ export const DashboardOverview: FC = () => {
       ) : (
         <SimpleGrid columns={{ base: 1, lg: 3 }} gap={4}>
           <Panel>
-            <SectionTitle title="اعتبار و ظرفیت" subtitle="وضعیت مالی و سهمیه حساب شما" />
+            <SectionTitle title="اعتبار و ظرفیت" description="وضعیت مالی و سهمیه حساب شما" />
             {account.isError || capabilities.isError ? (
               <Alert status="error" borderRadius="10px"><AlertIcon />اطلاعات حساب بارگذاری نشد.</Alert>
             ) : account.isLoading || capabilities.isLoading || !accountData ? (
               <Skeleton height="180px" borderRadius="12px" />
             ) : (
               <Stack spacing={2.5}>
-                {accountData.billing_mode === "USED_TRAFFIC" && <Box p={3} bg="var(--panel-nested)" borderRadius="12px"><Text fontSize="sm" fontWeight="850">نرخ پایه هر گیگ: {accountData.used_traffic_price_per_gib_toman == null ? "تنظیم نشده" : toman(accountData.used_traffic_price_per_gib_toman)}</Text><Text fontSize="xs" color="var(--panel-text-muted)" mt={1}>هر گیگ برابر ۱۰۲۴ مگابایت است. هزینه مصرف هر اکانت با ضریب مدت همان اکانت محاسبه می‌شود.</Text></Box>}
-                <HStack justify="space-between"><Text fontSize="11px" color="var(--panel-text-muted)">مانده اعتبار</Text><Text fontSize="sm" fontWeight="850">{toman(accountData.money_balance_toman)}</Text></HStack>
-                <HStack justify="space-between"><Text fontSize="11px" color="var(--panel-text-muted)">سقف اعتبار</Text><Text fontSize="sm" fontWeight="850">{credit(quota?.credit_limit)}</Text></HStack>
-                <HStack justify="space-between"><Text fontSize="11px" color="var(--panel-text-muted)">اعتبار مصرف‌شده</Text><Text fontSize="sm" fontWeight="850">{quota ? credit(quota.credit_used) : "—"}</Text></HStack>
-                <HStack justify="space-between"><Text fontSize="11px" color="var(--panel-text-muted)">مانده اعتبار</Text><Text fontSize="sm" fontWeight="850">{credit(quota?.credit_remaining)}</Text></HStack>
-                <HStack justify="space-between"><Text fontSize="11px" color="var(--panel-text-muted)">سهمیه تست باقی‌مانده</Text><Text fontSize="sm" fontWeight="850">{fa(trialRemaining)}</Text></HStack>
+                {accountData.billing_mode === "USED_TRAFFIC" && <Box p={3} bg="var(--panel-nested)" borderRadius="12px"><Text fontSize="sm" fontWeight="700">نرخ پایه هر گیگ: {accountData.used_traffic_price_per_gib_toman == null ? "تنظیم نشده" : toman(accountData.used_traffic_price_per_gib_toman)}</Text><Text fontSize="xs" color="var(--panel-text-muted)" mt={1}>هر گیگ برابر ۱۰۲۴ مگابایت است. هزینه مصرف هر اکانت با ضریب مدت همان اکانت محاسبه می‌شود.</Text></Box>}
+                <HStack justify="space-between"><Text fontSize="xs" color="var(--panel-text-muted)">مانده اعتبار</Text><Text fontSize="sm" fontWeight="700">{toman(accountData.money_balance_toman)}</Text></HStack>
+                <HStack justify="space-between"><Text fontSize="xs" color="var(--panel-text-muted)">سقف اعتبار</Text><Text fontSize="sm" fontWeight="700">{credit(quota?.credit_limit)}</Text></HStack>
+                <HStack justify="space-between"><Text fontSize="xs" color="var(--panel-text-muted)">اعتبار مصرف‌شده</Text><Text fontSize="sm" fontWeight="700">{quota ? credit(quota.credit_used) : "—"}</Text></HStack>
+                <HStack justify="space-between"><Text fontSize="xs" color="var(--panel-text-muted)">مانده اعتبار</Text><Text fontSize="sm" fontWeight="700">{credit(quota?.credit_remaining)}</Text></HStack>
+                <HStack justify="space-between"><Text fontSize="xs" color="var(--panel-text-muted)">سهمیه تست باقی‌مانده</Text><Text fontSize="sm" fontWeight="700">{fa(trialRemaining)}</Text></HStack>
                 {quota?.credit_usage_percent != null && <Progress value={Math.min(100, quota.credit_usage_percent)} size="sm" borderRadius="full" colorScheme={quota.credit_usage_percent >= 85 ? "red" : "yellow"} />}
               </Stack>
             )}
           </Panel>
           <Panel>
-            <SectionTitle title="بیشترین مصرف" subtitle="۵ کاربر شما با بیشترین مصرف" />
+            <SectionTitle title="بیشترین مصرف" description="۵ کاربر شما با بیشترین مصرف" />
             <TopConsumers items={data.top_consumers} onOpen={openUser} />
           </Panel>
           <Panel>
-            <SectionTitle title="کاربران اخیر" subtitle="آخرین کاربران ساخته‌شده در محدوده شما" action={<Button size="xs" variant="ghost" color="var(--panel-accent)" onClick={openUsers}>مشاهده همه کاربران</Button>} />
+            <SectionTitle title="کاربران اخیر" description="آخرین کاربران ساخته‌شده در محدوده شما" action={<Button size="xs" variant="ghost" color="var(--panel-accent)" onClick={openUsers}>مشاهده همه کاربران</Button>} />
             <Stack spacing={0}>
               {data.recent_users.length === 0 ? <EmptyState text="هنوز کاربری ساخته نشده است." /> : data.recent_users.map((item) => (
-                <HStack key={item.username} py={2.5} justify="space-between" borderBottomWidth="1px" borderColor="var(--panel-border)" _last={{ borderBottomWidth: 0 }} cursor="pointer" onClick={() => openUser(item.username)}>
-                  <Box><Text dir="ltr" fontSize="sm" fontWeight="800">{item.username}</Text><Text fontSize="10px" color="var(--panel-text-muted)">{relativeTime(item.created_at)}</Text></Box>
-                  <Badge colorScheme={item.status === "active" ? "green" : item.status === "expired" || item.status === "limited" ? "red" : "gray"}>{statusLabel(item.status)}</Badge>
+                <HStack key={item.username} py={2.5} justify="space-between" borderBottomWidth="1px" borderColor="var(--panel-border)" _last={{ borderBottomWidth: 0 }} cursor="pointer" role="button" tabIndex={0} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openUser(item.username); } }} onClick={() => openUser(item.username)}>
+                  <Box minW={0} flex="1"><Text dir="ltr" fontSize="sm" fontWeight="700" noOfLines={1} title={item.username}>{item.username}</Text><Text fontSize="xs" color="var(--panel-text-muted)">{relativeTime(item.created_at)}</Text></Box>
+                  <Badge flexShrink={0} colorScheme={item.status === "active" ? "green" : item.status === "expired" || item.status === "limited" ? "red" : "gray"}>{statusLabel(item.status)}</Badge>
                 </HStack>
               ))}
             </Stack>

@@ -61,7 +61,7 @@ const Metric = ({ label, value }: { label: string; value: string }) => (
     <Text fontSize="xs" color="var(--panel-text-muted)">
       {label}
     </Text>
-    <Text mt={1} fontSize={{ base: "lg", md: "xl" }} fontWeight="800" dir="ltr" textAlign="start">
+    <Text mt={1} fontSize={{ base: "lg", md: "xl" }} fontWeight="700" dir="ltr" textAlign="start">
       {value}
     </Text>
   </Box>
@@ -87,8 +87,8 @@ export const NodeBandwidthPanel = () => {
   if (query.isError || !query.data) {
     return (
       <Card p={{ base: 4, md: 5 }} mb={4} borderWidth="1px" borderColor="var(--panel-border)" bg="var(--panel-surface)">
-        <Text fontWeight="800">پهنای‌باند زنده</Text>
-        <Text mt={2} fontSize="sm" color="orange.500">
+        <Text fontWeight="700">پهنای‌باند زنده</Text>
+        <Text mt={2} fontSize="sm" color="var(--panel-warning)">
           دریافت وضعیت پهنای‌باند ممکن نیست. این خطا روی حسابداری مصرف اثر نمی‌گذارد.
         </Text>
       </Card>
@@ -100,10 +100,10 @@ export const NodeBandwidthPanel = () => {
     <Card p={{ base: 4, md: 5 }} mb={4} borderWidth="1px" borderColor="var(--panel-border)" bg="var(--panel-surface)">
       <HStack justify="space-between" align="start" gap={3} flexWrap="wrap">
         <Box>
-          <Text color="var(--panel-accent)" fontSize="xs" fontWeight="800">
+          <Text color="var(--panel-accent)" fontSize="xs" fontWeight="700">
             شبکه
           </Text>
-          <Text as="h2" mt={1} fontSize="lg" fontWeight="800">
+          <Text as="h2" mt={1} fontSize="lg" fontWeight="700">
             پهنای‌باند زنده نودها
           </Text>
           <Text mt={1} fontSize="sm" color="var(--panel-text-muted)">
@@ -135,7 +135,7 @@ export const NodeBandwidthPanel = () => {
               <Grid templateColumns={{ base: "1fr", md: "minmax(150px, 1.2fr) repeat(3, minmax(110px, .8fr))" }} gap={3} alignItems="center">
                 <VStack align="start" spacing={1} minW={0}>
                   <HStack>
-                    <Text fontWeight="800" noOfLines={1}>{node.node_name}</Text>
+                    <Text fontWeight="700" noOfLines={1}>{node.node_name}</Text>
                     <Badge colorScheme={state.scheme}>{state.label}</Badge>
                   </HStack>
                   {node.sample_age_seconds != null && (

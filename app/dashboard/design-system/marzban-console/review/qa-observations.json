@@ -1,0 +1,150 @@
+{
+  "desktopChecks": [
+    {
+      "h1": "داشبورد مدیریتی",
+      "route": "#/",
+      "scrollWidth": 1430,
+      "theme": "chakra-ui-dark",
+      "width": 1440
+    },
+    {
+      "h1": "مدیریت کاربران",
+      "route": "#/users/",
+      "scrollWidth": 1430,
+      "theme": "chakra-ui-dark",
+      "width": 1440
+    },
+    {
+      "h1": "مدیریت ادمین‌ها",
+      "route": "#/admins/",
+      "scrollWidth": 1430,
+      "theme": "chakra-ui-dark",
+      "width": 1440
+    },
+    {
+      "h1": "پلن‌های کاربر",
+      "route": "#/plans/",
+      "scrollWidth": 1430,
+      "theme": "chakra-ui-dark",
+      "width": 1440
+    },
+    {
+      "h1": "مدیریت محدودیت دستگاه",
+      "route": "#/device-limits/",
+      "scrollWidth": 1430,
+      "theme": "chakra-ui-dark",
+      "width": 1440
+    },
+    {
+      "h1": "فعالیت ادمین‌ها",
+      "route": "#/audit-logs/",
+      "scrollWidth": 1430,
+      "theme": "chakra-ui-dark",
+      "width": 1440
+    },
+    {
+      "h1": "پیکربندی",
+      "route": "#/settings/",
+      "scrollWidth": 1430,
+      "theme": "chakra-ui-dark",
+      "width": 1440
+    }
+  ],
+  "smallScreenChecks": [
+    {
+      "h1": "داشبورد مدیریتی",
+      "route": "#/",
+      "scrollWidth": 310,
+      "theme": "chakra-ui-light",
+      "width": 320
+    },
+    {
+      "h1": "مدیریت کاربران",
+      "metricColumns": "133px 133px",
+      "metrics": 4,
+      "route": "#/users/",
+      "scrollWidth": 310,
+      "theme": "chakra-ui-light",
+      "width": 320
+    },
+    {
+      "h1": "مدیریت ادمین‌ها",
+      "route": "#/admins/",
+      "scrollWidth": 310,
+      "theme": "chakra-ui-light",
+      "width": 320
+    },
+    {
+      "accessGroupsVisible": true,
+      "h1": "پلن‌های کاربر",
+      "route": "#/plans/",
+      "scrollWidth": 758,
+      "width": 768
+    },
+    {
+      "h1": "مدیریت کاربران",
+      "route": "#/users/",
+      "scrollWidth": 1014,
+      "width": 1024
+    }
+  ],
+  "roleChecks": [
+    {
+      "createButtons": [
+        "افزودن کاربر"
+      ],
+      "h1": "داشبورد کاربران",
+      "links": [
+        "رفتن به محتوای اصلی",
+        "داشبورد",
+        "کاربران",
+        "پلن‌ها",
+        "ادمین‌ها",
+        "گزارش فعالیت‌ها"
+      ],
+      "profile": "UI PREVIEW · synthetic data · manager / worst",
+      "scrollWidth": 1353,
+      "width": 1363
+    },
+    {
+      "createButtons": [
+        "افزودن کاربر"
+      ],
+      "h1": "داشبورد کاربران",
+      "links": [
+        "رفتن به محتوای اصلی",
+        "داشبورد",
+        "کاربران",
+        "درخواست‌ها و هشدارها",
+        "گزارش فعالیت‌ها"
+      ],
+      "profile": "UI PREVIEW · synthetic data · form / worst",
+      "scrollWidth": 1353,
+      "width": 1363
+    },
+    {
+      "createButtons": [
+        "ساخت از پلن"
+      ],
+      "h1": "داشبورد کاربران",
+      "links": [
+        "رفتن به محتوای اصلی",
+        "داشبورد",
+        "کاربران",
+        "درخواست‌ها و هشدارها",
+        "گزارش فعالیت‌ها"
+      ],
+      "profile": "UI PREVIEW · synthetic data · plan / worst",
+      "scrollWidth": 1353,
+      "width": 1363
+    },
+    {
+      "createButtons": [],
+      "h1": "داشبورد کاربران",
+      "profile": "UI PREVIEW · synthetic data · suspended / worst",
+      "scrollWidth": 1353,
+      "suspendedNotice": false,
+      "width": 1363
+    }
+  ]
+}

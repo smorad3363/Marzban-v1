@@ -56,7 +56,7 @@ export const StatusBadge: FC<UserStatusProps> = ({
           ms="0"
           color="var(--panel-text-muted)"
           _dark={{
-            color: "gray.400",
+            color: "var(--panel-text-muted)",
           }}
         >
           {t(dateInfo.status, { time: dateInfo.time })}

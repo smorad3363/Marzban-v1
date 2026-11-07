@@ -54,11 +54,11 @@ const Kpi: FC<{
   >
     <HStack justify="space-between" align="start" gap={3}>
       <Box minW={0}>
-        <Text color="var(--panel-text-muted)" fontSize="11px" fontWeight="700">{label}</Text>
-        <Text mt={1} color={tone} fontSize={{ base: "xl", md: "2xl" }} fontWeight="850" sx={{ fontVariantNumeric: "tabular-nums" }}>
+        <Text color="var(--panel-text-muted)" fontSize="xs" fontWeight="700">{label}</Text>
+        <Text mt={1} color={tone} fontSize={{ base: "xl", md: "2xl" }} fontWeight="700" sx={{ fontVariantNumeric: "tabular-nums" }}>
           {value}
         </Text>
-        <Text mt={1} color="var(--panel-text-muted)" fontSize="10px" noOfLines={1}>{hint}</Text>
+        <Text mt={1} color="var(--panel-text-muted)" fontSize="xs" noOfLines={1}>{hint}</Text>
       </Box>
       <Box
         flexShrink={0}
@@ -142,21 +142,21 @@ export const DashboardOverviewCompact: FC = () => {
             <Box>
               <HStack spacing={2}>
                 <ServerIcon />
-                <Text fontSize="12px" fontWeight="800">وضعیت سیستم</Text>
-                <Badge colorScheme="green" fontSize="9px">فعال</Badge>
+                <Text fontSize="12px" fontWeight="700">وضعیت سیستم</Text>
+                <Badge colorScheme="green" fontSize="xs">فعال</Badge>
               </HStack>
             </Box>
             <Box>
-              <HStack justify="space-between"><HStack spacing={1.5}><CpuIcon /><Text fontSize="11px" color="var(--panel-text-muted)">CPU</Text></HStack><Text fontSize="11px" fontWeight="800">{fa(Math.round(cpu))}٪</Text></HStack>
+              <HStack justify="space-between"><HStack spacing={1.5}><CpuIcon /><Text fontSize="xs" color="var(--panel-text-muted)">CPU</Text></HStack><Text fontSize="xs" fontWeight="700">{fa(Math.round(cpu))}٪</Text></HStack>
               <Progress mt={1.5} value={cpu} size="xs" borderRadius="full" colorScheme={cpu > 85 ? "red" : cpu > 70 ? "orange" : "green"} />
             </Box>
             <Box>
-              <HStack justify="space-between"><Text fontSize="11px" color="var(--panel-text-muted)">حافظه</Text><Text fontSize="11px" fontWeight="800">{String(formatBytes(system.data.mem_used))}</Text></HStack>
+              <HStack justify="space-between"><Text fontSize="xs" color="var(--panel-text-muted)">حافظه</Text><Text fontSize="xs" fontWeight="700">{String(formatBytes(system.data.mem_used))}</Text></HStack>
               <Progress mt={1.5} value={memPercent} size="xs" borderRadius="full" colorScheme={memPercent > 85 ? "red" : memPercent > 70 ? "orange" : "green"} />
             </Box>
             <HStack justify={{ base: "start", md: "end" }} spacing={4}>
-              <HStack spacing={1}><DownIcon color="var(--panel-accent)" /><Text dir="ltr" fontSize="11px" fontWeight="800">{String(formatBytes(system.data.incoming_bandwidth_speed))}/s</Text></HStack>
-              <HStack spacing={1}><UpIcon color="var(--panel-accent)" /><Text dir="ltr" fontSize="11px" fontWeight="800">{String(formatBytes(system.data.outgoing_bandwidth_speed))}/s</Text></HStack>
+              <HStack spacing={1}><DownIcon color="var(--panel-accent)" /><Text dir="ltr" fontSize="xs" fontWeight="700">{String(formatBytes(system.data.incoming_bandwidth_speed))}/s</Text></HStack>
+              <HStack spacing={1}><UpIcon color="var(--panel-accent)" /><Text dir="ltr" fontSize="xs" fontWeight="700">{String(formatBytes(system.data.outgoing_bandwidth_speed))}/s</Text></HStack>
             </HStack>
           </SimpleGrid>
         </Card>
