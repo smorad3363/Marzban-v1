@@ -31,6 +31,7 @@ class RuntimeSettings:
     runtime_version: str
     inbounds: tuple[str, ...]
     max_events: int
+    memory_profile: str = "balanced"
 
     @classmethod
     def from_env(cls) -> "RuntimeSettings":
@@ -42,6 +43,9 @@ class RuntimeSettings:
             for item in os.getenv("INBOUNDS", "").split(",")
             if item.strip()
         )
+        memory_profile = os.getenv("XRAY_NODE_MEMORY_PROFILE", "balanced").strip().lower()
+        if memory_profile not in ("balanced", "off"):
+            raise RuntimeError("XRAY_NODE_MEMORY_PROFILE must be balanced or off")
         return cls(
             service_host=os.getenv("NODE_RUNTIME_HOST", "0.0.0.0"),
             service_port=_bounded_int("NODE_RUNTIME_PORT", 62050, 1, 65535),
@@ -56,4 +60,5 @@ class RuntimeSettings:
             runtime_version=os.getenv("NODE_RUNTIME_VERSION", "dev").strip() or "dev",
             inbounds=inbounds,
             max_events=_bounded_int("EVENT_MAX_ROWS", 20000, 1000, 1000000),
+            memory_profile=memory_profile,
         )

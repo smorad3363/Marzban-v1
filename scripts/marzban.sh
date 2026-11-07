@@ -23,7 +23,7 @@ LAST_XRAY_CORES=10
 # Fork configuration
 # Override at runtime, e.g. MARZBAN_GITHUB_REPO=another-user/Marzban marzban install
 # =============================================================================
-CLI_RELEASE_VERSION="v1.1.23"
+CLI_RELEASE_VERSION="v1.1.24"
 V1_LINEAGE_SOURCE_VERSION="5.2.0"
 V1_LINEAGE_SOURCE_IMAGE="ghcr.io/smorad3363/marzban-vnext:v5.2.0"
 V1_LINEAGE_TARGET_VERSION="v1.0.0"
@@ -2336,6 +2336,10 @@ node_write_env() {
     local service_port="$2"
     local api_port="$3"
     local event_max_rows="$4"
+    local memory_profile gogc gomemlimit
+    memory_profile=$(node_env_value XRAY_NODE_MEMORY_PROFILE balanced)
+    gogc=$(node_env_value GOGC 50)
+    gomemlimit=$(node_env_value GOMEMLIMIT "")
     umask 077
     cat > "$NODE_ENV_FILE" <<EOF
 MARZBAN_NODE_IMAGE=$(marzban_docker_image "$requested_version")
@@ -2343,6 +2347,9 @@ NODE_RUNTIME_VERSION=$requested_version
 NODE_RUNTIME_PORT=$service_port
 XRAY_API_PORT=$api_port
 EVENT_MAX_ROWS=$event_max_rows
+XRAY_NODE_MEMORY_PROFILE=$memory_profile
+GOGC=$gogc
+GOMEMLIMIT=$gomemlimit
 EOF
     chmod 600 "$NODE_ENV_FILE"
 }

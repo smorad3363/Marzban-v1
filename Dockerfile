@@ -3,14 +3,16 @@ ARG PYTHON_VERSION=3.12
 FROM mysql:26.7.0 AS mysql-client
 
 FROM python:$PYTHON_VERSION-slim AS build
+ARG XRAY_VERSION=v26.10.31
 
 ENV PYTHONUNBUFFERED=1
 
 WORKDIR /code
+COPY ./scripts/install-xray.sh /tmp/install-xray.sh
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends build-essential curl unzip gcc python3-dev \
-    && curl -L https://github.com/Gozargah/Marzban-scripts/raw/master/install_latest_xray.sh | bash \
+    && bash /tmp/install-xray.sh "$XRAY_VERSION" \
     && rm -rf /var/lib/apt/lists/*
 
 COPY ./requirements.txt /code/

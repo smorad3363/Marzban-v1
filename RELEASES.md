@@ -1,3 +1,9 @@
+# v1.1.24
+
+Release target: v1.1.24
+
+Bound standalone Node memory, enforce idle policies for modern cores, and verify a compatible Xray build for classic and SS2022 traffic. [Notes](docs/RELEASE_NOTES_v1.1.24.md).
+
 # v1.1.23
 
 Release target: v1.1.23

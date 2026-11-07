@@ -9,6 +9,9 @@ services:
       NODE_RUNTIME_PORT: ${NODE_RUNTIME_PORT:-62050}
       XRAY_API_PORT: ${XRAY_API_PORT:-62051}
       EVENT_MAX_ROWS: ${EVENT_MAX_ROWS:-20000}
+      XRAY_NODE_MEMORY_PROFILE: ${XRAY_NODE_MEMORY_PROFILE:-balanced}
+      GOGC: ${GOGC:-50}
+      GOMEMLIMIT: ${GOMEMLIMIT:-}
       SSL_CLIENT_CERT_FILE: /var/lib/marzban-node/panel-client.crt
       SSL_CERT_FILE: /var/lib/marzban-node/ssl_cert.pem
       SSL_KEY_FILE: /var/lib/marzban-node/ssl_key.pem
