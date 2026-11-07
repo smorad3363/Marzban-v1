@@ -10,6 +10,7 @@ from jdatetime import date as jd
 
 from app import xray
 from app.utils.system import get_public_ip, get_public_ipv6, readable_size
+from app.utils.shadowsocks2022 import subscription_settings
 
 from . import *
 
@@ -332,11 +333,19 @@ def process_inbounds_and_tags(
                     }
                 )
 
+                outbound_settings = settings.model_dump()
+                if protocol.value == "shadowsocks":
+                    source_settings = (xray.config.get_inbound(tag) or {}).get("settings", {})
+                    outbound_settings = subscription_settings(
+                        outbound_settings, source_settings.get("method"),
+                        source_settings.get("password"),
+                    )
+
                 conf.add(
                     remark=host["remark"].format_map(format_variables),
                     address=address.format_map(format_variables),
                     inbound=host_inbound,
-                    settings=settings.model_dump()
+                    settings=outbound_settings
                 )
 
     return conf.render(reverse=reverse)

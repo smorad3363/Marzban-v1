@@ -12,6 +12,7 @@ from sqlalchemy import func
 from app.db import GetDB
 from app.db import models as db_models
 from app.models.proxy import ProxyTypes
+from app.utils.shadowsocks2022 import METHOD as SS2022_METHOD, client_settings, generate_key
 from app.models.user import UserStatus
 from app.utils.crypto import get_cert_SANs
 from config import DEBUG, XRAY_EXCLUDE_INBOUND_TAGS, XRAY_FALLBACKS_INBOUND_TAG
@@ -163,6 +164,7 @@ class XRayConfig(dict):
                 "host": [],
                 "path": "",
                 "header_type": "",
+                "ss2022_method": inbound.get("settings", {}).get("method"),
                 "is_fallback": False
             }
 
@@ -433,6 +435,9 @@ class XRayConfig(dict):
                         ):
                             del client['flow']
 
+                        if proxy_type == "shadowsocks":
+                            client = {"email": client["email"], **client_settings(
+                                settings, inbound.get("ss2022_method"))}
                         clients.append(client)
 
             # Finite-device users keep their legacy/base credential as slot 1.
@@ -497,7 +502,23 @@ class XRayConfig(dict):
                         or inbound.get("header_type") == "http"
                     ):
                         del client["flow"]
+                    if row.type == "shadowsocks":
+                        client = {"email": client["email"], **client_settings(
+                            protocol_settings, inbound.get("ss2022_method"))}
                     config.get_inbound(inbound["tag"])["settings"]["clients"].append(client)
+
+            # An empty SS2022 clients array creates a single-user inbound
+            # without the Xray UserManager. A never-shared random bootstrap
+            # account keeps dynamic AddUser usable for the first real user.
+            for inbound in config.get("inbounds", []):
+                settings = inbound.get("settings", {})
+                if (inbound.get("protocol") == "shadowsocks"
+                        and settings.get("method") == SS2022_METHOD
+                        and not settings.get("clients")):
+                    settings["clients"] = [{
+                        "email": "ss2022-bootstrap-" + generate_key()[:10].replace("/", "a").replace("+", "b") + "@invalid.local",
+                        "password": generate_key(),
+                    }]
 
         if DEBUG:
             with open('generated_config-debug.json', 'w') as f:

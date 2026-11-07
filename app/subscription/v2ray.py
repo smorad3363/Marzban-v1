@@ -480,7 +480,9 @@ class V2rayShareLink(str):
     ):
         return (
             "ss://"
-            + base64.b64encode(f"{method}:{password}".encode()).decode()
+            + (base64.urlsafe_b64encode(f"{method}:{password}".encode()).decode().rstrip("=")
+               if method == "2022-blake3-aes-256-gcm"
+               else base64.b64encode(f"{method}:{password}".encode()).decode())
             + f"@{address}:{port}#{urlparse.quote(remark)}"
         )
 

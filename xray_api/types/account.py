@@ -9,6 +9,7 @@ from ..proto.proxy.shadowsocks.config_pb2 import \
     Account as ShadowsocksAccountPb2
 from ..proto.proxy.shadowsocks.config_pb2 import \
     CipherType as ShadowsocksCiphers
+from ..proto.proxy.shadowsocks_2022.account_pb2 import Account as Shadowsocks2022AccountPb2
 from ..proto.proxy.trojan.config_pb2 import Account as TrojanAccountPb2
 from ..proto.proxy.vless.account_pb2 import Account as VLESSAccountPb2
 from ..proto.proxy.vmess.account_pb2 import Account as VMessAccountPb2
@@ -63,6 +64,7 @@ class ShadowsocksMethods(Enum):
     AES_128_GCM = 'aes-128-gcm'
     AES_256_GCM = 'aes-256-gcm'
     CHACHA20_POLY1305 = 'chacha20-ietf-poly1305'
+    SS2022_AES_256_GCM = '2022-blake3-aes-256-gcm'
 
 
 class ShadowsocksAccount(Account):
@@ -76,3 +78,13 @@ class ShadowsocksAccount(Account):
     @property
     def message(self):
         return Message(ShadowsocksAccountPb2(password=self.password, cipher_type=self.cipher_type))
+
+
+class Shadowsocks2022Account(Account):
+    password: str
+
+    @property
+    def message(self):
+        from app.utils.shadowsocks2022 import require_key
+        require_key(self.password, "Shadowsocks 2022 user key")
+        return Message(Shadowsocks2022AccountPb2(key=self.password))
