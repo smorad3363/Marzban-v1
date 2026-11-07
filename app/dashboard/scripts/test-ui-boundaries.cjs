@@ -37,9 +37,31 @@ if (process.argv.includes('--record')) {
     'src/pages/Plans.tsx': [{ old: 'onClick={() => document.getElementById("access-groups")?.scrollIntoView({ behavior: "smooth", block: "start" })}', replacement: 'onChange={changeTab}', remaining: 1 }],
     'src/components/AccessGroupManager.tsx': [{ old: 'onClick={() => setDraft(emptyDraft())}', replacement: 'onClose={closeEditor}', remaining: 1 }],
   };
+  // Owner-approved alert presentation changes only the summary query's toast callback.
+  // Compare its exact request, key, enabled guard and polling options after removing
+  // that one callback; the new callback must remain the named UI announcer.
+  const alertSummary = text => {
+    const source = ts.createSourceFile('query.ts', text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+    const call = source.statements[0]?.expression;
+    assert.ok(ts.isCallExpression(call) && call.expression.getText(source) === 'useQuery');
+    const options = call.arguments[2];
+    assert.ok(ts.isObjectLiteralExpression(options));
+    const announcements = options.properties.filter(p => p.name?.getText(source) === 'onSuccess');
+    assert.equal(announcements.length, 1);
+    const readonlyOptions = ts.factory.updateObjectLiteralExpression(options, options.properties.filter(p => p !== announcements[0]));
+    const readonlyCall = ts.factory.updateCallExpression(call, call.expression, call.typeArguments, [call.arguments[0], call.arguments[1], readonlyOptions]);
+    return { contract: printer.printNode(ts.EmitHint.Unspecified, readonlyCall, source), announcement: printer.printNode(ts.EmitHint.Unspecified, announcements[0], source) };
+  };
   for (const [file, expected] of Object.entries(contracts)) {
     const actual = extract(file, fs.readFileSync(path.join(root, file), 'utf8'));
-    assert.deepEqual(actual.requests, expected.requests, `${file}: network/query contract changed`);
+    if (file === 'src/components/AlertCenter.tsx') {
+      const isSummary = text => text.includes('api("/admin-management/alert-center")');
+      const oldSummary = expected.requests.filter(isSummary), newSummary = actual.requests.filter(isSummary);
+      assert.equal(oldSummary.length, 1); assert.equal(newSummary.length, 1);
+      assert.equal(alertSummary(newSummary[0]).contract, alertSummary(oldSummary[0]).contract, 'Alert summary transport or polling changed');
+      assert.equal(alertSummary(newSummary[0]).announcement, 'onSuccess: announce', 'Unexpected alert callback replacement');
+      assert.deepEqual(actual.requests.filter(x => !isSummary(x)), expected.requests.filter(x => !isSummary(x)), 'Other alert queries changed');
+    } else assert.deepEqual(actual.requests, expected.requests, `${file}: network/query contract changed`);
     for (const key of ['actions', 'options']) {
       const remaining = [...actual[key]];
       for (const item of expected[key]) {

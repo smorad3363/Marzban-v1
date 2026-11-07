@@ -139,10 +139,10 @@ assert.ok(durationSettings.includes('duration_max_multiplier') && durationSettin
 
 const alertCenter = fs.readFileSync(path.join(root, "src/components/AlertCenter.tsx"), "utf8");
 const appShellAlerts = fs.readFileSync(path.join(root, "src/components/AppShell.tsx"), "utf8");
-assert.ok(appShellAlerts.includes("<AlertCenter />"), "every authenticated shell must include the alert center");
+assert.ok(appShellAlerts.includes("<AlertCenter>") && appShellAlerts.includes("{trigger}") && appShellAlerts.includes("{summary}"), "each shell must retain one alert query owner, a header trigger and a scoped dashboard summary");
 assert.ok(alertCenter.includes("refetchInterval:60000") && alertCenter.includes("refetchIntervalInBackground:false"), "alerts must use a single slow foreground fallback");
 assert.ok(alertCenter.includes("/admin-management/alert-events") && alertCenter.includes("Authorization:"), "event delivery must use authenticated fetch, without query-string credentials");
-assert.ok(alertCenter.includes("aria-live=\"polite\"") && alertCenter.includes("position=\"sticky\""), "active warnings must remain visible and accessible");
+assert.ok(alertCenter.includes("aria-live=\"polite\"") && alertCenter.includes("aria-haspopup=\"dialog\"") && !alertCenter.includes("position=\"sticky\""), "the accessible alert trigger must replace the sticky content banner");
 assert.ok(alertCenter.includes("/seen?revision=") && alertCenter.includes("resolved_at"), "view receipts and resolved state must remain distinct");
 assert.ok(alertCenter.includes("visibilitychange") && alertCenter.includes("generation++"), "hidden-tab streams must stop without duplicate reconnects");
 
@@ -152,3 +152,6 @@ require("./test-ui-presentation.cjs");
 
 // Exercise the real reorganized forms and mutation hooks with a synthetic transport.
 require("node:child_process").execFileSync(process.execPath, [path.join(__dirname, "test-plans-access-ux.cjs")], { stdio: "inherit" });
+
+// Critical notification receipts, Drawer flows and unchanged alert transport.
+require("node:child_process").execFileSync(process.execPath, [path.join(__dirname, "test-alert-center.cjs")], { stdio: "inherit" });
