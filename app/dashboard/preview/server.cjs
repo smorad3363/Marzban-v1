@@ -8,7 +8,7 @@ const now = () => new Date().toISOString().replace(/Z$/, '');
 const gib = 1024 ** 3;
 const sessions = new Map();
 const roles = ['owner', 'manager', 'form', 'plan', 'suspended'];
-const modes = ['demo', 'worst', 'empty', 'one', 'huge', 'loading', 'error'];
+const modes = ['demo', 'worst', 'empty', 'one', 'huge', 'loading', 'error', 'escalated'];
 const branding = { panel_name: 'Marzban · نسخه آزمایشی', login_title: 'به فضای کاری خود وارد شوید', description: 'محیط آزمایشی طراحی با اطلاعات ساختگی', logo_url: null, favicon_url: null };
 function fixtures(session) {
   const { role, mode } = session;
@@ -32,13 +32,22 @@ function fixtures(session) {
   }
   const logs = users.slice(0,6).map((u,i)=>({id:i+1,admin_id:1,admin_username:username,action:['user.create','admin.update','credit.grant'][i%3],target_type:'user',target_id:String(i+1),target_name:u.username,description:'فعالیت آزمایشی',ip_address:'2001:db8:85a3::8a2e:370:7334',created_at:now(),previous_value:{status:'disabled'},new_value:{status:'active'},details:{request_id:'6f986b18-14e6-4dda-a7ba-88b8d2eef475',note:u.note}}));
   const device = { enabled:true,enforcement_mode:'hybrid',device_slots_enabled:true,ip_detection_enabled:true,client_fingerprint_enabled:true,check_interval_seconds:60,active_window_seconds:120,hit_threshold:3,min_successful_connections:2,handoff_grace_seconds:90,warning_auto_delete_seconds:86400,strike_reset_seconds:86400,full_ip_retention_days:7,incident_retention_days:30,audit_retention_days:90,auto_delete_enabled:false,updated_at:now() };
-  return { owner,manager,username,count,quota,policy,account,capabilities,admins,users,categories,plans,groups,logs,device };
+  const alertNames = owner ? ['reza_preview','sales_tehran','support_team'] : role === 'manager' ? [username,'sub_admin'] : [username];
+  const incidents = Array.from({length:mode==='empty'?0:mode==='one'?1:mode==='huge'&&manager?65:6},(_,i)=>({
+    id:1000-i,admin_id:i%alertNames.length+2,admin_username:mode==='worst' && i===0 ? 'admin_'+'long_name_'.repeat(18) : mode==='huge'&&manager ? (owner?'admin_':'sub_admin_')+(Math.floor(i/6)+1) : alertNames[Math.floor(i/2)%alertNames.length],
+    resource:['financial','expiry','traffic','account','provisioning_volume','accounts'][i%6],state:i%6===0?(mode==='escalated'&&i===0?'disabled':'frozen'):['frozen','near_limit','exhausted','suspended','near_limit','exhausted'][i%6],
+    severity:i%3===1?'warning':'critical',revision:mode==='escalated'&&i===0?3:2,seen:session.alertReceipts?.[1000-i]===(mode==='escalated'&&i===0?3:2),
+    opened_at:'2026-11-07T07:00:00',resolved_at:i===5?'2026-11-07T07:30:00':null,
+    details:i%6===0?{balance_toman:-125000,basis_toman:1000000,debt_percent:12.5,freeze_percent:10,cutoff_percent:40,remaining_to_freeze_toman:0,remaining_to_cutoff_toman:275000}:i%6===1?{remaining_days:3,expiry_date:'2026-11-10'}:i%6===3?{}:i%6===4?{used:80*gib,limit:100*gib,remaining:20*gib,percent:80,unit:'bytes'}:{used:1024*gib,limit:1024*gib,remaining:0,percent:100,unit:'bytes'}
+  }));
+  return { owner,manager,username,count,quota,policy,account,capabilities,admins,users,categories,plans,groups,logs,device,incidents };
+
 }
 async function body(req) { let value='';for await(const chunk of req){value+=chunk;if(value.length>1000000)throw Error('request too large');}try{return JSON.parse(value)}catch{return Object.fromEntries(new URLSearchParams(value))} }
 function json(res,value,status=200){res.writeHead(status,{'content-type':'application/json','cache-control':'no-store'});res.end(JSON.stringify(value));}
 function toolbar(session) {
  const options = (values,selected)=>values.map(v=>`<option${v===selected?' selected':''}>${v}</option>`).join('');
- return `<aside dir="ltr" id="preview-tools" style="position:fixed;bottom:8px;left:8px;z-index:1900;max-width:calc(100vw - 16px);font:12px system-ui;color:#fff;background:#183b30;border:1px solid #6cb49a;border-radius:10px;box-shadow:0 4px 24px #0003"><details><summary style="padding:10px;cursor:pointer">UI PREVIEW · synthetic data · ${session.role} / ${session.mode}</summary><form action="/__preview/state" method="post" style="padding:12px;display:flex;gap:8px;flex-wrap:wrap"><label>Role <select name="role" aria-label="Preview role">${options(roles,session.role)}</select></label><label>Data <select name="mode" aria-label="Preview data">${options(modes,session.mode)}</select></label><button type="submit">Apply & reload</button><button type="submit" name="reset" value="1">Reset data</button></form></details></aside>`;
+ return `<aside dir="ltr" id="preview-tools" style="position:fixed;bottom:8px;left:8px;z-index:1200;max-width:calc(100vw - 16px);font:12px system-ui;color:#fff;background:#183b30;border:1px solid #6cb49a;border-radius:10px;box-shadow:0 4px 24px #0003"><details><summary style="padding:10px;cursor:pointer">UI PREVIEW · synthetic data · ${session.role} / ${session.mode}</summary><form action="/__preview/state" method="post" style="padding:12px;display:flex;gap:8px;flex-wrap:wrap"><label>Role <select name="role" aria-label="Preview role">${options(roles,session.role)}</select></label><label>Data <select name="mode" aria-label="Preview data">${options(modes,session.mode)}</select></label><button type="submit">Apply & reload</button><button type="submit" name="reset" value="1">Reset data</button></form></details></aside>`;
 }
 async function handler(req,res) {
  try {
@@ -63,10 +72,15 @@ async function handler(req,res) {
    if(p==='/admin/logout')return json(res,{ok:true});
    if(p==='/admin-management/alert-events'){res.writeHead(200,{'content-type':'text/event-stream','cache-control':'no-cache'});res.write(': UI fixture stream\n\n');const timer=setInterval(()=>res.write(': keep-alive\n\n'),20000);res.on('close',()=>clearInterval(timer));return;}
    if(session.mode==='loading')await new Promise(r=>setTimeout(r,4500));
-   if(session.mode==='error' && ['/dashboard/overview','/users/management','/admin-management','/audit-logs','/user-plans','/device-limit/settings'].includes(p))return json(res,{detail:'UI preview: simulated service failure'},503);
+   if(session.mode==='error' && ['/dashboard/overview','/users/management','/admin-management','/audit-logs','/user-plans','/device-limit/settings','/admin-management/alert-center'].includes(p))return json(res,{detail:'UI preview: simulated service failure'},503);
    if(req.method!=='GET') {
     const data=await body(req);
     session.requests[session.requests.length-1].body=data;
+    const receipt=/^\/admin-management\/alert-center\/(\d+)\/seen$/.exec(p);
+    if(receipt){
+     if(session.mode==='worst')return json(res,{detail:'ثبت مشاهده انجام نشد؛ نمونهٔ خطای آزمایشی'},503);
+     session.alertReceipts ||= {};session.alertReceipts[+receipt[1]]=+url.searchParams.get('revision');return json(res,{ok:true});
+    }
     if(p==='/admin-management'&&req.method==='POST'){
      if(session.mode==='worst')return json(res,{detail:'نام کاربری از قبل وجود دارد؛ نمونهٔ خطای آزمایشی'},409);
      return json(res,{...f.admins[0],...data,id:99,username:data.username,account_status:'ACTIVE'});
@@ -84,7 +98,11 @@ async function handler(req,res) {
    if(p==='/admin-management')return json(res,{admins:f.admins,total:f.admins.length,offset:0,limit:20});
    if(p==='/admins')return json(res,[{username:f.username,is_sudo:f.owner},...f.admins]);
    if((p==='/admin-management/requests-alerts'||p==='/admin-management/refund-requests'))return json(res,{requests:[],alerts:[],actor_id:1});
-   if(p==='/admin-management/alert-center')return json(res,{items:[],counts:{critical:0,warning:0},checked_at:now(),next_before:null,inherited_restriction:false});
+   if(p==='/admin-management/alert-center'){
+    const active=f.incidents.filter(i=>!i.resolved_at),status=url.searchParams.get('status')||'active',severity=url.searchParams.get('severity'),username=url.searchParams.get('username'),before=+url.searchParams.get('before');
+    const items=f.incidents.filter(i=>(status==='all'||(status==='resolved'?!!i.resolved_at:!i.resolved_at))&&(!severity||i.severity===severity)&&(!username||i.admin_username.includes(username))&&(!before||i.id<before));
+    const page=items.slice(0,50);return json(res,{items:page,counts:{critical:active.filter(i=>i.severity==='critical').length,warning:active.filter(i=>i.severity==='warning').length},checked_at:now(),next_before:items.length>50?page[page.length-1].id:null,inherited_restriction:session.role==='suspended'});
+   }
    if(p==='/admin-management/tree')return json(res,[]);
    if(p==='/plan-categories')return json(res,f.categories);
    if(p==='/user-plans'||p==='/available-user-plans')return json(res,f.plans);

@@ -48,7 +48,7 @@ export const AppShell: FC<PropsWithChildren> = ({ children }) => {
   }, []);
 
   return (
-    <>
+    <AlertCenter>{({ trigger, summary }) => <>
       <a href="#main-content" className="console-skip-link" onClick={(event) => { event.preventDefault(); document.getElementById("main-content")?.focus(); }}>رفتن به محتوای اصلی</a>
       <Flex minH="100dvh" align="stretch" direction={{ base: "column", lg: "row" }} className="operations-shell">
         <Header />
@@ -64,11 +64,11 @@ export const AppShell: FC<PropsWithChildren> = ({ children }) => {
           pb="max(24px, env(safe-area-inset-bottom))"
         >
           <Box w="full" maxW="1680px" mx="auto" minW={0} flex="1">
-            <HStack className="console-workspace-bar" justify="space-between" flexWrap="wrap">
+            <HStack className="console-workspace-bar" position="sticky" top={0} zIndex={20} bg="var(--panel-bg)" justify="space-between" flexWrap="wrap">
               <HStack spacing={2} fontSize="xs" color="var(--panel-text-muted)"><Text display={{ base: "none", sm: "block" }}>فضای مدیریت</Text><Text aria-hidden="true" display={{ base: "none", sm: "block" }} opacity={.5}>/</Text><Text color="var(--panel-text-body)" fontWeight="500">{workspace}</Text></HStack>
-              <HStack spacing={2} minW={0} maxW="70%"><Text dir="ltr" noOfLines={1} fontSize="xs" color="var(--panel-text-muted)">{userData.username}</Text><Badge bg="var(--panel-accent-soft)" color="var(--panel-accent)" fontSize="xs" flexShrink={0}>{isOwner ? "مالک" : "ادمین"}</Badge></HStack>
+              <HStack spacing={2} minW={0} maxW="70%">{trigger}<Text dir="ltr" noOfLines={1} fontSize="xs" color="var(--panel-text-muted)">{userData.username}</Text><Badge bg="var(--panel-accent-soft)" color="var(--panel-accent)" fontSize="xs" flexShrink={0}>{isOwner ? "مالک" : "ادمین"}</Badge></HStack>
             </HStack>
-            <AlertCenter />
+            {summary}
             {children}
           </Box>
           <Footer mt={8} />
@@ -82,6 +82,6 @@ export const AppShell: FC<PropsWithChildren> = ({ children }) => {
           <CoreSettingsModal />
         </>
       )}
-    </>
+    </>}</AlertCenter>
   );
 };
