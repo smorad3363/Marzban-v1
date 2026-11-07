@@ -41,6 +41,7 @@ test ! -e "${workdir}/node-data/panel-client.key"
 
 docker run --detach \
     --name "${node_name}" \
+    --memory 384m --memory-swap 384m \
     --network host \
     --volume "${workdir}/node-data:/var/lib/marzban-node" \
     --env SSL_CLIENT_CERT_FILE=/var/lib/marzban-node/panel-client.crt \
@@ -133,6 +134,27 @@ assert node.connected, "Panel /connect + /ping path did not become healthy"
 assert node.get_version(), "Node status did not expose the Xray runtime version"
 node.disconnect()
 assert not node.connected
+PY
+
+# Test actual core resources and traffic after the control-only mTLS checks.
+docker run --rm --interactive \
+    --network host \
+    --volume "${workdir}:/e2e:ro" \
+    --env SQLALCHEMY_DATABASE_URL=mysql+pymysql://probe:probe@127.0.0.1/probe \
+    --env NODE_E2E_RUNTIME_PORT="${runtime_port}" \
+    --env NODE_E2E_API_PORT="${api_port}" \
+    --entrypoint python \
+    "${image}" - < tests/node_memory_e2e.py
+
+docker exec --interactive "${node_name}" python - <<'PY'
+from pathlib import Path
+
+core = next(p for p in Path('/proc').glob('[0-9]*')
+            if (p / 'comm').exists() and (p / 'comm').read_text().strip() == 'xray')
+environment = dict(value.split(b'=', 1) for value in (core / 'environ').read_bytes().split(b'\0') if b'=' in value)
+assert environment[b'GOMEMLIMIT'] == b'288MiB', environment.get(b'GOMEMLIMIT')
+assert environment[b'GOGC'] == b'50', environment.get(b'GOGC')
+print('NODE_MEMORY_REAL_CHILD_75_PERCENT_PASS')
 PY
 
 test -s "${workdir}/node-data/ssl_cert.pem"

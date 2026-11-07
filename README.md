@@ -407,6 +407,16 @@ marzban node update --version latest
 
 Node Runtime V2 uses strict certificate verification, durable event delivery, and capability-aware client-IP reporting. On a server that also hosts the panel, Node CLI updates are isolated in `/usr/local/bin/marzban-node` and do not overwrite the panel CLI or panel release metadata.
 
+Standalone Nodes default to a balanced memory profile. Xray receives a soft Go
+budget of 75% of the smaller host/container memory limit, with GOGC=50 and bounded
+idle/handshake policies. Stricter existing policies and a deliberately smaller
+GOMEMLIMIT are retained. Updates preserve GOGC, GOMEMLIMIT and
+XRAY_NODE_MEMORY_PROFILE from `/opt/marzban-node/.env`; setting the profile to
+`off` disables automatic tuning. These limits preserve account keys and traffic
+counters and are not a hard RSS limit. Official images include a checksummed
+Xray v26.10.31; simply updating a separately installed Gozargah Node image does
+not update its older core or convert it to Node Runtime V2.
+
 # Webhook notifications
 
 You can set a webhook address and Marzban will send the notifications to that address.

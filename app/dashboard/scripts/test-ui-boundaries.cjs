@@ -85,7 +85,7 @@ if (process.argv.includes('--record')) {
   const protectedNames = files.filter(file => !file.startsWith('app/dashboard/') || /^app\/dashboard\/src\/(service|contexts|types|hooks)\//.test(file));
   // Preserve all previously protected files, except the precise SS2022 feature.
   const ss2022Allowlist = new Set(
-    ['1.1.22', '1.1.23'].includes(fs.readFileSync(path.join(repository, 'VERSION'), 'utf8').trim()) ? [
+    ['1.1.22', '1.1.23', '1.1.24'].includes(fs.readFileSync(path.join(repository, 'VERSION'), 'utf8').trim()) ? [
       'VERSION', 'RELEASES.md', 'app/__init__.py', 'app/models/proxy.py',
       'app/subscription/share.py', 'app/subscription/v2ray.py',
       'app/utils/shadowsocks2022.py', 'app/xray/config.py', 'app/xray/operations.py', 'app/xray/node.py', 'docs/RELEASE_NOTES_v1.1.23.md',
@@ -95,14 +95,27 @@ if (process.argv.includes('--record')) {
       'xray_api/proto/proxy/shadowsocks_2022/account_pb2.py', 'xray_config.json',
     ] : []
   );
+  // The owner-approved Node compatibility release changes only these additional
+  // runtime, image, documentation and test files. Keep every UI behavior check
+  // and the immutable baseline; unknown backend additions still fail closed.
+  const nodeMemoryAllowlist = new Set(
+    fs.readFileSync(path.join(repository, 'VERSION'), 'utf8').trim() === '1.1.24' ? [
+      'Dockerfile', 'README.md', 'docker-compose.node.yml',
+      'node_runtime/config.py', 'node_runtime/core.py', 'node_runtime/memory.py',
+      'scripts/Dockerfile.dev', 'scripts/install-xray.sh',
+      'tests/node_panel_e2e.sh', 'tests/node_memory_e2e.py', 'tests/test_node_memory.py',
+      'docs/RELEASE_NOTES_v1.1.24.md',
+    ] : []
+  );
+  const approvedFeatureFile = file => ss2022Allowlist.has(file) || nodeMemoryAllowlist.has(file);
   assert.deepEqual(Object.keys(protectedFiles).filter(file => !protectedNames.includes(file)), [],
     'Previously protected files were removed');
-  assert.deepEqual(protectedNames.filter(file => !(file in protectedFiles) && !ss2022Allowlist.has(file)), [],
+  assert.deepEqual(protectedNames.filter(file => !(file in protectedFiles) && !approvedFeatureFile(file)), [],
     'Unexpected files outside presentation scope were added');
   for (const file of protectedNames) {
-    if (ss2022Allowlist.has(file)) continue;
+    if (approvedFeatureFile(file)) continue;
     const digest = crypto.createHash('sha256').update(fs.readFileSync(path.join(repository, file))).digest('hex');
     assert.equal(digest, protectedFiles[file], file + ': protected backend, API or policy source changed');
   }
-  console.log(`Preserved network calls, query configuration, business actions and options in ${Object.keys(contracts).length} files; backend unchanged outside explicit SS2022 feature.`);
+  console.log(`Preserved network calls, query configuration, business actions and options in ${Object.keys(contracts).length} files; backend unchanged outside explicit SS2022 and Node compatibility features.`);
 }

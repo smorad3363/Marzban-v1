@@ -12,6 +12,7 @@ from typing import Any
 
 from node_runtime.config import RuntimeSettings
 from node_runtime.events import EventSpool
+from node_runtime.memory import apply_memory_policy, legacy_ss2022_core, xray_environment
 
 
 logger = logging.getLogger("marzban.node_runtime")
@@ -33,6 +34,12 @@ def prepare_xray_config(raw_config: str, peer_ip: str, settings: RuntimeSettings
             continue
         if settings.inbounds and inbound.get("tag") not in settings.inbounds:
             continue
+        if (inbound.get("protocol") == "shadowsocks"
+                and (inbound.get("settings") or {}).get("method") == "2022-blake3-aes-256-gcm"):
+            # SS2022's cipher belongs to the inbound. Do not change any PSK;
+            # tolerate older panels that redundantly send a per-user method.
+            for client in inbound["settings"].get("clients") or []:
+                client.pop("method", None)
         retained_inbounds.append(inbound)
     config["inbounds"] = retained_inbounds
     routing = config.setdefault("routing", {})
@@ -68,6 +75,7 @@ def prepare_xray_config(raw_config: str, peer_ip: str, settings: RuntimeSettings
         "type": "field",
     })
     routing["rules"] = rules
+    apply_memory_policy(config, settings.memory_profile)
     log_config = config.setdefault("log", {})
     if log_config.get("logLevel") in ("none", "error"):
         log_config["logLevel"] = "warning"
@@ -82,6 +90,13 @@ class XRayRuntimeCore:
         self._lock = threading.RLock()
         self._last_logs: deque[str] = deque(maxlen=100)
         self.version = self._get_version()
+        if settings.memory_profile == "balanced" and legacy_ss2022_core(self.version):
+            logger.warning(
+                "Xray %s may not enforce SS2022 idle/buffer policies; "
+                "a Go memory budget alone cannot prevent connection accumulation. "
+                "Use a compatible core (tested: 26.10.31).",
+                self.version or "unknown",
+            )
 
     def _emit(self, event_type: str, payload: dict[str, Any]) -> None:
         try:
@@ -157,8 +172,14 @@ class XRayRuntimeCore:
                 if self.started:
                     raise RuntimeError("Xray is started already")
                 prepared = prepare_xray_config(raw_config, peer_ip, self.settings)
-                environment = os.environ.copy()
-                environment["XRAY_LOCATION_ASSET"] = self.settings.xray_assets_path
+                environment = xray_environment(
+                    os.environ, self.settings.xray_assets_path, self.settings.memory_profile,
+                )
+                logger.info(
+                    "Xray memory profile: %s; Go memory budget: %s; GOGC: %s",
+                    self.settings.memory_profile, environment.get("GOMEMLIMIT", "runtime default"),
+                    environment.get("GOGC", "runtime default"),
+                )
                 process = subprocess.Popen(
                     [self.settings.xray_executable, "run", "-config", "stdin:"],
                     env=environment,
@@ -203,7 +224,12 @@ class XRayRuntimeCore:
                 "reason_code": "start_succeeded",
                 "previous_state": "starting",
                 "new_state": "running",
-                "metadata": {"core_version": self.version},
+                "metadata": {
+                    "core_version": self.version,
+                    "memory_profile": self.settings.memory_profile,
+                    "go_memory_limit": environment.get("GOMEMLIMIT", "runtime default"),
+                    "gogc": environment.get("GOGC", "runtime default"),
+                },
             },
         )
 
