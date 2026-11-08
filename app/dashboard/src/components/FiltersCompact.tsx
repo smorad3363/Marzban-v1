@@ -1,4 +1,5 @@
 import {
+  Box,
   Button,
   Flex,
   HStack,
@@ -79,6 +80,7 @@ const StatusButton: FC<{
       whiteSpace="nowrap"
       flexShrink={0}
       onClick={onClick}
+      aria-pressed={active}
       transition="border-color .14s ease, background-color .14s ease"
       _hover={{ borderColor: palette.border, color: palette.color }}
       _active={{ transform: "translateY(0)" }}
@@ -196,8 +198,8 @@ export const UserManagementControls: FC = () => {
         minW={0}
         align="center"
         gap={2}
-        flexWrap={{ base: "nowrap", lg: "wrap" }}
-        overflowX={{ base: "auto", lg: "visible" }}
+        flexWrap="wrap"
+        overflowX="visible"
         pb={{ base: 1, lg: 0 }}
         sx={{ scrollbarWidth: "thin" }}
       >
@@ -266,8 +268,8 @@ export const UserManagementControls: FC = () => {
         spacing={1.5}
         w="full"
         minW={0}
-        overflowX={{ base: "auto", xl: "visible" }}
-        flexWrap={{ base: "nowrap", xl: "wrap" }}
+        overflowX="visible"
+        flexWrap="wrap"
         pb={{ base: 1, xl: 0 }}
         sx={{ scrollbarWidth: "thin" }}
       >
@@ -347,6 +349,11 @@ export const FiltersCompact: FC = () => {
   const { i18n } = useTranslation();
   const [search, setSearch] = useState(filters.search || "");
   const [planCreateOpen, setPlanCreateOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const { userData } = useGetUser();
+  const isOwner = userData.is_sudo || userData.role === "OWNER";
+  const advancedCount = [filters.admin, filters.plan_id, filters.without_plan, filters.attention, filters.expires_within_days, filters.usage_percent_min, filters.has_device_limit, filters.unlimited_traffic, filters.trial, filters.inactive_hours, filters.sort !== "-created_at"].filter(Boolean).length;
+  useEffect(() => setSearch(filters.search || ""), [filters.search]);
 
   const account = useQuery<AccountSummary, Error>("account-summary", () => fetch("/account/summary"));
   const accountActive = account.data?.account_status === "ACTIVE";
@@ -361,8 +368,29 @@ export const FiltersCompact: FC = () => {
     onFilterChange({ status: value, offset: 0 });
 
   return (
-    <Stack dir={i18n.dir()} spacing={2.5} px={{ base: 3, md: 4 }} pt={2.5} pb={3} minW={0}>
+    <Stack dir={i18n.dir()} spacing={2.5} px={{ base: 3, md: 3 }} pt={3} pb={3} minW={0}>
       <Flex align="center" gap={2} wrap="wrap" w="full" minW={0}>
+        <InputGroup
+          flex="1 1 300px"
+          minW={{ base: "full", md: "260px" }}
+          maxW={{ base: "full", xl: "430px" }}
+          ms={{ base: 0, xl: "auto" }}
+        >
+          <InputLeftElement pointerEvents="none" h="38px" color="var(--panel-text-muted)"><SearchIcon /></InputLeftElement>
+          <Input
+            h="38px"
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              updateSearch(event.target.value.trim());
+            }}
+            aria-label="جستجوی کاربران"
+            placeholder="جستجو در نام کاربری یا توضیحات..."
+            fontSize="xs"
+            borderRadius="12px"
+            {...control}
+          />
+        </InputGroup>
         <HStack
           spacing={1.5}
           w={{ base: "full", md: "auto" }}
@@ -373,38 +401,9 @@ export const FiltersCompact: FC = () => {
           pb={{ base: 1, md: 0 }}
           sx={{ scrollbarWidth: "thin" }}
         >
-          {accountActive && account.data?.billing_mode !== "USER_CREDIT" && ["FREE_FORM", "FORM_ONLY", "BOTH"].includes(account.data?.user_creation_mode || "") && (
-            <Button
-              size="sm"
-              h="38px"
-              px={4}
-              flexShrink={0}
-              colorScheme="primary"
-              color="var(--panel-accent-contrast)"
-              leftIcon={<AddIcon />}
-              onClick={() => onCreateUser(true)}
-              borderRadius="12px"
-              fontSize="xs"
-            >
-              افزودن کاربر
-            </Button>
-          )}
-          {accountActive && (account.data?.billing_mode === "USER_CREDIT" || ["PLAN_ONLY", "BOTH"].includes(account.data?.user_creation_mode || "")) && (
-            <Button
-              size="sm"
-              h="38px"
-              px={4}
-              flexShrink={0}
-              colorScheme="primary"
-              color="var(--panel-accent-contrast)"
-              leftIcon={<AddIcon />}
-              onClick={() => setPlanCreateOpen(true)}
-              borderRadius="12px"
-              fontSize="xs"
-            >
-              ساخت از پلن
-            </Button>
-          )}
+          {accountActive && (isOwner || account.data?.billing_mode === "USER_CREDIT" || ["PLAN_ONLY", "BOTH"].includes(account.data?.user_creation_mode || "")) && <Button size="sm" h="38px" colorScheme="primary" leftIcon={<AddIcon />} onClick={() => setPlanCreateOpen(true)}>ساخت سریع از پلن</Button>}
+          {accountActive && account.data?.billing_mode !== "USER_CREDIT" && ["FREE_FORM", "FORM_ONLY", "BOTH"].includes(account.data?.user_creation_mode || "") && <Button size="sm" h="38px" variant="outline" leftIcon={<AddIcon />} onClick={() => onCreateUser(true)}>ساخت سفارشی</Button>}
+          <Button size="sm" h="38px" variant="outline" leftIcon={<FilterIcon />} aria-expanded={filtersOpen} aria-controls="user-advanced-filters" onClick={() => setFiltersOpen(v => !v)}>فیلترها{advancedCount ? ` (${advancedCount.toLocaleString("fa-IR")})` : ""}</Button>
           <IconButton
             aria-label="به‌روزرسانی کاربران"
             icon={loading ? <Spinner size="xs" /> : <ReloadIcon />}
@@ -425,8 +424,8 @@ export const FiltersCompact: FC = () => {
           spacing={1.5}
           w={{ base: "full", lg: "auto" }}
           minW={0}
-          overflowX={{ base: "auto", lg: "visible" }}
-          flexWrap={{ base: "nowrap", lg: "wrap" }}
+          overflowX="visible"
+          flexWrap="wrap"
           flex="0 1 auto"
           pb={{ base: 1, lg: 0 }}
           sx={{ scrollbarWidth: "thin" }}
@@ -439,28 +438,10 @@ export const FiltersCompact: FC = () => {
           <StatusButton active={filters.status === "on_hold"} label="در انتظار" tone="orange" onClick={() => setStatus("on_hold")} />
         </HStack>
 
-        <InputGroup
-          flex="1 1 300px"
-          minW={{ base: "full", md: "260px" }}
-          maxW={{ base: "full", xl: "430px" }}
-          ms={{ base: 0, xl: "auto" }}
-        >
-          <InputLeftElement pointerEvents="none" h="38px" color="var(--panel-text-muted)"><SearchIcon /></InputLeftElement>
-          <Input
-            h="38px"
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              updateSearch(event.target.value.trim());
-            }}
-            placeholder="جستجو در نام کاربری یا توضیحات..."
-            fontSize="xs"
-            borderRadius="12px"
-            {...control}
-          />
-        </InputGroup>
+
       </Flex>
 
+      <Box id="user-advanced-filters" hidden={!filtersOpen} pt={filtersOpen ? 2 : 0} borderTopWidth={filtersOpen ? "1px" : 0} borderColor="var(--panel-border)">{filtersOpen && <UserManagementControls />}</Box>
       <CreateUserFromPlan isOpen={planCreateOpen} onClose={() => setPlanCreateOpen(false)} />
     </Stack>
   );

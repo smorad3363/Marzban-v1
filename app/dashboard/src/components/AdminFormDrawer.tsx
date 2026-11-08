@@ -368,7 +368,7 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
 
                 <Box mt={4} pt={4} borderTopWidth="1px" borderColor="var(--panel-border)">
                   <Text fontSize="sm" fontWeight="700">نوع حساب</Text>
-                  {isEditing ? <Box><HStack mt={2}><Badge colorScheme="primary">{billingLabels[mode].title}</Badge><Text color="var(--panel-text-muted)" fontSize="xs">{billingLabels[mode].help}</Text></HStack>{mode === "USED_TRAFFIC" && <FormControl mt={3} isRequired maxW="360px"><FormLabel>قیمت خرید هر گیگ (تومان)</FormLabel><Input type="number" min={0} step={1000} dir="ltr" value={form.policy.used_traffic_price_per_gib_toman ?? ""} onChange={(e) => setPolicy("used_traffic_price_per_gib_toman", nullableNumber(e))} /></FormControl>}</Box> : (
+                  {isEditing ? <Box><HStack mt={2}><Badge colorScheme="primary">{billingLabels[mode].title}</Badge><Text color="var(--panel-text-muted)" fontSize="xs">{billingLabels[mode].help}</Text></HStack>{mode === "USED_TRAFFIC" && <FormControl mt={3} isRequired maxW="360px"><FormLabel>قیمت خرید هر گیگ (تومان)</FormLabel><Input type="number" min={0} step={1} dir="ltr" value={form.policy.used_traffic_price_per_gib_toman ?? ""} onChange={(e) => setPolicy("used_traffic_price_per_gib_toman", nullableNumber(e))} /></FormControl>}</Box> : (
                     <SimpleGrid mt={2} columns={{ base: 1, md: Math.min(Math.max(allowedModes.length, 1), 3) }} gap={2}>
                       {allowedModes.map((item) => (
                         <Button key={item} type="button" minH="68px" h="auto" py={2.5} px={3} whiteSpace="normal" textAlign="start" justifyContent="flex-start" variant={billingMode === item ? "solid" : "outline"} colorScheme={billingMode === item ? "green" : "gray"} onClick={() => selectBillingMode(item)}>
@@ -384,8 +384,8 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
                     </Alert>
                   )}
                   {!isEditing && billingMode && <SimpleGrid mt={3} columns={{ base: 1, md: 2 }} gap={3}>
-                    <FormControl><FormLabel>اعتبار اولیه (تومان)</FormLabel><Input type="number" min={0} step={1000} dir="ltr" value={form.initial_money_credit_toman} onChange={(e) => setField("initial_money_credit_toman", Math.max(0, Number(e.target.value || 0)))} /><FormHelperText>از کیف پول والد به این مدیر منتقل می‌شود.</FormHelperText></FormControl>
-                    {billingMode === "USED_TRAFFIC" && <FormControl isRequired><FormLabel>قیمت خرید هر گیگ (تومان)</FormLabel><Input type="number" min={0} step={1000} dir="ltr" value={form.policy.used_traffic_price_per_gib_toman ?? ""} onChange={(e) => setPolicy("used_traffic_price_per_gib_toman", nullableNumber(e))} /><FormHelperText>قیمت فروش به زیرمدیر نباید از این کمتر باشد.</FormHelperText></FormControl>}
+                    <FormControl><FormLabel>اعتبار اولیه (تومان)</FormLabel><Input type="number" min={0} step={1} dir="ltr" value={form.initial_money_credit_toman} onChange={(e) => setField("initial_money_credit_toman", Math.max(0, Number(e.target.value || 0)))} /><FormHelperText>از کیف پول والد به این مدیر منتقل می‌شود.</FormHelperText></FormControl>
+                    {billingMode === "USED_TRAFFIC" && <FormControl isRequired><FormLabel>قیمت خرید هر گیگ (تومان)</FormLabel><Input type="number" min={0} step={1} dir="ltr" value={form.policy.used_traffic_price_per_gib_toman ?? ""} onChange={(e) => setPolicy("used_traffic_price_per_gib_toman", nullableNumber(e))} /><FormHelperText>قیمت فروش به زیرمدیر نباید از این کمتر باشد.</FormHelperText></FormControl>}
                   </SimpleGrid>}
                 </Box>
 
@@ -433,7 +433,7 @@ export const AdminFormDrawer: FC<Props> = ({ isOpen, admin, onClose }) => {
               {isEditing && admin?.parent_admin_id !== null && mode !== "LEGACY_COMPAT" && (
                 <Section title="تغییر سریع اعتبار" description={`اعتبار فعلی: ${displayedBalance}`}>
                   <Stack direction={{ base: "column", md: "row" }} align={{ md: "end" }} spacing={2}>
-                    <FormControl maxW={{ md: "220px" }}><FormLabel>مقدار (تومان)</FormLabel><Input type="number" min={1} step={1000} dir="ltr" value={creditAmount} onChange={(e) => setCreditAmount(e.target.value)} /></FormControl>
+                    <FormControl maxW={{ md: "220px" }}><FormLabel>مقدار (تومان)</FormLabel><Input type="number" min={1} step={1} dir="ltr" value={creditAmount} onChange={(e) => setCreditAmount(e.target.value)} /></FormControl>
                     <FormControl flex="1"><FormLabel>یادداشت اختیاری</FormLabel><Input maxLength={512} value={creditReason} onChange={(e) => setCreditReason(e.target.value)} /></FormControl>
                     <Button type="button" colorScheme="primary" isDisabled={!creditAmountValid} isLoading={creditMutation.isLoading} onClick={() => adjustCredit("grant")}>افزایش</Button>
                     <Button type="button" variant="outline" colorScheme="orange" isDisabled={!creditAmountValid} isLoading={creditMutation.isLoading} onClick={() => adjustCredit("reclaim")}>کاهش</Button>

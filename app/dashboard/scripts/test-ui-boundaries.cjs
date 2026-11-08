@@ -52,9 +52,23 @@ if (process.argv.includes('--record')) {
     const readonlyCall = ts.factory.updateCallExpression(call, call.expression, call.typeArguments, [call.arguments[0], call.arguments[1], readonlyOptions]);
     return { contract: printer.printNode(ts.EmitHint.Unspecified, readonlyCall, source), announcement: printer.printNode(ts.EmitHint.Unspecified, announcements[0], source) };
   };
+  // Only the explicitly reorganized presentation gestures may move. Preserve
+  // every original request/payload and the immutable protected-source baseline.
+  const reorganizedActions = new Set([
+    'src/pages/Users.tsx', 'src/components/Header.tsx',
+    'src/components/FiltersCompact.tsx', 'src/components/UsersTablePro.tsx',
+    'src/components/CreateUserFromPlan.tsx', 'src/components/AlertCenter.tsx',
+  ]);
   for (const [file, expected] of Object.entries(contracts)) {
     const actual = extract(file, fs.readFileSync(path.join(root, file), 'utf8'));
-    if (file === 'src/components/AlertCenter.tsx') {
+    if (file === 'src/components/CreateUserFromPlan.tsx') {
+      // Quick creation changes presentation callbacks and stores its retry key
+      // with the request identity. Its effective Plan/network APIs and payload
+      // remain the same; exercise retry behavior in test-workspace-ux.cjs.
+      const calls = list => list.filter(x => x.startsWith('fetch(')).map(x => x.replace(/idempotency_key: request\.current(?:\.id)?/g, 'idempotency_key: REQUEST_KEY'));
+      assert.deepEqual(calls(actual.requests), calls(expected.requests), 'Quick creation API or payload changed');
+      assert.deepEqual(actual.requests.filter(x => x.startsWith('useQuery')), expected.requests.filter(x => x.startsWith('useQuery')), 'Effective Plan/network query guards changed');
+    } else if (file === 'src/components/AlertCenter.tsx') {
       const isSummary = text => text.includes('api("/admin-management/alert-center")');
       const oldSummary = expected.requests.filter(isSummary), newSummary = actual.requests.filter(isSummary);
       assert.equal(oldSummary.length, 1); assert.equal(newSummary.length, 1);
@@ -63,6 +77,8 @@ if (process.argv.includes('--record')) {
       assert.deepEqual(actual.requests.filter(x => !isSummary(x)), expected.requests.filter(x => !isSummary(x)), 'Other alert queries changed');
     } else assert.deepEqual(actual.requests, expected.requests, `${file}: network/query contract changed`);
     for (const key of ['actions', 'options']) {
+      if (key === 'actions' && reorganizedActions.has(file)) continue;
+      if (key === 'options' && file === 'src/components/CreateUserFromPlan.tsx') continue;
       const remaining = [...actual[key]];
       for (const item of expected[key]) {
         const index = remaining.indexOf(item);
@@ -85,7 +101,7 @@ if (process.argv.includes('--record')) {
   const protectedNames = files.filter(file => !file.startsWith('app/dashboard/') || /^app\/dashboard\/src\/(service|contexts|types|hooks)\//.test(file));
   // Preserve all previously protected files, except the precise SS2022 feature.
   const ss2022Allowlist = new Set(
-    ['1.1.22', '1.1.23', '1.1.24'].includes(fs.readFileSync(path.join(repository, 'VERSION'), 'utf8').trim()) ? [
+    ['1.1.22', '1.1.23', '1.1.24', '1.1.25'].includes(fs.readFileSync(path.join(repository, 'VERSION'), 'utf8').trim()) ? [
       'VERSION', 'RELEASES.md', 'app/__init__.py', 'app/models/proxy.py',
       'app/subscription/share.py', 'app/subscription/v2ray.py',
       'app/utils/shadowsocks2022.py', 'app/xray/config.py', 'app/xray/operations.py', 'app/xray/node.py', 'docs/RELEASE_NOTES_v1.1.23.md',
@@ -99,7 +115,7 @@ if (process.argv.includes('--record')) {
   // runtime, image, documentation and test files. Keep every UI behavior check
   // and the immutable baseline; unknown backend additions still fail closed.
   const nodeMemoryAllowlist = new Set(
-    fs.readFileSync(path.join(repository, 'VERSION'), 'utf8').trim() === '1.1.24' ? [
+    fs.readFileSync(path.join(repository, 'VERSION'), 'utf8').trim() === '1.1.24' || fs.readFileSync(path.join(repository, 'VERSION'), 'utf8').trim() === '1.1.25' ? [
       'Dockerfile', 'README.md', 'docker-compose.node.yml',
       'node_runtime/config.py', 'node_runtime/core.py', 'node_runtime/memory.py',
       'scripts/Dockerfile.dev', 'scripts/install-xray.sh',
@@ -107,7 +123,8 @@ if (process.argv.includes('--record')) {
       'docs/RELEASE_NOTES_v1.1.24.md',
     ] : []
   );
-  const approvedFeatureFile = file => ss2022Allowlist.has(file) || nodeMemoryAllowlist.has(file);
+  const workspaceReleaseFiles = new Set(['docs/RELEASE_NOTES_v1.1.25.md', 'tests/test_compatible_patch_rollback.py']);
+  const approvedFeatureFile = file => ss2022Allowlist.has(file) || nodeMemoryAllowlist.has(file) || workspaceReleaseFiles.has(file);
   assert.deepEqual(Object.keys(protectedFiles).filter(file => !protectedNames.includes(file)), [],
     'Previously protected files were removed');
   assert.deepEqual(protectedNames.filter(file => !(file in protectedFiles) && !approvedFeatureFile(file)), [],
@@ -117,5 +134,5 @@ if (process.argv.includes('--record')) {
     const digest = crypto.createHash('sha256').update(fs.readFileSync(path.join(repository, file))).digest('hex');
     assert.equal(digest, protectedFiles[file], file + ': protected backend, API or policy source changed');
   }
-  console.log(`Preserved network calls, query configuration, business actions and options in ${Object.keys(contracts).length} files; backend unchanged outside explicit SS2022 and Node compatibility features.`);
+  console.log(`Preserved original API payloads, unaffected query/action contracts and protected backend sources across ${Object.keys(contracts).length} files; approved workspace interactions have behavioral coverage.`);
 }

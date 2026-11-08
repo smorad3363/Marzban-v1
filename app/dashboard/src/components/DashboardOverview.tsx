@@ -154,7 +154,7 @@ const TopConsumers: FC<{ items: DashboardUserSummary[]; onOpen: (username: strin
   );
 };
 
-export const DashboardOverview: FC = () => {
+export const DashboardOverview: FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const { userData, getUserIsSuccess } = useGetUser();
   const navigate = useNavigate();
   const chartPalette = useChartPalette();
@@ -248,7 +248,7 @@ export const DashboardOverview: FC = () => {
 
   return (
     <Stack spacing={4} dir="rtl" aria-live="polite">
-      <PageHeader eyebrow={isOwner ? "مرکز مدیریت" : "فضای کاری شما"} title={isOwner ? "داشبورد مدیریتی" : "داشبورد کاربران"} description={isOwner ? "وضعیت کاربران، سلامت سرویس و فعالیت‌های مهم در یک نگاه." : "خلاصهٔ کاربران، اعتبار و فعالیت‌های روزانهٔ شما."} actions={
+      {!embedded && <PageHeader eyebrow={isOwner ? "مرکز مدیریت" : "فضای کاری شما"} title={isOwner ? "داشبورد مدیریتی" : "داشبورد کاربران"} description={isOwner ? "وضعیت کاربران، سلامت سرویس و فعالیت‌های مهم در یک نگاه." : "خلاصهٔ کاربران، اعتبار و فعالیت‌های روزانهٔ شما."} actions={
         <HStack flexWrap="wrap">
           {isOwner ? (
             <>
@@ -262,13 +262,13 @@ export const DashboardOverview: FC = () => {
             </>
           )}
         </HStack>
-      } />
+      } />}
 
       {!isOwner && accountData && accountData.account_status !== "ACTIVE" && (
         <Alert status="warning" borderRadius="12px"><AlertIcon />حساب شما در وضعیت {accountData.account_status === "SUSPENDED" ? "فریز" : "غیرفعال"} است؛ عملیات ساخت کاربر در دسترس نیست.</Alert>
       )}
 
-      <SimpleGrid columns={{ base: 2, xl: 5 }} gap={3}>
+      {!embedded && <SimpleGrid columns={{ base: 2, xl: 5 }} gap={3}>
         <MetricCard label={isOwner ? "کل کاربران" : "کاربران من"} value={fa(data.total_users)} hint={isOwner ? "کل کاربران قابل مشاهده" : "در محدوده مجاز حساب شما"} icon={<UsersMetricIcon />} />
         <MetricCard label="آنلاین الآن" value={fa(data.online_users)} hint={`فعالیت ثبت‌شده در ${fa(data.online_window_seconds)} ثانیه اخیر`} icon={<OnlineMetricIcon />} tone="blue" />
         <MetricCard label="فعال" value={fa(data.active_users)} hint="کاربران با وضعیت فعال" icon={<ActiveMetricIcon />} tone="green" />
@@ -278,7 +278,7 @@ export const DashboardOverview: FC = () => {
         ) : (
           <MetricCard label="اعتبار" value={accountData ? toman(accountData.money_balance_toman) : "—"} hint="مانده مالی قابل استفاده حساب" icon={<CreditMetricIcon />} tone="gold" />
         )}
-      </SimpleGrid>
+      </SimpleGrid>}
 
       <SimpleGrid columns={{ base: 1, xl: 12 }} gap={4} alignItems="stretch">
         <Box gridColumn={{ xl: "span 6" }}>

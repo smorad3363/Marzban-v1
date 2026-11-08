@@ -12,6 +12,7 @@ import {
   Stack,
   Text,
   useColorMode,
+  usePrefersReducedMotion,
 } from "@chakra-ui/react";
 import {
   ArrowLeftOnRectangleIcon,
@@ -84,6 +85,7 @@ export const Header: FC = () => {
   const { userData, getUserIsSuccess, getUserIsPending } = useGetUser();
   const { branding } = useBranding();
   const { colorMode, toggleColorMode } = useColorMode();
+  const reduceMotion = usePrefersReducedMotion();
   const queryClient = useQueryClient();
   const isOwner = !getUserIsPending && getUserIsSuccess && (userData.is_sudo || userData.role === "OWNER");
   const capabilities = useQuery<AdminCapabilities, Error>(
@@ -112,7 +114,7 @@ export const Header: FC = () => {
   useEffect(() => updateThemeColor(colorMode), [colorMode]);
   useEffect(() => { setMobileMenuOpen(false); }, [location.pathname]);
   const isDashboardPage = location.pathname === "/";
-  const isUsersPage = location.pathname.startsWith("/users");
+  const isUsersPage = location.pathname === "/" || location.pathname.startsWith("/users");
   const isAdminsPage = location.pathname.startsWith("/admins");
   const isAuditPage = location.pathname.startsWith("/audit-logs");
   const isDeviceLimitPage = location.pathname.startsWith("/device-limits");
@@ -133,8 +135,8 @@ export const Header: FC = () => {
       as="aside"
       className="operations-sidebar"
       data-color-mode={colorMode}
-      w={{ base: "full", lg: "248px" }}
-      minW={{ lg: "248px" }}
+      w={{ base: "full", lg: "216px" }}
+      minW={{ lg: "216px" }}
       minH={{ lg: "100dvh" }}
       h={{ lg: "100dvh" }}
       overflowY={{ lg: "auto" }}
@@ -178,21 +180,9 @@ export const Header: FC = () => {
         </HStack>
       </HStack>
 
-      <Text display={{ base: "none", lg: "block" }} mt={8} mb={3} px={3} fontSize="xs" fontWeight="500" color="var(--panel-text-muted)">فضای کاری</Text>
-      <Collapse in={mobileMenuOpen} animateOpacity style={{ overflow: "visible" }}>
+      <Text display={{ base: "none", lg: "block" }} mt={5} mb={2} px={3} fontSize="xs" fontWeight="500" color="var(--panel-text-muted)">فضای کاری</Text>
+      <Collapse in={mobileMenuOpen} animateOpacity={!reduceMotion} transition={{ enter: { duration: reduceMotion ? 0 : 0.18 }, exit: { duration: reduceMotion ? 0 : 0.12 } }} style={{ overflow: "visible" }}>
       <SimpleGrid as="nav" aria-label="ناوبری اصلی" display={{ base: "grid", lg: "none" }} columns={{ base: 2, sm: 4 }} spacing={2} mt={4}>
-        <Button
-          as={Link}
-          to="/"
-          size="md"
-          variant={isDashboardPage ? "solid" : "ghost"}
-          colorScheme={isDashboardPage ? "primary" : "gray"}
-          color={isDashboardPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"}
-          _hover={isDashboardPage ? undefined : { bg: "var(--panel-row-hover)", color: "var(--panel-text)" }}
-          leftIcon={<DashboardNavIcon />}
-          justifyContent="flex-start"
-          aria-current={isDashboardPage ? "page" : undefined}
-        >داشبورد</Button>
         <Button
           as={Link}
           to="/users/"
@@ -218,7 +208,7 @@ export const Header: FC = () => {
           justifyContent="flex-start"
           aria-current={isPlansPage ? "page" : undefined}
         >پلن‌ها</Button>
-        {(
+        {canManage && (
           <Button
             as={Link}
             to="/admins/"
@@ -230,7 +220,7 @@ export const Header: FC = () => {
             leftIcon={<AdminsNavIcon />}
             justifyContent="flex-start"
             aria-current={isAdminsPage ? "page" : undefined}
-          >{canManage ? t("admins.nav") : "درخواست‌ها و هشدارها"}</Button>
+          >{t("admins.nav")}</Button>
         )}
         {isOwner && (
           <Button
@@ -259,18 +249,17 @@ export const Header: FC = () => {
             leftIcon={<AuditNavIcon />}
             justifyContent="flex-start"
             aria-current={isAuditPage ? "page" : undefined}
-          >{t("audit.nav")}</Button>
+          >گزارش‌ها</Button>
         )}
       </SimpleGrid>
       </Collapse>
 
-      <SimpleGrid as="nav" aria-label="ناوبری اصلی دسکتاپ" display={{ base: "none", lg: "grid" }} columns={1} spacing={2}>
-        <Button as={Link} to="/" size="md" variant={isDashboardPage ? "solid" : "ghost"} colorScheme={isDashboardPage ? "primary" : "gray"} color={isDashboardPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<DashboardNavIcon />} justifyContent="flex-start" aria-current={isDashboardPage ? "page" : undefined}>داشبورد</Button>
+      <SimpleGrid as="nav" aria-label="ناوبری اصلی دسکتاپ" display={{ base: "none", lg: "grid" }} columns={1} spacing={1}>
         <Button as={Link} to="/users/" size="md" variant={isUsersPage ? "solid" : "ghost"} colorScheme={isUsersPage ? "primary" : "gray"} color={isUsersPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<UsersNavIcon />} justifyContent="flex-start" aria-current={isUsersPage ? "page" : undefined}>{t("users")}</Button>
         <Button hidden={!canAccessPlans} as={Link} to="/plans/" size="md" variant={isPlansPage ? "solid" : "ghost"} colorScheme={isPlansPage ? "primary" : "gray"} color={isPlansPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<PlansNavIcon />} justifyContent="flex-start" aria-current={isPlansPage ? "page" : undefined}>پلن‌ها</Button>
-        {<Button as={Link} to="/admins/" size="md" variant={isAdminsPage ? "solid" : "ghost"} colorScheme={isAdminsPage ? "primary" : "gray"} color={isAdminsPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<AdminsNavIcon />} justifyContent="flex-start" aria-current={isAdminsPage ? "page" : undefined}>{canManage ? t("admins.nav") : "درخواست‌ها و هشدارها"}</Button>}
+        {canManage && <Button as={Link} to="/admins/" size="md" variant={isAdminsPage ? "solid" : "ghost"} colorScheme={isAdminsPage ? "primary" : "gray"} color={isAdminsPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<AdminsNavIcon />} justifyContent="flex-start" aria-current={isAdminsPage ? "page" : undefined}>{t("admins.nav")}</Button>}
         {isOwner && <Button as={Link} to="/device-limits/" size="md" variant={isDeviceLimitPage ? "solid" : "ghost"} colorScheme={isDeviceLimitPage ? "primary" : "gray"} color={isDeviceLimitPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<DeviceLimitNavIcon />} justifyContent="flex-start" aria-current={isDeviceLimitPage ? "page" : undefined}>{t("deviceLimit.nav")}</Button>}
-        <Button as={Link} to="/audit-logs/" size="md" variant={isAuditPage ? "solid" : "ghost"} colorScheme={isAuditPage ? "primary" : "gray"} color={isAuditPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<AuditNavIcon />} justifyContent="flex-start" aria-current={isAuditPage ? "page" : undefined}>{t("audit.nav")}</Button>
+        <Button as={Link} to="/audit-logs/" size="md" variant={isAuditPage ? "solid" : "ghost"} colorScheme={isAuditPage ? "primary" : "gray"} color={isAuditPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<AuditNavIcon />} justifyContent="flex-start" aria-current={isAuditPage ? "page" : undefined}>گزارش‌ها</Button>
         {isOwner && <Button as={Link} to="/settings/" size="md" variant={isSettingsPage ? "solid" : "ghost"} colorScheme={isSettingsPage ? "primary" : "gray"} color={isSettingsPage ? "var(--panel-accent-contrast)" : "var(--panel-text-body)"} leftIcon={<CoreSettingsIcon />} justifyContent="flex-start" aria-current={isSettingsPage ? "page" : undefined}>پیکربندی</Button>}
       </SimpleGrid>
 

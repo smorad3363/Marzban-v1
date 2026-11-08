@@ -4,11 +4,11 @@ import { FC, ReactNode } from "react";
 /** Shared presentation primitives. They deliberately know nothing about accounts or APIs. */
 export const PageHeader: FC<{ title: ReactNode; description?: ReactNode; eyebrow?: ReactNode; icon?: ReactNode; actions?: ReactNode; children?: ReactNode }> = ({ title, description, eyebrow, icon, actions, children }) => (
   <Box as="header" className="console-page-header">
-    <Flex gap={5} justify="space-between" align={{ base: "start", md: "center" }} direction={{ base: "column", md: "row" }}>
+    <Flex gap={3} justify="space-between" align={{ base: "start", md: "center" }} direction={{ base: "column", md: "row" }}>
       <Box minW={0} flex="1">
-        {eyebrow && <HStack color="var(--panel-accent)" spacing={2} mb={2} fontSize="xs" fontWeight="600">{icon}{eyebrow}</HStack>}
-        <Text as="h1" fontSize={{ base: "26px", md: "32px" }} fontWeight="700" lineHeight="1.5" letterSpacing="-.025em">{title}</Text>
-        {description && <Text mt={1.5} color="var(--panel-text-muted)" fontSize="sm" maxW="72ch" lineHeight="1.9">{description}</Text>}
+        {eyebrow && <HStack color="var(--panel-accent)" spacing={2} mb={1} fontSize="xs" fontWeight="600">{icon}{eyebrow}</HStack>}
+        <Text as="h1" fontSize={{ base: "21px", md: "25px" }} fontWeight="700" lineHeight="1.5" letterSpacing="-.025em">{title}</Text>
+        {description && <Text mt={1} color="var(--panel-text-muted)" fontSize="sm" maxW="72ch" lineHeight="1.9">{description}</Text>}
       </Box>
       {actions && <Flex className="console-page-actions" flexShrink={0} gap={2} align="center" flexWrap="wrap">{actions}</Flex>}
     </Flex>
@@ -21,20 +21,20 @@ export const Surface: FC<BoxProps> = ({ children, ...props }) => (
 );
 
 export const SectionHeader: FC<{ title: ReactNode; description?: ReactNode; action?: ReactNode }> = ({ title, description, action }) => (
-  <Flex justify="space-between" align="start" gap={3} mb={5} flexWrap="wrap">
+  <Flex justify="space-between" align="start" gap={3} mb={3} flexWrap="wrap">
     <Box minW={0} flex="1"><Text as="h2" fontSize="md" fontWeight="700">{title}</Text>{description && <Text mt={1} fontSize="xs" color="var(--panel-text-muted)" lineHeight="1.8">{description}</Text>}</Box>
     {action}
   </Flex>
 );
 
 export const Metric: FC<{ label: ReactNode; value: ReactNode; hint?: ReactNode; icon?: ReactNode; tone?: string }> = ({ label, value, hint, icon, tone = "var(--panel-accent)" }) => (
-  <Surface p={{ base: 4, md: 5 }} className="console-metric" h="full">
+  <Surface p={{ base: 3, md: 4 }} className="console-metric" h="full">
     <HStack justify="space-between" align="start" gap={3}>
       <Text fontSize="xs" fontWeight="500" color="var(--panel-text-muted)" lineHeight="1.8">{label}</Text>
       {icon && <Box color={tone} className="console-metric-icon" flexShrink={0}>{icon}</Box>}
     </HStack>
-    <Text dir="auto" mt={3} fontSize={{ base: typeof value === "string" && value.length > 12 ? "16px" : "21px", md: "24px", xl: "29px" }} lineHeight="1.5" fontWeight="700" sx={{ fontVariantNumeric: "tabular-nums" }} overflowWrap="anywhere">{value}</Text>
-    {hint && <Text mt={2} fontSize="xs" color="var(--panel-text-muted)" lineHeight="1.8">{hint}</Text>}
+    <Text dir="auto" mt={1.5} fontSize={{ base: typeof value === "string" && value.length > 12 ? "16px" : "21px", md: "22px", xl: "25px" }} lineHeight="1.5" fontWeight="700" sx={{ fontVariantNumeric: "tabular-nums" }} overflowWrap="anywhere">{value}</Text>
+    {hint && <Text mt={1} fontSize="xs" color="var(--panel-text-muted)" lineHeight="1.8">{hint}</Text>}
   </Surface>
 );
 

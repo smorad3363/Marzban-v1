@@ -22,7 +22,7 @@ const createUserFromPlan = read("src/components/CreateUserFromPlan.tsx");
 const adminsPage = read("src/pages/admins/AdminsPage.tsx");
 const nodesWorkspace = read("src/components/NodesManagementWorkspace.tsx");
 
-// Dashboard and Users must remain distinct surfaces.
+// The owner-approved workspace combines landing statistics and user operations.
 assert.ok(router.includes('path: "/users/"'), "Users must have a dedicated route");
 assert.ok(header.includes('to="/users/"'), "Navigation must expose the dedicated Users route");
 assert.ok(dashboard.includes("DashboardOverview"), "Dashboard wrapper must render the role-based overview");
@@ -31,7 +31,9 @@ assert.ok(dashboardOverview.includes("اعتبار"), "Admin dashboard must expo
 assert.ok(dashboardOverview.includes("داشبورد مدیریتی"), "Owner dashboard must expose its dedicated management heading");
 assert.ok(dashboardOverview.includes("داشبورد کاربران"), "Admin dashboard must expose its dedicated scoped heading");
 assert.ok(!dashboardOverview.includes("UserManagementControls"), "Dashboard must not embed user management controls");
-assert.ok(usersPage.includes("UserManagementControls"), "Users page must own user management controls");
+assert.ok(usersPage.includes("FiltersCompact"), "Users workspace must expose management controls");
+assert.ok(router.includes('path: "/", element: <Users />'), "Users workspace must be the landing page");
+assert.ok(usersPage.includes("WorkspaceSummary") && usersPage.includes("<Analytics embedded"), "Summary and full analytics must remain available");
 assert.ok(usersPage.includes("UsersTablePro"), "Users page must own the users table");
 for (const hiddenCommercialLabel of ["بر اساس حجم مصرفی", "بر اساس حجم ساخته‌شده", "طبق پلن · سقف اکانت"]) {
   assert.ok(!dashboardOverview.includes(hiddenCommercialLabel), `Admin self dashboard must hide commercial mode label: ${hiddenCommercialLabel}`);
@@ -155,3 +157,5 @@ require("node:child_process").execFileSync(process.execPath, [path.join(__dirnam
 
 // Critical notification receipts, Drawer flows and unchanged alert transport.
 require("node:child_process").execFileSync(process.execPath, [path.join(__dirname, "test-alert-center.cjs")], { stdio: "inherit" });
+
+require("node:child_process").execFileSync(process.execPath, [path.join(__dirname, "test-workspace-ux.cjs")], { stdio: "inherit" });

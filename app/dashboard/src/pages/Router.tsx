@@ -57,7 +57,8 @@ const RouteError = () => {
 
 export const router = createHashRouter([
   { path: "/access-groups", element: <Navigate to="/plans/" replace /> },
-  { path: "/", element: <Dashboard />, errorElement: <RouteError />, loader: fetchAdminLoader },
+  { path: "/", element: <Users />, errorElement: <RouteError />, loader: fetchAdminLoader },
+  { path: "/overview/", element: <Dashboard />, errorElement: <RouteError />, loader: fetchAdminLoader },
   { path: "/users/", element: <Users />, errorElement: <RouteError />, loader: fetchAdminLoader },
   { path: "/login/", element: <Login /> },
   { path: "/admins/", element: <Admins />, errorElement: <RouteError />, loader: fetchAdminLoader },

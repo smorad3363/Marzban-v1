@@ -13,7 +13,7 @@ const { QueryClient, QueryClientProvider, setLogger } = require("react-query");
 const componentPath = path.resolve(__dirname, "../src/components/AdminFormDrawer.tsx");
 const requests = [];
 const toasts = [];
-const capabilities = { hierarchy_enabled: true, allowed_child_billing_modes: ["ALLOCATED_TRAFFIC"] };
+const capabilities = { hierarchy_enabled: true, allowed_child_billing_modes: ["ALLOCATED_TRAFFIC", "USED_TRAFFIC"] };
 const account = { role: "OWNER", user_creation_mode: "BOTH" };
 const inbounds = new Map();
 const translations = { "admins.create": "Create Admin", save: "Save changes", cancel: "Cancel" };
@@ -78,14 +78,28 @@ setLogger({ log() {}, warn() {}, error() {} });
   await act(async () => {
     change((node) => node.props.maxLength === 34, "diagnostic_admin");
     change((node) => node.props.type === "password", "diagnostic-only");
-    click("بر اساس حجم ساخته‌شده");
+    click("بر اساس حجم مصرفی");
     click("فقط فرم دلخواه");
+  });
+  await act(async () => {
+    for (const label of ["اعتبار اولیه (تومان)", "قیمت خرید هر گیگ (تومان)"]) {
+      const fieldLabel = renderer.root.findAllByType("div").find(node => node.children.some(child => child === label));
+      assert.ok(fieldLabel, label);
+      let control = fieldLabel.parent;
+      while (control && control.findAllByType("input").length !== 1) control = control.parent;
+      assert.ok(control, "Missing numeric control for " + label);
+      const field = control.findByType("input");
+      assert.equal(field.props.step, 1, "every whole Toman amount must pass native step validation");
+      field.props.onChange({ target: { value: "2333" } });
+    }
   });
   assert.equal(text(submitButton()), "Create Admin");
   await act(async () => { submit(); submit(); await flush(); });
   assert.equal(requests.length, 1);
   assert.equal(requests[0].url, "/admin-management");
   assert.equal(requests[0].options.body.username, "diagnostic_admin");
+  assert.equal(requests[0].options.body.initial_money_credit_toman, 2333);
+  assert.equal(requests[0].options.body.policy.used_traffic_price_per_gib_toman, 2333);
   assert.match(text(submitButton()), /در حال ساخت/);
   assert.equal(submitButton().props.disabled, true);
   assert.equal(closes, 0);

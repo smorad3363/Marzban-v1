@@ -4,6 +4,7 @@ import { FC, PropsWithChildren, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { CoreSettingsModal } from "./CoreSettingsModal";
 import { Footer } from "./Footer";
+import { WorkspaceStatus } from "./WorkspaceSummary";
 import { AlertCenter } from "./AlertCenter";
 import { Header } from "./Header";
 import { HostsDialog } from "./HostsDialog";
@@ -29,7 +30,7 @@ export const AppShell: FC<PropsWithChildren> = ({ children }) => {
   const { userData, getUserIsPending } = useGetUser();
   const isOwner = !getUserIsPending && (userData.is_sudo || userData.role === "OWNER");
   const { pathname } = useLocation();
-  const workspace = pathname.startsWith("/users") ? "کاربران" : pathname.startsWith("/admins") ? "ادمین‌ها و حسابداری" : pathname.startsWith("/plans") ? "پلن‌ها و دسترسی" : pathname.startsWith("/settings") ? "پیکربندی" : pathname.startsWith("/audit-logs") ? "تاریخچه فعالیت‌ها" : pathname.startsWith("/device-limits") ? "محدودیت دستگاه" : "نمای کلی";
+  const workspace = (pathname === "/" || pathname.startsWith("/users")) ? "کاربران" : pathname.startsWith("/admins") ? "ادمین‌ها و حسابداری" : pathname.startsWith("/plans") ? "پلن‌ها و دسترسی" : pathname.startsWith("/settings") ? "پیکربندی" : pathname.startsWith("/audit-logs") ? "گزارش‌ها" : pathname.startsWith("/device-limits") ? "محدودیت دستگاه" : "نمای کلی";
   useEffect(() => { window.scrollTo({ top: 0, behavior: "auto" }); }, [pathname]);
 
   useEffect(() => {
@@ -59,14 +60,14 @@ export const AppShell: FC<PropsWithChildren> = ({ children }) => {
           direction="column"
           id="main-content"
           tabIndex={-1}
-          px={{ base: 4, md: 7, xl: 9 }}
+          px={{ base: 3, md: 5, xl: 6 }}
           pt={{ base: 0, lg: 1 }}
           pb="max(24px, env(safe-area-inset-bottom))"
         >
           <Box w="full" maxW="1680px" mx="auto" minW={0} flex="1">
             <HStack className="console-workspace-bar" position="sticky" top={0} zIndex={20} bg="var(--panel-bg)" justify="space-between" flexWrap="wrap">
               <HStack spacing={2} fontSize="xs" color="var(--panel-text-muted)"><Text display={{ base: "none", sm: "block" }}>فضای مدیریت</Text><Text aria-hidden="true" display={{ base: "none", sm: "block" }} opacity={.5}>/</Text><Text color="var(--panel-text-body)" fontWeight="500">{workspace}</Text></HStack>
-              <HStack spacing={2} minW={0} maxW="70%">{trigger}<Text dir="ltr" noOfLines={1} fontSize="xs" color="var(--panel-text-muted)">{userData.username}</Text><Badge bg="var(--panel-accent-soft)" color="var(--panel-accent)" fontSize="xs" flexShrink={0}>{isOwner ? "مالک" : "ادمین"}</Badge></HStack>
+              <HStack spacing={2} minW={0} maxW={{ base: "full", sm: "75%" }}><WorkspaceStatus />{trigger}<Text dir="ltr" noOfLines={1} fontSize="xs" color="var(--panel-text-muted)">{userData.username}</Text><Badge bg="var(--panel-accent-soft)" color="var(--panel-accent)" fontSize="xs" flexShrink={0}>{isOwner ? "مالک" : "ادمین"}</Badge></HStack>
             </HStack>
             {summary}
             {children}

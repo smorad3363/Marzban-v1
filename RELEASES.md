@@ -1,3 +1,9 @@
+# v1.1.25
+
+Release target: v1.1.25
+
+Compact user workspace, direct operations, actionable alerts, report tabs and unrestricted whole-Toman inputs. Official update supports a qualified same-schema rollback to v1.1.24. [Notes](docs/RELEASE_NOTES_v1.1.25.md).
+
 # v1.1.24
 
 Release target: v1.1.24

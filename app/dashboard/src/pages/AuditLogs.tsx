@@ -1,3 +1,6 @@
+import { Tabs, TabList, Tab, TabPanels, TabPanel } from "@chakra-ui/react";
+import { RequestsAlerts } from "./admins/RequestsAlerts";
+import { useSearchParams } from "react-router-dom";
 import { PageHeader } from "design-system/Console";
 import {
   Alert,
@@ -180,13 +183,14 @@ const AuditDetails: FC<{ log: AuditLog | null; isOpen: boolean; onClose: () => v
   );
 };
 
-export const AuditLogs: FC = () => {
+const AuditActivity: FC = () => {
+  const [params] = useSearchParams();
   const { t } = useTranslation();
   const { userData, getUserIsPending } = useGetUser();
   const details = useDisclosure();
   const [selected, setSelected] = useState<AuditLog | null>(null);
   const [page, setPage] = useState(0);
-  const [searchInput, setSearchInput] = useState("");
+  const [searchInput, setSearchInput] = useState(params.get("search") || "");
   const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
   const [filters, setFilters] = useState({ search: "", admin: "", action: "", target: "", from: "", to: "", sort: "newest" });
 
@@ -220,12 +224,8 @@ export const AuditLogs: FC = () => {
   const advancedFilterCount = [filters.admin, filters.action, filters.target, filters.from, filters.to, filters.sort !== "newest" ? filters.sort : ""].filter(Boolean).length;
 
   return (
-    <AppShell>
-      <PageHeader eyebrow={t("audit.eyebrow")} icon={<AuditIcon />} title={t("audit.title")} description={t("audit.subtitle")} actions={
-        <HStack bg="rgba(34,197,94,.08)" color="var(--panel-success)" borderWidth="1px" borderColor="rgba(74,222,128,.25)" borderRadius="full" px={3} py={2} fontSize="xs">
-          <ShieldCheckIcon width={16} aria-hidden="true" /><Text>{t("audit.appendOnly")}</Text>
-        </HStack>
-      } />
+    <>
+
 
       <Card bg="var(--panel-surface)" color="var(--panel-text)" borderWidth="1px" borderColor="var(--panel-border)" borderRadius={{ base: "16px", md: "20px" }} boxShadow="panel" overflow="hidden">
         <Box p={{ base: 4, md: 5 }} borderBottomWidth="1px" borderColor="var(--panel-border)">
@@ -288,8 +288,18 @@ export const AuditLogs: FC = () => {
         </HStack>
       </Card>
       <AuditDetails log={selected} isOpen={details.isOpen} onClose={details.onClose} />
-    </AppShell>
+    </>
   );
 };
 
+export const AuditLogs: FC = () => {
+  const [params, setParams] = useSearchParams();
+  const tab = params.get("tab") === "requests" ? "requests" : params.get("tab") === "alerts" ? "alerts" : "activity";
+  return <AppShell><PageHeader title="گزارش‌ها" />
+    <Tabs index={tab === "activity" ? 0 : tab === "requests" ? 1 : 2} onChange={index => setParams(index === 0 ? {} : { tab: index === 1 ? "requests" : "alerts" })} colorScheme="primary" variant="soft-rounded" isLazy lazyBehavior="unmount">
+      <TabList aria-label="بخش گزارش‌ها" mb={3} gap={2} flexWrap="wrap"><Tab>فعالیت‌ها</Tab><Tab>درخواست‌ها</Tab><Tab>هشدارها</Tab></TabList>
+      <TabPanels><TabPanel p={0}><AuditActivity key={params.get("search") || ""} /></TabPanel><TabPanel p={0}><RequestsAlerts showTitle={false} view="requests" /></TabPanel><TabPanel p={0}><RequestsAlerts showTitle={false} view="alerts" /></TabPanel></TabPanels>
+    </Tabs>
+  </AppShell>;
+};
 export default AuditLogs;
