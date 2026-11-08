@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useQuery } from "react-query";
 import { useNavigate } from "react-router-dom";
 import { fetch } from "service/http";
+import { AccountSummary } from "types/Admin";
 import { DashboardOverview } from "types/Dashboard";
 import { formatBytes } from "utils/formatByte";
 
@@ -17,6 +18,9 @@ function useOverview(enabled = true) {
 }
 
 export function WorkspaceSummary() {
+  const { userData, getUserIsSuccess } = useGetUser();
+  const isOwner = userData.is_sudo || userData.role === "OWNER";
+  const account = useQuery<AccountSummary, Error>("account-summary", () => fetch("/account/summary"), { enabled: getUserIsSuccess && !isOwner, staleTime: 15000, refetchInterval: 60000, refetchIntervalInBackground: false });
   const query = useOverview();
   const { filters, onFilterChange } = useDashboard();
   const data = query.data;
@@ -25,7 +29,7 @@ export function WorkspaceSummary() {
     { label: "آنلاین الآن", value: fa(data?.online_users), hint: `فعالیت در ${fa(data?.online_window_seconds)} ثانیهٔ اخیر` },
     { label: "فعال", value: fa(data?.active_users), active: filters.status === "active", onClick: () => onFilterChange({ status: "active", attention: undefined, offset: 0 }) },
     { label: "نیازمند توجه", value: fa(data?.attention_count), active: filters.attention, onClick: () => onFilterChange({ attention: filters.attention ? undefined : true, status: undefined, offset: 0 }) },
-    { label: "مصرف امروز", value: data ? String(formatBytes(data.today_traffic)) : "—" },
+    { label: isOwner ? "مصرف امروز" : "مانده اعتبار", value: isOwner ? data ? String(formatBytes(data.today_traffic)) : "—" : account.data ? `${fa(account.data.money_balance_toman)} تومان` : "—" },
   ];
   return <Box as="section" aria-label="خلاصه کاربران" className="workspace-summary">
     <SimpleGrid columns={{ base: 2, sm: 3, lg: 5 }} gap={0}>
@@ -34,7 +38,8 @@ export function WorkspaceSummary() {
         <Skeleton isLoaded={!query.isLoading} mt={1} minH="28px"><Text dir="auto" fontSize="xl" fontWeight="700" sx={{ fontVariantNumeric: "tabular-nums" }}>{item.value}</Text></Skeleton>
       </Box></Tooltip>)}
     </SimpleGrid>
-    {query.isError && <HStack p={2} justify="space-between"><Text fontSize="xs" color="var(--panel-danger)">آمار تازه نشد؛ مقادیر قبلی ممکن است قدیمی باشند.</Text><Button size="xs" onClick={() => query.refetch()}>تلاش مجدد</Button></HStack>}
+    {!isOwner && account.data && account.data.account_status !== "ACTIVE" && <Alert status="warning" fontSize="sm"><AlertIcon />حساب شما {account.data.account_status === "SUSPENDED" ? "فریز" : "غیرفعال"} است؛ عملیات حساب محدود شده است.</Alert>}
+    {(query.isError || (!isOwner && account.isError)) && <HStack p={2} justify="space-between"><Text fontSize="xs" color="var(--panel-danger)">آمار تازه نشد؛ مقادیر قبلی ممکن است قدیمی باشند.</Text><Button size="xs" onClick={() => { query.refetch(); if (!isOwner) account.refetch(); }}>تلاش مجدد</Button></HStack>}
   </Box>;
 }
 

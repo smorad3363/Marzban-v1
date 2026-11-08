@@ -16,13 +16,15 @@ const api = (url, options) => {
   if (options?.method) { requests.push({ url, options }); return failure ? Promise.reject(new Error('Synthetic failure')) : Promise.resolve({ ok: true }); }
   if (url === '/available-user-plans') return Promise.resolve([plan]);
   if (url === '/access-groups') return Promise.resolve([{ id: 4, name: 'Allowed network' }]);
+  if (url === '/account/summary') return Promise.resolve({ money_balance_toman:2333, account_status:'SUSPENDED' });
+  if (url.startsWith('/dashboard/overview?')) return Promise.resolve({ total_users:5, online_users:2, active_users:3, attention_count:1, online_window_seconds:60, today_traffic:100 });
   if (url === '/admin/capabilities') return Promise.resolve({ can_manage_admins: true });
   if (url.startsWith('/admin-management?')) return Promise.resolve({ admins: [admin] });
   throw Error('Unexpected query ' + url);
 };
 const text = node => typeof node === 'string' ? node : Array.isArray(node) ? node.map(text).join('') : (node?.children || []).map(text).join('');
 const chakra = { useToast: () => toast => { toasts.push(toast); } };
-for (const name of ['Alert','AlertIcon','Box','Button','FormControl','FormHelperText','FormLabel','HStack','Input','Modal','ModalBody','ModalCloseButton','ModalContent','ModalFooter','ModalHeader','ModalOverlay','Select','Stack','Text','Popover','PopoverBody','PopoverCloseButton','PopoverContent','PopoverHeader','PopoverTrigger']) {
+for (const name of ['Alert','AlertIcon','Box','Button','FormControl','FormHelperText','FormLabel','HStack','Input','Modal','ModalBody','ModalCloseButton','ModalContent','ModalFooter','ModalHeader','ModalOverlay','Select','Stack','Text','Popover','PopoverBody','PopoverCloseButton','PopoverContent','PopoverHeader','PopoverTrigger','SimpleGrid','Skeleton','Tooltip']) {
  chakra[name] = React.forwardRef(({ children, ...props }, ref) => {
    if (name === 'Popover') return React.createElement('div', null, React.cloneElement(children[0], { onOpen:props.onOpen }), props.isOpen ? children[1] : null);
    if (name === 'PopoverTrigger') return React.cloneElement(children, { onClick:props.onOpen });
@@ -44,7 +46,7 @@ Module._load = function(name, parent, ...rest) {
    if (name === '@chakra-ui/react') return chakra;
    if (name === 'service/http') return { fetch:api };
    if (name === 'hooks/useGetUser') return { default:() => ({ userData:actor,getUserIsSuccess:true }) };
-   if (name === 'contexts/DashboardContext') return { useDashboard:{ getState:() => ({ refetchUsers() {} }) } };
+   if (name === 'contexts/DashboardContext') { const useDashboard=()=>({ filters:{},onFilterChange(){} });useDashboard.getState=()=>({refetchUsers(){}});return {useDashboard}; }
    if (name === 'utils/apiError') return { localizedApiError:error => error.message };
    if (name === 'utils/formatByte') return { formatBytes:value => `${value} B` };
    if (name === 'utils/react-query') return { get queryClient() { return client; } };
@@ -55,6 +57,7 @@ Module._load = function(name, parent, ...rest) {
 };
 const { CreateUserFromPlan } = load(path.join(root,'components/CreateUserFromPlan.tsx'));
 const { AdminTrialQuota } = load(path.join(root,'components/AdminTrialQuota.tsx'));
+const { WorkspaceSummary } = load(path.join(root,'components/WorkspaceSummary.tsx'));
 const { AlertAccountActions } = load(path.join(root,'components/AlertAccountActions.tsx'));
 Module._load = original;
 global.window = { confirm:() => true };
@@ -89,5 +92,9 @@ async function click(r,label){const b=r.root.findAllByType('button').find(n=>tex
  await click(r,'افزایش');assert.equal(requests.at(-1).options.body.amount_toman,2333);
  await click(r,'ویرایش محدودیت‌ها');assert.equal(r.root.findAllByType('editing-admin').length,1,'edit must open in the same alert');
  await act(async()=>r.unmount());client.clear();
+ actor.is_sudo=false;actor.role='ADMIN';
+ r=await mount(WorkspaceSummary,{});
+ assert.match(text(r.toJSON()),/مانده اعتبار/);assert.match(text(r.toJSON()),/۲٬۳۳۳ تومان/);assert.match(text(r.toJSON()),/فریز/);
+ await act(async()=>r.unmount());client.clear();actor.is_sudo=true;actor.role='OWNER';
  console.log('Workspace UX: generated username, explicit network, failed creation/retry, idempotency, trial grant/reclaim limits, 2333-Toman alert credit and inline edit passed');
 })().catch(error=>{console.error(error);process.exitCode=1;});
