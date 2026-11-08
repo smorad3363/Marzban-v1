@@ -1,3 +1,9 @@
+# v1.1.26
+
+Release target: v1.1.26
+
+Replace the wide user table with the approved responsive card layout: two users per desktop row and one per mobile row, clear boundaries and direct actions. Official compatible return to v1.1.25 is supported. [Notes](docs/RELEASE_NOTES_v1.1.26.md).
+
 # v1.1.25
 
 Release target: v1.1.25

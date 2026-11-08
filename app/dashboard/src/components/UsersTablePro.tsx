@@ -6,11 +6,6 @@ import {
   Checkbox,
   HStack,
   IconButton,
-  Menu,
-  MenuButton,
-  MenuDivider,
-  MenuItem,
-  MenuList,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -21,15 +16,8 @@ import {
   Progress,
   Select,
   Stack,
-  Table,
-  TableContainer,
-  Tbody,
-  Td,
   Text,
-  Th,
-  Thead,
   Tooltip,
-  Tr,
   chakra,
   useDisclosure,
   useToast,
@@ -134,7 +122,7 @@ const relativeExpiry = (value: number | null) => {
   if (!value) return "نامحدود";
   const seconds = value - Math.floor(Date.now() / 1000);
   const days = Math.ceil(Math.abs(seconds) / 86400);
-  if (seconds <= 0) return days <= 1 ? "منقضی" : `${days.toLocaleString("fa-IR")} روز از انقضا گذشته`;
+  if (seconds <= 0) return days <= 1 ? "منقضی" : `${days.toLocaleString("fa-IR")} روز گذشته`;
   if (days <= 1) return "کمتر از یک روز";
   return `${days.toLocaleString("fa-IR")} روز مانده`;
 };
@@ -162,46 +150,30 @@ const UsageCell: FC<{ user: User }> = ({ user }) => {
 const StatusPill: FC<{ status: User["status"] }> = ({ status }) => {
   const meta = statusMeta[status];
   return (
-    <HStack w="fit-content" spacing={1.5} px={2.5} py={1} borderRadius="full" bg={meta.bg} borderWidth="1px" borderColor={meta.border}>
+    <HStack w="fit-content" flexShrink={0} spacing={1.5} px={2.5} py={1} borderRadius="full" bg={meta.bg} borderWidth="1px" borderColor={meta.border}>
       <Box boxSize="6px" borderRadius="full" bg={meta.dot} />
       <Text color={meta.color} fontSize="xs" fontWeight="700">{meta.label}</Text>
     </HStack>
   );
 };
 
-const Action: FC<{ label: string; icon: React.ReactElement; onClick: () => void; tone?: "blue" | "green" | "red" | "gray"; disabled?: boolean }> = ({ label, icon, onClick, tone = "gray", disabled }) => {
+const Action: FC<{ label: string; shortLabel: string; icon: React.ReactElement; onClick: () => void; tone?: "blue" | "green" | "red" | "gray"; disabled?: boolean; named?: boolean }> = ({ label, shortLabel, icon, onClick, tone = "gray", disabled, named }) => {
   const palettes = {
-    gray: { color: "var(--panel-text-muted)", bg: "var(--panel-muted-soft)", border: "var(--panel-border)" },
+    gray: { color: "var(--panel-text-body)", bg: "var(--panel-muted-soft)", border: "var(--panel-border)" },
     blue: { color: "var(--panel-accent)", bg: "var(--panel-accent-soft)", border: "var(--panel-accent-border)" },
     green: { color: "var(--panel-success)", bg: "var(--panel-success-soft)", border: "var(--panel-success-border)" },
     red: { color: "var(--panel-danger)", bg: "var(--panel-danger-soft)", border: "var(--panel-danger-border)" },
   } as const;
   const palette = palettes[tone];
-  return (
-    <Tooltip label={label} hasArrow placement="top">
-      <IconButton
-        aria-label={label}
-        icon={icon}
-        size="sm"
-        minW="32px"
-        w="32px"
-        h="32px"
-        borderRadius="10px"
-        color={palette.color}
-        bg={palette.bg}
-        borderWidth="1px"
-        borderColor={palette.border}
-        isDisabled={disabled}
-        onClick={onClick}
-        _hover={{ bg: palette.bg }}
-      />
-    </Tooltip>
-  );
+  return <Tooltip label={label} hasArrow placement="top" openDelay={250}>
+    <Button aria-label={label} className="user-card-action" data-named={named || undefined} size="sm" minW={0} w="full" h="36px" px={1} gap={1} borderRadius="8px" color={palette.color} bg={palette.bg} borderWidth="1px" borderColor={palette.border} isDisabled={disabled} onClick={onClick} _hover={{ borderColor: "var(--panel-border-strong)", bg: palette.bg }}>
+      <Box as="span" display="inline-flex" aria-hidden="true">{icon}</Box><Text as="span" className="user-card-action-label" fontSize="xs">{shortLabel}</Text>
+    </Button>
+  </Tooltip>;
 };
 
 export const UsersTablePro: FC = () => {
   const {
-    filters,
     users: { users, plan_meta },
     onEditingUser,
     onDeletingUser,
@@ -367,17 +339,17 @@ export const UsersTablePro: FC = () => {
   };
 
   const renderUserActions = (user: User, busy: boolean) => (
-    <Box className="user-action-grid" role="group" aria-label={`عملیات ${user.username}`}>
-      <Action label="جزئیات کاربر" icon={<InfoIcon />} onClick={() => setDrawerUsername(user.username)} />
-      <Action label="کپی لینک اشتراک" icon={<CopyIcon />} onClick={() => copySubscription(user)} tone="green" />
-      <Action label="QR Code" icon={<QRIcon />} onClick={() => showQr(user)} />
-      <Action label="گزارش فعالیت" icon={<AuditIcon />} onClick={() => navigate(`/audit-logs/?search=${encodeURIComponent(user.username)}`)} />
-      {!readOnly && <Action label="ویرایش" icon={<EditIcon />} onClick={() => onEditingUser(user)} tone="blue" disabled={busy} />}
-      {!readOnly && <Action label="تمدید با پلن" icon={<RenewIcon />} onClick={() => openRenewal(user)} tone="green" disabled={busy} />}
-      {!readOnly && <Action label={user.status === "disabled" ? "فعال‌سازی" : "غیرفعال‌سازی"} icon={user.status === "disabled" ? <PlayActionIcon /> : <PauseActionIcon />} onClick={() => toggleStatus(user)} disabled={busy} />}
-      {!readOnly && <Action label="بازنشانی مصرف" icon={<ResetIcon />} onClick={() => resetUsage(user)} disabled={busy} />}
-      {!readOnly && <Action label="ابطال لینک اشتراک" icon={<RevokeIcon />} onClick={() => revoke(user)} disabled={busy} />}
-      {!readOnly && <Action label="حذف کاربر" icon={<DeleteIcon />} onClick={() => onDeletingUser(user)} tone="red" disabled={busy} />}
+    <Box className="user-card-actions" role="group" aria-label={`عملیات ${user.username}`} data-read-only={readOnly || undefined}>
+      {!readOnly && <Action label="تمدید با پلن" shortLabel="تمدید" icon={<RenewIcon />} onClick={() => openRenewal(user)} tone="green" disabled={busy} named />}
+      {!readOnly && <Action label="ویرایش" shortLabel="ویرایش" icon={<EditIcon />} onClick={() => onEditingUser(user)} tone="blue" disabled={busy} named />}
+      <Action label="کپی لینک اشتراک" shortLabel="کپی" icon={<CopyIcon />} onClick={() => copySubscription(user)} />
+      <Action label="QR Code" shortLabel="QR" icon={<QRIcon />} onClick={() => showQr(user)} />
+      <Action label="جزئیات کاربر" shortLabel="جزئیات" icon={<InfoIcon />} onClick={() => setDrawerUsername(user.username)} />
+      <Action label="گزارش فعالیت" shortLabel="گزارش" icon={<AuditIcon />} onClick={() => navigate(`/audit-logs/?search=${encodeURIComponent(user.username)}`)} />
+      {!readOnly && <Action label={user.status === "disabled" ? "فعال‌سازی" : "غیرفعال‌سازی"} shortLabel={user.status === "disabled" ? "فعال" : "توقف"} icon={user.status === "disabled" ? <PlayActionIcon /> : <PauseActionIcon />} onClick={() => toggleStatus(user)} disabled={busy} />}
+      {!readOnly && <Action label="بازنشانی مصرف" shortLabel="ریست" icon={<ResetIcon />} onClick={() => resetUsage(user)} disabled={busy} />}
+      {!readOnly && <Action label="ابطال لینک اشتراک" shortLabel="ابطال" icon={<RevokeIcon />} onClick={() => revoke(user)} disabled={busy} />}
+      {!readOnly && <Action label="حذف کاربر" shortLabel="حذف" icon={<DeleteIcon />} onClick={() => onDeletingUser(user)} tone="red" disabled={busy} />}
     </Box>
   );
 
@@ -394,11 +366,12 @@ export const UsersTablePro: FC = () => {
       minW={0}
       pb={selectedUsers.length > 0 ? { base: "104px", md: "88px" } : 0}
     >
-      <Box borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px" bg="var(--panel-surface)" overflow="hidden">
+      <Box mb={readOnly ? 0 : 3}>
         {!readOnly && (
           <Box
             px={{ base: 2, md: 2.5 }}
-            borderBottomWidth="1px"
+            borderWidth="1px"
+            borderRadius="10px"
             borderColor="var(--panel-border)"
             bg="var(--panel-nested)"
             sx={{
@@ -427,159 +400,39 @@ export const UsersTablePro: FC = () => {
           </Box>
         )}
 
-        <Text
-          display={{ base: "block", md: "none" }}
-          px={3}
-          py={2}
-          color="var(--panel-text-muted)"
-          bg="var(--panel-nested)"
-          borderBottomWidth="1px"
-          borderColor="var(--panel-border)"
-          fontSize="xs"
-          lineHeight="1.6"
-        >
-          اطلاعات اصلی هر کاربر در کارت نمایش داده می‌شود؛ برای جزئیات روی نام کاربر بزنید.
-        </Text>
-
-        <Stack display={{ base: "flex", lg: "none" }} spacing={0} divider={<Box borderBottom="1px solid var(--panel-border)" />} aria-label="کارت‌های کاربران">
-          {users.map((user) => {
-            const busy = busyUsername === user.username;
-            const planMeta = plan_meta[user.username] || null;
-            return <Box key={user.username} p={4} minW={0} bg={selectedMap.has(user.username) ? "var(--panel-accent-soft)" : undefined}>
-              <HStack justify="space-between" align="start" gap={3}>
-                <HStack minW={0} spacing={3} align="start">
-                  {!readOnly && <Checkbox aria-label={`انتخاب ${user.username}`} colorScheme="primary" isChecked={selectedMap.has(user.username)} onChange={(event) => setSelected(user, event.target.checked)} />}
-                  <Box minW={0}><Button variant="link" color="var(--panel-accent)" fontSize="sm" minW={0} maxW="full" justifyContent="start" onClick={() => setDrawerUsername(user.username)}><Text dir="ltr" noOfLines={1} textAlign="start">{user.username}</Text></Button><Text mt={1} color="var(--panel-text-muted)" fontSize="xs" noOfLines={1}>{planMeta?.plan_name || "بدون پلن"}</Text></Box>
-                </HStack>
-                <StatusPill status={user.status} />
+      </Box>
+      <Box role="list" aria-label="کارت‌های کاربران" className="user-card-grid">
+        {users.map((user) => {
+          const busy = busyUsername === user.username;
+          const planMeta = plan_meta[user.username] || null;
+          const deviceWarned = Boolean(user.device_limit_state && user.device_limit_state.penalty_status !== "clear");
+          return <Box as="article" role="listitem" key={user.username} aria-labelledby={`user-card-title-${user.id}`} className="user-card" data-username={user.username} data-selected={selectedMap.has(user.username) || undefined} data-status={user.status}>
+            <HStack justify="space-between" align="center" spacing={2} minW={0}>
+              <HStack spacing={2} minW={0} flex="1">
+                {!readOnly && <Checkbox aria-label={`انتخاب ${user.username}`} colorScheme="primary" isChecked={selectedMap.has(user.username)} onChange={(event) => setSelected(user, event.target.checked)} />}
+                <Box aria-hidden="true" boxSize="30px" display="grid" placeItems="center" borderRadius="full" bg="var(--panel-accent-soft)" color="var(--panel-accent)" fontSize="xs" fontWeight="700" flexShrink={0}>{user.username.slice(0, 1).toUpperCase()}</Box>
+                <Tooltip label={user.username} hasArrow openDelay={250}>
+                  <Button id={`user-card-title-${user.id}`} flex="1" overflow="hidden" variant="link" color="var(--panel-text)" fontSize="sm" fontWeight="700" minW={0} maxW="full" h="auto" justifyContent="start" onClick={() => setDrawerUsername(user.username)}>
+                    <Text as="bdi" dir="ltr" noOfLines={1} textAlign="start" sx={{ unicodeBidi: "isolate" }}>{user.username}</Text>
+                  </Button>
+                </Tooltip>
               </HStack>
-              <Box mt={4}><UsageCell user={user} /></Box>
-              <HStack mt={3} justify="space-between" flexWrap="wrap" gap={2} fontSize="xs" color="var(--panel-text-muted)"><Text>{relativeExpiry(user.expire)}</Text><Text>{relativeActivity(user.online_at)}</Text><Text>دستگاه: {user.concurrent_user_limit ?? "∞"}</Text></HStack>
-              <HStack mt={3} pt={3} w="full" borderTop="1px solid var(--panel-border)" justify="space-between" flexWrap="wrap" gap={2}>
-                <Text dir="ltr" maxW="100%" noOfLines={1} fontSize="xs" color="var(--panel-text-muted)">{isOwner ? user.admin?.username || "—" : "عملیات کاربر"}</Text>
-                {renderUserActions(user, busy)}
-              </HStack>
-            </Box>;
-          })}
-        </Stack>
-
-        <TableContainer
-          display={{ base: "none", lg: "block" }}
-          overflowX="auto"
-          overscrollBehaviorX="contain"
-          tabIndex={0}
-          aria-label="جدول کاربران"
-          sx={{ WebkitOverflowScrolling: "touch", scrollbarGutter: "stable" }}
-        >
-          <Table
-            size="sm"
-            w="full"
-            minW={isOwner ? "1220px" : "1100px"}
-            sx={{
-              tableLayout: "fixed",
-              "th, td": { borderBottom: "1px solid var(--panel-border) !important", px: 3, py: 2.5, overflow: "hidden" },
-              "tbody tr:last-of-type td": { borderBottom: "0 !important" },
-              th: { whiteSpace: "nowrap", fontWeight: 600, color: "var(--panel-text-muted)", fontSize: "12px" },
-              "tbody tr:hover": { background: "var(--panel-row-hover)" },
-            }}
-          >
-            <Thead bg="var(--panel-nested)">
-              <Tr>
-                {!readOnly && <Th w="30px"><Checkbox aria-label="انتخاب همه کاربران این صفحه" isChecked={allVisibleSelected} onChange={(event) => toggleAllVisible(event.target.checked)} colorScheme="primary" /></Th>}
-                <Th w="30px" textAlign="center">#</Th>
-                <Th w="176px">کاربر</Th>
-                <Th w="82px">وضعیت</Th>
-                <Th w="100px">پلن</Th>
-                <Th w="150px">مصرف</Th>
-                <Th w="112px">انقضا</Th>
-                <Th w="64px">دستگاه</Th>
-                <Th w="110px">آخرین فعالیت</Th>
-                {isOwner && <Th w="88px">ادمین</Th>}
-                <Th w="198px" textAlign="end">عملیات</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {users.map((user, index) => {
-                const busy = busyUsername === user.username;
-                const planMeta = plan_meta[user.username] || null;
-                const deviceWarned = Boolean(user.device_limit_state && user.device_limit_state.penalty_status !== "clear");
-                return (
-                  <Tr
-                    key={user.username}
-                    data-disabled={user.status === "disabled" ? "true" : undefined}
-                    bg={selectedMap.has(user.username) ? "var(--panel-accent-soft)" : undefined}
-                  >
-                    {!readOnly && <Td><Checkbox aria-label={`انتخاب ${user.username}`} isChecked={selectedMap.has(user.username)} onChange={(event) => setSelected(user, event.target.checked)} colorScheme="primary" /></Td>}
-                    <Td textAlign="center" color="var(--panel-text-muted)" fontSize="xs" fontWeight="700">{((filters.offset || 0) + index + 1).toLocaleString("fa-IR")}</Td>
-                    <Td>
-                      <HStack spacing={2.5} minW={0}>
-                        <Box w="30px" h="30px" display="grid" placeItems="center" borderRadius="full" bg="var(--panel-accent-soft)" color="var(--panel-accent)" fontSize="xs" fontWeight="700" flexShrink={0}>
-                          {user.username.slice(0, 1).toUpperCase()}
-                        </Box>
-                        <Box minW={0}>
-                          <Button
-                            variant="link"
-                            h="auto"
-                            minW={0}
-                            maxW="full"
-                            color="var(--panel-accent)"
-                            fontSize="xs"
-                            fontWeight="700"
-                            justifyContent="flex-start"
-                            onClick={() => setDrawerUsername(user.username)}
-                          >
-                            <Text dir="ltr" textAlign="start" noOfLines={1} sx={{ unicodeBidi: "isolate" }}>{user.username}</Text>
-                          </Button>
-                          <Text mt={0.5} color="var(--panel-text-muted)" fontSize="xs" noOfLines={1}>{user.note || "بدون توضیح"}</Text>
-                        </Box>
-                      </HStack>
-                    </Td>
-                    <Td><StatusPill status={user.status} /></Td>
-                    <Td>
-                      {planMeta ? (
-                        <Stack spacing={0.5}>
-                          <HStack spacing={1.5} minW={0}>
-                            <Text fontSize="xs" fontWeight="700" noOfLines={1}>{planMeta.plan_name}</Text>
-                            {planMeta.is_trial && <Badge colorScheme="yellow" variant="subtle" fontSize="xs">آزمایشی</Badge>}
-                          </HStack>
-                          <Text color="var(--panel-text-muted)" fontSize="xs">نسخه {planMeta.version_number.toLocaleString("fa-IR")}</Text>
-                        </Stack>
-                      ) : <Text color="var(--panel-text-muted)" fontSize="xs">بدون پلن</Text>}
-                    </Td>
-                    <Td><UsageCell user={user} /></Td>
-                    <Td>
-                      <Tooltip label={fmtExpire(user.expire)} hasArrow>
-                        <Stack spacing={0.5}>
-                          <Text fontSize="xs" fontWeight="700" color={user.status === "expired" ? "var(--panel-danger)" : "var(--panel-text-body)"}>{relativeExpiry(user.expire)}</Text>
-                          <Text color="var(--panel-text-muted)" fontSize="xs">{fmtExpire(user.expire)}</Text>
-                        </Stack>
-                      </Tooltip>
-                    </Td>
-                    <Td>
-                      <HStack spacing={1.5}>
-                        <Text dir="ltr" fontSize="xs" fontWeight="700" sx={{ unicodeBidi: "isolate" }}>{user.concurrent_user_limit ?? "∞"}</Text>
-                        {deviceWarned && <Box boxSize="6px" borderRadius="full" bg="var(--panel-warning)" title="هشدار دستگاه" />}
-                        {!readOnly && isOwner && user.concurrent_user_limit != null && <UserDeviceLimit user={user} compact />}
-                      </HStack>
-                    </Td>
-                    <Td>
-                      <Tooltip label={fmtDateTime(user.online_at)} hasArrow>
-                        <Stack spacing={0.5}>
-                          <Text fontSize="xs" fontWeight="700">{relativeActivity(user.online_at)}</Text>
-                          <Text color="var(--panel-text-muted)" fontSize="xs">{fmtDateTime(user.online_at)}</Text>
-                        </Stack>
-                      </Tooltip>
-                    </Td>
-                    {isOwner && <Td><Text dir="ltr" textAlign="start" fontSize="xs" fontWeight="700" noOfLines={1} sx={{ unicodeBidi: "isolate" }}>{user.admin?.username || "—"}</Text></Td>}
-                    <Td textAlign="end">
-                      {renderUserActions(user, busy)}
-                    </Td>
-                  </Tr>
-                );
-              })}
-            </Tbody>
-          </Table>
-        </TableContainer>
+              <StatusPill status={user.status} />
+            </HStack>
+            {user.note && <Text fontSize="xs" color="var(--panel-text-muted)" noOfLines={1} title={user.note} mt={-1}>{user.note}</Text>}
+            <Box className="user-card-facts">
+              <Box minW={0}><Text className="user-card-label">پلن</Text><HStack spacing={1} flexWrap="wrap" minW={0}><Text fontSize="xs" fontWeight="600" noOfLines={1} title={planMeta ? `${planMeta.plan_name} · نسخه ${planMeta.version_number.toLocaleString("fa-IR")}` : "ساخت سفارشی"}>{planMeta?.plan_name || "سفارشی"}</Text>{planMeta?.is_trial && <Badge colorScheme="yellow" fontSize="xs">آزمایشی</Badge>}</HStack></Box>
+              <Box minW={0}><Text className="user-card-label">انقضا</Text><Tooltip label={fmtExpire(user.expire)} hasArrow><Text fontSize="xs" fontWeight="600" color={user.status === "expired" ? "var(--panel-danger)" : undefined} tabIndex={0}>{relativeExpiry(user.expire)}</Text></Tooltip></Box>
+              <Box minW={0}><Text className="user-card-label">دستگاه</Text><HStack spacing={1} flexWrap="wrap"><Text dir="ltr" fontSize="xs" fontWeight="600">{user.concurrent_user_limit ?? "∞"}</Text>{deviceWarned && <Badge colorScheme="orange" fontSize="xs">هشدار</Badge>}{!readOnly && isOwner && user.concurrent_user_limit != null && <UserDeviceLimit user={user} compact />}</HStack></Box>
+            </Box>
+            <UsageCell user={user} />
+            <HStack justify="space-between" align="center" spacing={2} minW={0} fontSize="xs" color="var(--panel-text-muted)">
+              {isOwner && <Text minW={0} noOfLines={1} title={user.admin?.username || ""}>ادمین: <Box as="bdi" dir="ltr">{user.admin?.username || "—"}</Box></Text>}
+              <Tooltip label={fmtDateTime(user.online_at)} hasArrow><Text tabIndex={0} ms={isOwner ? undefined : "auto"}>{relativeActivity(user.online_at)}</Text></Tooltip>
+            </HStack>
+            {renderUserActions(user, busy)}
+          </Box>;
+        })}
       </Box>
 
       <Pagination />

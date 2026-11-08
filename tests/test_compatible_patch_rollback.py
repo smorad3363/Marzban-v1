@@ -9,7 +9,7 @@ SCRIPT = Path(__file__).resolve().parents[1] / "scripts/marzban.sh"
 
 
 class CompatiblePatchRollbackTests(unittest.TestCase):
-    def run_probe(self, current="1.1.25", target="v1.1.24", equal=True, fail=False):
+    def run_probe(self, current="1.1.26", target="v1.1.25", equal=True, fail=False):
         digest = "a" * 64
         other = digest if equal else "b" * 64
         shell = f'''source "{SCRIPT}"
@@ -25,12 +25,14 @@ compatible_patch_rollback "{current}" "{target}" current-container
 
     def test_qualified_pair_with_identical_migrations_is_allowed(self):
         self.assertEqual(self.run_probe().returncode, 0)
+        self.assertEqual(self.run_probe(current="1.1.25", target="v1.1.24").returncode, 0)
 
     def test_changed_or_unreadable_schema_is_rejected(self):
         self.assertNotEqual(self.run_probe(equal=False).returncode, 0)
         self.assertNotEqual(self.run_probe(fail=True).returncode, 0)
 
     def test_arbitrary_rollback_is_rejected(self):
+        self.assertNotEqual(self.run_probe(target="v1.1.24").returncode, 0)
         self.assertNotEqual(self.run_probe(target="v1.1.23").returncode, 0)
         self.assertNotEqual(self.run_probe(current="1.2.0").returncode, 0)
 
