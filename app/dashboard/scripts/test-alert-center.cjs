@@ -63,6 +63,7 @@ Module._load = function (name, parent, ...rest) {
     if (name === 'utils/authStorage') return { getAuthToken: () => 'synthetic-token' };
     if (name === 'utils/apiError') return { localizedApiError: error => error.message };
     if (name === 'react-router-dom') return { useLocation: () => ({ pathname }), Link: ({ children, to, ...props }) => React.createElement('a', { href: to, ...props }, children) };
+    if (name === './AlertAccountActions') return { AlertAccountActions: () => React.createElement('div', null, 'Account actions') };
     if (name === './alerts/presentation') return load(helperFile);
   }
   return originalLoad.call(this, name, parent, ...rest);

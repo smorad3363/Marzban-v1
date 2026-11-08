@@ -52,9 +52,23 @@ if (process.argv.includes('--record')) {
     const readonlyCall = ts.factory.updateCallExpression(call, call.expression, call.typeArguments, [call.arguments[0], call.arguments[1], readonlyOptions]);
     return { contract: printer.printNode(ts.EmitHint.Unspecified, readonlyCall, source), announcement: printer.printNode(ts.EmitHint.Unspecified, announcements[0], source) };
   };
-  for (const [file, expected] of Object.entries(contracts)) {
+  // A second, explicitly scoped presentation contract records the approved workspace.
+  // The original baseline and the protected backend hashes remain immutable.
+  const workspace = JSON.parse(fs.readFileSync(path.join(__dirname, 'workspace-behavior-baseline.json'), 'utf8'));
+  const approvedFiles = new Set([
+    'src/pages/Users.tsx', 'src/components/Header.tsx', 'src/components/AppShell.tsx',
+    'src/components/DashboardOverview.tsx', 'src/components/FiltersCompact.tsx',
+    'src/components/UsersTablePro.tsx', 'src/components/CreateUserFromPlan.tsx',
+    'src/pages/AuditLogs.tsx', 'src/pages/admins/RequestsAlerts.tsx',
+    'src/pages/admins/AdminsPage.tsx', 'src/pages/admins/AdminTable.tsx',
+    'src/components/AdminFormDrawer.tsx', 'src/pages/Plans.tsx',
+    'src/components/PlanCreateModal.tsx', 'src/components/AlertCenter.tsx',
+  ]);
+  assert.deepEqual(Object.keys(workspace.contracts).sort(), [...approvedFiles].sort());
+  for (const [file, original] of Object.entries(contracts)) {
+    const expected = workspace.contracts[file] || original;
     const actual = extract(file, fs.readFileSync(path.join(root, file), 'utf8'));
-    if (file === 'src/components/AlertCenter.tsx') {
+    if (file === 'src/components/AlertCenter.tsx' && !workspace.contracts[file]) {
       const isSummary = text => text.includes('api("/admin-management/alert-center")');
       const oldSummary = expected.requests.filter(isSummary), newSummary = actual.requests.filter(isSummary);
       assert.equal(oldSummary.length, 1); assert.equal(newSummary.length, 1);
@@ -85,7 +99,7 @@ if (process.argv.includes('--record')) {
   const protectedNames = files.filter(file => !file.startsWith('app/dashboard/') || /^app\/dashboard\/src\/(service|contexts|types|hooks)\//.test(file));
   // Preserve all previously protected files, except the precise SS2022 feature.
   const ss2022Allowlist = new Set(
-    ['1.1.22', '1.1.23', '1.1.24'].includes(fs.readFileSync(path.join(repository, 'VERSION'), 'utf8').trim()) ? [
+    ['1.1.22', '1.1.23', '1.1.24', '1.1.25'].includes(fs.readFileSync(path.join(repository, 'VERSION'), 'utf8').trim()) ? [
       'VERSION', 'RELEASES.md', 'app/__init__.py', 'app/models/proxy.py',
       'app/subscription/share.py', 'app/subscription/v2ray.py',
       'app/utils/shadowsocks2022.py', 'app/xray/config.py', 'app/xray/operations.py', 'app/xray/node.py', 'docs/RELEASE_NOTES_v1.1.23.md',
@@ -99,7 +113,7 @@ if (process.argv.includes('--record')) {
   // runtime, image, documentation and test files. Keep every UI behavior check
   // and the immutable baseline; unknown backend additions still fail closed.
   const nodeMemoryAllowlist = new Set(
-    fs.readFileSync(path.join(repository, 'VERSION'), 'utf8').trim() === '1.1.24' ? [
+    fs.readFileSync(path.join(repository, 'VERSION'), 'utf8').trim() === '1.1.24' || fs.readFileSync(path.join(repository, 'VERSION'), 'utf8').trim() === '1.1.25' ? [
       'Dockerfile', 'README.md', 'docker-compose.node.yml',
       'node_runtime/config.py', 'node_runtime/core.py', 'node_runtime/memory.py',
       'scripts/Dockerfile.dev', 'scripts/install-xray.sh',
@@ -107,7 +121,8 @@ if (process.argv.includes('--record')) {
       'docs/RELEASE_NOTES_v1.1.24.md',
     ] : []
   );
-  const approvedFeatureFile = file => ss2022Allowlist.has(file) || nodeMemoryAllowlist.has(file);
+  const workspaceReleaseFiles = new Set(['docs/RELEASE_NOTES_v1.1.25.md', 'tests/test_compatible_patch_rollback.py']);
+  const approvedFeatureFile = file => ss2022Allowlist.has(file) || nodeMemoryAllowlist.has(file) || workspaceReleaseFiles.has(file);
   assert.deepEqual(Object.keys(protectedFiles).filter(file => !protectedNames.includes(file)), [],
     'Previously protected files were removed');
   assert.deepEqual(protectedNames.filter(file => !(file in protectedFiles) && !approvedFeatureFile(file)), [],

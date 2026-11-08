@@ -302,3 +302,19 @@ button:disabled, [aria-disabled="true"] { cursor: not-allowed; }
   position: relative;
 }
 
+
+/* Compact workspaces share density, focus, and motion tokens. */
+.operations-shell { --motion-enter: 180ms; --motion-exit: 120ms; --motion-ease: cubic-bezier(.23, 1, .32, 1); }
+.console-workspace-bar { min-height: 52px; margin-bottom: 12px; padding-block: 4px; }
+.console-page-header { margin-bottom: 4px; }
+.operations-sidebar nav .chakra-button { min-height: 42px; }
+.workspace-summary { border: 1px solid var(--panel-border); border-radius: 12px; overflow: hidden; background: var(--panel-surface); }
+.workspace-stat { padding: 12px 16px; min-width: 0; border-inline-end: 1px solid var(--panel-border); }
+button.workspace-stat { cursor: pointer; transition: background-color 120ms ease; }
+.workspace-stat:focus-visible { outline: 2px solid var(--panel-accent); outline-offset: -3px; }
+.user-action-grid { display: grid; grid-template-columns: repeat(5, 32px); gap: 4px; padding: 5px; width: max-content; max-width: 100%; margin-inline-start: auto; border: 1px solid var(--panel-border); border-radius: 10px; background: var(--panel-nested); }
+.user-action-grid .chakra-button { border-radius: 7px; transition: transform 120ms var(--motion-ease), background-color 120ms ease; }
+.user-action-grid .chakra-button:active { transform: scale(.96); }
+@media (hover: hover) and (pointer: fine) { button.workspace-stat:hover { background: var(--panel-row-hover); } }
+@media (pointer: coarse) { .user-action-grid { grid-template-columns: repeat(5, 44px); gap: 4px; } .user-action-grid .chakra-button { min-width: 44px; width: 44px; height: 44px; } }
+@media (max-width: 30em) { .workspace-stat { padding: 10px 12px; border-bottom: 1px solid var(--panel-border); } }

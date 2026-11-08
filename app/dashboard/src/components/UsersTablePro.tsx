@@ -38,7 +38,7 @@ import {
   ArrowPathIcon,
   ClipboardDocumentIcon,
   DocumentMagnifyingGlassIcon,
-  EllipsisVerticalIcon,
+  InformationCircleIcon,
   LinkIcon,
   PauseIcon,
   PencilSquareIcon,
@@ -73,7 +73,7 @@ const ResetIcon = chakra(ArrowPathIcon, { baseStyle: { w: 4, h: 4 } });
 const RevokeIcon = chakra(LinkIcon, { baseStyle: { w: 4, h: 4 } });
 const DeleteIcon = chakra(TrashIcon, { baseStyle: { w: 4, h: 4 } });
 const AuditIcon = chakra(DocumentMagnifyingGlassIcon, { baseStyle: { w: 4, h: 4 } });
-const MoreIcon = chakra(EllipsisVerticalIcon, { baseStyle: { w: 4, h: 4 } });
+const InfoIcon = chakra(InformationCircleIcon, { baseStyle: { w: 4, h: 4 } });
 
 const statusMeta: Record<User["status"], { label: string; color: string; bg: string; border: string; dot: string }> = {
   active: { label: "فعال", color: "var(--panel-success)", bg: "var(--panel-success-soft)", border: "var(--panel-success-border)", dot: "var(--panel-success)" },
@@ -182,10 +182,10 @@ const Action: FC<{ label: string; icon: React.ReactElement; onClick: () => void;
       <IconButton
         aria-label={label}
         icon={icon}
-        size="xs"
-        minW="30px"
-        w="30px"
-        h="30px"
+        size="sm"
+        minW="32px"
+        w="32px"
+        h="32px"
         borderRadius="10px"
         color={palette.color}
         bg={palette.bg}
@@ -367,38 +367,18 @@ export const UsersTablePro: FC = () => {
   };
 
   const renderUserActions = (user: User, busy: boolean) => (
-                      <HStack justify="end" gap={1} dir="ltr" maxW="full">
-                        <Action label="کپی لینک اشتراک" icon={<CopyIcon />} onClick={() => copySubscription(user)} tone="green" />
-                        {!readOnly && <Action label="ویرایش" icon={<EditIcon />} onClick={() => onEditingUser(user)} tone="blue" disabled={busy} />}
-                        {!readOnly && <Action label="حذف کاربر" icon={<DeleteIcon />} onClick={() => onDeletingUser(user)} tone="red" disabled={busy} />}
-                        <Menu placement="bottom-end" isLazy>
-                          <MenuButton
-                            as={IconButton}
-                            aria-label="عملیات بیشتر"
-                            icon={<MoreIcon />}
-                            size="xs"
-                            minW="30px"
-                            w="30px"
-                            h="30px"
-                            borderRadius="10px"
-                            color="var(--panel-text-body)"
-                            bg="var(--panel-nested)"
-                            borderWidth="1px"
-                            borderColor="var(--panel-border)"
-                            _hover={{ bg: "var(--panel-row-hover)" }}
-                          />
-                          <MenuList dir="rtl" minW="210px" bg="var(--panel-surface)" borderColor="var(--panel-border)" borderRadius="14px" boxShadow="var(--shadow-elevated)" py={1.5}>
-                            <MenuItem onClick={() => setDrawerUsername(user.username)}>جزئیات کاربر</MenuItem>
-                            <MenuItem icon={<QRIcon />} onClick={() => showQr(user)}>QR Code</MenuItem>
-                            <MenuItem icon={<AuditIcon />} onClick={() => navigate(`/audit-logs/?search=${encodeURIComponent(user.username)}`)}>گزارش فعالیت</MenuItem>
-                            {!readOnly && <MenuDivider borderColor="var(--panel-border)" />}
-                            {!readOnly && <MenuItem icon={<RenewIcon />} isDisabled={busy} onClick={() => openRenewal(user)}>تمدید با پلن</MenuItem>}
-                            {!readOnly && <MenuItem icon={user.status === "disabled" ? <PlayActionIcon /> : <PauseActionIcon />} isDisabled={busy} onClick={() => toggleStatus(user)}>{user.status === "disabled" ? "فعال‌سازی" : "غیرفعال‌سازی"}</MenuItem>}
-                            {!readOnly && <MenuItem icon={<ResetIcon />} isDisabled={busy} onClick={() => resetUsage(user)}>بازنشانی مصرف</MenuItem>}
-                            {!readOnly && <MenuItem icon={<RevokeIcon />} isDisabled={busy} onClick={() => revoke(user)}>ابطال لینک اشتراک</MenuItem>}
-                          </MenuList>
-                        </Menu>
-                      </HStack>
+    <Box className="user-action-grid" role="group" aria-label={`عملیات ${user.username}`}>
+      <Action label="جزئیات کاربر" icon={<InfoIcon />} onClick={() => setDrawerUsername(user.username)} />
+      <Action label="کپی لینک اشتراک" icon={<CopyIcon />} onClick={() => copySubscription(user)} tone="green" />
+      <Action label="QR Code" icon={<QRIcon />} onClick={() => showQr(user)} />
+      <Action label="گزارش فعالیت" icon={<AuditIcon />} onClick={() => navigate(`/audit-logs/?search=${encodeURIComponent(user.username)}`)} />
+      {!readOnly && <Action label="ویرایش" icon={<EditIcon />} onClick={() => onEditingUser(user)} tone="blue" disabled={busy} />}
+      {!readOnly && <Action label="تمدید با پلن" icon={<RenewIcon />} onClick={() => openRenewal(user)} tone="green" disabled={busy} />}
+      {!readOnly && <Action label={user.status === "disabled" ? "فعال‌سازی" : "غیرفعال‌سازی"} icon={user.status === "disabled" ? <PlayActionIcon /> : <PauseActionIcon />} onClick={() => toggleStatus(user)} disabled={busy} />}
+      {!readOnly && <Action label="بازنشانی مصرف" icon={<ResetIcon />} onClick={() => resetUsage(user)} disabled={busy} />}
+      {!readOnly && <Action label="ابطال لینک اشتراک" icon={<RevokeIcon />} onClick={() => revoke(user)} disabled={busy} />}
+      {!readOnly && <Action label="حذف کاربر" icon={<DeleteIcon />} onClick={() => onDeletingUser(user)} tone="red" disabled={busy} />}
+    </Box>
   );
 
   if (users.length === 0) {
@@ -414,7 +394,7 @@ export const UsersTablePro: FC = () => {
       minW={0}
       pb={selectedUsers.length > 0 ? { base: "104px", md: "88px" } : 0}
     >
-      <Box borderWidth="1px" borderColor="var(--panel-border)" borderRadius="16px" bg="var(--panel-surface)" boxShadow="var(--shadow-panel)" overflow="hidden">
+      <Box borderWidth="1px" borderColor="var(--panel-border)" borderRadius="12px" bg="var(--panel-surface)" overflow="hidden">
         {!readOnly && (
           <Box
             px={{ base: 2, md: 2.5 }}
@@ -475,7 +455,7 @@ export const UsersTablePro: FC = () => {
               </HStack>
               <Box mt={4}><UsageCell user={user} /></Box>
               <HStack mt={3} justify="space-between" flexWrap="wrap" gap={2} fontSize="xs" color="var(--panel-text-muted)"><Text>{relativeExpiry(user.expire)}</Text><Text>{relativeActivity(user.online_at)}</Text><Text>دستگاه: {user.concurrent_user_limit ?? "∞"}</Text></HStack>
-              <HStack mt={3} pt={3} borderTop="1px solid var(--panel-border)" justify="space-between" flexWrap="wrap" gap={2}>
+              <HStack mt={3} pt={3} w="full" borderTop="1px solid var(--panel-border)" justify="space-between" flexWrap="wrap" gap={2}>
                 <Text dir="ltr" maxW="100%" noOfLines={1} fontSize="xs" color="var(--panel-text-muted)">{isOwner ? user.admin?.username || "—" : "عملیات کاربر"}</Text>
                 {renderUserActions(user, busy)}
               </HStack>
@@ -499,23 +479,23 @@ export const UsersTablePro: FC = () => {
               tableLayout: "fixed",
               "th, td": { borderBottom: "1px solid var(--panel-border) !important", px: 3, py: 2.5, overflow: "hidden" },
               "tbody tr:last-of-type td": { borderBottom: "0 !important" },
-              th: { whiteSpace: "nowrap", fontWeight: 700, color: "var(--panel-text-muted)", fontSize: "10px" },
+              th: { whiteSpace: "nowrap", fontWeight: 600, color: "var(--panel-text-muted)", fontSize: "12px" },
               "tbody tr:hover": { background: "var(--panel-row-hover)" },
             }}
           >
             <Thead bg="var(--panel-nested)">
               <Tr>
-                {!readOnly && <Th w="38px"><Checkbox aria-label="انتخاب همه کاربران این صفحه" isChecked={allVisibleSelected} onChange={(event) => toggleAllVisible(event.target.checked)} colorScheme="primary" /></Th>}
-                <Th w="38px" textAlign="center">#</Th>
-                <Th w="190px">کاربر</Th>
-                <Th w="105px">وضعیت</Th>
-                <Th w="150px">پلن</Th>
-                <Th w="190px">مصرف</Th>
-                <Th w="145px">انقضا</Th>
-                <Th w="105px">دستگاه</Th>
-                <Th w="145px">آخرین فعالیت</Th>
-                {isOwner && <Th w="120px">ادمین</Th>}
-                <Th w="154px" textAlign="end">عملیات</Th>
+                {!readOnly && <Th w="30px"><Checkbox aria-label="انتخاب همه کاربران این صفحه" isChecked={allVisibleSelected} onChange={(event) => toggleAllVisible(event.target.checked)} colorScheme="primary" /></Th>}
+                <Th w="30px" textAlign="center">#</Th>
+                <Th w="176px">کاربر</Th>
+                <Th w="82px">وضعیت</Th>
+                <Th w="100px">پلن</Th>
+                <Th w="150px">مصرف</Th>
+                <Th w="112px">انقضا</Th>
+                <Th w="64px">دستگاه</Th>
+                <Th w="110px">آخرین فعالیت</Th>
+                {isOwner && <Th w="88px">ادمین</Th>}
+                <Th w="198px" textAlign="end">عملیات</Th>
               </Tr>
             </Thead>
             <Tbody>

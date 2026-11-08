@@ -1,6 +1,6 @@
 import { Alert, AlertIcon, Badge, Box, Button, Drawer, DrawerBody, DrawerCloseButton, DrawerContent, DrawerFooter, DrawerHeader, DrawerOverlay, HStack, Icon, Input, Select, Stack, Text, Tooltip, usePrefersReducedMotion, useToast } from "@chakra-ui/react";
 import { BellIcon, CheckCircleIcon, ChevronDownIcon, ChevronUpIcon, FunnelIcon } from "@heroicons/react/24/outline";
-import { Link } from "react-router-dom";
+import { AlertAccountActions } from "./AlertAccountActions";
 import { Center, Incident, alertTime, fa, incidentSummary, incidentTitle, priorityIncidents, takeNewCriticalAlerts } from "./alerts/presentation";
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "react-query";
@@ -107,18 +107,9 @@ export function AlertCenter({ children }: { children: (ui: { trigger: ReactNode;
       {badge && <Badge position="absolute" top="2px" insetEnd="0" minW="18px" px={1} borderRadius="full" fontSize="10px" textAlign="center" bg={attention ? "var(--panel-danger)" : "var(--panel-warning)"} color="var(--panel-bg)">{badge}</Badge>}
     </Button>
   </Tooltip>;
-  const dashboardSummary = getUserIsSuccess && location.pathname === "/" && (total > 0 || inherited) && <Box as="section" aria-label="خلاصه هشدارهای فعال" borderWidth="1px" borderColor="var(--panel-border)" borderRadius="16px" bg="var(--panel-surface)" p={{base:4,md:5}} mb={5}>
-    <HStack justify="space-between" gap={3} mb={3} flexWrap="wrap">
-      <HStack flexWrap="wrap"><Text as="h2" fontWeight="700" fontSize="sm">نیاز به توجه</Text>{!!counts?.critical && <Badge colorScheme="red">{fa(counts.critical)} حیاتی</Badge>}{!!counts?.warning && <Badge colorScheme="orange">{fa(counts.warning)} مهم</Badge>}</HStack>
-      <Button size="sm" variant="ghost" onClick={()=>setOpen(true)}>همه هشدارها</Button>
-    </HStack>
-    {inherited && <Text color="var(--panel-danger)" fontSize="sm" mb={3}>محدودیت حساب بالادستی روی حساب شما اثر گذاشته است؛ با ادمین بالادستی پیگیری کنید.</Text>}
-    <Stack spacing={3}>{preview.map(item=><HStack key={item.id} align="start" justify="space-between" gap={3}>
-      <Box minW={0}><Text fontSize="sm" fontWeight="600" overflowWrap="anywhere"><Box as="span" dir="ltr" sx={{unicodeBidi:"isolate"}}>{item.admin_username}</Box> · {incidentTitle(item)}</Text><Text fontSize="xs" color="var(--panel-text-muted)" mt={1}>{incidentSummary(item)}</Text></Box>
-      <Button size="sm" variant="ghost" flexShrink={0} onClick={()=>{setExpanded(item.id);setOpen(true);}}>بررسی</Button>
-    </HStack>)}</Stack>
-    {summary.data?.next_before && <Text fontSize="xs" color="var(--panel-text-muted)" mt={3}>خلاصهٔ موارد اخیر؛ فهرست کامل در مرکز هشدارها در دسترس است.</Text>}
-  </Box>;
+  const dashboardSummary = getUserIsSuccess && (location.pathname === "/" || location.pathname.startsWith("/users")) && (total > 0 || inherited) && <HStack as="section" aria-label="خلاصه هشدارهای فعال" p={2} mb={3} gap={3} flexWrap="wrap" borderWidth="1px" borderColor="var(--panel-danger-border)" borderRadius="10px" bg="var(--panel-danger-soft)">
+    <Text fontSize="sm" flex="1">{inherited ? "محدودیت حساب بالادستی فعال است." : `${fa(total)} هشدار حساب نیاز به بررسی دارد.`}</Text><Button size="sm" variant="ghost" onClick={()=>setOpen(true)}>بررسی هشدارها</Button>
+  </HStack>;
   return <>
     {children({trigger,summary:dashboardSummary})}
     {getUserIsSuccess && <Drawer isOpen={open} onClose={()=>setOpen(false)} placement="left" size="md" finalFocusRef={triggerRef}>
@@ -149,7 +140,7 @@ export function AlertCenter({ children }: { children: (ui: { trigger: ReactNode;
               <HStack justify="space-between" gap={2} flexWrap="wrap"><Text fontSize="sm" fontWeight="600" overflowWrap="anywhere">{incidentTitle(item)}</Text><Badge colorScheme={item.resolved_at?"green":item.severity==="critical"?"red":"orange"}>{item.resolved_at?"رفع‌شده":item.severity==="critical"?"حیاتی":"مهم"}</Badge></HStack>
               <Text fontSize="sm" lineHeight="1.9" mt={2} color="var(--panel-text-body)">{incidentSummary(item)}</Text>
               <Button variant="link" fontSize="xs" minH="36px" mt={1} rightIcon={<Icon as={expanded===item.id ? ChevronUpIcon : ChevronDownIcon} boxSize={3} aria-hidden="true" />} aria-expanded={expanded===item.id} aria-controls={`alert-details-${item.id}`} onClick={()=>setExpanded(expanded===item.id ? null : item.id)}>{expanded===item.id ? "بستن جزئیات" : "جزئیات و اقدام"}</Button>
-              <Box id={`alert-details-${item.id}`} hidden={expanded!==item.id} pt={2}><Details item={item}/><Text fontSize="xs" color="var(--panel-text-muted)" mt={3}>{alertTime(item.opened_at)}</Text>{isOwner && <Button as={Link} to="/admins/" variant="outline" size="sm" mt={3} onClick={()=>setOpen(false)}>مدیریت حساب ادمین</Button>}{!isOwner && <Text fontSize="xs" mt={3} color="var(--panel-text-muted)">برای تغییر محدودیت‌ها با ادمین بالادستی پیگیری کنید.</Text>}</Box>
+              <Box id={`alert-details-${item.id}`} hidden={expanded!==item.id} pt={2}><Details item={item}/><Text fontSize="xs" color="var(--panel-text-muted)" mt={3}>{alertTime(item.opened_at)}</Text>{expanded===item.id && !item.resolved_at && <AlertAccountActions item={item} />}</Box>
               <HStack mt={3} justify="space-between" flexWrap="wrap" gap={2}><Button size="sm" variant="ghost" isDisabled={item.seen} isLoading={busy===item.id} onClick={()=>markSeen(item)}>{item.seen?"دیده شده":"دیده شد"}</Button>{!item.resolved_at && <Text fontSize="xs" color="var(--panel-text-muted)">تا رفع مشکل فعال می‌ماند</Text>}</HStack>
             </Box>)}</Stack></Box>)}
           </Stack>

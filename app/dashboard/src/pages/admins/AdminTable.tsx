@@ -28,6 +28,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { FC, Fragment } from "react";
 import { useTranslation } from "react-i18next";
+import { AdminTrialQuota } from "components/AdminTrialQuota";
 import { ManagedAdmin } from "types/Admin";
 import { formatBytes } from "utils/formatByte";
 import { AdminAvatar, billingModeLabels, control, DetailChip, StatusPill } from "./AdminUi";
@@ -65,7 +66,7 @@ const limitText = (value: number | null | undefined, suffix = "") =>
   value == null ? "نامحدود" : `${value.toLocaleString("fa-IR")}${suffix}`;
 
 const InlineDetails: FC<{ item: ManagedAdmin }> = ({ item }) => (
-  <HStack spacing={1.5} flexWrap="wrap" rowGap={1.5}>
+  <Box as="details"><Box as="summary" cursor="pointer" color="var(--panel-text-muted)" fontSize="xs" py={1}>جزئیات و دسترسی‌ها</Box><HStack spacing={1.5} flexWrap="wrap" rowGap={1.5}>
     <Text color="var(--panel-text-muted)" fontSize="xs" fontWeight="700" me={1}>اطلاعات:</Text>
     <DetailChip label="والد" value={item.parent_username || "ریشه"} />
     <DetailChip label="ساخت کاربر" value={creationModeLabel(item)} />
@@ -81,7 +82,7 @@ const InlineDetails: FC<{ item: ManagedAdmin }> = ({ item }) => (
     <DetailChip label="حذف" value={item.policy.prevent_user_deletion ? "مسدود" : "مجاز"} tone={item.policy.prevent_user_deletion ? "var(--panel-danger)" : "var(--panel-success)"} />
     <DetailChip label="ریست" value={item.policy.prevent_user_reset ? "مسدود" : "مجاز"} tone={item.policy.prevent_user_reset ? "var(--panel-danger)" : "var(--panel-success)"} />
     <DetailChip label="نامحدود" value={item.policy.prevent_unlimited_traffic ? "مسدود" : "مجاز"} tone={item.policy.prevent_unlimited_traffic ? "var(--panel-warning)" : "var(--panel-success)"} />
-  </HStack>
+  </HStack></Box>
 );
 
 export const AdminTable: FC<Props> = ({
@@ -144,7 +145,7 @@ export const AdminTable: FC<Props> = ({
               aria-label={`مبلغ اعتبار ${item.username}`}
               type="number"
               min={1}
-              step={1000}
+              step={1}
               inputMode="numeric"
               value={amount}
               onChange={(event) => onCreditAmountChange(item.username, event.target.value)}
@@ -207,6 +208,7 @@ export const AdminTable: FC<Props> = ({
 
         {canAct(item) && (
           <>
+            {["ALLOCATED_TRAFFIC", "USER_CREDIT"].includes(item.policy.billing_mode) && <AdminTrialQuota admin={item} disabled={busy} />}
             <Tooltip label={statusActionLabel(item)} hasArrow>
               <IconButton
                 aria-label={`${statusActionLabel(item)} ${item.username}`}
@@ -404,7 +406,7 @@ export const AdminTable: FC<Props> = ({
                   <Input
                     type="number"
                     min={1}
-                    step={1000}
+                    step={1}
                     inputMode="numeric"
                     value={amount}
                     onChange={(event) => onCreditAmountChange(item.username, event.target.value)}

@@ -23,7 +23,7 @@ LAST_XRAY_CORES=10
 # Fork configuration
 # Override at runtime, e.g. MARZBAN_GITHUB_REPO=another-user/Marzban marzban install
 # =============================================================================
-CLI_RELEASE_VERSION="v1.1.24"
+CLI_RELEASE_VERSION="v1.1.25"
 V1_LINEAGE_SOURCE_VERSION="5.2.0"
 V1_LINEAGE_SOURCE_IMAGE="ghcr.io/smorad3363/marzban-vnext:v5.2.0"
 V1_LINEAGE_TARGET_VERSION="v1.0.0"
@@ -1781,17 +1781,46 @@ up_command() {
     fi
 }
 
+# Only explicitly qualified patch pairs may use the normal updater to roll back.
+# Compare every migration source byte before touching the running application.
+compatible_patch_rollback() {
+    local current_version="$1" requested_version="$2" source_container="$3"
+    [ "$current_version:$requested_version" = "1.1.25:v1.1.24" ] || return 1
+    local target_image source_schema target_schema
+    target_image=$(marzban_docker_image "$requested_version")
+    ensure_marzban_image "$requested_version" || return 1
+    local schema_probe='from pathlib import Path; import hashlib; p=Path("/code/app/db/migrations/versions"); files=sorted(p.glob("*.py")); assert files; print(hashlib.sha256(b"".join(f.name.encode()+b"\0"+f.read_bytes() for f in files)).hexdigest())'
+    source_schema=$(docker exec "$source_container" python -c "$schema_probe") || return 1
+    target_schema=$(docker run --rm --network none --entrypoint python "$target_image" -c "$schema_probe") || return 1
+    [[ "$source_schema" =~ ^[0-9a-f]{64}$ ]] && [ "$source_schema" = "$target_schema" ]
+}
+
+# An old UI bind must not hide the dashboard shipped in a reviewed release.
+remove_frontend_override() {
+    local index target
+    local count
+    count=$(yq -r '.services.marzban.volumes | length' "$COMPOSE_FILE") || return 1
+    for ((index=count-1; index>=0; index--)); do
+        target=$(yq -r ".services.marzban.volumes[$index]"' | select(tag == "!!map") | .target // ""' "$COMPOSE_FILE") || return 1
+        if [ "$target" = "/code/app/dashboard/build" ] || yq -r ".services.marzban.volumes[$index]"' | select(tag == "!!str")' "$COMPOSE_FILE" | grep -Eq ':/code/app/dashboard/build(:|$)'; then
+            yq -i "del(.services.marzban.volumes[$index])" "$COMPOSE_FILE" || return 1
+        fi
+    done
+}
+
 update_command() {
     help() {
-        colorized_echo red "Usage: marzban update [--version <version>]"
+        colorized_echo red "Usage: marzban update [--version <version>] [--allow-downgrade]"
         echo ""
         echo "OPTIONS:"
         echo "  -v, --version    update to an exact version or immutable sha-* image tag"
+        echo "      --allow-downgrade  allow a qualified patch rollback after schema verification"
         echo "  -h, --help       display this help message"
     }
 
     local requested_version="latest"
     local requested_version_set="false"
+    local allow_downgrade="false"
     while [[ "$#" -gt 0 ]]; do
         case "$1" in
             -v|--version)
@@ -1802,6 +1831,10 @@ update_command() {
                 requested_version="$2"
                 requested_version_set="true"
                 shift 2
+            ;;
+            --allow-downgrade)
+                allow_downgrade="true"
+                shift
             ;;
             -h|--help)
                 help
@@ -1852,11 +1885,14 @@ update_command() {
         configured_source_image=$(configured_service_image marzban)
         app_container=$(running_service_container marzban)
         running_source_image=$(docker inspect --format '{{.Config.Image}}' "$app_container" 2>/dev/null || true)
-        if ! is_allowed_v1_lineage_transition "$current_version" "$requested_version" "$configured_source_image" "$running_source_image"; then
-            colorized_echo red "Application downgrade refused. Restore a matching offline database/configuration backup into an isolated installation."
+        if [ "$allow_downgrade" = "true" ] && compatible_patch_rollback "$current_version" "$requested_version" "$app_container"; then
+            colorized_echo yellow "Verified compatible patch rollback: ${current_version} -> ${requested_version}; migration sources are identical."
+        elif is_allowed_v1_lineage_transition "$current_version" "$requested_version" "$configured_source_image" "$running_source_image"; then
+            colorized_echo yellow "Verified product-line transition: ${V1_LINEAGE_SOURCE_IMAGE} -> $(marzban_docker_image "$requested_version")."
+        else
+            colorized_echo red "Application downgrade refused. Use --allow-downgrade only for a qualified patch pair with identical migrations."
             exit 1
         fi
-        colorized_echo yellow "Verified product-line transition: ${V1_LINEAGE_SOURCE_IMAGE} -> $(marzban_docker_image "$requested_version")."
     fi
     exec 9>"$APP_DIR/.update.lock"
     flock -n 9 || { colorized_echo red "Another update is running."; exit 1; }
@@ -1905,6 +1941,7 @@ update_command() {
         colorized_echo red "Update failed. Restored previous image: ${previous_image}"
         exit 1
     fi
+    remove_frontend_override || exit 1
     record_marzban_release_revision || exit 1
 
     colorized_echo blue "Restarting Marzban's services"
@@ -2924,7 +2961,7 @@ rollback_command() {
     fi
 
     colorized_echo yellow "Rolling back the application image to $1. Database migrations are not downgraded."
-    update_command --version "$1"
+    update_command --version "$1" --allow-downgrade
 }
 
 check_editor() {
