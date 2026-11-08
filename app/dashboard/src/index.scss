@@ -312,9 +312,27 @@ button:disabled, [aria-disabled="true"] { cursor: not-allowed; }
 .workspace-stat { padding: 12px 16px; min-width: 0; border-inline-end: 1px solid var(--panel-border); }
 button.workspace-stat { cursor: pointer; transition: background-color 120ms ease; }
 .workspace-stat:focus-visible { outline: 2px solid var(--panel-accent); outline-offset: -3px; }
-.user-action-grid { display: grid; grid-template-columns: repeat(5, 32px); gap: 4px; padding: 5px; width: max-content; max-width: 100%; margin-inline-start: auto; border: 1px solid var(--panel-border); border-radius: 10px; background: var(--panel-nested); }
-.user-action-grid .chakra-button { border-radius: 7px; transition: transform 120ms var(--motion-ease), background-color 120ms ease; }
-.user-action-grid .chakra-button:active { transform: scale(.96); }
 @media (hover: hover) and (pointer: fine) { button.workspace-stat:hover { background: var(--panel-row-hover); } }
-@media (pointer: coarse) { .user-action-grid { grid-template-columns: repeat(5, 44px); gap: 4px; } .user-action-grid .chakra-button { min-width: 44px; width: 44px; height: 44px; } }
 @media (max-width: 30em) { .workspace-stat { padding: 10px 12px; border-bottom: 1px solid var(--panel-border); } }
+
+/* Each user is one responsive card, with one action toolbar at every width. */
+.user-card-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 10px; border-radius: 12px; background: var(--panel-bg); }
+.user-card { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 12px; border: 1px solid var(--panel-border-strong); border-radius: 12px; background: var(--panel-surface); box-shadow: var(--shadow-row); }
+.chakra-ui-dark .user-card { background: var(--panel-nested); }
+.user-card[data-selected] { border-color: var(--panel-accent); box-shadow: inset 0 0 0 1px var(--panel-accent); }
+.user-card-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.user-card-facts > div + div { border-inline-start: 1px solid var(--panel-border); padding-inline-start: 10px; }
+.user-card-label { color: var(--panel-text-muted); font-size: 12px; margin-bottom: 2px; }
+.user-card-actions { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; border-top: 1px solid var(--panel-border); padding-top: 8px; margin-top: auto; }
+.user-card-actions[data-read-only] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.user-card-actions .user-card-action { height: 52px; flex-direction: column; gap: 3px; transition: transform 120ms var(--motion-ease), background-color 120ms ease, border-color 120ms ease; }
+.user-card-action-label { display: inline; white-space: nowrap; }
+.user-card-action:active { transform: scale(.97); }
+@media (min-width: 48em) and (pointer: fine) {
+  .user-card-actions { grid-template-columns: repeat(2, minmax(64px, 1.6fr)) repeat(8, minmax(30px, 1fr)); }
+  .user-card-actions .user-card-action { height: 36px; flex-direction: row; }
+  .user-card-action:not([data-named]) .user-card-action-label { display: none; }
+}
+@media (min-width: 80em) { .user-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 29.99em) { .user-card-grid { padding: 6px; gap: 10px; } .user-card { padding: 10px; gap: 8px; } }
+@media (prefers-reduced-motion: reduce) { .user-card-action:active { transform: none; } }

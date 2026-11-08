@@ -63,11 +63,10 @@ assert.ok(!deviceLimits.includes("linear-gradient(145deg, rgba(14,25,20,.98), rg
 assert.ok(deviceLimits.includes('bg="var(--panel-surface)"'), "Device Limits cards must use the shared panel surface token");
 assert.ok(deviceLimits.includes('borderColor="var(--panel-border)"'), "Device Limits separators must use the shared panel border token");
 
-// Users management V3 keeps the table compact while preserving mobile scrolling, actions and a lazy details surface.
-assert.ok(usersTable.includes('overflowX="auto"'), "Users table must allow controlled horizontal scrolling on narrow viewports");
-assert.ok(usersTable.includes('minW={isOwner ? "1220px" : "1100px"}'), "Users table must keep a bounded readable width without returning to the legacy 1500px layout");
-assert.ok(usersTable.includes('whiteSpace: "nowrap"'), "Users table headers must remain single-line and readable");
-assert.ok(usersTable.includes('aria-label="کارت‌های کاربران"') && usersTable.includes("اطلاعات اصلی هر کاربر در کارت نمایش داده می‌شود"), "Mobile users must get readable cards with a details affordance");
+// One responsive card surface replaces the desktop table and hidden mobile duplicate.
+assert.ok(usersTable.includes('role="list" aria-label="کارت‌های کاربران"'), "Users must retain an accessible card list");
+assert.ok(usersTable.includes('as="article" role="listitem"'), "Each user must have a distinct card boundary");
+assert.ok(!usersTable.includes("<TableContainer"), "The approved card layout must not retain a hidden table copy");
 assert.ok(usersTable.includes("plan_meta"), "Users table must consume bounded current-Plan metadata instead of issuing per-row Plan requests");
 assert.ok(usersTable.includes("UserDetailsDrawer"), "Users table must expose the dedicated details Drawer");
 assert.ok(userDetailsDrawer.includes('enabled:') && userDetailsDrawer.includes('tabIndex === deviceTabIndex'), "Device detail query must remain lazy until its Drawer tab is selected");
@@ -159,3 +158,5 @@ require("node:child_process").execFileSync(process.execPath, [path.join(__dirnam
 require("node:child_process").execFileSync(process.execPath, [path.join(__dirname, "test-alert-center.cjs")], { stdio: "inherit" });
 
 require("node:child_process").execFileSync(process.execPath, [path.join(__dirname, "test-workspace-ux.cjs")], { stdio: "inherit" });
+
+require("node:child_process").execFileSync(process.execPath, [path.join(__dirname, "test-user-cards.cjs")], { stdio: "inherit" });

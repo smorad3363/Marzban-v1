@@ -101,7 +101,7 @@ if (process.argv.includes('--record')) {
   const protectedNames = files.filter(file => !file.startsWith('app/dashboard/') || /^app\/dashboard\/src\/(service|contexts|types|hooks)\//.test(file));
   // Preserve all previously protected files, except the precise SS2022 feature.
   const ss2022Allowlist = new Set(
-    ['1.1.22', '1.1.23', '1.1.24', '1.1.25'].includes(fs.readFileSync(path.join(repository, 'VERSION'), 'utf8').trim()) ? [
+    ['1.1.22', '1.1.23', '1.1.24', '1.1.25', '1.1.26'].includes(fs.readFileSync(path.join(repository, 'VERSION'), 'utf8').trim()) ? [
       'VERSION', 'RELEASES.md', 'app/__init__.py', 'app/models/proxy.py',
       'app/subscription/share.py', 'app/subscription/v2ray.py',
       'app/utils/shadowsocks2022.py', 'app/xray/config.py', 'app/xray/operations.py', 'app/xray/node.py', 'docs/RELEASE_NOTES_v1.1.23.md',
@@ -115,7 +115,7 @@ if (process.argv.includes('--record')) {
   // runtime, image, documentation and test files. Keep every UI behavior check
   // and the immutable baseline; unknown backend additions still fail closed.
   const nodeMemoryAllowlist = new Set(
-    fs.readFileSync(path.join(repository, 'VERSION'), 'utf8').trim() === '1.1.24' || fs.readFileSync(path.join(repository, 'VERSION'), 'utf8').trim() === '1.1.25' ? [
+    fs.readFileSync(path.join(repository, 'VERSION'), 'utf8').trim() === '1.1.24' || fs.readFileSync(path.join(repository, 'VERSION'), 'utf8').trim() === '1.1.25' || fs.readFileSync(path.join(repository, 'VERSION'), 'utf8').trim() === '1.1.26' ? [
       'Dockerfile', 'README.md', 'docker-compose.node.yml',
       'node_runtime/config.py', 'node_runtime/core.py', 'node_runtime/memory.py',
       'scripts/Dockerfile.dev', 'scripts/install-xray.sh',
@@ -123,7 +123,7 @@ if (process.argv.includes('--record')) {
       'docs/RELEASE_NOTES_v1.1.24.md',
     ] : []
   );
-  const workspaceReleaseFiles = new Set(['docs/RELEASE_NOTES_v1.1.25.md', 'tests/test_compatible_patch_rollback.py']);
+  const workspaceReleaseFiles = new Set(['docs/RELEASE_NOTES_v1.1.26.md', 'docs/RELEASE_NOTES_v1.1.25.md', 'tests/test_compatible_patch_rollback.py']);
   const approvedFeatureFile = file => ss2022Allowlist.has(file) || nodeMemoryAllowlist.has(file) || workspaceReleaseFiles.has(file);
   assert.deepEqual(Object.keys(protectedFiles).filter(file => !protectedNames.includes(file)), [],
     'Previously protected files were removed');

@@ -23,7 +23,7 @@ LAST_XRAY_CORES=10
 # Fork configuration
 # Override at runtime, e.g. MARZBAN_GITHUB_REPO=another-user/Marzban marzban install
 # =============================================================================
-CLI_RELEASE_VERSION="v1.1.25"
+CLI_RELEASE_VERSION="v1.1.26"
 V1_LINEAGE_SOURCE_VERSION="5.2.0"
 V1_LINEAGE_SOURCE_IMAGE="ghcr.io/smorad3363/marzban-vnext:v5.2.0"
 V1_LINEAGE_TARGET_VERSION="v1.0.0"
@@ -1785,7 +1785,10 @@ up_command() {
 # Compare every migration source byte before touching the running application.
 compatible_patch_rollback() {
     local current_version="$1" requested_version="$2" source_container="$3"
-    [ "$current_version:$requested_version" = "1.1.25:v1.1.24" ] || return 1
+    case "$current_version:$requested_version" in
+        1.1.26:v1.1.25|1.1.25:v1.1.24) ;;
+        *) return 1 ;;
+    esac
     local target_image source_schema target_schema
     target_image=$(marzban_docker_image "$requested_version")
     ensure_marzban_image "$requested_version" || return 1
